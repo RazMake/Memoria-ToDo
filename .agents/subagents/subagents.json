@@ -1,0 +1,37 @@
+{
+  "explorer": {
+    "description": "Read-only codebase exploration on a cheap model. Starts from the repository map, then finds files, traces code paths, and answers where/how/why questions with path:line evidence. Use it for any search or reading beyond a couple of already-known files.",
+    "readOnly": true,
+    "claude": { "model": "haiku" },
+    "codex": { "model": "gpt-6-luna" },
+    "copilot": { "model": ["gpt-6-luna", "GPT-6 Luna (copilot)"] }
+  },
+  "architect": {
+    "description": "Designs changes and owns the architecture review surface: design files, the module map, and module public interfaces. Use it before any change that needs a design decision or touches more than one module. Give it the request and any evidence; it returns the owner design file, the behaviors the change must satisfy, and open questions with options and a recommendation, and records the decisions the user makes.",
+    "readOnly": false,
+    "claude": { "model": "claude-opus-5-5", "effort": "high" },
+    "codex": { "model": "gpt-6-astra", "effort": "high" },
+    "copilot": { "model": ["claude-opus-5.5", "Claude Opus 5.5 (copilot)"], "effort": "xhigh" }
+  },
+  "tester": {
+    "description": "Designs requirement-driven tests that read as a living spec, following the repository test policy's run checkpoints. Give it the module, the owner design file, and the behaviors or bug to cover; during development it delivers failing unit tests and unrun integration tests. At final validation it proves deferred integration tests can fail.",
+    "readOnly": false,
+    "claude": { "model": "claude-sonnet-5-5", "effort": "medium" },
+    "codex": { "model": "gpt-6.1-terra", "effort": "medium" },
+    "copilot": { "model": ["claude-sonnet-5.5", "Claude Sonnet 5.5 (copilot)"], "effort": "medium" }
+  },
+  "coder": {
+    "description": "Implements fast, memory-efficient, testable code inside one module, following the repository test policy for focused checks and final validation. Give it the goal, the owner design file, failing unit tests and deferred integration tests, the relevant files, and the constraints.",
+    "readOnly": false,
+    "claude": { "model": "claude-sonnet-5-5", "effort": "medium" },
+    "codex": { "model": "gpt-6.1-terra", "effort": "high" },
+    "copilot": { "model": ["claude-sonnet-5.5", "Claude Sonnet 5.5 (copilot)"], "effort": "medium" }
+  },
+  "reviewer": {
+    "description": "Read-only adversarial review under the repository's independent-review policy. Give it the scope, original requirements, owner design file, and verified model and fresh-session evidence. Use it to find duplication, module-containment breaks, design and code anti-patterns, specification drift, unrecorded decisions, implementation-coupled tests, missing fail-fast checks, hard-to-read documentation, and API design flaws.",
+    "readOnly": true,
+    "claude": { "model": "opus", "effort": "high" },
+    "codex": { "model": "gpt-6-sol", "effort": "high" },
+    "copilot": { "model": ["gpt-6.1-sol", "GPT-6.1 Sol (copilot)"] }
+  }
+}

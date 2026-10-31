@@ -1,0 +1,8 @@
+# Paths that search tools and AI agents skip. Git still tracks them.
+# Honored by ripgrep (Claude Code, Codex, and Copilot search), VS Code search, and .agents/repo-map.mjs.
+# List generated, vendored, and bulky reference files here. Uses .gitignore syntax.
+
+# Generated from .agents/subagents/; search the source instead.
+.claude/agents/
+.codex/agents/
+.github/agents/

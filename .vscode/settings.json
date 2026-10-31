@@ -1,0 +1,10 @@
+{
+  // AGENTS.md files are the single AI instruction source; see AGENTS.md.
+  "chat.useAgentsMdFile": true,
+  "chat.useNestedAgentsMdFiles": true,
+  "github.copilot.chat.reviewSelection.instructions": [{ "file": "AGENTS.md" }],
+  // .github/agents holds Copilot's generated agents; .claude/agents holds Claude Code's copies of the same roles.
+  "chat.agentFilesLocations": { ".claude/agents": false },
+  // The read-only repository map (see AGENTS.md) runs without a prompt.
+  "chat.tools.terminal.autoApprove": { "/^node \\.agents[\\\\/]repo-map\\.mjs(\\s|$)/": true },
+}
