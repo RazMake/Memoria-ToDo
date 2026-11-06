@@ -14,14 +14,14 @@
     "copilot": { "model": ["claude-opus-5.5", "Claude Opus 5.5 (copilot)"], "effort": "xhigh" }
   },
   "tester": {
-    "description": "Designs requirement-driven tests that read as a living spec, following the repository test policy's run checkpoints. Give it the module, the owner design file, and the behaviors or bug to cover; during development it delivers failing unit tests and unrun integration tests. At final validation it proves deferred integration tests can fail.",
+    "description": "Designs requirement-driven tests that read as a living spec, following the repository test policy's run checkpoints. Give it the module, the owner design file, and the behaviors or bug to cover; during development it delivers failing unit tests and unrun UX and integration tests. At final validation it proves deferred UX and integration tests can fail.",
     "readOnly": false,
     "claude": { "model": "claude-sonnet-5-5", "effort": "medium" },
     "codex": { "model": "gpt-6.1-terra", "effort": "medium" },
     "copilot": { "model": ["claude-sonnet-5.5", "Claude Sonnet 5.5 (copilot)"], "effort": "medium" }
   },
   "coder": {
-    "description": "Implements fast, memory-efficient, testable code inside one module, following the repository test policy for focused checks and final validation. Give it the goal, the owner design file, failing unit tests and deferred integration tests, the relevant files, and the constraints.",
+    "description": "Implements fast, memory-efficient, testable code inside one module, following the repository test policy for focused checks and final validation. Give it the goal, the owner design file, failing unit tests and deferred UX and integration tests, the relevant files, and the constraints.",
     "readOnly": false,
     "claude": { "model": "claude-sonnet-5-5", "effort": "medium" },
     "codex": { "model": "gpt-6.1-terra", "effort": "high" },
