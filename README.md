@@ -1,6 +1,6 @@
 # Memoria-ToDo
 
-Memoria-ToDo's purpose isn't written yet. So far this repository holds the rules every change follows and the AI agents that design, build, test, and review it.
+Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) is decided, its design is being drafted, and there's no code yet. So far this repository holds the rules every change follows and the AI agents that design, build, test, and review it.
 
 | If you want to | Read |
 | --- | --- |

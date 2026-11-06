@@ -1,0 +1,352 @@
+# How the code is built, tested, and released
+
+Status: Drafting
+
+The technology stack is the set of tools that lay out, build, test, and release both apps from this repository. Each decided choice has its own section under [Behavior](#behavior), and the [open questions](#open-questions) list the two left, in the order to decide them.
+
+## Behavior
+
+[How the apps fit together](overview.md#every-part-targets-net-11) already decides the language, C#; .NET 11 for every part; and the main libraries. This page doesn't reopen them. It decides the rest: how the throwaway proofs run, how the code is laid out and named, where versions are pinned, the test tools, the one command that builds and tests, the architecture tests, whether the desktop app carries its own .NET runtime, the release step, the Android build of libgit2, and where the Android signing key is kept.
+
+### Earlier designs set what the stack must serve
+
+The table lists each need the stack must meet, and the page that sets it:
+
+| Need | Set by |
+| --- | --- |
+| How tests are classified, and when each kind runs | [AGENTS.md tests](../../AGENTS.md#tests) |
+| One project per module, its tests, and its public API files | [Modules](modules.md#a-module-is-one-capability-behind-a-small-interface) |
+| Which modules a module may use | [Module map](modules.md#module-map) |
+| Why Sync's git tests are integration tests | [Modules](modules.md#the-platform-serves-every-module-and-knows-none) |
+| The desktop installer and its updates | [Desktop Shell](desktop/shell.md#velopack-installs-the-app-and-keeps-it-up-to-date) |
+| The Android app's updates and their signing | [Android Shell](android/shell.md#updates-come-from-this-repositorys-github-releases) |
+| The application binary interfaces (ABIs), or processor types, each Android package holds | [Android app](android/README.md#the-app-runs-on-android-80-and-later-with-androidx-and-material) |
+| The proof on a phone, which comes before other Android work | [Android app](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) |
+
+### This page resolves one risk and shares two
+
+Of the [risks the later rows must resolve](overview.md#risks-the-later-rows-must-resolve), this page owns "We maintain libgit2's Android build", in [question 13](#13-how-is-libgit2-built-for-android-and-where-do-its-binaries-live). It shares two:
+
+- **Each ABI makes the Android package bigger.** The Android app picks the ABIs; this page builds one libgit2 for each.
+- **The transport must read both Secure Shell (SSH) address forms.** Sync owns it; [Sync's test server](#syncs-integration-tests-run-an-ssh-server-inside-the-test-process) accepts both forms, so Sync's tests can cover them.
+
+The other risks belong to the proofs, the Android app, and Sync, as the risk table says. This page only sets when the proofs run and where their code lives, [below](#the-throwaway-proofs-run-on-a-never-merged-branch-before-this-page-is-decided).
+
+### The throwaway proofs run on a never-merged branch, before this page is Decided
+
+Two throwaway proofs may run before this page is Decided, though the [design backlog](README.md#design-backlog) holds back product code until then. The [proof on a phone](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) tests LibGit2Sharp with a libgit2 we build with the Android Native Development Kit (NDK). The proposed [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) tests our SSH transport on Windows. Both test the riskiest parts of the design before the choices that depend on them.
+
+- **They run after the choices they don't affect, and before the two they do.** Where the Android modules' tests run, and how libgit2 is built for Android, wait for the proof on a phone. If it fails, every [fallback](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) drops libgit2, so a libgit2 build decided first would be wasted.
+- **Proof code lives on a throwaway branch of this repository and is never merged**, so it never becomes product code. You create the branch and make its commits, since [only you commit](../../AGENTS.md#contributions).
+- **Proof code skips AGENTS.md's [Code design](../../AGENTS.md#code-design) and [Tests](../../AGENTS.md#tests) rules, and [Contributions](../../AGENTS.md#contributions) principle 4.** Principle 4 delivers each change through the [process](../contributing/process.md): design, tests first, code, independent review, and a delivery report. A proof only shows whether something works, so none of that is worth its cost for code that's thrown away. Every other rule in [AGENTS.md](../../AGENTS.md) still applies, so AI never commits or pushes the branch.
+- **What a proof shows is recorded in the design files it checks**, such as the [Android app](android/README.md) and [How the apps fit together](overview.md). That record is a design change, not a delivery report.
+
+### Code and tests sit in mirrored trees by part, in one solution
+
+Each module's project and its tests sit at matching paths in two trees at the repository root, `src/` and `tests/`, grouped by part. The parts are `Shared`, `Desktop`, and `Android`: the shared library, the desktop app, and the Android app, as [How the apps fit together](overview.md#two-apps-share-one-c-library) defines them. The [module map](modules.md#module-map) lists each part's modules.
+
+- **Tests mirror code.** A module's project sits in `src/<Part>/<Module>/` and its tests in `tests/<Part>/<Module>/`, such as `src/Android/Shell/` and `tests/Android/Shell/`. Three test folders mirror no `src/` folder: `tests/<Part>/Fakes/`, for each part's [shared fakes](#each-port-has-one-hand-written-fake-shared-by-every-test); `tests/Testing/`, for the kind attributes and [our analyzer that checks them](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two); and `tests/Architecture/`, for the [architecture tests](#architecture-tests-check-the-module-map).
+- **A project's name says its part.** Projects are named `Memoria.ToDo.<Part>.<Module>`, such as `Memoria.ToDo.Android.Shell`, because the desktop and Android apps have modules with the same names, such as Shell. A module name with spaces drops them, so the desktop Task editor's project is `Memoria.ToDo.Desktop.TaskEditor`.
+- **Each part's [platform](modules.md#the-platform-serves-every-module-and-knows-none) is one project, `Memoria.ToDo.<Part>.Platform`, in `src/<Part>/Platform/`.**
+- **Each app's composition root is one project, `Memoria.ToDo.<Part>.App`, in `src/<Part>/App/`.** It builds the app you install.
+- **A platform's or composition root's tests sit at the matching path under `tests/`**, as a module's do.
+- **One solution, `Memoria.ToDo.slnx` at the repository root, holds every project.** The `.slnx` format is the default since .NET 10 ([`dotnet new sln`](https://learn.microsoft.com/en-us/dotnet/core/compatibility/sdk/10.0/dotnet-new-sln-slnx-default)).
+
+### Three files pin every version
+
+Every .NET tool and package version lives in one of three files, so every machine and every release build use the same versions. The table lists each file and what it pins:
+
+| File | Pins |
+| --- | --- |
+| `global.json` | The .NET software development kit (SDK) and the workload set; it also selects the test runner |
+| `Directory.Packages.props` | Every NuGet package, through [Central Package Management](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management), so project files name packages without versions |
+| `.config/dotnet-tools.json` | .NET tools, such as Velopack's `vpk` |
+
+Pinning the workload set means Android workload updates arrive only when you change the pin ([workload sets](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-workload-sets)). These files are [review surface](../../AGENTS.md#contributions), so you see every version change.
+
+When the first code lands, the [README](../../README.md#what-you-need)'s list of what you need grows: the .NET 11 SDK, the Android workload, git for [Sync's integration tests](#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), and the step that installs a Java Development Kit (JDK) and the Android SDK, as [the workload set decides](#the-pinned-workload-set-decides-the-jdk-and-android-sdk).
+
+### Tests use xUnit.net v3
+
+Every test uses [xUnit.net v3](https://xunit.net/), pinned in `Directory.Packages.props` like every package. It fits the [test rules](../../AGENTS.md#tests) in three ways:
+
+- **It runs on Microsoft.Testing.Platform (MTP) by default.** Its MTP support is built in, so `dotnet test` runs it with the runner `global.json` selects ([xUnit.net on MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform)).
+- **Custom trait attributes can mark a test's kind.** An attribute that implements `ITraitAttribute` marks a test method, a test class, or a whole assembly ([extensibility](https://github.com/xunit/xunit.net/blob/main/site/docs/getting-started/v3/extensibility.md), [custom traits in v3](https://github.com/xunit/xunit/discussions/3059)). [Attributes mark each test's kind](#attributes-mark-each-tests-kind-in-one-test-project-per-module) uses this.
+- **Each test gets a new instance of its test class** ([shared context](https://xunit.net/docs/shared-context)), so a test's fields can't carry state into the next test, which serves "Isolate what tests change" in [AGENTS.md](../../AGENTS.md#test-design).
+
+Not confirmed: running xUnit.net v3 on .NET 11's Android runtime. [Question 12](#12-where-do-the-android-modules-tests-run) settles it after the proof on a phone.
+
+### Each port has one hand-written fake, shared by every test
+
+Tests check results with xUnit.net's own assertions, its `Assert` class, and replace each port with a hand-written fake. The ports are the secure key store, the file system, the clock, and image shrinking ([patterns](overview.md#each-pattern-serves-one-requirement)), and the desktop Task list's [web view](desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes). A fake behaves like the real thing, so tests check results, not calls, as [AGENTS.md](../../AGENTS.md#test-design) asks.
+
+- **Each fake lives once, and every test that needs it shares it**, because shared test setup follows the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication). The same holds for the fake services a UX test uses.
+- **Every fake sits in one project per part, `Memoria.ToDo.<Part>.Fakes`, in `tests/<Part>/Fakes/`.** It holds no tests, and test projects reference it for the fakes they need, so no test project references another.
+
+### Attributes mark each test's kind, in one test project per module
+
+Each module keeps all its tests in one test project, and an attribute on each test class marks its tests' kind. [AGENTS.md](../../AGENTS.md#tests) defines the three kinds, unit, UX, and integration, limits the unit suite's time, which [the workflow checks](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue), and says when each kind runs.
+
+- **A module's test project is named `Memoria.ToDo.<Part>.<Module>.Tests`**, such as `Memoria.ToDo.Android.Shell.Tests`, and sits in `tests/<Part>/<Module>/`.
+- **Every test class carries one of our own attributes, `[Unit]`, `[UX]`, or `[Integration]`, so each test class holds tests of one kind.** Each is a custom xUnit.net trait attribute that gives every test in the class the trait `Category=Unit`, `Category=UX`, or `Category=Integration`. One kind per class fits "Group tests by component and scenario" in [AGENTS.md](../../AGENTS.md#test-design).
+- **The compiler catches a misspelled attribute, and one on a method.** The attributes are C# types that may mark only a class (`AttributeTargets.Class`).
+- **A test class with no kind attribute, or two, can't build.** [Our analyzer](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two) fails the build and names the class. Without it, a class with no kind would sit out every development run, since those select only `Category=Unit`, as [`dotnet test`'s filter](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) says.
+- **The attributes live in `Memoria.ToDo.Testing.Kinds`, in `tests/Testing/Kinds/`, which every test project references.** The analyzer is `Memoria.ToDo.Testing.Analyzers`, in `tests/Testing/Analyzers/`, and its tests are `Memoria.ToDo.Testing.Analyzers.Tests`, in `tests/Testing/Analyzers.Tests/`. The three folders sit side by side, because a .NET project compiles every C# file under its folder ([default includes](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview#default-includes-and-excludes)).
+- **The kinds' strings live in one C# file of constants in that project, so none can be mistyped.** It holds the trait name, `Category`; the three kind names; and the attributes' full type names. It uses nothing else, so the attributes' project compiles it, and the analyzer's project compiles the same file through a linked `Compile` item. So the file must also compile in the analyzer's .NET Standard 2.0 project. No other code spells these strings: `Directory.Build.props` [reads the two its filter needs](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) from this file.
+
+### Our analyzer fails the build when a test class has no kind attribute, or two
+
+An analyzer is a plug-in that the C# compiler, Roslyn, runs on the code it compiles. Ours checks each test class's [kind attribute](#attributes-mark-each-tests-kind-in-one-test-project-per-module), so a missing or doubled one fails the build, rather than waiting for a run of every test.
+
+- **Every test project loads it through `Directory.Build.props`**, so no test project is left out.
+- **It reports a compile error, naming the class, when a test class has no kind attribute or more than one.** A test class is a non-abstract class that declares or inherits at least one xUnit.net test method, which matches what xUnit.net runs: it skips abstract classes ([class filter](https://github.com/xunit/xunit/blob/main/src/xunit.v3.core/Framework/TestFrameworkDiscoverer.cs)) and finds inherited test methods ([method lookup](https://github.com/xunit/xunit/blob/main/src/xunit.v3.core/Configuration/RegisteredEngineConfig_reflection.cs)).
+- **A test method is one marked `[Fact]`, `[Theory]`, or an attribute derived from them**, such as Xunit.StaFact's `[WpfFact]`. Both `[Theory]` ([source](https://github.com/xunit/xunit/blob/main/src/xunit.v3.core/TheoryAttribute_reflection.cs)) and `[WpfFact]` ([source](https://github.com/AArnott/Xunit.StaFact/blob/main/src/Xunit.StaFact/WindowsDesktop/WpfFactAttribute.cs)) derive from `[Fact]`.
+- **`dotnet build` fails, and the editor shows the error as you type.** An analyzer error fails the build and is underlined in red in the editor ([severity levels](https://learn.microsoft.com/en-us/visualstudio/code-quality/use-roslyn-analyzers#severity-levels)), and Visual Studio checks code as you type ([code analysis](https://learn.microsoft.com/en-us/visualstudio/ide/find-and-fix-code-errors#use-code-analysis)). The check runs inside the compiler, so test projects that build for Android get it too.
+- **The analyzer targets .NET Standard 2.0 and doesn't reference xUnit.net.** Microsoft asks analyzers to target .NET Standard 2.0, because one analyzer runs both in command-line builds on .NET and in Visual Studio on .NET Framework ([write an analyzer](https://learn.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/tutorials/how-to-write-csharp-analyzer-code-fix#explore-the-analyzer-template)). It finds xUnit.net's attributes and ours by their full type names.
+- **It adds one package, Microsoft.CodeAnalysis.CSharp, pinned in `Directory.Packages.props`.** The pin must not be newer than the compiler in the pinned SDK, or the one in your editor: an older compiler skips the analyzer, with warning CS9057, and the build passes without the check ([analyzer compatibility](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/compiler-messages/source-generator-errors#analyzer-and-source-generator-compatibility)). Each package version also names the oldest Visual Studio it runs in ([Roslyn version support](https://learn.microsoft.com/en-us/visualstudio/extensibility/roslyn-version-support)).
+- **A pin that's too new fails the build.** `Directory.Build.props` makes warning CS9057 an error in test projects, so the check is never skipped silently.
+- **Its own tests are unit tests, in `[Unit]` classes, and use only Microsoft.CodeAnalysis.CSharp.** Each test compiles a code snippet in memory, against the assemblies already loaded in the test process, so it reads no files, and checks the errors the analyzer reports. Not confirmed by a run: compiling that way.
+
+### Plain `dotnet test` runs only unit tests, and final validation runs every test
+
+`Directory.Build.props` at the repository root sets one default filter for every test project: xUnit.net's `--filter-trait "Category=Unit"` ([xUnit.net on MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform)). It's passed through `TestingPlatformCommandLineArguments`, the property `dotnet test` forwards to each test application in Microsoft.Testing.Platform mode, and a property given with `-p:` can change it ([`dotnet test`](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test)).
+
+- **Plain `dotnet test` at the repository root builds everything and runs only unit tests.** `dotnet test --project <path>` runs one project's unit tests, as a focused batch.
+- **Final validation runs `dotnet test` with one `-p:` property that drops the filter**, so every test runs. This is the one command that builds the code and runs every test, which the [design backlog](README.md#design-backlog) asks for.
+- **A run in which no test ran fails.** With the .NET 11 SDK, a test project that matches no tests exits with code 8, but `dotnet test` counts that as success when it adds up the results, so one empty test project doesn't fail the run. A run where no project ran any test exits with code 8, a failure ([whole-run minimums](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp#whole-run-and-per-module-minimums)). So `dotnet test --project` on a project with no unit tests, such as the one that holds the [architecture tests](#architecture-tests-check-the-module-map), fails during development; its tests run with every other test. For the same reason, every push fails the [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) until the first unit test exists, which you accepted.
+- **The filter's trait name and unit kind name come from the [kinds' constants file](#attributes-mark-each-tests-kind-in-one-test-project-per-module)**, so `Directory.Build.props` keeps no copy of them. It reads the file with `System.IO.File::ReadAllText` and picks out the two names with a regular expression, both allowed in MSBuild property functions ([static property functions](https://learn.microsoft.com/en-us/visualstudio/msbuild/property-functions#static-property-functions)). If the file's layout changes so the match fails, the filter matches nothing, and plain `dotnet test` fails with exit code 8.
+
+Not confirmed by a run: this default with xUnit.net v3 and the MTP runner `global.json` selects, and reading the two names from the constants file.
+
+### WPF screens get UX tests on the PC, and Android screens on an emulator
+
+A UX test builds one screen inside the test process, with fake services, and never starts the app ([AGENTS.md](../../AGENTS.md#test-design)). The table lists each part of the user interface, where its UX tests run, and what runs them:
+
+| Part of the user interface | Where its UX tests run | What runs them |
+| --- | --- | --- |
+| A Windows Presentation Foundation (WPF) screen of the desktop app | On the PC, in its module's test project | [Xunit.StaFact](https://github.com/AArnott/Xunit.StaFact)'s `[WpfFact]`, which runs a test on a single-threaded apartment (STA) thread with a dispatcher, as WPF needs. Its 4.x versions support xUnit.net v3 4.x. Not confirmed: .NET 11. |
+| The WebView2 web view in the desktop's View Tasks | Nowhere: WebView2 runs its own browser processes outside the test process ([process model](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/process-model)) | A UX test of View Tasks passes a fake web view through the [Task list's interface](desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes); only integration tests check the real one |
+| A .NET for Android screen | On an emulator, in a test app, at final validation, since Android views need Android's runtime | The runner [question 12](#12-where-do-the-android-modules-tests-run) picks after the proof on a phone. [DeviceRunners](https://mattleibow.github.io/DeviceRunners/articles/using-dotnet-test.html) runs xUnit.net v3 tests on Android through `dotnet test`, but its test app is a .NET MAUI app. Not confirmed: hosting our .NET for Android views in it, and .NET 11. |
+
+- **If question 12 finds no runner, Android screens get no UX tests.** Android view models then get unit tests on the PC, as question 12's option (a) would allow, and its few emulator tests check the screens as integration tests. The hand-written code that updates Android views from view models ([Model-View-ViewModel](overview.md#each-pattern-serves-one-requirement)) then gets few checks.
+- **Android UX tests need an Android module's one test project to build for both the PC and Android.** Not confirmed: that it can.
+- **In Android UX tests, the Task list's web view is replaced** as the [Android Task list](android/task-list.md#one-web-view-starts-the-first-time-a-task-expands) says.
+
+### Architecture tests check the module map
+
+Tests that check every project, rather than one module, sit in a test project of their own, `Memoria.ToDo.Architecture.Tests`, in `tests/Architecture/`, since they can't sit in a module's test project. They're integration tests, marked `[Integration]`, because they read files, which is real I/O. So they run whenever every test runs: at final validation and on each version tag in the [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag).
+
+- **One test compares each project's references with the [module map](modules.md#module-map).** It checks that there are no cycles, no references between the apps, and no module named by the platform. It reads the "May use" columns of the map's tables in `modules.md`, so the map keeps one home, and matches each name there to a project by the [naming rules above](#code-and-tests-sit-in-mirrored-trees-by-part-in-one-solution).
+- **A change to the tables' format fails that test, which then needs a fix.** Code reads a Markdown table, so a new column or a renamed heading breaks it.
+- **During development, the reviewer checks references**, as [its instructions](../../.agents/subagents/reviewer.md) say.
+
+### Sync's integration tests run an SSH server inside the test process
+
+Sync's [setup](sync.md#public-interface) takes an SSH address, and test-only switches are [not allowed](../../AGENTS.md#test-design), so Sync's integration tests need an SSH server that runs git. Each test starts its own server inside the test process, built on Microsoft's [dev tunnels SSH library](https://github.com/microsoft/dev-tunnels-ssh/blob/main/src/cs/Ssh/README.md), a .NET SSH client and server.
+
+- **The test runs git for the server.** The library runs no commands itself, so the test answers each command request by starting `git-upload-pack` or `git-receive-pack` from the installed git, on a bare repository the test owns.
+- **No install, administrator rights, or network is needed, except git.** Every machine that runs these tests needs git installed.
+- **The server accepts both SSH address forms**, as the [risk table](overview.md#risks-the-later-rows-must-resolve) needs.
+- **The tests sit in Sync's test project, marked `[Integration]`**, as [decided above](#attributes-mark-each-tests-kind-in-one-test-project-per-module).
+- **Sync's unit tests cover reading both address forms, and its integration tests use the URL form with their own server's port.** The URL form can name a port.
+- **Each test of the scp-style form binds a loopback address of its own, `127.0.0.N`, on port 22**, so such tests can run side by side. That form can't name a port, so it always reaches port 22 ([git URLs](https://github.com/git/git/blob/master/Documentation/urls.adoc)). Windows doesn't reserve ports below 1024 for administrators; this rests on one probe, in which a normal user bound `127.0.0.2:22` on your PC on November 6, 2026. Not confirmed on other machines, or on one whose own SSH server listens on port 22.
+- **Git's version isn't pinned.** The README will list git as a prerequisite, as [above](#three-files-pin-every-version) says, and the workflow uses the git its Windows runner image includes ([Windows Server 2025 image](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md)). The tests use only `git-upload-pack` and `git-receive-pack`. Likely, but not confirmed: their wire protocol stays compatible across git versions, since the client asks for protocol version 2 and must ignore capabilities it doesn't know ([protocol v2](https://git-scm.com/docs/gitprotocol-v2)).
+- **If the proposed [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) is confirmed, it tries this server first.**
+
+Not confirmed: that the library runs on .NET 11. Its latest package, 3.12.42 from August 24, 2026, is built for .NET Standard 2.1 and .NET Framework 4.8 ([NuGet](https://www.nuget.org/packages/Microsoft.DevTunnels.Ssh)).
+
+### The desktop app carries its own .NET runtime
+
+The desktop app is self-contained: it carries the .NET runtime it runs on, so installing it needs no runtime install and no administrator rights, as the [desktop Shell](desktop/shell.md#velopack-installs-the-app-and-keeps-it-up-to-date)'s per-user install requires.
+
+- **A .NET security fix reaches users only in a release of ours**, since a self-contained app's runtime is upgraded only by releasing a new version of the app ([self-contained apps](https://learn.microsoft.com/en-us/dotnet/core/deploying/#publish-as-self-contained)).
+- Likely, but not confirmed: the runtime mostly costs size on the first install. Velopack's later updates are delta packages, binary patches of the files that changed ([delta updates](https://docs.velopack.io/packaging/deltas)), so a runtime that didn't change adds little to them.
+
+### A GitHub Actions workflow checks each push and publishes each version tag
+
+One GitHub Actions workflow, on a Windows runner, builds both apps, so releases don't depend on one PC. It uses the [pinned versions](#three-files-pin-every-version) and the two test commands [above](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test). The [coder](../../.agents/subagents/coder.md) writes its file in `.github/workflows/`, as it writes the version files and other build files. That folder is [review surface](../../AGENTS.md#contributions), so you review every change to the file, such as to the time limit or to how it uses the signing secrets.
+
+- **Each push builds the code and runs the unit tests**, with plain `dotnet test`. [The next section](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue) says which unit runs it times.
+- **A version tag runs every test kind, unit, UX, and integration, then builds, signs, and publishes one GitHub release.** The release holds the desktop installer, Velopack's update files, and the Android package (APK). Velopack's flow downloads the last release, packs the new one, and uploads it ([GitHub Actions](https://docs.velopack.io/distributing/github-actions)). The APK is built and signed with `dotnet publish` ([publish from the command line](https://learn.microsoft.com/en-us/dotnet/maui/android/deployment/publish-cli)), with the key from [its secret](#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline).
+- **A failed test or build publishes nothing**, as [Fail fast](../../AGENTS.md#code-design) asks.
+- **The tag is the version's only home.** The APK's [version code](https://developer.android.com/studio/publish/versioning) is computed from it.
+
+Likely, but not confirmed: GitHub's hosted Windows runners can't run the Android emulator, because they lack nested virtualization. GitHub states hardware acceleration for the emulator only for its Linux runners ([GitHub-hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)), and an issue about the emulator on Windows runners is open ([runner-images issue 9343](https://github.com/actions/runner-images/issues/9343)). So Android UX tests and tests on a device can't run in this workflow, and [question 12](#12-where-do-the-android-modules-tests-run) must say where they run before a release.
+
+### The workflow times the unit run, and a slow run opens one issue
+
+The [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) times a push's unit run, not counting the build, against the time limit [AGENTS.md](../../AGENTS.md#test-design) sets for the unit suite. Only the workflow acts on the limit: it alone opens, updates, and closes the issue below.
+
+- **A unit run on a PC prints its duration, and nothing else.** It doesn't fail on the limit, doesn't send work back, and doesn't open or update an issue. Plain `dotnet test` already prints the duration: its run summary ends with a `duration:` line, which counts from the end of the build to the end of the run ([the summary](https://github.com/dotnet/sdk/blob/main/src/Cli/dotnet/Commands/Test/MTP/Terminal/TerminalTestReporter.cs), [where the count starts](https://github.com/dotnet/sdk/blob/main/src/Cli/dotnet/Commands/Test/MTP/MicrosoftTestingPlatformTestCommand.cs)).
+- **The limit is one value in the workflow file, its only home.** It starts at 5 seconds, and you change it there. Other pages link to this section rather than repeat the number.
+- **A unit run over the limit opens a GitHub issue that lists each test's time, slowest first.** The push itself stays green.
+- **Only one such issue is open at a time.** When the issue already exists, the workflow adds a note to it instead of opening another. The note holds the run's duration and, like the issue, each test's time, slowest first.
+- **The workflow closes the issue when a timed run is under the limit**, so raising the limit also closes it.
+- **The workflow needs permission to write issues**, which its `permissions` key grants to the token GitHub gives each run ([`GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token)).
+- **Only pushes to the default branch are timed, one run at a time.** Pushes to the proof branch and other branches never open a timing issue. The timing job runs in a GitHub Actions [concurrency group](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency), so each run waits for the one before it to finish, and two runs can't each open an issue. When several runs wait, GitHub keeps only the newest, so the latest push is always timed.
+
+Not confirmed by a run: the `duration:` line with the pinned .NET 11 SDK. This page read it in the SDK's source.
+
+Likely, but not confirmed: hosted runners' timings vary from run to run, so noise alone can open an issue, which is one reason the limit is easy to change.
+
+Not confirmed: how much of the limit goes to starting each test project's test application, since `dotnet test` starts up to one per processor at a time ([`dotnet test` with MTP](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp)). Also not confirmed by a run: where the workflow reads each test's time. xUnit.net can write a JUnit report, which records it ([xUnit.net on MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform)).
+
+### The pinned workload set decides the JDK and Android SDK
+
+The Android build needs a JDK and Android SDK packages, such as a platform and build tools, and none of the [three version files](#three-files-pin-every-version) names them. The pinned workload set decides both, so no fourth version file is needed.
+
+- **Every PC and the release workflow run the Android workload's `InstallAndroidDependencies` build target.** It installs the Android SDK packages the project needs, and a JDK, into the folders `AndroidSdkDirectory` and `JavaSdkDirectory` name, outside the repository ([install dependencies](https://learn.microsoft.com/en-us/dotnet/android/getting-started/installation/dependencies)). Since `global.json` pins the workload set, a workload update brings the SDK packages it needs.
+- **If a build shows that the JDK it installs isn't fixed, a `.java-version` file at the repository root pins the JDK's major version.** The workflow reads it through `actions/setup-java`'s `java-version-file` input ([setup-java](https://github.com/actions/setup-java)), and on a PC you install that JDK yourself. The Android SDK stays with the workload.
+
+Not confirmed: that the workload set fixes the JDK `InstallAndroidDependencies` installs, and which version that is. Microsoft recommends its OpenJDK 21 for .NET for Android, tested against its builds, on the same page; that page dates from March 2026 and isn't confirmed for .NET 11.
+
+### The APK signing key lives in a GitHub Actions secret, backed up offline
+
+Every update must be signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)), so losing it ends updates. The key store lives in a GitHub Actions secret, so the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) can sign the APK. You keep an offline backup of the key store and its passwords outside GitHub.
+
+- **Only the job that publishes a version tag uses the signing secrets.** A workflow reads a secret only where it names it ([secrets](https://docs.github.com/en/actions/concepts/security/secrets)), and only you commit workflows, as [Contributions](../../AGENTS.md#contributions) says.
+- **The key never enters the repository.** Development builds and the proofs use the SDK's debug key, whose APKs can't update a released app.
+
+Likely, but not confirmed: the key store goes into the secret as base64 text, which GitHub suggests for small binary files ([base64 secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#storing-base64-binary-blobs-as-secrets)), and its two passwords, for the key store and for the key, go into two more secrets. The build reads the passwords from environment variables, which keeps them out of logs ([publish from the command line](https://learn.microsoft.com/en-us/dotnet/maui/android/deployment/publish-cli)).
+
+## Public interface
+
+None. No module uses the build tools.
+
+## Failure modes
+
+- **The Android signing key is lost**: no later Android package (APK) installs over the app, and Android's installer says so ([Android Shell](android/shell.md#failure-modes)). [Where the key lives](#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline) says how it's kept and backed up.
+- **A project uses a module the map doesn't allow**: during development, the reviewer sees it in the project file ([Modules](modules.md#failure-modes)); when every test runs, an [architecture test](#architecture-tests-check-the-module-map) fails.
+- **A test class has no kind attribute, or two**: the build fails with [our analyzer's](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two) error, which names the class, and the editor underlines it as you type.
+- **The pinned Microsoft.CodeAnalysis.CSharp is newer than a compiler that builds the tests**: that compiler skips our analyzer with warning CS9057, which `Directory.Build.props` [makes an error](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two), so the build fails.
+- **The constants file's layout changes, so `Directory.Build.props` can't read the two names its filter needs**: the filter matches nothing, and plain `dotnet test` fails with exit code 8, as [the filter's section](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) says.
+- **A timed unit run takes longer than the limit**: the push stays green, and the workflow opens [one issue](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue), or adds a note to it when it's already open.
+- **A version tag's tests or build fail**: the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) publishes nothing, and its run on GitHub shows the failure.
+
+## Ruled out
+
+The options below were considered and rejected, grouped by the decision they belong to.
+
+- When the throwaway proofs run, and where their code lives:
+  - **No exception for the proofs, with libgit2's Android build decided only as far as the proof needs and revisited later**: "Decided" would hold an open question, which the [process](../contributing/process.md#changing-the-design) doesn't allow.
+  - **No exception for the proofs, with every choice decided first**: if the proof on a phone fails, the libgit2 build and Android test choices are wasted, and the riskiest check waits for every tool choice.
+  - **A separate scratch repository for proof code**: you preferred a branch of this repository that's never merged.
+- Which AGENTS.md rules proof code follows:
+  - **Every rule**: module rules and tests first would slow down code that's thrown away.
+  - **Only no-duplication and fail-fast from the code and test rules**: keeping single rules from a waived section is harder to follow and check than waiving whole sections.
+  - **Keep Contributions principle 4 in full**: tests first and independent review would slow down code that's thrown away, as the waived Tests rules already accept.
+  - **Waive only tests first and independent review, keeping the design step and the delivery report**: what a proof shows already goes into the design files it checks, so a design step and a report add little for code that's thrown away.
+- How the code is laid out and named:
+  - **One folder per module, holding its project and its test projects side by side**: tests would sit beside shipping code, and paths would be deeper.
+  - **One solution per part: shared library, desktop, and Android**: three solutions to keep in step.
+- Where each tool and package version lives:
+  - **Pinning everything except the workload set**: Android workload updates would arrive by themselves, so two machines could build different packages from one commit.
+  - **Versions in each project file**: one version would live in many files, which breaks the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication).
+- Which test framework the tests use:
+  - **MSTest**: it also runs on MTP and makes a new instance of the test class for each test ([MSTest lifecycle](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-writing-tests-lifecycle)); you preferred xUnit.net v3.
+  - **NUnit**: by default, one instance of a test class serves all its tests, so fields carry state between them unless the class or assembly opts out ([FixtureLifeCycle](https://docs.nunit.org/articles/nunit/writing-tests/attributes/fixturelifecycle.html)). It runs on MTP only once its NUnit runner is turned on ([NUnit and MTP](https://docs.nunit.org/articles/vs-test-adapter/NUnit-And-Microsoft-Test-Platform.html)).
+- Which assertion and test-double libraries the tests use:
+  - **Shouldly, for clearer failure messages**: one more dependency, only to make failures easier to read.
+  - **A mocking library, such as [NSubstitute](https://github.com/nsubstitute/NSubstitute)**: it invites asserting calls and call order, which [AGENTS.md](../../AGENTS.md#test-design) allows only when a requirement promises the call.
+  - **FluentAssertions 8**: it needs a paid license for commercial use ([Xceed's FAQ](https://xceed.com/fluent-assertions-faq/)).
+- How unit, UX, and integration tests stay apart:
+  - **Separate unit and integration test projects for each module**: you preferred one test project per module, with attributes marking each test's kind.
+  - **A test with no kind attribute is a unit test**: a forgotten `[UX]` or `[Integration]` would run a test that does real I/O with the unit tests, and the time check would flag only a slow one.
+  - **xUnit.net's built-in `[Trait("Category", "...")]`**: a misspelled kind silently puts the test in no group.
+  - **A kind attribute on a class or a method, with the method's replacing the class's**: xUnit.net adds a method's traits to its class's rather than replacing them, so our attribute code would have to do the replacing.
+  - **A kind attribute on each test method only**: every test would repeat its attribute.
+- How the unit suite's time limit is checked:
+  - **Fail the unit run with `--timeout` set to the limit**: a busy machine can fail on time alone, and a stopped run reports no results for the tests it didn't finish.
+  - **Leave it to review, with nothing measured**: nothing would check the limit.
+  - **Local runs that fail or open an issue on the limit**: only the workflow acts on the limit, so the issue has one source.
+  - **The limit in a GitHub repository variable**: it isn't in the repository, and the workflow fails when it's unset.
+  - **You close the issue by hand**: the workflow closes it when a timed run is under the limit, so raising the limit also closes it.
+  - **A new issue for each slow push**: when the issue already exists, the workflow adds a note to it instead, with the run's duration and each test's time, slowest first.
+  - **A note with only the run's duration**: you would see each test's time only from the push that opened the issue, though the slowest test can change between pushes.
+- Which tests `dotnet test` runs:
+  - **A C# script, `build.cs`, run with `dotnet run build.cs`, for final validation and later releases**: a script to maintain, when one `-p:` property already adds the other kinds.
+  - **A PowerShell 7 script**: it adds PowerShell 7 to what you need, for the same few commands.
+  - **Plain `dotnet test` runs every test, and development always passes the unit filter**: a plain run during development would run UX and integration tests, which [Run timing](../../AGENTS.md#run-timing) allows only at session end.
+  - **Pass `--ignore-exit-code 8`, so a run in which no test ran passes** ([MTP options](https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-cli-options#platform-options)): a broken filter that matches nothing, such as one with a misspelled kind, would pass silently.
+- Which tools run a UX test of one screen:
+  - **WPF tests that start their own STA thread and dispatcher, instead of Xunit.StaFact**: we'd write and maintain that thread code, to save one dependency.
+- How the architecture test knows the module map:
+  - **The map in a data file, with a script that writes the tables in `modules.md`, as [generate.mjs](../../.agents/generate.mjs) writes agent files**: a generator and a staleness check to maintain, when the test can read the tables.
+  - **The test lists the allowed references itself**: a second home for the map, which breaks the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication), and a map change that skips the test goes unnoticed.
+- How a test class with no kind attribute, or two, is found:
+  - **An architecture test that reads every built test project**: it catches a missing or doubled attribute only when every test runs, at final validation and on each version tag, not when you build.
+  - **A tool that reads each built test project after it builds**: the editor shows nothing, and Android test projects build for Android, which adds moving parts.
+  - **Kind-specific test attributes, such as `[UnitFact]`, with Microsoft's [BannedApiAnalyzers](https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.BannedApiAnalyzers/BannedApiAnalyzers.Help.md) banning plain `[Fact]` and `[Theory]`**: the kind would move from the class to each method, reversing the [decision to mark each class](#attributes-mark-each-tests-kind-in-one-test-project-per-module), and every test attribute, `[WpfFact]` included, would need a version for each kind.
+  - **The tester lists them with two `dotnet test --list-tests` runs at final validation**: nothing fails on its own, and how the filters behave in those listings wasn't confirmed.
+  - **No check, leaving it to the reviewer**: a missing attribute is easy to miss.
+- Which classes the analyzer checks:
+  - **Only classes that declare a test method**: a derived class that only inherits its tests would go unchecked.
+- How `Directory.Build.props` gets the trait name and the unit kind name:
+  - **It keeps its own copy, with an exception in AGENTS.md for values a tool can't read**: the [core rule](../../AGENTS.md#core-rule-no-duplication) would gain an exception.
+  - **It writes the constants file before each compile**: this reverses the one checked-in C# file, and the constants don't exist until the first build, so a fresh clone shows errors in the editor.
+- What the analyzer's tests build on:
+  - **Microsoft's analyzer-testing packages, such as Microsoft.CodeAnalysis.CSharp.Analyzer.Testing**: by default they download reference assemblies from NuGet during a test ([ReferenceAssemblies](https://github.com/dotnet/roslyn/blob/main/src/RoslynSdk/Microsoft.CodeAnalysis.Testing/Microsoft.CodeAnalysis.Analyzer.Testing/ReferenceAssemblies.cs)), which is real I/O. Avoiding that means supplying the references ourselves, as we do without them, so they'd add packages for little.
+- Where the kind attributes and the analyzer live:
+  - **A part's Fakes project**: test projects in every part use the attributes, and each Fakes project has another job, holding one part's fakes.
+  - **One project, `Memoria.ToDo.Testing`, in `tests/Testing/`**: the analyzer's two projects can't sit in folders inside it, since it would compile their files too, so `tests/` would gain three folders that mirror nothing, instead of one.
+- Where Sync's integration tests find an SSH git server:
+  - **A real OpenSSH server on the machine, such as Windows' optional one**: it needs administrator rights and machine state that tests share, and GitHub's hosted runners run service containers, such as an SSH server, only on Ubuntu ([service containers](https://docs.github.com/en/actions/tutorials/use-containerized-services/use-docker-service-containers)).
+  - **Real hosts, with a test repository and a stored key**: tests would share one repository, need a secret on every machine, and fail offline.
+- Whether git's version is pinned for Sync's integration tests:
+  - **Pin git's version**: every PC and the workflow would install one git version, with a version file and an install step to maintain, for a protocol that likely doesn't change.
+- Whether the desktop app carries its own .NET runtime:
+  - **Framework-dependent, with Velopack installing the .NET Desktop Runtime first** ([bootstrapping](https://docs.velopack.io/packaging/bootstrapping)): the .NET installer installs system-wide ([install on Windows](https://learn.microsoft.com/en-us/dotnet/core/install/windows)), so it likely needs administrator rights, which the per-user install avoids.
+- Where builds and releases run:
+  - **A release command on your PC, with your GitHub token**: releases would depend on one PC, and nothing would check pushes.
+  - **The workflow checks pushes, and releases are made on your PC**: two paths would build the same apps.
+- Whether the workflow file is review surface:
+  - **Leave the review-surface list unchanged**: a change to the time limit or to how the workflow uses the signing secrets would show only in a commit diff.
+- Which tests the workflow runs:
+  - **Every test kind on each push**: each push would wait for UX and integration tests, which already run at final validation and on each version tag.
+- How the JDK and Android SDK versions are chosen:
+  - **Nothing pinned, with each PC and runner using what it has**: two machines could build different packages from one commit, which [pinning the workload set](#three-files-pin-every-version) prevents.
+- Where the APK signing key is kept:
+  - **Only on your PC, with an offline backup**: the release workflow couldn't sign the APK, so releases would move to your PC, which is ruled out above.
+  - **A cloud key vault the workflow reads**: it needs a cloud subscription for a personal app.
+
+## Open questions
+
+Decide them in this order, after the [proofs run](#the-throwaway-proofs-run-on-a-never-merged-branch-before-this-page-is-decided): both depend on what the proof on a phone shows. Versions were checked on November 5, 2026, when .NET 11 was at Release Candidate 2 with a go-live license ([.NET 11 RC 2](https://devblogs.microsoft.com/dotnet/dotnet-11-rc-2/)). No tool below states .NET 11 support unless noted. "Not confirmed" marks what no source settled.
+
+### 12. Where do the Android modules' tests run?
+
+A test project for the PC can't reference a project built only for Android ([target frameworks](https://learn.microsoft.com/en-us/dotnet/standard/frameworks)). Tests on a phone or emulator start a test app there, so they run only at final validation, as UX or integration tests; Android screens get UX tests there if this question finds a runner, as [decided above](#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator). Each module is [one project](modules.md#a-module-is-one-capability-behind-a-small-interface). The question has two parts.
+
+Part 1, how Android modules build for their tests:
+
+| Option | Gains | Costs |
+| --- | --- | --- |
+| (a) Each Android module builds for both the PC and Android. Code that calls Android builds only for Android, so view models and rules get unit tests on the PC; the few Android-only parts get emulator checks at final validation. | Focused unit tests; one project per module | Each file is marked Android-only or shared; two builds per project |
+| (b) Android modules build only for Android; all their tests run on an emulator at final validation | Simple projects | No unit tests during development for four modules |
+| (c) Split each Android module into a logic project and an Android project | Clean split | Breaks one project per module, an architecture change |
+
+We recommend (a). [XHarness](https://github.com/dotnet/xharness) runs test apps on Android emulators, also from Windows. Not confirmed: which test runner runs xUnit.net v3 on .NET 11's Android runtime, which the proof shows; xUnit.net v3 ships no runner for devices, so a test app on a device must supply its own ([xUnit discussion](https://github.com/xunit/xunit/discussions/3112)).
+
+Part 2, where Android UX tests and tests on a device run before a release. They likely can't run in the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) on its hosted Windows runner, as that section notes.
+
+| Option | Gains | Costs |
+| --- | --- | --- |
+| (a) A Linux job in the release workflow starts an emulator and runs them, and publishing waits for it. GitHub's hosted Linux runners support the emulator's hardware acceleration ([GitHub-hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)). | Each version tag still runs every test kind, on GitHub | A second kind of runner to set up and keep working |
+| (b) You run them on your PC, with an emulator, before you push a version tag | Nothing more to set up on GitHub | Nothing checks that they ran, and releases again depend on your PC, which the [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) was chosen to avoid |
+| (c) A self-hosted runner on your PC runs them as a job of the release workflow | The workflow checks them, on your emulator | Your PC must be on for each release. GitHub recommends self-hosted runners only for private repositories, since a pull request from a fork can run code on the machine, and this repository is public ([self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)) |
+
+We recommend (a), so the version tag stays the one place that checks a release. XHarness runs Android test apps from Linux too ([XHarness](https://github.com/dotnet/xharness#system-requirements)). Not confirmed: the emulator on a hosted Linux runner with the runner part 1 picks.
+
+Both parts depend on the proof on a phone.
+
+### 13. How is libgit2 built for Android, and where do its binaries live?
+
+LibGit2Sharp's latest, 0.32.0, carries libgit2 1.8.6 ([releases](https://github.com/libgit2/libgit2sharp/releases)). Its native binaries come from one pinned libgit2 commit, built with CMake into a file named after that commit, the name LibGit2Sharp loads ([build script](https://github.com/libgit2/libgit2sharp.nativebinaries/blob/master/build.libgit2.sh)). Android needs the same commit, built per ABI with NDK r28 or later, which aligns libraries to the 16 KB memory pages newer phones use ([page sizes](https://developer.android.com/guide/practices/page-sizes)); the latest is r30 ([changelog](https://github.com/android/ndk/wiki/Changelog-r30)). libgit2 tries our registered transport first ([transport.c](https://github.com/libgit2/libgit2/blob/v1.8.6/src/libgit2/transport.c)), so the build may leave out its own SSH and HTTPS, and with them OpenSSL and libssh2. Not confirmed until the proof builds it.
+
+| Option | Gains | Costs |
+| --- | --- | --- |
+| (a) Every full build compiles libgit2, cached until the pinned commit changes | Binaries always match the source | Every machine needs the NDK and CMake; slow first builds |
+| (b) A script here builds it when the pinned commit changes; the binaries and a note of the commit and NDK are committed | Normal builds need no NDK; changes are rare and visible | Binary files in git; a reviewer can only rebuild and compare |
+| (c) A separate repository publishes it as a NuGet package | Clean separation | A second repository; GitHub Packages needs a token even for public packages ([NuGet registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-nuget-registry)) |
+
+We recommend (b), following LibGit2Sharp's pinned commit, so both apps run the same libgit2. A libgit2 fix then waits for a LibGit2Sharp release that carries it: libgit2 1.9.7 shipped August 13, 2026 ([libgit2 releases](https://github.com/libgit2/libgit2/releases)). Nothing libgit2-related is published to this repository's Releases, which the apps read for updates. Depends on the proof on a phone, since every fallback drops libgit2. Option (a) would add the NDK and CMake to the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag).
