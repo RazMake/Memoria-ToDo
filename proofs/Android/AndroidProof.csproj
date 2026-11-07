@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Memoria.Proofs</RootNamespace>
+    <ApplicationId>com.razmake.memoriaproof</ApplicationId>
+    <ApplicationTitle>Memoria proof</ApplicationTitle>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1</ApplicationDisplayVersion>
+    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <ProofsHome>$(LOCALAPPDATA)\Memoria-ToDo-proofs</ProofsHome>
+    <AndroidSdkDirectory Condition="'$(AndroidSdkDirectory)' == ''">$(ProofsHome)\android-sdk</AndroidSdkDirectory>
+    <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == ''">$(ProofsHome)\jdk</JavaSdkDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <!-- build-libgit2.ps1 makes these, under the name LibGit2Sharp loads. -->
+    <AndroidNativeLibrary Include="$(ProofsHome)\libgit2-android\arm64-v8a\*.so" Abi="arm64-v8a" />
+    <AndroidNativeLibrary Include="$(ProofsHome)\libgit2-android\x86_64\*.so" Abi="x86_64" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibGit2Sharp" Version="0.32.0" />
+    <!-- Its libgit2 builds are for desktop systems, and Android would pick the glibc Linux ones. -->
+    <PackageReference Include="LibGit2Sharp.NativeBinaries" Version="2.0.324" ExcludeAssets="all" PrivateAssets="all" />
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
+    <PackageReference Include="Xamarin.Google.Android.Material" Version="1.14.0.6" />
+  </ItemGroup>
+
+  <Target Name="RequireAndroidLibgit2" BeforeTargets="Build">
+    <Error Condition="!Exists('$(ProofsHome)\libgit2-android\arm64-v8a') Or !Exists('$(ProofsHome)\libgit2-android\x86_64')"
+           Text="libgit2 for Android is missing. Run build-libgit2.ps1 first." />
+  </Target>
+
+</Project>

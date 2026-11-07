@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Add screen the Task editor designs: a top app bar and the Title, Description, and Tags fields. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+  <com.google.android.material.appbar.MaterialToolbar
+      android:id="@+id/toolbar"
+      android:layout_width="match_parent"
+      android:layout_height="?attr/actionBarSize"
+      app:title="Add" />
+
+  <EditText
+      android:id="@+id/title"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginHorizontal="16dp"
+      android:hint="Title"
+      android:imeOptions="actionNext"
+      android:importantForAutofill="no"
+      android:inputType="textCapSentences">
+    <requestFocus />
+  </EditText>
+
+  <EditText
+      android:id="@+id/description"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_marginHorizontal="16dp"
+      android:layout_weight="1"
+      android:gravity="top"
+      android:hint="Description"
+      android:importantForAutofill="no"
+      android:inputType="textMultiLine|textCapSentences" />
+
+  <EditText
+      android:id="@+id/tags"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginHorizontal="16dp"
+      android:hint="Tags"
+      android:importantForAutofill="no"
+      android:inputType="text" />
+
+</LinearLayout>
