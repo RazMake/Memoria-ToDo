@@ -64,7 +64,8 @@ const tools = {
       description: role.description,
       model: config.model,
       'reasoning-effort': config.effort,
-      tools: role.readOnly ? ['read', 'search', 'execute'] : undefined,
+      // Without a list, VS Code's Local harness gives the agent the main session's tools, so writable roles name `edit`.
+      tools: role.readOnly ? ['read', 'search', 'execute'] : ['read', 'edit', 'search', 'execute', 'web'],
       // Copilot CLI subagents don't receive AGENTS.md without this.
       'include-custom-instructions': true,
     }, instructions),

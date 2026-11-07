@@ -10,7 +10,7 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 
 ### A module is one capability behind a small interface
 
-- **One module, one design file.** A module does one thing a user would name, in one place: the shared library or one app. Its design file, under `docs/architecture/`, is its spec. Proposed: when both apps need the same capability, each app has its own module of that name, with its own project and its own design file in that app's folder, `docs/architecture/desktop/` or `docs/architecture/android/`. This is a decision to confirm.
+- **One module, one design file.** A module does one thing a user would name, in one place: the shared library or one app. Its design file, under `docs/architecture/`, is its spec. When both apps need the same capability, each app has its own module of that name, with its own project and its own design file in that app's folder, `docs/architecture/desktop/` or `docs/architecture/android/`.
 - **One C# project per module, in one folder** named after it, holds its code. Its tests live in a matching folder and use only its public interface.
 - **A small public interface.** Other code uses the module only through its public interface. Everything else in the module is `internal`, which the compiler hides from other projects.
 - **Two files list the public interface.** The [public API analyzer](https://github.com/dotnet/roslyn-analyzers/blob/main/src/PublicApiAnalyzers/PublicApiAnalyzers.Help.md) keeps `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` in each project, listing every public declaration, and the build fails when they're out of date. A reviewer reads only the diff of those files to see every public-interface change.
@@ -20,7 +20,7 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 ### The platform serves every module and knows none
 
 - **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the file system and clock interfaces, and each app's platform holds its startup.
-- Proposed: **every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files. This is a decision to confirm.
+- **Every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files.
 - **Code shared by two modules moves to the platform**, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) requires. Code shared only inside one module stays in that module.
 - **Only the composition root names modules.** Each app has one. It creates each module's parts and connects them, and it chooses the implementation of every interface a module or the platform publishes, as [AGENTS.md](../../AGENTS.md#code-design) says. A module wires its own `internal` code itself, as Sync does with its git code.
 - **Each app's own implementations of shared interfaces live beside its composition root**, such as its image shrinking for Tasks, because they name a module's interface.

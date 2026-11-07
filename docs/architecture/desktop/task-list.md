@@ -83,6 +83,7 @@ Proposed, each a decision to confirm:
 
 ## Public interface
 
+- **Create View Tasks**: the composition root calls it when the app starts, with the parts View Tasks needs, such as the description web view, and gives the result to Shell. The window opens only on Show View Tasks.
 - **Show View Tasks**: opens the window, or brings it forward. Shell calls it from the tray menu and when the app is started a second time.
 - **Description web view**: the interface the Task list uses and the composition root implements, as [above](#the-task-list-gets-its-web-view-through-an-interface-it-publishes). The Task list gets a new one each time it needs a web view. Each one:
   - **gives the WPF element** that View Tasks places in the open task;

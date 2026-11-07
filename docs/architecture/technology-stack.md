@@ -64,6 +64,14 @@ Every .NET tool and package version lives in one of three files, so every machin
 
 Pinning the workload set means Android workload updates arrive only when you change the pin ([workload sets](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-workload-sets)). These files are [review surface](../../AGENTS.md#contributions), so you see every version change.
 
+`global.json` pins one SDK, and each PC installs it for the current user:
+
+- **The SDK version lives in [global.json](../../global.json)**. The first desktop milestone uses .NET 11 release candidate 3, as you approved. `global.json` rolls forward only to a newer patch in the same feature band, `latestPatch`, so a PC with a newer patch installed uses it ([rollForward](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json#rollforward)). Moving to a new feature band, or raising the lowest SDK every PC needs, is a change to this pin.
+- **Each PC installs it beside its system SDK, which stays as it is.** Microsoft's `dotnet-install.ps1 -JSonFile global.json -InstallDir "$env:LOCALAPPDATA\Memoria-ToDo\dotnet"` installs the pinned version in a folder dedicated to this repository, with no administrator rights ([dotnet-install](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script)).
+- **Each build session puts that folder first on `PATH` and in `DOTNET_ROOT`.** The script changes `PATH` only for its own session and never sets `DOTNET_ROOT`, which tells built programs where to find the .NET 11 runtime ([DOTNET_ROOT](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables#dotnet_root-dotnet_rootx86-dotnet_root_x86-dotnet_root_x64)).
+
+Not confirmed: the workload set that matches this SDK. The desktop-only milestone needs no Android workload; its pin waits for Android implementation.
+
 When the first code lands, the [README](../../README.md#what-you-need)'s list of what you need grows: the .NET 11 SDK, the Android workload, git for [Sync's integration tests](#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), the step that installs a Java Development Kit (JDK) and the Android SDK, as [the workload set decides](#the-pinned-workload-set-decides-the-jdk-and-android-sdk), and an Android emulator for [final validation's Android tests](#each-android-module-builds-for-both-the-pc-and-android). Only the [libgit2 script](#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed) needs the NDK and CMake.
 
 ### Tests use xUnit.net v3
@@ -78,7 +86,7 @@ Not confirmed: running xUnit.net v3 on .NET 11's Android runtime, which the [And
 
 ### Each port has one hand-written fake, shared by every test
 
-Tests check results with xUnit.net's own assertions, its `Assert` class, and replace each port with a hand-written fake. The ports are the secure key store, the file system, the clock, and image shrinking ([patterns](overview.md#each-pattern-serves-one-requirement)), and the desktop Task list's [web view](desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes). A fake behaves like the real thing, so tests check results, not calls, as [AGENTS.md](../../AGENTS.md#test-design) asks.
+Tests check results with xUnit.net's own assertions, its `Assert` class, and replace each port with a hand-written fake. The ports are the secure key store, the file system, the clock, and image shrinking ([patterns](overview.md#each-pattern-serves-one-requirement)), the desktop Task list's [web view](desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes), and Shell's [tray icon](desktop/shell.md#public-interface). A fake behaves like the real thing, so tests check results, not calls, as [AGENTS.md](../../AGENTS.md#test-design) asks.
 
 - **Each fake lives once, and every test that needs it shares it**, because shared test setup follows the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication). The same holds for the fake services a UX test uses.
 - **Every fake sits in one project per part, `Memoria.ToDo.<Part>.Fakes`, in `tests/<Part>/Fakes/`.** It holds no tests, and test projects reference it for the fakes they need, so no test project references another.

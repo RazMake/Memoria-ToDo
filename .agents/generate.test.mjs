@@ -71,8 +71,8 @@ describe('agent generator (integration)', () => {
       assert.ok(output.includes('\nname: "helper"\n'));
       assert.ok(output.includes('\ndescription: "Help with a \\"quoted\\" task: use one source.\\nRead the docs."\n'));
       assert.ok(!output.includes('\ndisallowedTools:'));
-      assert.ok(!output.includes('\ntools:'));
     }
+    assert.ok(!claude.includes('\ntools:'));
     assert.ok(claude.includes('\nmodel: "native-model"\n'));
     assert.ok(claude.includes('\neffort: "medium"\n'));
     assert.ok(codex.includes('\nname = "helper"\n'));
@@ -104,6 +104,12 @@ describe('agent generator (integration)', () => {
     const copilot = files.read(...profiles[2]);
     assert.ok(!copilot.includes('\nreasoning-effort:'));
     assert.ok(copilot.includes('\nmodel: "copilot-model"\n'));
+  });
+
+  test('lists editing and web tools for writable Copilot roles instead of inheriting the main session tools', (t) => {
+    const files = fixture(t);
+    succeeds(files.run());
+    assert.ok(files.read(...profiles[2]).includes('\ntools: ["read","edit","search","execute","web"]\n'));
   });
 
   test('limits read-only roles in Claude and Copilot while Codex inherits its sandbox', (t) => {

@@ -4,6 +4,7 @@ name: "architect"
 description: "Designs changes and owns the architecture review surface: design files, the module map, and module public interfaces. Use it before any change that needs a design decision or touches more than one module. Give it the request and any evidence; it returns the owner design file, the behaviors the change must satisfy, and open questions with options and a recommendation, and records the decisions the user makes."
 model: ["claude-opus-5.5","Claude Opus 5.5 (copilot)"]
 reasoning-effort: "xhigh"
+tools: ["read","edit","search","execute","web"]
 include-custom-instructions: true
 ---
 

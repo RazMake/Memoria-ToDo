@@ -8,22 +8,20 @@ Shell is the desktop app's tray icon and everything around it: the global shortc
 
 ### A global shortcut and the tray menu open the app's three functions
 
-A global shortcut opens Add from any app: **Win+Alt+T** by default, changed in [Configure](configure.md). The tray icon's menu offers Add new Task, View Tasks, and Configure, for when the mouse is closer than the keyboard.
+A global shortcut opens Add from any app: **Win+Alt+T** by default, changed in [Configure](configure.md). The tray icon's menu offers Add new Task, View Tasks, Configure, and Exit, for when the mouse is closer than the keyboard.
 
+- **A left click on the tray icon opens Add, and a right click opens the menu.** Adding a task is the app's most common action, so it takes one click.
 - **The tray icon uses [H.NotifyIcon.Wpf](https://www.nuget.org/packages/H.NotifyIcon.Wpf/2.4.1) 2.4.1.** Its menu is a Windows Presentation Foundation (WPF) menu, so it follows the app's theme.
 - **Shell registers the shortcut itself**, with the Windows [RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey) function. Proposed: no shortcut library. This is a decision to confirm.
 - **A taken shortcut is reported, not hidden.** Registration fails when another app holds the shortcut; Shell tells Configure, which says so and lets the user pick another. Windows reserves shortcuts with the Windows key for itself ([RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey)), so a Windows update could take Win+Alt+T later; the same path handles that.
 
-Proposed, each a decision to confirm:
-
-- The menu also has Exit, and either mouse button opens it.
-- Until the device is configured, the first start, Add, and View Tasks open Configure, since there are no tasks to show yet.
+Proposed: until the device is configured, the first start, Add, and View Tasks open Configure, since there are no tasks to show yet. This is a decision to confirm.
 
 ### The app starts with Windows and runs once per user
 
 - **Starting with Windows.** Proposed: Shell starts the app at sign-in through the current user's `Run` registry key ([Run keys](https://learn.microsoft.com/en-us/windows/win32/setupapi/run-and-runonce-registry-keys)). It's on by default and switched in Configure. This is a decision to confirm.
 - **One instance.** Proposed: starting the app while it runs shows View Tasks in the running instance. This is a decision to confirm.
-- **Add is ready before it's needed.** Shell creates the hidden Add window at start, so the [Task editor](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) shows it at once.
+- **Add is ready before it's needed.** The Add window is created hidden when the app starts, as the [Task editor](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) decides, so Shell shows it at once.
 - **The theme.** Proposed: the app follows the Windows light or dark setting, which WPF supports since .NET 9 ([WPF theme mode](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90)). This is a decision to confirm.
 
 ### Sync stays quiet unless something is wrong
@@ -56,7 +54,13 @@ Proposed, each a decision to confirm:
 
 ## Public interface
 
-None. Shell is the desktop app's entry point, and no module uses it.
+No module uses Shell. Only the composition root does, through one part:
+
+- **Create the tray app**: takes the Show parts of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), and returns the app's lifetime, which the [desktop platform](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) starts and stops.
+  - **Starting** adds the tray icon with its menu. Each menu item calls its window's Show part, and Exit ends the app. A left click calls Show Add.
+  - **Stopping** removes the tray icon.
+
+- **The tray icon is a port Shell publishes.** Create takes its implementation, which receives the menu items and the left-click action, and removes the icon on Stop. The composition root implements it with the [chosen tray library](#a-global-shortcut-and-the-tray-menu-open-the-apps-three-functions). Shell's unit tests use the [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test); the real adapter has integration tests.
 
 ## Failure modes
 
@@ -64,6 +68,7 @@ None. Shell is the desktop app's entry point, and no module uses it.
 - **Sync fails**: a warning badge, one notification per new kind of error, and details in the tooltip and Configure.
 - **An update can't be checked, downloaded, or applied**: the app keeps running its current version and tries again at the next check.
 - **The app is started a second time**: the new process hands over to the running one, which shows View Tasks, and exits.
+- **Windows can't add the tray icon**: starting fails, so the app shows the error and ends, as the [desktop platform](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does for every error no module handles. Without the icon, nothing opens View Tasks or Configure, or ends the app. Starting with Windows may start the app before the taskbar exists, so that step revisits this rule.
 
 ## Ruled out
 
@@ -76,6 +81,10 @@ The options below were considered and rejected, grouped by decision.
   - **The NHotkey library**: RegisterHotKey takes a few lines.
 - Tray icon:
   - **The Windows Forms NotifyIcon**: its menu looks like Windows Forms and ignores dark mode.
+  - **Either mouse button opens the menu**: adding a task, the most common action, would take two clicks.
+  - **Waiting for the taskbar when the icon can't be added**: more code for a case the first desktop step can't reach.
+  - **The tray implementation stays inside Shell**: unit and UX tests cannot reach the menu without starting a real tray icon.
+  - **The desktop platform hosts the tray implementation**: only Shell uses it, so it does not belong among code shared by modules.
 - Sync status:
   - **A notification for every failure**: it nags during long offline stretches.
   - **Status only in Configure**: a broken sync would go unnoticed.

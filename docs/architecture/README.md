@@ -19,7 +19,7 @@ Each row is one area to design, owned by one design file. An app row is owned in
 
 Status is one of **Open**, **Drafting**, **Decided**, or **Implemented**, as [the process](../contributing/process.md) defines.
 
-Proposed: the app rows' design folders, and the technology stack row's place and scope. These are decisions to confirm.
+Proposed: the technology stack row's place and scope. This is a decision to confirm.
 
 | # | Area | Design file | Status |
 | --- | --- | --- | --- |

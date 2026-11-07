@@ -96,8 +96,9 @@ A saved new task goes to the top of the order, where the user sees it first in V
 
 ## Public interface
 
-Shell and the Task list use these parts:
+The composition root, Shell, and the Task list use these parts:
 
+- **Create the Add window**: the composition root creates it when the app starts, as [above](#add-opens-at-once-with-the-cursor-in-the-title), and gives it to Shell.
 - **Show Add**: shows the Add window, with the draft if there is one. Shell calls it from the shortcut and the tray menu.
 - **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user saves or cancels. The Task list uses it to edit a task in place.
 - **The tag chips**: the five most-used tags as buttons, reporting the chosen tag. The Task list uses them to filter.

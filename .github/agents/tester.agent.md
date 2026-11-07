@@ -4,6 +4,7 @@ name: "tester"
 description: "Designs requirement-driven tests that read as a living spec, following the repository test policy's run checkpoints. Give it the module, the owner design file, and the behaviors or bug to cover; during development it delivers failing unit tests and unrun UX and integration tests. At final validation it proves deferred UX and integration tests can fail."
 model: ["claude-sonnet-5.5","Claude Sonnet 5.5 (copilot)"]
 reasoning-effort: "medium"
+tools: ["read","edit","search","execute","web"]
 include-custom-instructions: true
 ---
 

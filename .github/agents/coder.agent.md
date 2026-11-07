@@ -4,6 +4,7 @@ name: "coder"
 description: "Implements fast, memory-efficient, testable code inside one module, following the repository test policy for focused checks and final validation. Give it the goal, the owner design file, failing unit tests and deferred UX and integration tests, the relevant files, and the constraints."
 model: ["claude-sonnet-5.5","Claude Sonnet 5.5 (copilot)"]
 reasoning-effort: "medium"
+tools: ["read","edit","search","execute","web"]
 include-custom-instructions: true
 ---
 
