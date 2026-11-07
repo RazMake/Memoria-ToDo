@@ -12,9 +12,18 @@ Add fills the screen, shows the keyboard, and puts the cursor in the Title. It h
 
 Proposed, each a decision to confirm:
 
-- Add accepts typing within 1 second of a cold start, when the app isn't running, and within 300 milliseconds of a warm start, when it is. The [proof on a phone](README.md#a-proof-on-a-phone-comes-before-any-other-android-work) measures both.
+- Add accepts typing within 1 second of a cold start, when the app isn't running, and within 300 milliseconds of a warm start, when it is. The [proof on a phone](README.md#a-proof-on-a-phone-comes-before-any-other-android-work) measured both, as below.
 - The keyboard's Next key in the Title moves to the Description, as Enter does on the desktop.
 - A Save button in the top app bar saves the task and closes Add. A task with an empty Title can't be saved, as on the desktop.
+
+The proof measured Add on a Pixel 10 Pro, from when Android started to open it. A warm start adds about 25 ms before the app's own clock starts, so its slide-in figure is an estimate:
+
+| Start | Runs | Keyboard starts to appear | Keyboard finishes sliding in |
+| --- | ---: | ---: | ---: |
+| Cold | 10 | 259 ms median, 371 ms at most | 574 ms median, 802 ms at most, in the 9 runs that recorded it |
+| Warm | 2 | 144 and 157 ms | about 460 ms |
+
+The cold start meets its target either way. The warm start meets its target only if typing counts from when the keyboard starts to appear. The slide-in, which Android runs, takes about 300 ms by itself. Proposed, a decision to confirm: Add accepts typing once the keyboard starts to appear with the cursor in the Title, and the slide-in doesn't count.
 
 ### A toolbar above the keyboard runs the common commands
 

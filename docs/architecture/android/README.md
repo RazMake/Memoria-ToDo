@@ -23,7 +23,17 @@ The first Android build step is a throwaway proof on a phone, and it blocks all 
 2. Signs in with an RSA 3072-bit key held in the [Android Keystore](https://developer.android.com/privacy-and-security/keystore), which never lets the key out.
 3. Measures how soon the Add screen accepts typing, against the [Task editor's targets](task-editor.md#add-opens-full-screen-with-the-keyboard-up).
 
-Proposed: the proof also checks what the [risks](../overview.md#risks-the-later-rows-must-resolve) ask of it, such as both forms of SSH address and the size of the Android package (APK). This is a decision to confirm.
+The proof also checks what the [risks](../overview.md#risks-the-later-rows-must-resolve) ask of it, such as both forms of SSH address and the size of the Android package (APK).
+
+The proof passed on November 6, 2026, on a Google Pixel 10 Pro with Android 17 (API level 37), and before that on an emulator with Android 16 (API level 36) on x86_64. Both runs used .NET 11 RC 3 and LibGit2Sharp 0.32.0. They showed:
+
+- **LibGit2Sharp loads our libgit2 by name.** The app never sets `GlobalSettings.NativeLibraryPath`, and .NET found `libgit2-5853918.so` in 9 ms on the phone.
+- **The app runs on CoreCLR.** The APK holds `libcoreclr.so` and no Mono runtime, and the running app mapped `libcoreclr.so`.
+- **SSH.NET signs with a Keystore key the app can't read.** On the phone, the key lives in its trusted execution environment (TEE), as [Configure](configure.md#the-key-is-made-inside-the-android-keystore-and-never-leaves-it) decides. Creating it took 280 ms, and each signature 10 to 66 ms. The key offers only `rsa-sha2-512` and `rsa-sha2-256`, and each sign-in signed once.
+- **Both address forms work against GitHub**, as on Windows. Two clones pushed and fetched in both directions, and the transport refused a host key that isn't on its list. On the phone, each step took 1.3 to 2.1 seconds, 0.7 to 1.2 seconds of it to connect.
+- **The Add screen meets its cold-start target, and its warm-start target depends on what counts as accepting typing.** The [Task editor](task-editor.md#add-opens-full-screen-with-the-keyboard-up) records the timings. Only the phone's count, since the emulator draws its screens in software.
+- **The release APK is 22.1 MB with arm64-v8a only.** It's 23.3 MB with x86_64 only, and 39.1 MB with both. libgit2 takes 0.7 MB of each ABI's share. The largest parts are the .NET assemblies (10.8 MB), the AndroidX and Material code (4.4 MB), and the .NET runtime (4.3 MB).
+- **Android copies the native libraries out of the APK when it installs the app**, because the build marks the APK that way. On the phone they take another 21.9 MB, so the installed app takes about 44 MB.
 
 If the proof fails, these fallbacks are tried in order:
 

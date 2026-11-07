@@ -16,6 +16,8 @@ On Android, the key can live in the hardware-backed [Android Keystore](https://d
 
 Proposed: the public key's comment is the device name, so the host's key list shows each key's device. This is a decision to confirm.
 
+Proposed: the transport offers the key only with SHA-2 signatures, `rsa-sha2-512` or `rsa-sha2-256`, never with SHA-1 as `ssh-rsa`. SSH.NET 2026.0.0 offers `ssh-rsa` first ([PrivateKeyFile](https://github.com/sshnet/SSH.NET/blob/develop/src/Renci.SshNet/PrivateKeyFile.cs)), and the [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport)'s test server dropped the connection on that offer. Each refused offer also costs a round trip. This is a decision to confirm.
+
 ### The Windows key file is encrypted, and only the user's account unlocks it
 
 On Windows, the key file is encrypted with a random passphrase. The passphrase is protected for the user's account with the Windows data protection API (DPAPI) ([data protection](https://learn.microsoft.com/en-us/dotnet/standard/security/how-to-use-data-protection)). During sync, the app unprotects the passphrase, decrypts the key in memory, and hands it to the [SSH.NET transport](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport); SSH.NET opens encrypted keys from memory ([PrivateKeyFile](https://github.com/sshnet/SSH.NET/blob/develop/src/Renci.SshNet/PrivateKeyFile.cs)). The decrypted key is never written to disk, a copy of the file, such as in a backup, gives no push access, and nothing needs administrator rights.

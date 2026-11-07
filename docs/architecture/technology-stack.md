@@ -34,7 +34,7 @@ The other risks belong to the proofs, the Android app, and Sync, as the risk tab
 
 ### The throwaway proofs run on a never-merged branch, before this page is Decided
 
-Two throwaway proofs may run before this page is Decided, though the [design backlog](README.md#design-backlog) holds back product code until then. The [proof on a phone](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) tests LibGit2Sharp with a libgit2 we build with the Android Native Development Kit (NDK). The proposed [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) tests our SSH transport on Windows. Both test the riskiest parts of the design before the choices that depend on them.
+Two throwaway proofs may run before this page is Decided, though the [design backlog](README.md#design-backlog) holds back product code until then. The [proof on a phone](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) tests LibGit2Sharp with a libgit2 we build with the Android Native Development Kit (NDK). The [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) tests our SSH transport on Windows. Both test the riskiest parts of the design before the choices that depend on them.
 
 - **They run after the choices they don't affect, and before the two they do.** Where the Android modules' tests run, and how libgit2 is built for Android, wait for the proof on a phone. If it fails, every [fallback](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) drops libgit2, so a libgit2 build decided first would be wasted.
 - **Proof code lives on a throwaway branch of this repository and is never merged**, so it never becomes product code. You create the branch and make its commits, since [only you commit](../../AGENTS.md#contributions).
@@ -151,9 +151,11 @@ Sync's [setup](sync.md#public-interface) takes an SSH address, and test-only swi
 - **Sync's unit tests cover reading both address forms, and its integration tests use the URL form with their own server's port.** The URL form can name a port.
 - **Each test of the scp-style form binds a loopback address of its own, `127.0.0.N`, on port 22**, so such tests can run side by side. That form can't name a port, so it always reaches port 22 ([git URLs](https://github.com/git/git/blob/master/Documentation/urls.adoc)). Windows doesn't reserve ports below 1024 for administrators; this rests on one probe, in which a normal user bound `127.0.0.2:22` on your PC on November 6, 2026. Not confirmed on other machines, or on one whose own SSH server listens on port 22.
 - **Git's version isn't pinned.** The README will list git as a prerequisite, as [above](#three-files-pin-every-version) says, and the workflow uses the git its Windows runner image includes ([Windows Server 2025 image](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md)). The tests use only `git-upload-pack` and `git-receive-pack`. Likely, but not confirmed: their wire protocol stays compatible across git versions, since the client asks for protocol version 2 and must ignore capabilities it doesn't know ([protocol v2](https://git-scm.com/docs/gitprotocol-v2)).
-- **If the proposed [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) is confirmed, it tries this server first.**
+- **The [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) ran on this server first, and found two gaps.** Sync's transport avoids both:
+  - When a client offers an RSA key with a SHA-1 signature, the server throws and drops the connection, instead of refusing the offer. Sync never offers SHA-1, as [Sync](sync.md#each-device-signs-in-with-its-own-rsa-key) proposes.
+  - When the client closes a channel, the server doesn't close it back, as SSH requires ([RFC 4254](https://www.rfc-editor.org/rfc/rfc4254#section-5.3), [SshChannel](https://github.com/microsoft/dev-tunnels-ssh/blob/main/src/cs/Ssh/SshChannel.cs)). The transport lets the server end each command first, as the [proof found](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport).
 
-Not confirmed: that the library runs on .NET 11. Its latest package, 3.12.42 from August 24, 2026, is built for .NET Standard 2.1 and .NET Framework 4.8 ([NuGet](https://www.nuget.org/packages/Microsoft.DevTunnels.Ssh)).
+The library ran on .NET 11 RC 3 in the Windows proof. Its latest package, 3.12.42 from August 24, 2026, is built for .NET Standard 2.1 and .NET Framework 4.8 ([NuGet](https://www.nuget.org/packages/Microsoft.DevTunnels.Ssh)).
 
 ### The desktop app carries its own .NET runtime
 
@@ -199,6 +201,8 @@ The Android build needs a JDK and Android SDK packages, such as a platform and b
 - **If a build shows that the JDK it installs isn't fixed, a `.java-version` file at the repository root pins the JDK's major version.** The workflow reads it through `actions/setup-java`'s `java-version-file` input ([setup-java](https://github.com/actions/setup-java)), and on a PC you install that JDK yourself. The Android SDK stays with the workload.
 
 Not confirmed: that the workload set fixes the JDK `InstallAndroidDependencies` installs, and which version that is. Microsoft recommends its OpenJDK 21 for .NET for Android, tested against its builds, on the same page; that page dates from March 2026 and isn't confirmed for .NET 11.
+
+The proof ran the target with workload 37.2.0-rc.2.84 and an empty Android SDK folder. It installed the android-37.0 platform, build tools 37.0.0, and the platform tools, then failed: it needs the SDK's command-line tools to accept the licenses, and doesn't install them. A JDK was already in place, so whether the target installs one wasn't tested.
 
 ### The APK signing key lives in a GitHub Actions secret, backed up offline
 
@@ -337,11 +341,17 @@ Part 2, where Android UX tests and tests on a device run before a release. They 
 
 We recommend (a), so the version tag stays the one place that checks a release. XHarness runs Android test apps from Linux too ([XHarness](https://github.com/dotnet/xharness#system-requirements)). Not confirmed: the emulator on a hosted Linux runner with the runner part 1 picks.
 
-Both parts depend on the proof on a phone.
+Both parts waited for the proof on a phone, which passed, so they can be decided now.
 
 ### 13. How is libgit2 built for Android, and where do its binaries live?
 
-LibGit2Sharp's latest, 0.32.0, carries libgit2 1.8.6 ([releases](https://github.com/libgit2/libgit2sharp/releases)). Its native binaries come from one pinned libgit2 commit, built with CMake into a file named after that commit, the name LibGit2Sharp loads ([build script](https://github.com/libgit2/libgit2sharp.nativebinaries/blob/master/build.libgit2.sh)). Android needs the same commit, built per ABI with NDK r28 or later, which aligns libraries to the 16 KB memory pages newer phones use ([page sizes](https://developer.android.com/guide/practices/page-sizes)); the latest is r30 ([changelog](https://github.com/android/ndk/wiki/Changelog-r30)). libgit2 tries our registered transport first ([transport.c](https://github.com/libgit2/libgit2/blob/v1.8.6/src/libgit2/transport.c)), so the build may leave out its own SSH and HTTPS, and with them OpenSSL and libssh2. Not confirmed until the proof builds it.
+LibGit2Sharp's latest, 0.32.0, carries libgit2 1.8.6 ([releases](https://github.com/libgit2/libgit2sharp/releases)). Its native binaries come from one pinned libgit2 commit, built with CMake into a file named after that commit, the name LibGit2Sharp loads ([build script](https://github.com/libgit2/libgit2sharp.nativebinaries/blob/master/build.libgit2.sh)). Android needs the same commit, built per ABI with NDK r28 or later, which aligns libraries to the 16 KB memory pages newer phones use ([page sizes](https://developer.android.com/guide/practices/page-sizes)); the latest is r30 ([changelog](https://github.com/android/ndk/wiki/Changelog-r30)). libgit2 tries our registered transport first ([transport.c](https://github.com/libgit2/libgit2/blob/v1.8.6/src/libgit2/transport.c)), so the build may leave out its own SSH and HTTPS, and with them OpenSSL and libssh2.
+
+The proof built it this way, with NDK r30 for arm64-v8a and x86_64, in about 40 seconds per ABI on a cloud dev box. Its script is `proofs/Android/build-libgit2.ps1` on the proof branch. The proof on a phone showed the result works. The build needs three settings:
+
+- **`-Dinline=__inline__` in the C flags.** libgit2 builds as C90, and NDK r30's kernel headers use `static inline`, which C90 lacks.
+- **SONAME left on.** libgit2 applies the file name LibGit2Sharp loads, `libgit2-5853918.so`, only when SONAME is on.
+- **Stripping with `llvm-strip`.** The NDK compiles with debug information, so each file is about 8.3 MB before and 1.6 MB after.
 
 | Option | Gains | Costs |
 | --- | --- | --- |
@@ -349,4 +359,4 @@ LibGit2Sharp's latest, 0.32.0, carries libgit2 1.8.6 ([releases](https://github.
 | (b) A script here builds it when the pinned commit changes; the binaries and a note of the commit and NDK are committed | Normal builds need no NDK; changes are rare and visible | Binary files in git; a reviewer can only rebuild and compare |
 | (c) A separate repository publishes it as a NuGet package | Clean separation | A second repository; GitHub Packages needs a token even for public packages ([NuGet registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-nuget-registry)) |
 
-We recommend (b), following LibGit2Sharp's pinned commit, so both apps run the same libgit2. A libgit2 fix then waits for a LibGit2Sharp release that carries it: libgit2 1.9.7 shipped August 13, 2026 ([libgit2 releases](https://github.com/libgit2/libgit2/releases)). Nothing libgit2-related is published to this repository's Releases, which the apps read for updates. Depends on the proof on a phone, since every fallback drops libgit2. Option (a) would add the NDK and CMake to the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag).
+We recommend (b), following LibGit2Sharp's pinned commit, so both apps run the same libgit2. A libgit2 fix then waits for a LibGit2Sharp release that carries it: libgit2 1.9.7 shipped August 13, 2026 ([libgit2 releases](https://github.com/libgit2/libgit2/releases)). Nothing libgit2-related is published to this repository's Releases, which the apps read for updates. The proof on a phone passed, so the app keeps libgit2 and this question can be decided now. Option (a) would add the NDK and CMake to the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag).
