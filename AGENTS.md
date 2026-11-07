@@ -1,6 +1,6 @@
 # Memoria-ToDo
 
-These rules apply to every change, by a human or AI, to code, tests, configuration, scripts, documentation, or AI instructions. On the never-merged [proof branch](docs/architecture/technology-stack.md#the-throwaway-proofs-run-on-a-never-merged-branch-before-this-page-is-decided), [Code design](#code-design), [Tests](#tests), and [Contributions](#contributions) principle 4 don't apply; every other rule does. The application's purpose is decided and its design is being drafted; the [design backlog](docs/architecture/README.md#design-backlog) tracks them.
+These rules apply to every change, by a human or AI, to code, tests, configuration, scripts, documentation, or AI instructions. On the never-merged [proof branch](docs/architecture/technology-stack.md#the-throwaway-proofs-run-on-a-never-merged-branch-before-this-page-is-decided), [Code design](#code-design), [Tests](#tests), and [Contributions](#contributions) principle 4 don't apply; every other rule does. The application's purpose and design are decided, and no code exists yet; the [design backlog](docs/architecture/README.md#design-backlog) tracks them.
 
 ## Core rule: no duplication
 

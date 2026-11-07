@@ -61,13 +61,13 @@ The screens use AndroidX and Material Components through Microsoft's .NET bindin
 
 ## Later designs answer what these files leave open
 
-The Android design relies on the technology stack, a later row of the [design backlog](../README.md#design-backlog). The table lists each need, the modules that need it, and the design that answers it:
+The Android design relies on the [technology stack](../technology-stack.md), a later row of the [design backlog](../README.md#design-backlog), now decided. The table lists each need, the modules that need it, and the section that answers it:
 
 | Needed | Used by | Answered by |
 | --- | --- | --- |
-| The release step that publishes the APK to GitHub Releases, reusing the desktop's | Shell | Technology stack |
-| The build of libgit2 with the NDK for each ABI, and where it lives | Sync, on Android | Technology stack, as the [risks](../overview.md#risks-the-later-rows-must-resolve) say |
-| Where the key that signs each APK is kept. Android's update model needs every update signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)). | Shell | Technology stack |
+| The release step that publishes the APK to GitHub Releases, reusing the desktop's | Shell | [Technology stack](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) |
+| The build of libgit2 with the NDK for each ABI, and where it lives | Sync, on Android | [Technology stack](../technology-stack.md#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), which resolves the [risk](../overview.md#risks-the-later-rows-must-resolve) |
+| Where the key that signs each APK is kept. Android's update model needs every update signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)). | Shell | [Technology stack](../technology-stack.md#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline) |
 
 Everything else the Android screens need from Tasks and Sync is in the [desktop app's table](../desktop/README.md#later-designs-answer-what-these-files-leave-open), already answered.
 

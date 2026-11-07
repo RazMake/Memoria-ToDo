@@ -16,7 +16,7 @@ A floating Add button opens Add from the [Task editor](task-editor.md#public-int
 
 Proposed: one Android WebView shows every description, as [Rendering](../rendering.md#the-web-view-runs-no-scripts-and-loads-only-images-from-the-clone) allows. It's created the first time a task expands, not when View Tasks opens, so opening the app never waits for it. It's released when View Tasks closes. This is a decision to confirm.
 
-Android screens get UX tests only if the [technology stack](../technology-stack.md#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator) finds a test runner for them. If they do, the Task list gets its web view as the [desktop's does](../desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes): through an interface it publishes, which the composition root implements with Android's WebView.
+Android screens get UX tests on an emulator, as the [technology stack](../technology-stack.md#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator) decides, once the implementation finds a test runner that can host them. If they do, the Task list gets its web view as the [desktop's does](../desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes): through an interface it publishes, which the composition root implements with Android's WebView.
 
 ### Swipes resolve and delete, and a long press moves a task
 

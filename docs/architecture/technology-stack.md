@@ -1,12 +1,12 @@
 # How the code is built, tested, and released
 
-Status: Drafting
+Status: Decided
 
-The technology stack is the set of tools that lay out, build, test, and release both apps from this repository. Each decided choice has its own section under [Behavior](#behavior), and the [open questions](#open-questions) list the two left, in the order to decide them.
+The technology stack is the set of tools that lay out, build, test, and release both apps from this repository. Each choice has its own section under [Behavior](#behavior).
 
 ## Behavior
 
-[How the apps fit together](overview.md#every-part-targets-net-11) already decides the language, C#; .NET 11 for every part; and the main libraries. This page doesn't reopen them. It decides the rest: how the throwaway proofs run, how the code is laid out and named, where versions are pinned, the test tools, the one command that builds and tests, the architecture tests, whether the desktop app carries its own .NET runtime, the release step, the Android build of libgit2, and where the Android signing key is kept.
+[How the apps fit together](overview.md#every-part-targets-net-11) already decides the language, C#; .NET 11 for every part; and the main libraries. This page doesn't reopen them. It decides the rest: how the throwaway proofs run, how the code is laid out and named, where versions are pinned, the test tools, how the Android modules' tests build and where they run, the one command that builds and tests, the architecture tests, whether the desktop app carries its own .NET runtime, the release step, the Android build of libgit2, and where the Android signing key is kept.
 
 ### Earlier designs set what the stack must serve
 
@@ -25,7 +25,7 @@ The table lists each need the stack must meet, and the page that sets it:
 
 ### This page resolves one risk and shares two
 
-Of the [risks the later rows must resolve](overview.md#risks-the-later-rows-must-resolve), this page owns "We maintain libgit2's Android build", in [question 13](#13-how-is-libgit2-built-for-android-and-where-do-its-binaries-live). It shares two:
+Of the [risks the later rows must resolve](overview.md#risks-the-later-rows-must-resolve), this page owns "We maintain libgit2's Android build", which [a script in this repository](#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed) resolves. It shares two:
 
 - **Each ABI makes the Android package bigger.** The Android app picks the ABIs; this page builds one libgit2 for each.
 - **The transport must read both Secure Shell (SSH) address forms.** Sync owns it; [Sync's test server](#syncs-integration-tests-run-an-ssh-server-inside-the-test-process) accepts both forms, so Sync's tests can cover them.
@@ -34,9 +34,9 @@ The other risks belong to the proofs, the Android app, and Sync, as the risk tab
 
 ### The throwaway proofs run on a never-merged branch, before this page is Decided
 
-Two throwaway proofs may run before this page is Decided, though the [design backlog](README.md#design-backlog) holds back product code until then. The [proof on a phone](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) tests LibGit2Sharp with a libgit2 we build with the Android Native Development Kit (NDK). The [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) tests our SSH transport on Windows. Both test the riskiest parts of the design before the choices that depend on them.
+Two throwaway proofs ran before this page was Decided, though the [design backlog](README.md#design-backlog) held back product code until then. The [proof on a phone](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) tested LibGit2Sharp with a libgit2 we build with the Android Native Development Kit (NDK). The [Windows proof](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) tested our SSH transport on Windows. Both tested the riskiest parts of the design before the choices that depend on them, and both passed.
 
-- **They run after the choices they don't affect, and before the two they do.** Where the Android modules' tests run, and how libgit2 is built for Android, wait for the proof on a phone. If it fails, every [fallback](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) drops libgit2, so a libgit2 build decided first would be wasted.
+- **They ran after the choices they don't affect, and before the two they do.** [Where the Android modules' tests run](#each-android-module-builds-for-both-the-pc-and-android), and [how libgit2 is built for Android](#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), waited for the proof on a phone. Had it failed, every [fallback](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) would have dropped libgit2, so a libgit2 build decided first would have been wasted.
 - **Proof code lives on a throwaway branch of this repository and is never merged**, so it never becomes product code. You create the branch and make its commits, since [only you commit](../../AGENTS.md#contributions).
 - **Proof code skips AGENTS.md's [Code design](../../AGENTS.md#code-design) and [Tests](../../AGENTS.md#tests) rules, and [Contributions](../../AGENTS.md#contributions) principle 4.** Principle 4 delivers each change through the [process](../contributing/process.md): design, tests first, code, independent review, and a delivery report. A proof only shows whether something works, so none of that is worth its cost for code that's thrown away. Every other rule in [AGENTS.md](../../AGENTS.md) still applies, so AI never commits or pushes the branch.
 - **What a proof shows is recorded in the design files it checks**, such as the [Android app](android/README.md) and [How the apps fit together](overview.md). That record is a design change, not a delivery report.
@@ -60,11 +60,11 @@ Every .NET tool and package version lives in one of three files, so every machin
 | --- | --- |
 | `global.json` | The .NET software development kit (SDK) and the workload set; it also selects the test runner |
 | `Directory.Packages.props` | Every NuGet package, through [Central Package Management](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management), so project files name packages without versions |
-| `.config/dotnet-tools.json` | .NET tools, such as Velopack's `vpk` |
+| `.config/dotnet-tools.json` | .NET tools, such as Velopack's `vpk` and [XHarness](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) |
 
 Pinning the workload set means Android workload updates arrive only when you change the pin ([workload sets](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-workload-sets)). These files are [review surface](../../AGENTS.md#contributions), so you see every version change.
 
-When the first code lands, the [README](../../README.md#what-you-need)'s list of what you need grows: the .NET 11 SDK, the Android workload, git for [Sync's integration tests](#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), and the step that installs a Java Development Kit (JDK) and the Android SDK, as [the workload set decides](#the-pinned-workload-set-decides-the-jdk-and-android-sdk).
+When the first code lands, the [README](../../README.md#what-you-need)'s list of what you need grows: the .NET 11 SDK, the Android workload, git for [Sync's integration tests](#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), the step that installs a Java Development Kit (JDK) and the Android SDK, as [the workload set decides](#the-pinned-workload-set-decides-the-jdk-and-android-sdk), and an Android emulator for [final validation's Android tests](#each-android-module-builds-for-both-the-pc-and-android). Only the [libgit2 script](#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed) needs the NDK and CMake.
 
 ### Tests use xUnit.net v3
 
@@ -74,7 +74,7 @@ Every test uses [xUnit.net v3](https://xunit.net/), pinned in `Directory.Package
 - **Custom trait attributes can mark a test's kind.** An attribute that implements `ITraitAttribute` marks a test method, a test class, or a whole assembly ([extensibility](https://github.com/xunit/xunit.net/blob/main/site/docs/getting-started/v3/extensibility.md), [custom traits in v3](https://github.com/xunit/xunit/discussions/3059)). [Attributes mark each test's kind](#attributes-mark-each-tests-kind-in-one-test-project-per-module) uses this.
 - **Each test gets a new instance of its test class** ([shared context](https://xunit.net/docs/shared-context)), so a test's fields can't carry state into the next test, which serves "Isolate what tests change" in [AGENTS.md](../../AGENTS.md#test-design).
 
-Not confirmed: running xUnit.net v3 on .NET 11's Android runtime. [Question 12](#12-where-do-the-android-modules-tests-run) settles it after the proof on a phone.
+Not confirmed: running xUnit.net v3 on .NET 11's Android runtime, which the [Android tests on an emulator](#each-android-module-builds-for-both-the-pc-and-android) need.
 
 ### Each port has one hand-written fake, shared by every test
 
@@ -118,6 +118,19 @@ An analyzer is a plug-in that the C# compiler, Roslyn, runs on the code it compi
 
 Not confirmed by a run: this default with xUnit.net v3 and the MTP runner `global.json` selects, and reading the two names from the constants file.
 
+### Each Android module builds for both the PC and Android
+
+Each Android module's one project builds twice, for the PC and for Android, so its view models and rules get unit tests on the PC. Code that calls Android builds only for Android. A test project for the PC can't reference a project built only for Android ([target frameworks](https://learn.microsoft.com/en-us/dotnet/standard/frameworks)), so without the PC build, no Android module would have unit tests during development.
+
+- **Each file in an Android module is either shared or Android-only.** A shared file builds for both. An Android-only file calls Android, so it builds only for Android.
+- **One project per module stays**, as [Modules](modules.md#a-module-is-one-capability-behind-a-small-interface) decides, at the cost of two builds per project.
+- **The module's one test project builds for both too.** Its PC build holds the unit tests, which run during development and on each push. Its Android build is a test app holding the UX tests of the module's screens and the integration tests of its few Android-only parts.
+- **The test app runs on an emulator only at final validation and before each release**: on your PC at final validation, as [Run timing](../../AGENTS.md#run-timing) says, and on each version tag in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release).
+
+Not confirmed: which test runner runs xUnit.net v3 tests in an Android test app on .NET 11's runtime. xUnit.net v3 ships no runner for devices, so a test app must supply its own ([xUnit discussion](https://github.com/xunit/xunit/discussions/3112)), and the proof on a phone ran no tests. The runner is a new dependency, so the implementation brings one that works to you before adding it, as [Contributions](../../AGENTS.md#contributions) asks. If none works, that's a [design gap](../contributing/process.md#changing-the-code) for you to decide.
+
+Not confirmed by a run: a test project that builds for both, where plain `dotnet test` runs only its PC build, and final validation's [one command](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) also runs its Android build on an emulator. [XHarness](https://github.com/dotnet/xharness#system-requirements), which runs the test apps in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release), runs them from Windows too.
+
 ### WPF screens get UX tests on the PC, and Android screens on an emulator
 
 A UX test builds one screen inside the test process, with fake services, and never starts the app ([AGENTS.md](../../AGENTS.md#test-design)). The table lists each part of the user interface, where its UX tests run, and what runs them:
@@ -126,10 +139,9 @@ A UX test builds one screen inside the test process, with fake services, and nev
 | --- | --- | --- |
 | A Windows Presentation Foundation (WPF) screen of the desktop app | On the PC, in its module's test project | [Xunit.StaFact](https://github.com/AArnott/Xunit.StaFact)'s `[WpfFact]`, which runs a test on a single-threaded apartment (STA) thread with a dispatcher, as WPF needs. Its 4.x versions support xUnit.net v3 4.x. Not confirmed: .NET 11. |
 | The WebView2 web view in the desktop's View Tasks | Nowhere: WebView2 runs its own browser processes outside the test process ([process model](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/process-model)) | A UX test of View Tasks passes a fake web view through the [Task list's interface](desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes); only integration tests check the real one |
-| A .NET for Android screen | On an emulator, in a test app, at final validation, since Android views need Android's runtime | The runner [question 12](#12-where-do-the-android-modules-tests-run) picks after the proof on a phone. [DeviceRunners](https://mattleibow.github.io/DeviceRunners/articles/using-dotnet-test.html) runs xUnit.net v3 tests on Android through `dotnet test`, but its test app is a .NET MAUI app. Not confirmed: hosting our .NET for Android views in it, and .NET 11. |
+| A .NET for Android screen | On an emulator, in its module's test app, at final validation and before each release, since Android views need Android's runtime | The runner the implementation finds, as [the Android modules' section](#each-android-module-builds-for-both-the-pc-and-android) says. [DeviceRunners](https://mattleibow.github.io/DeviceRunners/articles/using-dotnet-test.html) runs xUnit.net v3 tests on Android through `dotnet test`, but its test app is a .NET MAUI app. Not confirmed: hosting our .NET for Android views in it, and .NET 11. |
 
-- **If question 12 finds no runner, Android screens get no UX tests.** Android view models then get unit tests on the PC, as question 12's option (a) would allow, and its few emulator tests check the screens as integration tests. The hand-written code that updates Android views from view models ([Model-View-ViewModel](overview.md#each-pattern-serves-one-requirement)) then gets few checks.
-- **Android UX tests need an Android module's one test project to build for both the PC and Android.** Not confirmed: that it can.
+- **If no runner can host our Android views, Android screens get no UX tests.** Their view models still get unit tests on the PC, since [each Android module builds for both](#each-android-module-builds-for-both-the-pc-and-android), and emulator tests check the screens as integration tests. The hand-written code that updates Android views from view models ([Model-View-ViewModel](overview.md#each-pattern-serves-one-requirement)) then gets few checks.
 - **In Android UX tests, the Task list's web view is replaced** as the [Android Task list](android/task-list.md#one-web-view-starts-the-first-time-a-task-expands) says.
 
 ### Architecture tests check the module map
@@ -169,11 +181,9 @@ The desktop app is self-contained: it carries the .NET runtime it runs on, so in
 One GitHub Actions workflow, on a Windows runner, builds both apps, so releases don't depend on one PC. It uses the [pinned versions](#three-files-pin-every-version) and the two test commands [above](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test). The [coder](../../.agents/subagents/coder.md) writes its file in `.github/workflows/`, as it writes the version files and other build files. That folder is [review surface](../../AGENTS.md#contributions), so you review every change to the file, such as to the time limit or to how it uses the signing secrets.
 
 - **Each push builds the code and runs the unit tests**, with plain `dotnet test`. [The next section](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue) says which unit runs it times.
-- **A version tag runs every test kind, unit, UX, and integration, then builds, signs, and publishes one GitHub release.** The release holds the desktop installer, Velopack's update files, and the Android package (APK). Velopack's flow downloads the last release, packs the new one, and uploads it ([GitHub Actions](https://docs.velopack.io/distributing/github-actions)). The APK is built and signed with `dotnet publish` ([publish from the command line](https://learn.microsoft.com/en-us/dotnet/maui/android/deployment/publish-cli)), with the key from [its secret](#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline).
+- **A version tag runs every test kind, unit, UX, and integration, then builds, signs, and publishes one GitHub release.** The Android tests that need an emulator run in a [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release), and publishing waits for it. The release holds the desktop installer, Velopack's update files, and the Android package (APK). Velopack's flow downloads the last release, packs the new one, and uploads it ([GitHub Actions](https://docs.velopack.io/distributing/github-actions)). The APK is built and signed with `dotnet publish` ([publish from the command line](https://learn.microsoft.com/en-us/dotnet/maui/android/deployment/publish-cli)), with the key from [its secret](#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline).
 - **A failed test or build publishes nothing**, as [Fail fast](../../AGENTS.md#code-design) asks.
 - **The tag is the version's only home.** The APK's [version code](https://developer.android.com/studio/publish/versioning) is computed from it.
-
-Likely, but not confirmed: GitHub's hosted Windows runners can't run the Android emulator, because they lack nested virtualization. GitHub states hardware acceleration for the emulator only for its Linux runners ([GitHub-hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)), and an issue about the emulator on Windows runners is open ([runner-images issue 9343](https://github.com/actions/runner-images/issues/9343)). So Android UX tests and tests on a device can't run in this workflow, and [question 12](#12-where-do-the-android-modules-tests-run) must say where they run before a release.
 
 ### The workflow times the unit run, and a slow run opens one issue
 
@@ -193,6 +203,17 @@ Likely, but not confirmed: hosted runners' timings vary from run to run, so nois
 
 Not confirmed: how much of the limit goes to starting each test project's test application, since `dotnet test` starts up to one per processor at a time ([`dotnet test` with MTP](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp)). Also not confirmed by a run: where the workflow reads each test's time. xUnit.net can write a JUnit report, which records it ([xUnit.net on MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform)).
 
+### A Linux job runs the Android tests on an emulator before each release
+
+On each version tag, one job of the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) runs on a GitHub-hosted Linux runner. It starts an Android emulator and runs each Android module's [test app](#each-android-module-builds-for-both-the-pc-and-android): the UX tests of Android screens and the integration tests of Android-only parts. Publishing waits for it, so the version tag stays the one place that checks a release.
+
+- **The job runs on Linux because GitHub states the emulator's hardware acceleration only for its Linux runners** ([GitHub-hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)). Likely, but not confirmed: its Windows runners can't run the emulator, because they lack nested virtualization; an issue about it is open ([runner-images issue 9343](https://github.com/actions/runner-images/issues/9343)).
+- **[XHarness](https://github.com/dotnet/xharness) runs the test apps from Linux.** It installs each one on the emulator, runs it, and collects its results ([system requirements](https://github.com/dotnet/xharness#system-requirements)).
+- **XHarness is a .NET tool, so `.config/dotnet-tools.json` pins it**, as it [pins every tool](#three-files-pin-every-version). It's published only as a prerelease, on Microsoft's dotnet-eng feed rather than NuGet.org ([installation](https://github.com/dotnet/xharness#installation-and-usage)).
+- **A failed Android test, or an emulator that doesn't start, publishes nothing**, like any [failed test](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag).
+
+Not confirmed: the emulator on a hosted Linux runner with the test runner the implementation finds, as [the Android modules' section](#each-android-module-builds-for-both-the-pc-and-android) says.
+
 ### The pinned workload set decides the JDK and Android SDK
 
 The Android build needs a JDK and Android SDK packages, such as a platform and build tools, and none of the [three version files](#three-files-pin-every-version) names them. The pinned workload set decides both, so no fourth version file is needed.
@@ -203,6 +224,28 @@ The Android build needs a JDK and Android SDK packages, such as a platform and b
 Not confirmed: that the workload set fixes the JDK `InstallAndroidDependencies` installs, and which version that is. Microsoft recommends its OpenJDK 21 for .NET for Android, tested against its builds, on the same page; that page dates from March 2026 and isn't confirmed for .NET 11.
 
 The proof ran the target with workload 37.2.0-rc.2.84 and an empty Android SDK folder. It installed the android-37.0 platform, build tools 37.0.0, and the platform tools, then failed: it needs the SDK's command-line tools to accept the licenses, and doesn't install them. A JDK was already in place, so whether the target installs one wasn't tested.
+
+### A script in this repository builds libgit2 for Android, and its binaries are committed
+
+The Android app ships libgit2 built from the commit LibGit2Sharp pins, so both apps run the same libgit2. A script in this repository builds it, one file per ABI, only when that commit changes. The files it builds are committed with a note of the commit and the NDK that built them, so normal builds, on a PC or in the [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), need no NDK or CMake.
+
+- **The commit is LibGit2Sharp's.** LibGit2Sharp's own binaries come from one pinned libgit2 commit, built with CMake into a file named after that commit, the name LibGit2Sharp loads ([build script](https://github.com/libgit2/libgit2sharp.nativebinaries/blob/master/build.libgit2.sh)). LibGit2Sharp 0.32.0, the latest on November 5, 2026, carries libgit2 1.8.6 ([releases](https://github.com/libgit2/libgit2sharp/releases)), which it loads on Android as `libgit2-5853918.so`.
+- **The script runs when a LibGit2Sharp update in `Directory.Packages.props` changes that commit**, and the same change commits the new files and note. So a libgit2 fix waits for a LibGit2Sharp release that carries it: libgit2 1.9.7 shipped August 13, 2026 ([libgit2 releases](https://github.com/libgit2/libgit2/releases)).
+- **It builds for arm64-v8a and x86_64 with NDK r28 or later**, which aligns libraries to the 16 KB memory pages newer phones use ([page sizes](https://developer.android.com/guide/practices/page-sizes)). The released APK holds arm64-v8a, and debug builds add x86_64 for the emulator, as the [Android app](android/README.md#the-app-runs-on-android-80-and-later-with-androidx-and-material) proposes.
+- **It leaves out libgit2's own SSH and HTTPS, and with them OpenSSL and libssh2.** libgit2 tries our registered transport first ([transport.c](https://github.com/libgit2/libgit2/blob/v1.8.6/src/libgit2/transport.c)).
+- **Proposed: the script, its files, and the note live in `src/Android/App/libgit2/`**, beside the composition root that packs them into the APK. The script is `build-libgit2.ps1`, and it starts from the proof's, `proofs/Android/build-libgit2.ps1` on the [proof branch](#the-throwaway-proofs-run-on-a-never-merged-branch-before-this-page-is-decided). This is a decision to confirm.
+- **Proposed: the Android app's build fails, naming the script, when no committed file has the name the pinned LibGit2Sharp loads.** So a LibGit2Sharp update that moves libgit2 can't build until the script runs. This is a decision to confirm.
+- **Nothing libgit2-related goes to this repository's Releases**, which the apps read for updates.
+
+The proof built libgit2 this way with NDK r30, the latest then ([changelog](https://github.com/android/ndk/wiki/Changelog-r30)), in about 40 seconds per ABI on a cloud dev box, and the [proof on a phone](android/README.md#a-proof-on-a-phone-comes-before-any-other-android-work) showed the result works. The script keeps the three settings the proof found the build needs:
+
+- **`-Dinline=__inline__` in the C flags.** libgit2 builds as C90, and NDK r30's kernel headers use `static inline`, which C90 lacks.
+- **SONAME left on.** libgit2 applies the file name LibGit2Sharp loads, `libgit2-5853918.so`, only when SONAME is on.
+- **Stripping with `llvm-strip`.** The NDK compiles with debug information, so each file is about 8.3 MB before and 1.6 MB after.
+
+The proof also left out the files of LibGit2Sharp.NativeBinaries, the package that holds LibGit2Sharp's own libgit2 builds, because Android would otherwise pick its Linux build.
+
+Not confirmed: that two runs of the script with the same commit and NDK build identical files. A reviewer can check a committed file only by rebuilding it and comparing.
 
 ### The APK signing key lives in a GitHub Actions secret, backed up offline
 
@@ -225,7 +268,8 @@ None. No module uses the build tools.
 - **The pinned Microsoft.CodeAnalysis.CSharp is newer than a compiler that builds the tests**: that compiler skips our analyzer with warning CS9057, which `Directory.Build.props` [makes an error](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two), so the build fails.
 - **The constants file's layout changes, so `Directory.Build.props` can't read the two names its filter needs**: the filter matches nothing, and plain `dotnet test` fails with exit code 8, as [the filter's section](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) says.
 - **A timed unit run takes longer than the limit**: the push stays green, and the workflow opens [one issue](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue), or adds a note to it when it's already open.
-- **A version tag's tests or build fail**: the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) publishes nothing, and its run on GitHub shows the failure.
+- **A version tag's tests or build fail, including the Android tests in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) or its emulator**: the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) publishes nothing, and its run on GitHub shows the failure.
+- **A LibGit2Sharp update moves to another libgit2 commit, but the Android files aren't rebuilt**: the Android app's build fails and names the [libgit2 script](#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), as that section proposes.
 
 ## Ruled out
 
@@ -274,6 +318,9 @@ The options below were considered and rejected, grouped by the decision they bel
   - **Pass `--ignore-exit-code 8`, so a run in which no test ran passes** ([MTP options](https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-cli-options#platform-options)): a broken filter that matches nothing, such as one with a misspelled kind, would pass silently.
 - Which tools run a UX test of one screen:
   - **WPF tests that start their own STA thread and dispatcher, instead of Xunit.StaFact**: we'd write and maintain that thread code, to save one dependency.
+- How Android modules build for their tests:
+  - **Android modules build only for Android, and all their tests run on an emulator at final validation**: no unit tests during development for four modules.
+  - **Each Android module splits into a logic project and an Android project**: it breaks [one project per module](modules.md#a-module-is-one-capability-behind-a-small-interface), an architecture change.
 - How the architecture test knows the module map:
   - **The map in a data file, with a script that writes the tables in `modules.md`, as [generate.mjs](../../.agents/generate.mjs) writes agent files**: a generator and a staleness check to maintain, when the test can read the tables.
   - **The test lists the allowed references itself**: a second home for the map, which breaks the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication), and a map change that skips the test goes unnoticed.
@@ -307,56 +354,14 @@ The options below were considered and rejected, grouped by the decision they bel
   - **Leave the review-surface list unchanged**: a change to the time limit or to how the workflow uses the signing secrets would show only in a commit diff.
 - Which tests the workflow runs:
   - **Every test kind on each push**: each push would wait for UX and integration tests, which already run at final validation and on each version tag.
+- Where Android UX tests and tests on a device run before a release:
+  - **You run them on your PC, with an emulator, before you push a version tag**: nothing checks that they ran, and releases again depend on your PC, which the [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) was chosen to avoid.
+  - **A self-hosted runner on your PC runs them as a job of the release workflow**: your PC must be on for each release. GitHub recommends self-hosted runners only for private repositories, since a pull request from a fork can run code on the machine, and this repository is public ([self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)).
 - How the JDK and Android SDK versions are chosen:
   - **Nothing pinned, with each PC and runner using what it has**: two machines could build different packages from one commit, which [pinning the workload set](#three-files-pin-every-version) prevents.
+- How libgit2 is built for Android, and where its binaries live:
+  - **Every full build compiles libgit2, cached until the pinned commit changes**: every machine, the release workflow included, needs the NDK and CMake, and first builds are slow.
+  - **A separate repository publishes it as a NuGet package**: a second repository to keep, and GitHub Packages needs a token even for public packages ([NuGet registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-nuget-registry)).
 - Where the APK signing key is kept:
   - **Only on your PC, with an offline backup**: the release workflow couldn't sign the APK, so releases would move to your PC, which is ruled out above.
   - **A cloud key vault the workflow reads**: it needs a cloud subscription for a personal app.
-
-## Open questions
-
-Decide them in this order, after the [proofs run](#the-throwaway-proofs-run-on-a-never-merged-branch-before-this-page-is-decided): both depend on what the proof on a phone shows. Versions were checked on November 5, 2026, when .NET 11 was at Release Candidate 2 with a go-live license ([.NET 11 RC 2](https://devblogs.microsoft.com/dotnet/dotnet-11-rc-2/)). No tool below states .NET 11 support unless noted. "Not confirmed" marks what no source settled.
-
-### 12. Where do the Android modules' tests run?
-
-A test project for the PC can't reference a project built only for Android ([target frameworks](https://learn.microsoft.com/en-us/dotnet/standard/frameworks)). Tests on a phone or emulator start a test app there, so they run only at final validation, as UX or integration tests; Android screens get UX tests there if this question finds a runner, as [decided above](#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator). Each module is [one project](modules.md#a-module-is-one-capability-behind-a-small-interface). The question has two parts.
-
-Part 1, how Android modules build for their tests:
-
-| Option | Gains | Costs |
-| --- | --- | --- |
-| (a) Each Android module builds for both the PC and Android. Code that calls Android builds only for Android, so view models and rules get unit tests on the PC; the few Android-only parts get emulator checks at final validation. | Focused unit tests; one project per module | Each file is marked Android-only or shared; two builds per project |
-| (b) Android modules build only for Android; all their tests run on an emulator at final validation | Simple projects | No unit tests during development for four modules |
-| (c) Split each Android module into a logic project and an Android project | Clean split | Breaks one project per module, an architecture change |
-
-We recommend (a). [XHarness](https://github.com/dotnet/xharness) runs test apps on Android emulators, also from Windows. Not confirmed: which test runner runs xUnit.net v3 on .NET 11's Android runtime, which the proof shows; xUnit.net v3 ships no runner for devices, so a test app on a device must supply its own ([xUnit discussion](https://github.com/xunit/xunit/discussions/3112)).
-
-Part 2, where Android UX tests and tests on a device run before a release. They likely can't run in the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) on its hosted Windows runner, as that section notes.
-
-| Option | Gains | Costs |
-| --- | --- | --- |
-| (a) A Linux job in the release workflow starts an emulator and runs them, and publishing waits for it. GitHub's hosted Linux runners support the emulator's hardware acceleration ([GitHub-hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)). | Each version tag still runs every test kind, on GitHub | A second kind of runner to set up and keep working |
-| (b) You run them on your PC, with an emulator, before you push a version tag | Nothing more to set up on GitHub | Nothing checks that they ran, and releases again depend on your PC, which the [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) was chosen to avoid |
-| (c) A self-hosted runner on your PC runs them as a job of the release workflow | The workflow checks them, on your emulator | Your PC must be on for each release. GitHub recommends self-hosted runners only for private repositories, since a pull request from a fork can run code on the machine, and this repository is public ([self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)) |
-
-We recommend (a), so the version tag stays the one place that checks a release. XHarness runs Android test apps from Linux too ([XHarness](https://github.com/dotnet/xharness#system-requirements)). Not confirmed: the emulator on a hosted Linux runner with the runner part 1 picks.
-
-Both parts waited for the proof on a phone, which passed, so they can be decided now.
-
-### 13. How is libgit2 built for Android, and where do its binaries live?
-
-LibGit2Sharp's latest, 0.32.0, carries libgit2 1.8.6 ([releases](https://github.com/libgit2/libgit2sharp/releases)). Its native binaries come from one pinned libgit2 commit, built with CMake into a file named after that commit, the name LibGit2Sharp loads ([build script](https://github.com/libgit2/libgit2sharp.nativebinaries/blob/master/build.libgit2.sh)). Android needs the same commit, built per ABI with NDK r28 or later, which aligns libraries to the 16 KB memory pages newer phones use ([page sizes](https://developer.android.com/guide/practices/page-sizes)); the latest is r30 ([changelog](https://github.com/android/ndk/wiki/Changelog-r30)). libgit2 tries our registered transport first ([transport.c](https://github.com/libgit2/libgit2/blob/v1.8.6/src/libgit2/transport.c)), so the build may leave out its own SSH and HTTPS, and with them OpenSSL and libssh2.
-
-The proof built it this way, with NDK r30 for arm64-v8a and x86_64, in about 40 seconds per ABI on a cloud dev box. Its script is `proofs/Android/build-libgit2.ps1` on the proof branch. The proof on a phone showed the result works. The build needs three settings:
-
-- **`-Dinline=__inline__` in the C flags.** libgit2 builds as C90, and NDK r30's kernel headers use `static inline`, which C90 lacks.
-- **SONAME left on.** libgit2 applies the file name LibGit2Sharp loads, `libgit2-5853918.so`, only when SONAME is on.
-- **Stripping with `llvm-strip`.** The NDK compiles with debug information, so each file is about 8.3 MB before and 1.6 MB after.
-
-| Option | Gains | Costs |
-| --- | --- | --- |
-| (a) Every full build compiles libgit2, cached until the pinned commit changes | Binaries always match the source | Every machine needs the NDK and CMake; slow first builds |
-| (b) A script here builds it when the pinned commit changes; the binaries and a note of the commit and NDK are committed | Normal builds need no NDK; changes are rare and visible | Binary files in git; a reviewer can only rebuild and compare |
-| (c) A separate repository publishes it as a NuGet package | Clean separation | A second repository; GitHub Packages needs a token even for public packages ([NuGet registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-nuget-registry)) |
-
-We recommend (b), following LibGit2Sharp's pinned commit, so both apps run the same libgit2. A libgit2 fix then waits for a LibGit2Sharp release that carries it: libgit2 1.9.7 shipped August 13, 2026 ([libgit2 releases](https://github.com/libgit2/libgit2/releases)). Nothing libgit2-related is published to this repository's Releases, which the apps read for updates. The proof on a phone passed, so the app keeps libgit2 and this question can be decided now. Option (a) would add the NDK and CMake to the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag).

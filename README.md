@@ -1,11 +1,11 @@
 # Memoria-ToDo
 
-Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) is decided, its design is being drafted, and there's no code yet. So far this repository holds the rules every change follows and the AI agents that design, build, test, and review it.
+Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) and design are decided, and there's no code yet. So far this repository holds the rules every change follows and the AI agents that design, build, test, and review it.
 
 | If you want to | Read |
 | --- | --- |
 | Learn the rules every change follows, human or AI | [`AGENTS.md`](AGENTS.md) |
-| See the design and its open decisions | [Architecture](docs/architecture/README.md) |
+| See the design and the decisions still to confirm | [Architecture](docs/architecture/README.md) |
 | Follow a change from request to review | [Process](docs/contributing/process.md) |
 | Write or change documentation | [Writing docs](docs/contributing/writing-docs.md) |
 
