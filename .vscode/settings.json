@@ -7,4 +7,9 @@
   "chat.agentFilesLocations": { ".claude/agents": false },
   // The read-only repository map (see AGENTS.md) runs without a prompt.
   "chat.tools.terminal.autoApprove": { "/^node \\.agents[\\\\/]repo-map\\.mjs(\\s|$)/": true },
+  // New integrated terminals use the pinned SDK; see docs/architecture/technology-stack.md.
+  "terminal.integrated.env.windows": {
+    "DOTNET_ROOT": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet",
+    "PATH": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet;${env:PATH}",
+  },
 }

@@ -1,6 +1,6 @@
 # Architecture
 
-This chapter holds Memoria-ToDo's design: what each part does, how parts depend on each other, and the decisions still to confirm. The [purpose and scope](purpose.md), [how the apps fit together](overview.md), the [module rules and map](modules.md), the [desktop app](desktop/README.md), the [Android app](android/README.md), the [Editing](editing.md), [Rendering](rendering.md), [Tasks](tasks.md), and [Sync through git](sync.md) modules, and the [technology stack](technology-stack.md) are decided. No module's code exists yet.
+This chapter holds Memoria-ToDo's design: what each part does, how parts depend on each other, and the decisions still to confirm. The [purpose and scope](purpose.md), [how the apps fit together](overview.md), the [module rules and map](modules.md), the [desktop app](desktop/README.md), the [Android app](android/README.md), the [Editing](editing.md), [Rendering](rendering.md), [Tasks](tasks.md), and [Sync through git](sync.md) modules, and the [technology stack](technology-stack.md) are decided. Only the desktop app has code so far, for the first steps of its [delivery backlog](desktop/README.md#delivery-backlog).
 
 | If you want to | Read |
 | --- | --- |

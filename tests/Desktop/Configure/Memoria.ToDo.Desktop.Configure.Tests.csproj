@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Desktop\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
+    <ProjectReference Include="..\Fakes\Memoria.ToDo.Desktop.Fakes.csproj" />
+    <PackageReference Include="Xunit.StaFact" />
+  </ItemGroup>
+
+</Project>

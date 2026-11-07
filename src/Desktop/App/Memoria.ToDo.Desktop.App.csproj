@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The same icon file the app's file uses, for the tray adapter to load. -->
+    <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
+    <ProjectReference Include="..\Shell\Memoria.ToDo.Desktop.Shell.csproj" />
+    <ProjectReference Include="..\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
+    <ProjectReference Include="..\TaskList\Memoria.ToDo.Desktop.TaskList.csproj" />
+    <ProjectReference Include="..\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
+    <PackageReference Include="H.NotifyIcon.Wpf" />
+    <PackageReference Include="Velopack" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The tests of the App's internal adapters. -->
+    <InternalsVisibleTo Include="Memoria.ToDo.Desktop.App.Tests" />
+  </ItemGroup>
+
+</Project>

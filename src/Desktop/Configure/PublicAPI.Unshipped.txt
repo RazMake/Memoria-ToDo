@@ -1,0 +1,4 @@
+Memoria.ToDo.Desktop.Configure.ConfigureWindow
+Memoria.ToDo.Desktop.Configure.IConfigureWindow
+Memoria.ToDo.Desktop.Configure.IConfigureWindow.Show() -> void
+static Memoria.ToDo.Desktop.Configure.ConfigureWindow.Create() -> Memoria.ToDo.Desktop.Configure.IConfigureWindow!

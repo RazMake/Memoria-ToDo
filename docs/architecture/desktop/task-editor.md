@@ -18,6 +18,12 @@ Title and Description use the editor that [How the apps fit together](../overvie
 
 Proposed: Add accepts typing within 100 ms of the shortcut, measured from the key press to the first typed character showing. This is a decision to confirm.
 
+Proposed, each a decision to confirm:
+
+- Show Add opens Add with the desktop platform's [Show on the pointer's screen](README.md#windows-open-on-the-screen-with-the-mouse-pointer), which says what the active screen and on top mean. The pointer is also where a click on the tray icon happens.
+- Closing Add, with Esc or its close button, hides it, so the next Show opens the same window at once.
+- The user can't resize Add; it sizes to what it holds.
+
 ### Keys save, close, and move between fields
 
 The table lists the keys that work across the window, and which are still proposals:
@@ -115,6 +121,8 @@ The options below were considered and rejected, grouped by decision.
 
 - The Add window:
   - **A full editor window**: Add stays compact, for a quick task.
+  - **Opening on the primary screen**: on a PC with two screens, Add could open away from where the user works.
+  - **Always on top**: Add would cover a window the user wants to copy from.
 - Closing without saving:
   - **Esc discards the text, after a confirmation**: a draft keeps the text without asking.
   - **Closing saves the task automatically**: an accidental close would create a half-written task on every device.

@@ -1,0 +1,26 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Desktop/Platform/Memoria.ToDo.Desktop.Platform.csproj" />
+    <Project Path="src/Desktop/Shell/Memoria.ToDo.Desktop.Shell.csproj" />
+    <Project Path="src/Desktop/TaskEditor/Memoria.ToDo.Desktop.TaskEditor.csproj" />
+    <Project Path="src/Desktop/TaskList/Memoria.ToDo.Desktop.TaskList.csproj" />
+    <Project Path="src/Desktop/Configure/Memoria.ToDo.Desktop.Configure.csproj" />
+    <Project Path="src/Desktop/App/Memoria.ToDo.Desktop.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Architecture/Memoria.ToDo.Architecture.Tests.csproj" />
+    <Project Path="tests/Testing/Kinds/Memoria.ToDo.Testing.Kinds.csproj" />
+    <Project Path="tests/Testing/Analyzers/Memoria.ToDo.Testing.Analyzers.csproj" />
+    <Project Path="tests/Testing/Analyzers.Tests/Memoria.ToDo.Testing.Analyzers.Tests.csproj" />
+    <Project Path="tests/Testing/UnitRunTiming/Memoria.ToDo.Testing.UnitRunTiming.csproj" />
+    <Project Path="tests/Testing/UnitRunTiming.Tests/Memoria.ToDo.Testing.UnitRunTiming.Tests.csproj" />
+    <Project Path="tests/Desktop/Fakes/Memoria.ToDo.Desktop.Fakes.csproj" />
+    <Project Path="tests/Desktop/PlatformTestHost/Memoria.ToDo.Desktop.PlatformTestHost.csproj" />
+    <Project Path="tests/Desktop/Platform/Memoria.ToDo.Desktop.Platform.Tests.csproj" />
+    <Project Path="tests/Desktop/Shell/Memoria.ToDo.Desktop.Shell.Tests.csproj" />
+    <Project Path="tests/Desktop/TaskEditor/Memoria.ToDo.Desktop.TaskEditor.Tests.csproj" />
+    <Project Path="tests/Desktop/TaskList/Memoria.ToDo.Desktop.TaskList.Tests.csproj" />
+    <Project Path="tests/Desktop/Configure/Memoria.ToDo.Desktop.Configure.Tests.csproj" />
+    <Project Path="tests/Desktop/App/Memoria.ToDo.Desktop.App.Tests.csproj" />
+  </Folder>
+</Solution>

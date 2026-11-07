@@ -1,0 +1,21 @@
+Memoria.ToDo.Desktop.Shell.IAppUpdates
+Memoria.ToDo.Desktop.Shell.IAppUpdates.DownloadNewerVersionAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Desktop.Shell.ITrayIcon
+Memoria.ToDo.Desktop.Shell.ITrayIcon.Remove() -> void
+Memoria.ToDo.Desktop.Shell.ITrayIcon.Show(string! toolTip, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Shell.TrayMenuItem!>! menu, System.Action! leftClick) -> void
+Memoria.ToDo.Desktop.Shell.TrayApp
+Memoria.ToDo.Desktop.Shell.TrayMenuItem
+Memoria.ToDo.Desktop.Shell.TrayMenuItem.<Clone>$() -> Memoria.ToDo.Desktop.Shell.TrayMenuItem!
+Memoria.ToDo.Desktop.Shell.TrayMenuItem.Deconstruct(out string! Text, out System.Action! Invoke) -> void
+Memoria.ToDo.Desktop.Shell.TrayMenuItem.Equals(Memoria.ToDo.Desktop.Shell.TrayMenuItem? other) -> bool
+override Memoria.ToDo.Desktop.Shell.TrayMenuItem.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Shell.TrayMenuItem.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Shell.TrayMenuItem.ToString() -> string!
+static Memoria.ToDo.Desktop.Shell.TrayMenuItem.operator !=(Memoria.ToDo.Desktop.Shell.TrayMenuItem? left, Memoria.ToDo.Desktop.Shell.TrayMenuItem? right) -> bool
+static Memoria.ToDo.Desktop.Shell.TrayMenuItem.operator ==(Memoria.ToDo.Desktop.Shell.TrayMenuItem? left, Memoria.ToDo.Desktop.Shell.TrayMenuItem? right) -> bool
+Memoria.ToDo.Desktop.Shell.TrayMenuItem.Invoke.get -> System.Action!
+Memoria.ToDo.Desktop.Shell.TrayMenuItem.Invoke.init -> void
+Memoria.ToDo.Desktop.Shell.TrayMenuItem.Text.get -> string!
+Memoria.ToDo.Desktop.Shell.TrayMenuItem.Text.init -> void
+Memoria.ToDo.Desktop.Shell.TrayMenuItem.TrayMenuItem(string! Text, System.Action! Invoke) -> void
+static Memoria.ToDo.Desktop.Shell.TrayApp.Create(Memoria.ToDo.Desktop.Shell.ITrayIcon! trayIcon, Memoria.ToDo.Desktop.TaskEditor.IAddWindow! add, Memoria.ToDo.Desktop.TaskList.IViewTasksWindow! viewTasks, Memoria.ToDo.Desktop.Configure.IConfigureWindow! configure, Memoria.ToDo.Desktop.Shell.IAppUpdates! updates, System.TimeProvider! time) -> Memoria.ToDo.Desktop.Platform.IAppLifetime!

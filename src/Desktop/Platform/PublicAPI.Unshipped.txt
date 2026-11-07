@@ -1,0 +1,12 @@
+Memoria.ToDo.Desktop.Platform.AppRunner
+Memoria.ToDo.Desktop.Platform.AppName
+static Memoria.ToDo.Desktop.Platform.AppName.Value.get -> string!
+Memoria.ToDo.Desktop.Platform.IAppLifetime
+Memoria.ToDo.Desktop.Platform.IAppLifetime.Start(System.Action! endApp) -> void
+Memoria.ToDo.Desktop.Platform.IAppLifetime.Stop() -> void
+Memoria.ToDo.Desktop.Platform.SingleWindow
+Memoria.ToDo.Desktop.Platform.SingleWindow.SingleWindow(System.Func<System.Windows.Window!>! createWindow) -> void
+Memoria.ToDo.Desktop.Platform.SingleWindow.Show() -> void
+Memoria.ToDo.Desktop.Platform.WindowPlacement
+static Memoria.ToDo.Desktop.Platform.WindowPlacement.ShowOnPointerScreen(System.Windows.Window! window) -> void
+static Memoria.ToDo.Desktop.Platform.AppRunner.Run(System.Func<Memoria.ToDo.Desktop.Platform.IAppLifetime!>! createLifetime) -> int

@@ -38,7 +38,7 @@ Configure shows the last successful sync time, the files sync skipped, and, whil
 The composition root and Shell use these parts:
 
 - **Create Configure**: the composition root calls it when the app starts, with the parts Configure needs, and gives the result to Shell. The window opens only on Show Configure.
-- **Show Configure**: opens the window, or brings it forward.
+- **Show Configure**: opens the window, or brings it forward. Proposed: it uses the desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), which says where the window opens and what happens after the user closes it. This is a decision to confirm.
 - **This device's settings**: the shortcut and Start with Windows, with a notice when either changes. Shell applies them.
 - **Report a setting's result**: Shell reports whether the shortcut registered and whether the `Run` key was written, and Configure shows any failure.
 - **Whether the device is configured**, from Sync's settings.

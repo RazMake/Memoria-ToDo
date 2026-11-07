@@ -6,7 +6,7 @@ The technology stack is the set of tools that lay out, build, test, and release 
 
 ## Behavior
 
-[How the apps fit together](overview.md#every-part-targets-net-11) already decides the language, C#; .NET 11 for every part; and the main libraries. This page doesn't reopen them. It decides the rest: how the throwaway proofs run, how the code is laid out and named, where versions are pinned, the test tools, how the Android modules' tests build and where they run, the one command that builds and tests, the architecture tests, whether the desktop app carries its own .NET runtime, the release step, the Android build of libgit2, and where the Android signing key is kept.
+[How the apps fit together](overview.md#every-part-targets-net-11) already decides the language, C#; .NET 11 for every part; and the main libraries. This page doesn't reopen them. It decides the rest: how the throwaway proofs run, how the code is laid out and named, where versions are pinned, the test tools, how the Android modules' tests build and where they run, the one command that builds and tests, how Visual Studio Code runs the desktop app, the architecture tests, whether the desktop app carries its own .NET runtime, the release step, the Android build of libgit2, and where the Android signing key is kept.
 
 ### Earlier designs set what the stack must serve
 
@@ -45,7 +45,7 @@ Two throwaway proofs ran before this page was Decided, though the [design backlo
 
 Each module's project and its tests sit at matching paths in two trees at the repository root, `src/` and `tests/`, grouped by part. The parts are `Shared`, `Desktop`, and `Android`: the shared library, the desktop app, and the Android app, as [How the apps fit together](overview.md#two-apps-share-one-c-library) defines them. The [module map](modules.md#module-map) lists each part's modules.
 
-- **Tests mirror code.** A module's project sits in `src/<Part>/<Module>/` and its tests in `tests/<Part>/<Module>/`, such as `src/Android/Shell/` and `tests/Android/Shell/`. Three test folders mirror no `src/` folder: `tests/<Part>/Fakes/`, for each part's [shared fakes](#each-port-has-one-hand-written-fake-shared-by-every-test); `tests/Testing/`, for the kind attributes and [our analyzer that checks them](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two); and `tests/Architecture/`, for the [architecture tests](#architecture-tests-check-the-module-map).
+- **Tests mirror code.** A module's project sits in `src/<Part>/<Module>/` and its tests in `tests/<Part>/<Module>/`, such as `src/Android/Shell/` and `tests/Android/Shell/`. Three test folders mirror no `src/` folder: `tests/<Part>/Fakes/`, for each part's [shared fakes](#each-port-has-one-hand-written-fake-shared-by-every-test); `tests/Testing/`, for the kind attributes and [our analyzer that checks them](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two); and `tests/Architecture/`, for the [architecture tests](#architecture-tests-check-the-module-map). Proposed: a fourth, `tests/Desktop/PlatformTestHost/`, holds the small program that the [desktop platform's integration tests](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) start, and `tests/Testing/` also holds the [unit-run timing program and its tests](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue). This is a decision to confirm.
 - **A project's name says its part.** Projects are named `Memoria.ToDo.<Part>.<Module>`, such as `Memoria.ToDo.Android.Shell`, because the desktop and Android apps have modules with the same names, such as Shell. A module name with spaces drops them, so the desktop Task editor's project is `Memoria.ToDo.Desktop.TaskEditor`.
 - **Each part's [platform](modules.md#the-platform-serves-every-module-and-knows-none) is one project, `Memoria.ToDo.<Part>.Platform`, in `src/<Part>/Platform/`.**
 - **Each app's composition root is one project, `Memoria.ToDo.<Part>.App`, in `src/<Part>/App/`.** It builds the app you install.
@@ -64,15 +64,30 @@ Every .NET tool and package version lives in one of three files, so every machin
 
 Pinning the workload set means Android workload updates arrive only when you change the pin ([workload sets](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-workload-sets)). These files are [review surface](../../AGENTS.md#contributions), so you see every version change.
 
+Proposed: the Velopack package's version is read from `vpk`'s entry in `.config/dotnet-tools.json`, so it has one home. Velopack supports only a `vpk` and a Velopack package of the same version ([Velopack issue 644](https://github.com/velopack/velopack/issues/644)). `Directory.Packages.props` reads it as `Directory.Build.props` reads the [kinds' constants](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test), and a version it can't read fails the restore. This is a decision to confirm.
+
+Not confirmed: that `vpk` runs on the pinned SDK. `vpk` 1.2.0 is built for .NET 8, 9, and 10 ([vpk on NuGet](https://www.nuget.org/packages/vpk/1.2.0)), so with only .NET 11 installed it must roll forward to a newer runtime, which a tool's entry in `.config/dotnet-tools.json` can allow.
+
 `global.json` pins one SDK, and each PC installs it for the current user:
 
 - **The SDK version lives in [global.json](../../global.json)**. The first desktop milestone uses .NET 11 release candidate 3, as you approved. `global.json` rolls forward only to a newer patch in the same feature band, `latestPatch`, so a PC with a newer patch installed uses it ([rollForward](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json#rollforward)). Moving to a new feature band, or raising the lowest SDK every PC needs, is a change to this pin.
 - **Each PC installs it beside its system SDK, which stays as it is.** Microsoft's `dotnet-install.ps1 -JSonFile global.json -InstallDir "$env:LOCALAPPDATA\Memoria-ToDo\dotnet"` installs the pinned version in a folder dedicated to this repository, with no administrator rights ([dotnet-install](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script)).
 - **Each build session puts that folder first on `PATH` and in `DOTNET_ROOT`.** The script changes `PATH` only for its own session and never sets `DOTNET_ROOT`, which tells built programs where to find the .NET 11 runtime ([DOTNET_ROOT](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables#dotnet_root-dotnet_rootx86-dotnet_root_x86-dotnet_root_x64)).
+- **A session that skips that step gets an error that points to the README.** `global.json`'s `errorMessage` replaces .NET's "SDK not found" text with a pointer to the [README](../../README.md#what-you-need)'s setup steps ([errorMessage](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json#errormessage)). Proposed, a decision to confirm. `global.json`'s `paths` can't find the SDK instead: it takes only absolute paths or paths relative to `global.json`, not the per-user folder ([paths](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json#paths)).
 
 Not confirmed: the workload set that matches this SDK. The desktop-only milestone needs no Android workload; its pin waits for Android implementation.
 
-When the first code lands, the [README](../../README.md#what-you-need)'s list of what you need grows: the .NET 11 SDK, the Android workload, git for [Sync's integration tests](#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), the step that installs a Java Development Kit (JDK) and the Android SDK, as [the workload set decides](#the-pinned-workload-set-decides-the-jdk-and-android-sdk), and an Android emulator for [final validation's Android tests](#each-android-module-builds-for-both-the-pc-and-android). Only the [libgit2 script](#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed) needs the NDK and CMake.
+When the first code lands, the [README](../../README.md#what-you-need)'s list of what you need grows: the .NET 11 SDK, the Android workload, git for [Sync's integration tests](#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), the step that installs a Java Development Kit (JDK) and the Android SDK, as [the workload set decides](#the-pinned-workload-set-decides-the-jdk-and-android-sdk), and an Android emulator for [final validation's Android tests](#each-android-module-builds-for-both-the-pc-and-android). Only the [libgit2 script](#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed) needs the NDK and CMake. Proposed: each item joins the list with the first step that needs it, so the desktop's first steps add only the .NET 11 SDK, with the command that installs it, and [Visual Studio Code with the C# extension](#visual-studio-code-runs-the-desktop-app-with-f5-on-the-pinned-sdk). Git joins with Sync, and the Android items with the Android app's first step. This is a decision to confirm.
+
+### Visual Studio Code runs the desktop app with F5, on the pinned SDK
+
+In Visual Studio Code, F5 builds the desktop app and starts it with the debugger, and Ctrl+F5 does the same without it ([default keys](https://code.visualstudio.com/docs/reference/default-keybindings)), as you asked. Both use the [pinned SDK](#three-files-pin-every-version), with no change to the system's `PATH`. Proposed, each a decision to confirm:
+
+- **One launch configuration, in `.vscode/launch.json`, serves both keys.** It starts the composition root's program with the debugger from Microsoft's C# extension, `ms-dotnettools.csharp` ([C# debugging](https://code.visualstudio.com/docs/csharp/debugging)). It sets `DOTNET_ROOT` to the pinned folder, as every build session does.
+- **Its build step, in `.vscode/tasks.json`, runs the `dotnet` in the pinned folder**, by its full path.
+- **Its terminals start with the pinned folder first on `PATH` and in `DOTNET_ROOT`.** `.vscode/settings.json` sets both in `terminal.integrated.env.windows`, so `dotnet build` and `dotnet test` need no setup step there. Visual Studio Code applies it only in a trusted workspace ([Restricted Mode](https://code.visualstudio.com/docs/editing/workspaces/workspace-trust#_workspace-settings)), and only to terminals opened after the change ([terminal environment](https://code.visualstudio.com/docs/terminal/profiles#_configuring-profiles)). Not confirmed by a run.
+- **`.vscode/extensions.json` recommends only the C# extension.** Building, running, and debugging don't need C# Dev Kit.
+- **Code completion needs Visual Studio Code started with the pinned folder first on `PATH`.** The extension finds the SDK through `PATH`, and its setting for an SDK path can't name a folder through an environment variable ([vscode-csharp issue 6471](https://github.com/dotnet/vscode-csharp/issues/6471)). The [README](../../README.md#what-you-need) gives the command. Not confirmed by a run.
 
 ### Tests use xUnit.net v3
 
@@ -86,7 +101,7 @@ Not confirmed: running xUnit.net v3 on .NET 11's Android runtime, which the [And
 
 ### Each port has one hand-written fake, shared by every test
 
-Tests check results with xUnit.net's own assertions, its `Assert` class, and replace each port with a hand-written fake. The ports are the secure key store, the file system, the clock, and image shrinking ([patterns](overview.md#each-pattern-serves-one-requirement)), the desktop Task list's [web view](desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes), and Shell's [tray icon](desktop/shell.md#public-interface). A fake behaves like the real thing, so tests check results, not calls, as [AGENTS.md](../../AGENTS.md#test-design) asks.
+Tests check results with xUnit.net's own assertions, its `Assert` class, and replace each port with a hand-written fake. The ports are the secure key store, the file system, the clock, and image shrinking ([patterns](overview.md#each-pattern-serves-one-requirement)), the desktop Task list's [web view](desktop/task-list.md#the-task-list-gets-its-web-view-through-an-interface-it-publishes), and Shell's [tray icon and updates](desktop/shell.md#public-interface). A fake behaves like the real thing, so tests check results, not calls, as [AGENTS.md](../../AGENTS.md#test-design) asks.
 
 - **Each fake lives once, and every test that needs it shares it**, because shared test setup follows the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication). The same holds for the fake services a UX test uses.
 - **Every fake sits in one project per part, `Memoria.ToDo.<Part>.Fakes`, in `tests/<Part>/Fakes/`.** It holds no tests, and test projects reference it for the fakes they need, so no test project references another.
@@ -114,6 +129,12 @@ An analyzer is a plug-in that the C# compiler, Roslyn, runs on the code it compi
 - **It adds one package, Microsoft.CodeAnalysis.CSharp, pinned in `Directory.Packages.props`.** The pin must not be newer than the compiler in the pinned SDK, or the one in your editor: an older compiler skips the analyzer, with warning CS9057, and the build passes without the check ([analyzer compatibility](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/compiler-messages/source-generator-errors#analyzer-and-source-generator-compatibility)). Each package version also names the oldest Visual Studio it runs in ([Roslyn version support](https://learn.microsoft.com/en-us/visualstudio/extensibility/roslyn-version-support)).
 - **A pin that's too new fails the build.** `Directory.Build.props` makes warning CS9057 an error in test projects, so the check is never skipped silently.
 - **Its own tests are unit tests, in `[Unit]` classes, and use only Microsoft.CodeAnalysis.CSharp.** Each test compiles a code snippet in memory, against the assemblies already loaded in the test process, so it reads no files, and checks the errors the analyzer reports. Not confirmed by a run: compiling that way.
+
+Proposed, each a decision to confirm:
+
+- **Its two errors are `MTD0001`, for no kind attribute, and `MTD0002`, for more than one**, each shown on the class's name.
+- **A kind on a base class counts for the classes derived from it**, as xUnit.net gives them its trait ([attribute lookup](https://github.com/xunit/xunit/blob/main/src/xunit.v3.common/Extensions/ReflectionExtensions_reflection.cs)). A different kind added on top makes two; the same kind repeated counts once. A nested class doesn't take its outer class's kind.
+- **The analyzer's project turns off warning RS2008**, which asks for release-tracking files meant for analyzers published as packages.
 
 ### Plain `dotnet test` runs only unit tests, and final validation runs every test
 
@@ -193,6 +214,21 @@ One GitHub Actions workflow, on a Windows runner, builds both apps, so releases 
 - **A failed test or build publishes nothing**, as [Fail fast](../../AGENTS.md#code-design) asks.
 - **The tag is the version's only home.** The APK's [version code](https://developer.android.com/studio/publish/versioning) is computed from it.
 
+Proposed, each a decision to confirm:
+
+- **A tag such as `v1.2.3` gives the version 1.2.3** to the desktop app's files and its Velopack package. The workflow runs on every tag that starts with `v`, and fails before building when the rest isn't three numbers, `<major>.<minor>.<patch>`, with no leading zeros, as [Semantic Versioning](https://semver.org/#spec-item-2) requires, so a mistyped tag isn't silently ignored.
+- **Only a commit on the default branch is released.** Before building, the release job fails unless the tag's commit is on the default branch, which git's [`merge-base --is-ancestor`](https://git-scm.com/docs/git-merge-base#Documentation/git-merge-base.txt---is-ancestor) checks. Velopack updates every installed copy, so a tag on an unmerged branch would otherwise reach every user.
+- **Until the Android app's first step, a release holds only the desktop files, and there's no Linux job.**
+- **The app's name lives only in the `Product` property of `Directory.Build.props`**, which the build writes into every assembly, where the desktop platform's [App name](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) reads it. The release workflow reads it with `dotnet msbuild <project> -getProperty:Product` ([evaluate properties](https://learn.microsoft.com/en-us/visualstudio/msbuild/evaluate-items-and-properties)) for the installer and the release, and fails when it's empty.
+- **The release is published at once, named with the app's name and its version**, such as `<name> 1.2.3`. It holds the installer and Velopack's update files, packed under the app's [installer ID](desktop/shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), but not Velopack's portable zip, since a zipped folder was [ruled out](desktop/shell.md#ruled-out).
+- **The desktop app is built for x64 processors only.** Windows on Arm runs it through emulation ([emulation on Arm](https://learn.microsoft.com/en-us/windows/arm/apps-on-arm-x86-emulation)).
+- **Each job's token gets only the permissions its job needs.** The timed job writes issues, and only the job that publishes writes the repository's contents, which a release needs ([`GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token)).
+- **Every job names its runner image exactly, `windows-2025`, not the latest one**, so a new image arrives only when you change the name ([runner images](https://github.com/actions/runner-images)).
+- **The workflow uses only GitHub's own actions, each pinned to its major version.** GitHub already runs the jobs, so its actions add no one new to trust.
+- **The release job gives its token to Velopack's download of the last release**, so GitHub's lower limit for requests without a token doesn't fail it ([rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)).
+
+Not confirmed: that a GitHub-hosted Windows runner can show a tray icon and a message box, which the desktop's integration tests need. Reports disagree on whether its session has a desktop ([FlaUI on GitHub Actions](https://www.chrismalpass.net/posts/flaui-github-actions-cicd/), [The Green Report](https://www.thegreenreport.blog/articles/integrating-flaui-tests-into-a-cicd-pipeline-with-github-actions/integrating-flaui-tests-into-a-cicd-pipeline-with-github-actions.html)). If it can't, every version tag fails until this page picks another place for those tests.
+
 ### The workflow times the unit run, and a slow run opens one issue
 
 The [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) times a push's unit run, not counting the build, against the time limit [AGENTS.md](../../AGENTS.md#test-design) sets for the unit suite. Only the workflow acts on the limit: it alone opens, updates, and closes the issue below.
@@ -205,11 +241,52 @@ The [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-ve
 - **The workflow needs permission to write issues**, which its `permissions` key grants to the token GitHub gives each run ([`GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token)).
 - **Only pushes to the default branch are timed, one run at a time.** Pushes to the proof branch and other branches never open a timing issue. The timing job runs in a GitHub Actions [concurrency group](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency), so each run waits for the one before it to finish, and two runs can't each open an issue. When several runs wait, GitHub keeps only the newest, so the latest push is always timed.
 
+Proposed, each a decision to confirm:
+
+- **Each test's time comes from the JUnit reports xUnit.net writes**, one per test project ([xUnit.net on MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform)), and the run's duration from the `duration:` line. The timed run adds xUnit.net's JUnit report option and one results folder to plain `dotnet test`. Neither changes which tests run. The option is `--report-xunit-junit` in the pinned xUnit.net v3 4.0.2, as [the workflow](../../.github/workflows/build.yml) uses it, not the `--report-junit` its documentation names. The unit job hands the reports and its console output to the timing job.
+- **A small C# program, `Memoria.ToDo.Testing.UnitRunTiming`, decides what to do and writes the text**: open the issue, add a note, close it, or nothing. The workflow passes it the run's files, the limit, and whether the issue is open, then makes the GitHub calls, so the program does no network I/O. It lives in `tests/Testing/UnitRunTiming/`, beside the kind attributes, and its tests, `Memoria.ToDo.Testing.UnitRunTiming.Tests`, in `tests/Testing/UnitRunTiming.Tests/`. [Its command line](#the-timing-program-reads-the-runs-files-and-prints-one-word) is below.
+- **The workflow finds the one issue by a label of its own**, so editing the issue's title doesn't break it. The label and the issue's title are constants in the workflow file, and the program writes only the text. The workflow creates the label when it first opens the issue.
+- **A failed unit run isn't timed.** The push is already red, and the times would describe a run that stopped early.
+
 Not confirmed by a run: the `duration:` line with the pinned .NET 11 SDK. This page read it in the SDK's source.
 
 Likely, but not confirmed: hosted runners' timings vary from run to run, so noise alone can open an issue, which is one reason the limit is easy to change.
 
-Not confirmed: how much of the limit goes to starting each test project's test application, since `dotnet test` starts up to one per processor at a time ([`dotnet test` with MTP](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp)). Also not confirmed by a run: where the workflow reads each test's time. xUnit.net can write a JUnit report, which records it ([xUnit.net on MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform)).
+Not confirmed: how much of the limit goes to starting each test project's test application, since `dotnet test` starts up to one per processor at a time ([`dotnet test` with MTP](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp)). Also not confirmed by a run: xUnit.net's JUnit report and the test times it records.
+
+#### The timing program reads the run's files and prints one word
+
+The workflow runs the [timing program](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue) after a passing unit run. The program prints its decision as one word and writes the issue's text to a file, so the workflow parses nothing. Proposed, each a decision to confirm.
+
+The program takes the five arguments the table lists, each required once:
+
+| Argument | What it gives |
+| --- | --- |
+| `--reports <folder>` | The unit run's results folder. The program reads every `*.junit.xml` file in it and its subfolders. |
+| `--test-output <file>` | The unit run's saved console output, which holds the `duration:` line. Terminal color codes in it are ignored. |
+| `--limit-seconds <number>` | The time limit, a positive number with `.` for decimals, such as `5` or `2.5` |
+| `--issue-open <true or false>` | Whether the timing issue is open now |
+| `--text-file <file>` | Where the program writes the issue's text, in Markdown |
+
+The next table lists what the program decides in each case. A run is over the limit only when its duration is greater than the limit:
+
+| The run is | The issue is | It prints | It writes to the text file |
+| --- | --- | --- | --- |
+| Over the limit | Not open | `open` | The issue's text: the run's duration, the limit, and each test's time |
+| Over the limit | Open | `note` | A note with the same content |
+| At or under the limit | Open | `close` | One line with the run's duration and the limit, for the closing comment |
+| At or under the limit | Not open | `none` | Nothing, and it doesn't create the file |
+
+- **Each test's time is a row of a Markdown table**, with columns for its class, its name, and its time in whole milliseconds. Rows go slowest first, and tests with the same time go by class, then name. Every test case in the reports is listed. The text gives the limit in seconds, such as `2.5 s`.
+- **A text longer than GitHub's limit of 65,536 characters for an issue or a comment keeps the slowest tests that fit**, and ends by saying how many were left out ([body limit](https://github.com/orgs/community/discussions/41331)).
+- **Exit code 0 means the program decided**, whatever it printed. **Exit code 1 means the input is invalid**: the program prints one line naming the problem to the error output, prints nothing else, and writes no file, so the workflow step fails before any GitHub call. Any other non-zero code is a crash, which also fails the step.
+- **The program checks every input before it writes anything.** Input is invalid in these cases:
+  - **Arguments**: one is missing, repeated, or unknown; the limit isn't a positive number; `--issue-open` is neither `true` nor `false`; or the text file's folder doesn't exist.
+  - **Reports**: the folder doesn't exist or holds no report, a report isn't JUnit XML, or a test case has no time in seconds. A report with no test cases is valid, since a test project may have no unit tests.
+  - **Console output**: it doesn't have exactly one `duration:` line, or the duration isn't in the [summary's format](https://github.com/dotnet/sdk/blob/main/src/Cli/dotnet/Commands/Test/MTP/Terminal/TerminalTestReporter.cs) with hour, minute, second, and millisecond parts, such as `312ms`, `4s 312ms`, or `1m 05s 012ms`. A run of a day or more is rejected.
+- **Its unit tests give the deciding code text, not files**, so they do no I/O. A few integration tests run the program on files, to check its arguments, the printed word, the text file, and the exit codes.
+
+Not confirmed: whether the `duration:` label is translated when the runner's language isn't English. If it is, the program fails with exit code 1 and names the missing line.
 
 ### A Linux job runs the Android tests on an emulator before each release
 
@@ -276,7 +353,10 @@ None. No module uses the build tools.
 - **The pinned Microsoft.CodeAnalysis.CSharp is newer than a compiler that builds the tests**: that compiler skips our analyzer with warning CS9057, which `Directory.Build.props` [makes an error](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two), so the build fails.
 - **The constants file's layout changes, so `Directory.Build.props` can't read the two names its filter needs**: the filter matches nothing, and plain `dotnet test` fails with exit code 8, as [the filter's section](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) says.
 - **A timed unit run takes longer than the limit**: the push stays green, and the workflow opens [one issue](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue), or adds a note to it when it's already open.
+- **The timing program rejects its input**, such as a missing report: the timing job fails and names the problem, and the issue stays as it was, as [its command line](#the-timing-program-reads-the-runs-files-and-prints-one-word) proposes.
 - **A version tag's tests or build fail, including the Android tests in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) or its emulator**: the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) publishes nothing, and its run on GitHub shows the failure.
+- **A tag starts with `v` but isn't a version, such as `v1.2`**: the workflow fails before building, as [proposed](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), and publishes nothing.
+- **A version tag's commit isn't on the default branch**, such as a tag pushed before its commit: the workflow fails before building, as [proposed](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), and publishes nothing. Push the commit to the default branch, then re-run the workflow, which checks the branch again ([re-runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)).
 - **A LibGit2Sharp update moves to another libgit2 commit, but the Android files aren't rebuilt**: the Android app's build fails and names the [libgit2 script](#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), as that section proposes.
 
 ## Ruled out
@@ -295,9 +375,15 @@ The options below were considered and rejected, grouped by the decision they bel
 - How the code is laid out and named:
   - **One folder per module, holding its project and its test projects side by side**: tests would sit beside shipping code, and paths would be deeper.
   - **One solution per part: shared library, desktop, and Android**: three solutions to keep in step.
+  - **The desktop platform's test program inside the platform's test folder**: the test project would compile the program's files too ([default includes](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview#default-includes-and-excludes)).
 - Where each tool and package version lives:
   - **Pinning everything except the workload set**: Android workload updates would arrive by themselves, so two machines could build different packages from one commit.
   - **Versions in each project file**: one version would live in many files, which breaks the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication).
+  - **`vpk` and the Velopack package each pinned on its own, with a check that they match**: one version in two files, which the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) forbids even with a check.
+  - **No `vpk` entry, with the workflow running `vpk` at the Velopack package's version** ([`dotnet tool exec`](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-tool-exec)): it reverses the decided tool pin, and `vpk` would run only in the workflow.
+- How Visual Studio Code finds the pinned SDK:
+  - **The C# extension's SDK path setting in the repository's settings**: it can't name a folder through an environment variable, and each PC's folder has the user's name in it.
+  - **The pinned folder on the user's `PATH` for good**: it changes the system SDK every other project uses, which the [pinned SDK](#three-files-pin-every-version) avoids.
 - Which test framework the tests use:
   - **MSTest**: it also runs on MTP and makes a new instance of the test class for each test ([MSTest lifecycle](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-writing-tests-lifecycle)); you preferred xUnit.net v3.
   - **NUnit**: by default, one instance of a test class serves all its tests, so fields carry state between them unless the class or assembly opts out ([FixtureLifeCycle](https://docs.nunit.org/articles/nunit/writing-tests/attributes/fixturelifecycle.html)). It runs on MTP only once its NUnit runner is turned on ([NUnit and MTP](https://docs.nunit.org/articles/vs-test-adapter/NUnit-And-Microsoft-Test-Platform.html)).
@@ -319,6 +405,9 @@ The options below were considered and rejected, grouped by the decision they bel
   - **You close the issue by hand**: the workflow closes it when a timed run is under the limit, so raising the limit also closes it.
   - **A new issue for each slow push**: when the issue already exists, the workflow adds a note to it instead, with the run's duration and each test's time, slowest first.
   - **A note with only the run's duration**: you would see each test's time only from the push that opened the issue, though the slowest test can change between pushes.
+  - **The timing logic written into the workflow file, in PowerShell**: it gets no unit tests, so only a push to GitHub checks it.
+  - **A Node.js script with Node's own tests**: its tests would sit outside `dotnet test`, so final validation would need one more command.
+  - **Finding the issue by its title**: editing the title would make the workflow open a second issue.
 - Which tests `dotnet test` runs:
   - **A C# script, `build.cs`, run with `dotnet run build.cs`, for final validation and later releases**: a script to maintain, when one `-p:` property already adds the other kinds.
   - **A PowerShell 7 script**: it adds PowerShell 7 to what you need, for the same few commands.
@@ -358,6 +447,13 @@ The options below were considered and rejected, grouped by the decision they bel
 - Where builds and releases run:
   - **A release command on your PC, with your GitHub token**: releases would depend on one PC, and nothing would check pushes.
   - **The workflow checks pushes, and releases are made on your PC**: two paths would build the same apps.
+- What a desktop release holds, and which tags make one:
+  - **Prerelease tags, such as `v1.2.3-beta.1`**: nothing installs or tests a prerelease yet.
+  - **A tag on any commit**: a commit nobody merged would reach every installed copy through updates.
+  - **A draft release you publish by hand**: one more step for each version, after every test has passed.
+  - **Velopack's portable zip as well**: a second way to install, which users would have to choose between.
+  - **An Arm64 build as well**: a second package to build and test, while emulation already runs the x64 one.
+  - **One token with every permission for the whole workflow**: a step that only builds could change the repository.
 - Whether the workflow file is review surface:
   - **Leave the review-surface list unchanged**: a change to the time limit or to how the workflow uses the signing secrets would show only in a commit diff.
 - Which tests the workflow runs:

@@ -1,0 +1,25 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Velopack must match vpk's version, so vpk's entry in the tools manifest is its only home. -->
+    <MemoriaToolsManifest>$(MSBuildThisFileDirectory).config\dotnet-tools.json</MemoriaToolsManifest>
+    <MemoriaVelopackVersion Condition="Exists($(MemoriaToolsManifest))">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText($(MemoriaToolsManifest))), '"vpk"\s*:\s*\{\s*"version"\s*:\s*"([^"]+)"').Groups[1].Value)</MemoriaVelopackVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.2" />
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.2" />
+    <PackageVersion Include="Xunit.StaFact" Version="4.0.24" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0" />
+    <PackageVersion Include="H.NotifyIcon.Wpf" Version="2.4.1" />
+    <PackageVersion Include="Velopack" Version="$(MemoriaVelopackVersion)" />
+  </ItemGroup>
+
+  <Target Name="MemoriaCheckVelopackVersion" BeforeTargets="Restore;CollectPackageReferences">
+    <Error Condition="'$(MemoriaVelopackVersion)' == ''"
+           Text="Velopack's version is read from the 'vpk' entry in $(MemoriaToolsManifest), and it couldn't be read. Check that the file exists and 'vpk' has a 'version'." />
+  </Target>
+
+</Project>

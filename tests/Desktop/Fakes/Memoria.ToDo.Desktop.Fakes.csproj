@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Desktop\Shell\Memoria.ToDo.Desktop.Shell.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\TaskList\Memoria.ToDo.Desktop.TaskList.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
+  </ItemGroup>
+
+</Project>

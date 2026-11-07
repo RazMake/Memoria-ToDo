@@ -1,0 +1,4 @@
+Memoria.ToDo.Desktop.TaskList.IViewTasksWindow
+Memoria.ToDo.Desktop.TaskList.IViewTasksWindow.Show() -> void
+Memoria.ToDo.Desktop.TaskList.ViewTasksWindow
+static Memoria.ToDo.Desktop.TaskList.ViewTasksWindow.Create() -> Memoria.ToDo.Desktop.TaskList.IViewTasksWindow!

@@ -1,0 +1,47 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- The app's name as users see it; the only home of the name. AppName in the platform reads it back. -->
+    <Product>Memoria-ToDo</Product>
+    <!-- Known-vulnerability reports depend on the day, not on our code; they warn but don't fail a restore. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <!-- A test project is one whose name ends in ".Tests". -->
+  <PropertyGroup>
+    <MemoriaIsTestProject Condition="$(MSBuildProjectName.EndsWith('.Tests'))">true</MemoriaIsTestProject>
+    <MemoriaTestKindsFile>$(MSBuildThisFileDirectory)tests\Testing\Kinds\TestKinds.cs</MemoriaTestKindsFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MemoriaIsTestProject)' == 'true'">
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- An analyzer that the older compiler skips (CS9057) must fail the build, not pass it unchecked. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>
+    <!-- The kinds' strings live only in TestKinds.cs. -->
+    <MemoriaTestKindsText>$([System.IO.File]::ReadAllText($(MemoriaTestKindsFile)))</MemoriaTestKindsText>
+    <MemoriaTraitName>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'TraitName = "([^"]+)"').Groups[1].Value)</MemoriaTraitName>
+    <MemoriaUnitKind>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'UnitKind = "([^"]+)"').Groups[1].Value)</MemoriaUnitKind>
+    <!-- Default: unit tests only. Final validation drops it with -p:TestingPlatformCommandLineArguments= (a global property wins over this line). -->
+    <TestingPlatformCommandLineArguments Condition="'$(TestingPlatformCommandLineArguments)' == ''">--filter-trait "$(MemoriaTraitName)=$(MemoriaUnitKind)"</TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MemoriaIsTestProject)' == 'true'">
+    <PackageReference Include="xunit.v3.mtp-v2" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)tests\Testing\Kinds\Memoria.ToDo.Testing.Kinds.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)tests\Testing\Analyzers\Memoria.ToDo.Testing.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- Every project under src/ lists its public interface in two files. -->
+  <ItemGroup Condition="$(MSBuildProjectDirectory.StartsWith('$(MSBuildThisFileDirectory)src'))">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
+</Project>

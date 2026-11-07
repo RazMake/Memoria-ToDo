@@ -1,0 +1,4 @@
+Memoria.ToDo.Desktop.TaskEditor.AddWindow
+Memoria.ToDo.Desktop.TaskEditor.IAddWindow
+Memoria.ToDo.Desktop.TaskEditor.IAddWindow.Show() -> void
+static Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create() -> Memoria.ToDo.Desktop.TaskEditor.IAddWindow!

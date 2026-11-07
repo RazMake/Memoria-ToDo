@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build desktop app",
+      "type": "process",
+      "command": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet\\dotnet.exe",
+      "args": [
+        "build",
+        "${workspaceFolder}/src/Desktop/App/Memoria.ToDo.Desktop.App.csproj",
+        "-c",
+        "Debug"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    }
+  ]
+}

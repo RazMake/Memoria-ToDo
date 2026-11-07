@@ -2,7 +2,8 @@
   "sdk": {
     "version": "11.0.100-rc.3.26522.148",
     "allowPrerelease": true,
-    "rollForward": "latestPatch"
+    "rollForward": "latestPatch",
+    "errorMessage": "This repository's pinned .NET SDK isn't the first 'dotnet' on PATH in this shell. Install it, and set up the shell, as README.md's 'What you need' section says."
   },
   "test": {
     "runner": "Microsoft.Testing.Platform"

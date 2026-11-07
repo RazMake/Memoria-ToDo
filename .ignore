@@ -6,3 +6,10 @@
 .claude/agents/
 .codex/agents/
 .github/agents/
+
+# Build and test output.
+bin/
+obj/
+TestResults/
+Releases/
+publish/

@@ -1,0 +1,166 @@
+# The one workflow. Design: docs/architecture/technology-stack.md, "A GitHub Actions workflow checks each push
+# and publishes each version tag" and "The workflow times the unit run, and a slow run opens one issue".
+name: Build, test, and release
+
+on:
+  push:
+    # A branch push checks the code. A tag push (not a branch push) runs the release job only.
+    branches: ["**"]
+    tags: ["v*"]
+
+# Every job gets read-only access to the repository unless it asks for more.
+permissions:
+  contents: read
+
+env:
+  # The unit run's time limit, in seconds. This is its only home; change it here.
+  UNIT_RUN_LIMIT_SECONDS: "5"
+  # The slow-run issue is found by its label, not its title.
+  SLOW_RUN_ISSUE_TITLE: Unit tests are slower than the time limit
+  SLOW_RUN_ISSUE_LABEL: slow-unit-tests
+  # The installer ID is the folder name under %LocalAppData%, and can't change after the first release.
+  INSTALLER_ID: MemoriaToDo
+  APP_PROJECT: src/Desktop/App/Memoria.ToDo.Desktop.App.csproj
+  APP_EXE: Memoria.ToDo.Desktop.App.exe
+  APP_ICON: src/Desktop/App/app.ico
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  # Every branch push builds the code and runs the unit tests. A push to the default branch also saves the
+  # run's files for the timing job.
+  unit-tests:
+    if: github.ref_type == 'branch'
+    runs-on: windows-2025
+    env:
+      TIMED: ${{ github.ref_name == github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Build and run the unit tests
+        run: |
+          # The timed run appends the JUnit report and results folder after Directory.Build.props's unit filter.
+          $extra = @()
+          if ($env:TIMED -eq 'true') {
+            $extra = '--report-xunit-junit', '--results-directory', 'unit-results', '--results-directory-layout', 'per-module'
+          }
+          dotnet test @extra | Tee-Object -FilePath unit-output.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save the run's files for the timing job
+        if: env.TIMED == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-run
+          path: |
+            unit-results
+            unit-output.txt
+          if-no-files-found: error
+
+  # Only a passing unit run on the default branch is timed. The concurrency group makes timed runs wait for
+  # each other, and GitHub keeps only the newest waiting one, so two runs can't each open an issue.
+  time-unit-run:
+    needs: unit-tests
+    if: github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch
+    runs-on: windows-2025
+    concurrency:
+      group: time-unit-run
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: unit-run
+      - name: Build the timing program
+        run: dotnet build tests/Testing/UnitRunTiming -c Release
+      - name: Decide, then open, update, or close the issue
+        run: |
+          $number = gh issue list --label $env:SLOW_RUN_ISSUE_LABEL --state open --limit 1 --json number --jq '.[].number'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $isOpen = if ($number) { 'true' } else { 'false' }
+          $decision = dotnet run --no-build -c Release --project tests/Testing/UnitRunTiming -- `
+            --reports unit-results --test-output unit-output.txt --limit-seconds $env:UNIT_RUN_LIMIT_SECONDS `
+            --issue-open $isOpen --text-file issue-text.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          switch ("$decision".Trim()) {
+            'open' {
+              gh label create $env:SLOW_RUN_ISSUE_LABEL --force
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              gh issue create --title $env:SLOW_RUN_ISSUE_TITLE --label $env:SLOW_RUN_ISSUE_LABEL --body-file issue-text.md
+            }
+            'note' { gh issue comment $number --body-file issue-text.md }
+            'close' { gh issue close $number --comment (Get-Content -Raw issue-text.md) }
+            'none' { }
+            default { throw "The timing program printed an unknown decision: '$decision'" }
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  # A version tag runs every test, then packs and publishes the release. Any failure before the last step
+  # publishes nothing.
+  release:
+    if: github.ref_type == 'tag'
+    runs-on: windows-2025
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Take the version from the tag, or fail on a tag that isn't v<major>.<minor>.<patch>
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v((0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))$') {
+            throw "The tag '$env:GITHUB_REF_NAME' isn't v<major>.<minor>.<patch>, such as v1.2.3."
+          }
+          "VERSION=$($Matches[1])" >> $env:GITHUB_ENV
+      - uses: actions/checkout@v7
+        with:
+          # The full history, so the next step can tell whether the tag's commit is on the default branch.
+          fetch-depth: 0
+      - name: Fail unless the tag's commit is on the default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git merge-base --is-ancestor $env:GITHUB_SHA "origin/$env:DEFAULT_BRANCH"
+          if ($LASTEXITCODE -ne 0) {
+            throw "The tag '$env:GITHUB_REF_NAME' points to a commit that isn't on the default branch, '$env:DEFAULT_BRANCH'. Nothing was published."
+          }
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Read the app's name from its Product property, and fail if it's empty
+        run: |
+          $name = (dotnet msbuild $env:APP_PROJECT -getProperty:Product).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not $name) { throw "The app's Product property is empty. Set <Product> in Directory.Build.props." }
+          "APP_NAME=$name" >> $env:GITHUB_ENV
+      - name: Build and run every test
+        # An empty property drops the unit-only filter.
+        run: |
+          dotnet test "-p:TestingPlatformCommandLineArguments="
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Publish the desktop app, self-contained for x64
+        run: dotnet publish $env:APP_PROJECT -c Release -r win-x64 --self-contained true -o publish "-p:Version=$env:VERSION"
+      - name: Restore the pinned vpk
+        run: dotnet tool restore
+      - name: Download the last release, which the new one's delta packages build on
+        run: dotnet vpk download github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --token $env:GITHUB_TOKEN
+      - name: Pack the installer and update files, with no portable zip
+        run: >
+          dotnet vpk pack --packId $env:INSTALLER_ID --packVersion $env:VERSION --packDir publish
+          --mainExe $env:APP_EXE --packTitle $env:APP_NAME --icon $env:APP_ICON
+          --runtime win-x64 --shortcuts StartMenuRoot --noPortable
+      - name: Publish the release
+        run: >
+          dotnet vpk upload github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --token $env:GITHUB_TOKEN
+          --publish --releaseName "$env:APP_NAME $env:VERSION" --tag "v$env:VERSION"
