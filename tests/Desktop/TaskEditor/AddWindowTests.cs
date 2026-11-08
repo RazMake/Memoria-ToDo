@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Memoria.ToDo.Desktop.Fakes;
@@ -99,6 +100,20 @@ public class AddWindowTests
         add.Show();
 
         Assert.Same(first, Assert.Single(windows.Visible()));
+    }
+
+    [WpfFact]
+    public void Opens_480_wide_with_a_minimum_height_of_240_sizing_its_height_to_its_content_and_cannot_be_resized()
+    {
+        using var windows = new OpenWindows();
+        AddWindow.Create().Show();
+        var window = Assert.Single(windows.Visible());
+
+        Assert.Equal(480, window.ActualWidth);
+        Assert.Equal(240, window.MinHeight);
+        Assert.True(window.ActualHeight >= 240);
+        Assert.Equal(SizeToContent.Height, window.SizeToContent);
+        Assert.Equal(ResizeMode.NoResize, window.ResizeMode);
     }
 
     [WpfFact]

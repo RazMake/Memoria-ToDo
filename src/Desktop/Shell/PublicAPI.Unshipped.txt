@@ -18,4 +18,10 @@ Memoria.ToDo.Desktop.Shell.TrayMenuItem.Invoke.init -> void
 Memoria.ToDo.Desktop.Shell.TrayMenuItem.Text.get -> string!
 Memoria.ToDo.Desktop.Shell.TrayMenuItem.Text.init -> void
 Memoria.ToDo.Desktop.Shell.TrayMenuItem.TrayMenuItem(string! Text, System.Action! Invoke) -> void
-static Memoria.ToDo.Desktop.Shell.TrayApp.Create(Memoria.ToDo.Desktop.Shell.ITrayIcon! trayIcon, Memoria.ToDo.Desktop.TaskEditor.IAddWindow! add, Memoria.ToDo.Desktop.TaskList.IViewTasksWindow! viewTasks, Memoria.ToDo.Desktop.Configure.IConfigureWindow! configure, Memoria.ToDo.Desktop.Shell.IAppUpdates! updates, System.TimeProvider! time) -> Memoria.ToDo.Desktop.Platform.IAppLifetime!
+Memoria.ToDo.Desktop.Shell.IGlobalShortcut
+Memoria.ToDo.Desktop.Shell.IGlobalShortcut.Register(Memoria.ToDo.Desktop.Configure.Shortcut! shortcut, System.Action! pressed) -> bool
+Memoria.ToDo.Desktop.Shell.IGlobalShortcut.Unregister(Memoria.ToDo.Desktop.Configure.Shortcut! shortcut) -> void
+Memoria.ToDo.Desktop.Shell.IOneInstance
+Memoria.ToDo.Desktop.Shell.IOneInstance.Claim(System.Action! laterStart) -> bool
+Memoria.ToDo.Desktop.Shell.IOneInstance.Release() -> void
+static Memoria.ToDo.Desktop.Shell.TrayApp.Create(Memoria.ToDo.Desktop.Shell.ITrayIcon! trayIcon, Memoria.ToDo.Desktop.TaskEditor.IAddWindow! add, Memoria.ToDo.Desktop.TaskList.IViewTasksWindow! viewTasks, Memoria.ToDo.Desktop.Configure.IConfigureWindow! configure, Memoria.ToDo.Desktop.Shell.IAppUpdates! updates, Memoria.ToDo.Desktop.Shell.IGlobalShortcut! shortcut, Memoria.ToDo.Desktop.Shell.IOneInstance! oneInstance, bool startedAtSignIn, System.TimeProvider! time) -> Memoria.ToDo.Desktop.Platform.IAppLifetime!

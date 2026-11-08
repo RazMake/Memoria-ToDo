@@ -9,15 +9,44 @@ namespace Memoria.ToDo.Desktop.Shell;
 public static class TrayApp
 {
     /// <summary>
-    /// Creates the app's lifetime. Start adds the tray icon with its menu (each item calls its window's Show,
-    /// Exit ends the app, a left click shows Add) and begins the update checks. Stop removes the icon and ends the checks.
+    /// Creates the app's lifetime. Start first claims the sign-in session; when another instance runs, it ends the app
+    /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Manage tasks, Configure,
+    /// Exit; a left click shows Add), connects Configure's two shortcuts (a press shows Add or View Tasks), begins the
+    /// update checks, shows View Tasks when <paramref name="startedAtSignIn"/> is false, and then shows Configure when
+    /// a default shortcut couldn't be registered; each later start shows View Tasks only.
+    /// Stop ends the checks, unregisters both shortcuts, removes the icon, and releases the claim, then passes on any
+    /// release failure.
     /// </summary>
+    /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static IAppLifetime Create(
         ITrayIcon trayIcon,
         IAddWindow add,
         IViewTasksWindow viewTasks,
         IConfigureWindow configure,
         IAppUpdates updates,
-        TimeProvider time) =>
-        new ShellLifetime(trayIcon, add, viewTasks, configure, new UpdateSchedule(updates, time));
+        IGlobalShortcut shortcut,
+        IOneInstance oneInstance,
+        bool startedAtSignIn,
+        TimeProvider time)
+    {
+        ArgumentNullException.ThrowIfNull(trayIcon);
+        ArgumentNullException.ThrowIfNull(add);
+        ArgumentNullException.ThrowIfNull(viewTasks);
+        ArgumentNullException.ThrowIfNull(configure);
+        ArgumentNullException.ThrowIfNull(updates);
+        ArgumentNullException.ThrowIfNull(shortcut);
+        ArgumentNullException.ThrowIfNull(oneInstance);
+        ArgumentNullException.ThrowIfNull(time);
+
+        return new ShellLifetime(
+            trayIcon,
+            add,
+            viewTasks,
+            configure,
+            oneInstance,
+            new ActiveShortcut(shortcut, add.Show),
+            new ActiveShortcut(shortcut, viewTasks.Show),
+            startedAtSignIn,
+            new UpdateSchedule(updates, time));
+    }
 }

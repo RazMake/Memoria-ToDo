@@ -7,8 +7,8 @@ namespace Memoria.ToDo.Desktop.Platform;
 public static class AppRunner
 {
     /// <summary>
-    /// Rejects a call from a non-STA thread, creates the WPF application (it ends only when told to),
-    /// builds the lifetime and starts it on the UI thread, then stops it once when it ends the app or
+    /// Rejects a call from a non-STA thread, creates the WPF application (it ends only when told to) with its theme
+    /// following Windows' light or dark setting, builds the lifetime and starts it on the UI thread, then stops it once when it ends the app or
     /// Windows ends the session. Shows an unhandled error in a message box and ends with a non-zero code.
     /// </summary>
     /// <returns>The process's exit code.</returns>
@@ -35,6 +35,9 @@ public static class AppRunner
         public int Run()
         {
             var application = _application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+#pragma warning disable WPF0001 // Application.ThemeMode is experimental; allowed only on this line.
+            application.ThemeMode = ThemeMode.System;
+#pragma warning restore WPF0001
             application.DispatcherUnhandledException += (_, e) =>
             {
                 e.Handled = true;

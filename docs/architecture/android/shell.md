@@ -22,7 +22,7 @@ The shortcut is a static shortcut, declared with the app, so it works from the f
 Proposed, each a decision to confirm:
 
 - The app shortcut opens Add directly.
-- Until the phone is configured, every way in opens Configure, as on the [desktop](../desktop/shell.md#a-global-shortcut-and-the-tray-menu-open-the-apps-three-functions).
+- Until the phone is configured, every way in opens Configure, as on the [desktop](../desktop/shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions).
 
 ### The widget shows the top tasks and an Add button
 

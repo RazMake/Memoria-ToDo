@@ -7,6 +7,7 @@ namespace Memoria.ToDo.Desktop.PlatformTestHost;
 /// The lifetime the platform runs. It reports each step on its own line of standard output, then does what the
 /// scenario says. The lines are the protocol the tests read:
 /// <c>created application=True|False</c> (the lifetime was built),
+/// <c>created theme-follows-windows=True|False</c> (the application's theme followed Windows when it was built),
 /// <c>started application=True|False ui-thread=True|False</c> (Start was called),
 /// <c>stopped</c> (Stop was called), and the scenario's own lines.
 /// </summary>
@@ -18,6 +19,10 @@ internal sealed class ScenarioLifetime : IAppLifetime
     {
         _whatStartDoes = whatStartDoes;
         Say($"created application={Application.Current is not null}");
+#pragma warning disable WPF0001 // Application.ThemeMode is experimental; allowed only on this line.
+        var followsWindows = Application.Current?.ThemeMode == ThemeMode.System;
+#pragma warning restore WPF0001
+        Say($"created theme-follows-windows={followsWindows}");
     }
 
     public static void Say(string line) => Console.Out.WriteLine(line);

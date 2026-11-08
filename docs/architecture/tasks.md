@@ -16,7 +16,7 @@ The table lists what Tasks keeps in the task repository:
 | --- | --- |
 | `tasks/<id>.json` | One task, in a file named by the task's ID |
 | `images/<id>/` | That task's images, one file each |
-| `settings.json` | The settings every device shares, such as the deletion delay |
+| `settings.json` | The settings every device shares, such as the deletion delay and the desktop app's two global shortcuts, whose owner [Configure](desktop/configure.md#which-module-owns-the-shortcuts-in-settingsjson) leaves open |
 
 Deleting a task removes its file and its image folder.
 

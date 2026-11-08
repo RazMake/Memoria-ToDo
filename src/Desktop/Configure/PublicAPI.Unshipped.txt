@@ -1,4 +1,22 @@
 Memoria.ToDo.Desktop.Configure.ConfigureWindow
 Memoria.ToDo.Desktop.Configure.IConfigureWindow
+Memoria.ToDo.Desktop.Configure.IConfigureWindow.ConnectShortcuts(Memoria.ToDo.Desktop.Configure.IShortcutAction! addNewTask, Memoria.ToDo.Desktop.Configure.IShortcutAction! manageTasks) -> bool
+Memoria.ToDo.Desktop.Configure.IShortcutAction
+Memoria.ToDo.Desktop.Configure.IShortcutAction.Register(Memoria.ToDo.Desktop.Configure.Shortcut! shortcut) -> bool
+Memoria.ToDo.Desktop.Configure.IShortcutAction.Unregister() -> void
 Memoria.ToDo.Desktop.Configure.IConfigureWindow.Show() -> void
-static Memoria.ToDo.Desktop.Configure.ConfigureWindow.Create() -> Memoria.ToDo.Desktop.Configure.IConfigureWindow!
+Memoria.ToDo.Desktop.Configure.IStartWithWindows
+Memoria.ToDo.Desktop.Configure.IStartWithWindows.IsOn() -> bool
+Memoria.ToDo.Desktop.Configure.IStartWithWindows.Set(bool on) -> void
+Memoria.ToDo.Desktop.Configure.Shortcut
+Memoria.ToDo.Desktop.Configure.Shortcut.<Clone>$() -> Memoria.ToDo.Desktop.Configure.Shortcut!
+Memoria.ToDo.Desktop.Configure.Shortcut.Equals(Memoria.ToDo.Desktop.Configure.Shortcut? other) -> bool
+Memoria.ToDo.Desktop.Configure.Shortcut.Key.get -> System.Windows.Input.Key
+Memoria.ToDo.Desktop.Configure.Shortcut.Modifiers.get -> System.Windows.Input.ModifierKeys
+override Memoria.ToDo.Desktop.Configure.Shortcut.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Configure.Shortcut.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Configure.Shortcut.ToString() -> string!
+static Memoria.ToDo.Desktop.Configure.ConfigureWindow.Create(Memoria.ToDo.Desktop.Configure.IStartWithWindows! startWithWindows) -> Memoria.ToDo.Desktop.Configure.IConfigureWindow!
+static Memoria.ToDo.Desktop.Configure.Shortcut.TryCreate(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key, out Memoria.ToDo.Desktop.Configure.Shortcut? shortcut) -> bool
+static Memoria.ToDo.Desktop.Configure.Shortcut.operator !=(Memoria.ToDo.Desktop.Configure.Shortcut? left, Memoria.ToDo.Desktop.Configure.Shortcut? right) -> bool
+static Memoria.ToDo.Desktop.Configure.Shortcut.operator ==(Memoria.ToDo.Desktop.Configure.Shortcut? left, Memoria.ToDo.Desktop.Configure.Shortcut? right) -> bool

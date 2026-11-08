@@ -41,20 +41,7 @@ public sealed class OpenWindows : IDisposable
     /// <summary>Presses and releases Esc on the window, as the keyboard does: the tunneling event, then the bubbling one.</summary>
     public static void PressEscape(Window window)
     {
-        var source = PresentationSource.FromVisual(window)
-            ?? throw new InvalidOperationException("The window isn't showing, so it can't get a key.");
-        var preview = new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, Key.Escape)
-        {
-            RoutedEvent = Keyboard.PreviewKeyDownEvent,
-        };
-        window.RaiseEvent(preview);
-        if (!preview.Handled)
-        {
-            window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, Key.Escape)
-            {
-                RoutedEvent = Keyboard.KeyDownEvent,
-            });
-        }
+        SimulatedKey.Raise(window, Key.Escape, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
     }
 
     /// <summary>Closes every window on this thread, even one that hides instead of closing.</summary>

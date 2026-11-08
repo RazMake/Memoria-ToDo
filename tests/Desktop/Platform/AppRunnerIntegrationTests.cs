@@ -28,6 +28,16 @@ public class AppRunnerIntegrationTests
     }
 
     [Fact]
+    public void Run_sets_the_theme_to_follow_Windows_before_building_the_lifetime()
+    {
+        using var host = HostProcess.Start("end-app");
+
+        host.WaitForExit();
+
+        Assert.Contains("created theme-follows-windows=True", host.Lines);
+    }
+
+    [Fact]
     public void Run_builds_the_lifetime_before_starting_it()
     {
         using var host = HostProcess.Start("end-app");

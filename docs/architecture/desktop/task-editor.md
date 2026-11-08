@@ -16,13 +16,13 @@ The Add window is created when the app starts and stays hidden until needed, so 
 
 Title and Description use the editor that [How the apps fit together](../overview.md#each-app-edits-in-its-own-text-box-with-shared-commands) picks, AvalonEdit.
 
-Proposed: Add accepts typing within 100 ms of the shortcut, measured from the key press to the first typed character showing. This is a decision to confirm.
+Proposed: Add accepts typing within 100 ms of the Add new task shortcut, measured from the key press to the first typed character showing. This is a decision to confirm.
 
 Proposed, each a decision to confirm:
 
 - Show Add opens Add with the desktop platform's [Show on the pointer's screen](README.md#windows-open-on-the-screen-with-the-mouse-pointer), which says what the active screen and on top mean. The pointer is also where a click on the tray icon happens.
 - Closing Add, with Esc or its close button, hides it, so the next Show opens the same window at once.
-- The user can't resize Add; it sizes to what it holds.
+- The user can't resize Add. It has a fixed width, wide enough for a long title on one line, and never opens shorter than a set height; it grows taller with what it holds.
 
 ### Keys save, close, and move between fields
 
@@ -105,7 +105,7 @@ A saved new task goes to the top of the order, where the user sees it first in V
 The composition root, Shell, and the Task list use these parts:
 
 - **Create the Add window**: the composition root creates it when the app starts, as [above](#add-opens-at-once-with-the-cursor-in-the-title), and gives it to Shell.
-- **Show Add**: shows the Add window, with the draft if there is one. Shell calls it from the shortcut and the tray menu.
+- **Show Add**: shows the Add window, with the draft if there is one. Shell calls it from the [Add new task shortcut](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), the tray icon, and the tray menu.
 - **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user saves or cancels. The Task list uses it to edit a task in place.
 - **The tag chips**: the five most-used tags as buttons, reporting the chosen tag. The Task list uses them to filter.
 

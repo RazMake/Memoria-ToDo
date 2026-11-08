@@ -15,11 +15,14 @@ internal sealed class AddWindowView : Window, IAddWindow
     public AddWindowView()
     {
         Title = "Add new Task";
-        SizeToContent = SizeToContent.WidthAndHeight;
+        Width = 480;
+        MinHeight = 240;
+        SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         Content = new TextBlock
         {
             Text = "Adding a task is coming soon.",
+            TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(24),
         };
     }
