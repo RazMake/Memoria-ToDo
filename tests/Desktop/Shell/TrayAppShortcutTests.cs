@@ -46,6 +46,29 @@ public class TrayAppShortcutTests
         Assert.Equal(0, app.Configure.ShowCount);
     }
 
+    // While any of the app's windows is open, the shortcuts open nothing.
+
+    public static TheoryData<ShortcutKind, string> KindsAndOpenWindows() => new()
+    {
+        { ShortcutKind.AddNewTask, "Add" }, { ShortcutKind.AddNewTask, "View Tasks" }, { ShortcutKind.AddNewTask, "Configure" },
+        { ShortcutKind.ManageTasks, "Add" }, { ShortcutKind.ManageTasks, "View Tasks" }, { ShortcutKind.ManageTasks, "Configure" },
+    };
+
+    [Theory]
+    [MemberData(nameof(KindsAndOpenWindows))]
+    public void A_press_while_a_window_is_open_shows_no_window(ShortcutKind kind, string openWindow)
+    {
+        var app = Started();
+        app.ActionOf(kind).Register(TestShortcut.A);
+        app.Add.IsOpen = openWindow == "Add";
+        app.ViewTasks.IsOpen = openWindow == "View Tasks";
+        app.Configure.IsOpen = openWindow == "Configure";
+
+        app.GlobalShortcut.Press(TestShortcut.A);
+
+        Assert.Empty(app.Shown);
+    }
+
     // The two actions don't affect each other.
 
     [Fact]

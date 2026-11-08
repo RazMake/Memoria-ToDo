@@ -44,12 +44,13 @@ public static class AppRunner
                 Fail(e.Exception);
             };
             AppDomain.CurrentDomain.UnhandledException += (_, e) => FailOnOtherThread((Exception)e.ExceptionObject);
+            application.SessionEnding += (_, _) => Stop();
 
             try
             {
                 var lifetime = createLifetime();
                 _started = lifetime;
-                lifetime.Start(() => application.Dispatcher.InvokeAsync(() => application.Shutdown()));
+                lifetime.Start(() => application.Dispatcher.InvokeAsync(Shutdown));
                 application.Run();
             }
             catch (Exception error)
@@ -68,6 +69,12 @@ public static class AppRunner
         {
             _exitCode = ErrorExitCode;
             ErrorBox.Show(error);
+            Shutdown();
+        }
+
+        private void Shutdown()
+        {
+            Stop();
             _application!.Shutdown();
         }
 
@@ -86,6 +93,17 @@ public static class AppRunner
             }
         }
 
-        private void Stop() => Interlocked.Exchange(ref _started, null)?.Stop();
+        private void Stop()
+        {
+            try
+            {
+                Interlocked.Exchange(ref _started, null)?.Stop();
+            }
+            catch (Exception error)
+            {
+                _exitCode = ErrorExitCode;
+                ErrorBox.Show(error);
+            }
+        }
     }
 }

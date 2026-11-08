@@ -12,4 +12,7 @@ public interface IAddWindow
 {
     /// <summary>Shows the Add window, with the draft if there is one.</summary>
     void Show();
+
+    /// <summary>Whether the window is open now.</summary>
+    bool IsOpen { get; }
 }

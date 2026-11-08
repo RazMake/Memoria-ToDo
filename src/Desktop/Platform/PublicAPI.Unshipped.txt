@@ -10,3 +10,4 @@ Memoria.ToDo.Desktop.Platform.SingleWindow.Show() -> void
 Memoria.ToDo.Desktop.Platform.WindowPlacement
 static Memoria.ToDo.Desktop.Platform.WindowPlacement.ShowOnPointerScreen(System.Windows.Window! window) -> void
 static Memoria.ToDo.Desktop.Platform.AppRunner.Run(System.Func<Memoria.ToDo.Desktop.Platform.IAppLifetime!>! createLifetime) -> int
+Memoria.ToDo.Desktop.Platform.SingleWindow.IsOpen.get -> bool

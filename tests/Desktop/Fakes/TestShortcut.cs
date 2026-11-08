@@ -15,9 +15,8 @@ public static class TestShortcut
     /// <summary>Win+Alt+N, the shortcut Add new task starts with.</summary>
     public static Shortcut AddNewTaskDefault { get; } = Of(ModifierKeys.Windows | ModifierKeys.Alt, Key.N);
 
-    /// <summary>Win+Alt+Shift+T, the shortcut Manage tasks starts with.</summary>
-    public static Shortcut ManageTasksDefault { get; } =
-        Of(ModifierKeys.Windows | ModifierKeys.Alt | ModifierKeys.Shift, Key.T);
+    /// <summary>Win+Alt+V, the shortcut Manage tasks starts with.</summary>
+    public static Shortcut ManageTasksDefault { get; } = Of(ModifierKeys.Windows | ModifierKeys.Alt, Key.V);
 
     /// <summary>Makes a shortcut.</summary>
     /// <exception cref="ArgumentException">The keys don't follow the rules.</exception>

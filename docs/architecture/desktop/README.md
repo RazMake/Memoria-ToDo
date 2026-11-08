@@ -29,7 +29,9 @@ The platform's public interface has two parts. Three more are proposed further d
   2. creates the WPF application, which ends only when told to, not when its last window closes, since a tray app has no main window ([ShutdownMode](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.shutdownmode));
   3. sets the WPF application's theme to follow Windows' light or dark setting, before any window exists, so every window and the tray menu follow it ([ThemeMode](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.thememode));
   4. builds the lifetime and starts it on the UI thread, so the modules' windows are made after the WPF application exists;
-  5. when the lifetime ends the app, or Windows ends the session ([SessionEnding](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.sessionending)), stops the lifetime once and returns.
+  5. when the lifetime ends the app, or Windows ends the session ([SessionEnding](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.sessionending)), stops the lifetime once, then lets WPF shut down, and returns.
+
+**Cleanup runs while the lifetime's Windows resources still work.** The platform stops the lifetime on the UI thread before WPF closes its windows or ends its message loop ([integration tests](../../../tests/Desktop/Platform/AppRunnerIntegrationTests.cs)). This also applies after startup or unhandled errors ([error tests](../../../tests/Desktop/Platform/AppRunnerErrorIntegrationTests.cs)). If cleanup itself fails, the platform shows that error and returns a non-zero exit code; it never retries Stop.
 
 **The theme is experimental in WPF, so the build allows that at its one call.** The pinned SDK marks the theme setting with the compiler's experimental-API error, WPF0001 ([what's new in WPF for .NET 9](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90)). The build allows WPF0001 only at the platform's one call, never for a whole project. Two options were ruled out:
 
@@ -146,7 +148,7 @@ The desktop app is built in steps, one row each, and each row links to the desig
 
 Until its row is built, a feature is missing, and the app says so:
 
-- **Each window says which of its features aren't built yet.** One exception: Configure doesn't say that the shortcuts aren't saved before the Sync step, as [Configure](configure.md#each-setting-has-one-owner) records.
+- **Each window says which of its features aren't built yet.** One exception: Configure has no such line, as [Configure](configure.md#each-setting-has-one-owner) records.
 - **Nothing pretends to work.** No step reports a save, a sync, or a setting it didn't make. Nothing shows the device as configured or unconfigured before Sync can tell.
 
 Proposed, each a decision to confirm:

@@ -26,18 +26,29 @@ internal sealed class ConfigureScreen : IDisposable
     public ConfigureScreen(
         FakeStartWithWindows? startWithWindows = null,
         FakeShortcutAction? addNewTask = null,
-        FakeShortcutAction? manageTasks = null)
+        FakeShortcutAction? manageTasks = null,
+        FakeRepositoryFolder? repositoryFolder = null)
     {
         StartWithWindows = startWithWindows ?? new FakeStartWithWindows();
         AddNewTask = addNewTask ?? new FakeShortcutAction();
         ManageTasks = manageTasks ?? new FakeShortcutAction();
-        configure = ConfigureWindow.Create(StartWithWindows);
+        RepositoryFolder = repositoryFolder ?? new FakeRepositoryFolder();
+        configure = ConfigureWindow.Create(StartWithWindows, RepositoryFolder);
         Connected = configure.ConnectShortcuts(AddNewTask, ManageTasks);
         AddNewTask.ClearCalls();
         ManageTasks.ClearCalls();
     }
 
     public FakeStartWithWindows StartWithWindows { get; }
+
+    public FakeRepositoryFolder RepositoryFolder { get; }
+
+    /// <summary>The window's collapsible sections, in order.</summary>
+    public IReadOnlyList<Expander> Sections => [.. OpenWindows.Descendants(Window).OfType<Expander>()];
+
+    /// <summary>Expands the section with the heading, as a click on its heading does.</summary>
+    public void Expand(string heading) =>
+        Sections.Single(section => ((TextBlock)section.Header).Text == heading).IsExpanded = true;
 
     /// <summary>The Add new task action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction AddNewTask { get; }
@@ -77,7 +88,7 @@ internal sealed class ConfigureScreen : IDisposable
         }
     }
 
-    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>()];
+    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(2)];
 
     /// <summary>Opens the window, as the tray's Configure item does.</summary>
     public void Open() => configure.Show();
@@ -101,15 +112,16 @@ internal sealed class ConfigureScreen : IDisposable
 
     /// <summary>Sends a key-down to the box. Returns whether the box took the key.</summary>
     public bool KeyDown(TextBox field, Key key) =>
-        SimulatedKey.Raise(field, key, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
+        Reveal(field) && SimulatedKey.Raise(field, key, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
 
     /// <summary>Sends a key-up to the box. Returns whether the box took the key.</summary>
     public bool KeyUp(TextBox field, Key key) =>
-        SimulatedKey.Raise(field, key, Keyboard.PreviewKeyUpEvent, Keyboard.KeyUpEvent);
+        Reveal(field) && SimulatedKey.Raise(field, key, Keyboard.PreviewKeyUpEvent, Keyboard.KeyUpEvent);
 
     /// <summary>Gives the keyboard focus to the element, as a click or Tab does.</summary>
     public static void Focus(UIElement element)
     {
+        Reveal(element);
         Keyboard.Focus(element);
         Assert.True(element.IsKeyboardFocused, "The window couldn't give the element the keyboard focus.");
     }
@@ -118,8 +130,11 @@ internal sealed class ConfigureScreen : IDisposable
     public void FocusStartWithWindowsBox() => Focus(StartWithWindowsBox);
 
     /// <summary>Switches the Start with Windows check box as a click does.</summary>
-    public void SwitchStartWithWindows() =>
+    public void SwitchStartWithWindows()
+    {
+        Reveal(StartWithWindowsBox);
         ((IToggleProvider)new CheckBoxAutomationPeer(StartWithWindowsBox).GetPattern(PatternInterface.Toggle)).Toggle();
+    }
 
     /// <summary>Whether a displayed text contains the words, ignoring case.</summary>
     public bool ShowsText(string words) =>
@@ -127,22 +142,24 @@ internal sealed class ConfigureScreen : IDisposable
 
     public void Dispose() => windows.Dispose();
 
-    // A row's message is the text block closest below its box, in the box's column.
-    private string MessageUnder(TextBox field)
-    {
-        Settle();
-        var box = BoundsOf(field);
-        return OpenWindows.Descendants(Window)
-            .OfType<TextBlock>()
-            .Select(block => (block, bounds: BoundsOf(block)))
-            .Where(item => item.bounds.Top >= box.Bottom - 1 && Math.Abs(item.bounds.Left - box.Left) <= 2)
-            .OrderBy(item => item.bounds.Top)
-            .First()
-            .block.Text;
-    }
+    // A row's message is the text block that follows its box in the panel they share.
+    private static string MessageUnder(TextBox field) =>
+        ((Panel)field.Parent).Children.OfType<TextBlock>().First().Text;
 
-    private Rect BoundsOf(FrameworkElement element) =>
-        element.TransformToAncestor(Window).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+    // Expands each section that holds the element, as a user does before using it. Always true, to chain with an action.
+    private static bool Reveal(DependencyObject element)
+    {
+        for (var parent = LogicalTreeHelper.GetParent(element); parent is not null; parent = LogicalTreeHelper.GetParent(parent))
+        {
+            if (parent is Expander section)
+            {
+                section.IsExpanded = true;
+                section.UpdateLayout();
+            }
+        }
+
+        return true;
+    }
 
     // Lets a pending layout and the window's resize to its content happen, so sizes and positions are current.
     private void Settle()

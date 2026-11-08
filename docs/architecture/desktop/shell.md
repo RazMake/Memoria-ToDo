@@ -13,11 +13,12 @@ Two global shortcuts work from any app. The user changes either one in [Configur
 | Shortcut | Opens | Default |
 | --- | --- | --- |
 | Add new task | Add | **Win+Alt+N** |
-| Manage tasks | View Tasks | **Win+Alt+Shift+T** |
+| Manage tasks | View Tasks | **Win+Alt+V** |
 
 The tray icon's menu offers Add new task, Manage tasks, Configure, and Exit, for when the mouse is closer than the keyboard.
 
-- **The defaults are keys Windows leaves free.** Windows itself holds Win+Alt+T and many other Win+Alt digits and letters: a RegisterHotKey probe on the user's PC, with no other app holding keys, found Win+Alt+T taken and Win+Alt+N and every Win+Alt+Shift letter free. The defaults avoid Ctrl+Alt, which equals AltGr on many keyboard layouts ([WM_SYSKEYUP](https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-syskeyup)). The OneNote desktop app uses Win+Alt+N for Quick Notes ([OneNote shortcuts](https://shortcut-tools.com/en/shortcuts/onenote/)); on a PC that runs it, Add new task has no shortcut until the user picks another, and Configure says why.
+- **The defaults are the user's choice.** A RegisterHotKey probe on the user's PC found Win+Alt+T taken by Windows and Win+Alt+N free; Win+Alt+V wasn't probed. The defaults avoid Ctrl+Alt, which equals AltGr on many keyboard layouts ([WM_SYSKEYUP](https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-syskeyup)). The OneNote desktop app uses Win+Alt+N for Quick Notes ([OneNote shortcuts](https://shortcut-tools.com/en/shortcuts/onenote/)); on a PC that runs it, Add new task has no shortcut until the user picks another, and Configure says why.
+- **While any of the app's windows is open, a shortcut press opens nothing.** So the user can't open Add from Configure, or View Tasks from Add. Each window port says whether its window is open, and Shell checks all three before showing one.
 - **A left click on the tray icon opens Add, and a right click opens the menu.** Adding a task is the app's most common action, so it takes one click.
 - **The tray icon uses [H.NotifyIcon.Wpf](https://www.nuget.org/packages/H.NotifyIcon.Wpf/2.4.1) 2.4.1.** Its menu is a Windows Presentation Foundation (WPF) menu, so it follows the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
 - **Shell runs each shortcut's action, and Configure picks the keys.** Shell gives Configure one [shortcut action](configure.md#public-interface) for each shortcut, which registers keys through Shell's [global shortcut port](#public-interface) and opens its window when pressed. The composition root implements the port with the Windows [RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey) function, with no shortcut library. [Configure](configure.md#a-new-shortcut-is-checked-at-once) checks each shortcut before Shell sees it.

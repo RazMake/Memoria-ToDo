@@ -30,7 +30,7 @@ internal static class Program
             new TrayIcon(),
             AddWindow.Create(),
             ViewTasksWindow.Create(),
-            ConfigureWindow.Create(StartWithWindows()),
+            ConfigureWindow.Create(StartWithWindows(), new GitRepositoryFolder(RepositoryFolderSetting())),
             new VelopackUpdates(RepositoryUrl),
             new HotKeyShortcut(),
             // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
@@ -41,6 +41,10 @@ internal static class Program
     }
 
     private static RunKeyStartWithWindows StartWithWindows() => new(RunKeyPath, InstalledStarter.Find());
+
+    // Under %LocalAppData%, apart from Velopack's install folder, so updating or uninstalling leaves it.
+    private static string RepositoryFolderSetting() => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName.Value, "repository-folder.txt");
 
     // A hook shows no window, so a failed step goes to Velopack's log file.
     private static StartWithWindowsSteps HookSteps() => new(

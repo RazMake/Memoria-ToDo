@@ -25,6 +25,8 @@ public static class ViewTasksWindow
     private sealed class Opener(SingleWindow window) : IViewTasksWindow
     {
         public void Show() => window.Show();
+
+        public bool IsOpen => window.IsOpen;
     }
 }
 
@@ -33,4 +35,7 @@ public interface IViewTasksWindow
 {
     /// <summary>Opens the window, or brings it forward.</summary>
     void Show();
+
+    /// <summary>Whether the window is open now.</summary>
+    bool IsOpen { get; }
 }

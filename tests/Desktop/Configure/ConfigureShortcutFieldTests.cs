@@ -14,7 +14,7 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 public class ConfigureShortcutFieldTests
 {
     private const string AddDefault = "Win+Alt+N";
-    private const string ManageDefault = "Win+Alt+Shift+T";
+    private const string ManageDefault = "Win+Alt+V";
     private const string OneModifierMessage = "Use two or more modifier keys (Ctrl, Alt, Shift, Win) plus one other key.";
 
     [WpfFact]
@@ -55,7 +55,7 @@ public class ConfigureShortcutFieldTests
 
         Assert.Equal("", screen.ManageField.Text);
         Assert.Equal(
-            "Windows or another app already uses Win+Alt+Shift+T, so Manage tasks has no shortcut. Click the box and press a different one.",
+            "Windows or another app already uses Win+Alt+V, so Manage tasks has no shortcut. Click the box and press a different one.",
             screen.ManageMessage);
     }
 
@@ -159,10 +159,10 @@ public class ConfigureShortcutFieldTests
         using var screen = new ConfigureScreen();
         screen.Open();
 
-        screen.Chord(screen.AddField, Key.LWin, Key.LeftAlt, Key.LeftShift, Key.T);
+        screen.Chord(screen.AddField, Key.LWin, Key.LeftAlt, Key.V);
 
         Assert.Empty(screen.AddNewTask.Calls);
-        Assert.Equal("Manage tasks already uses Win+Alt+Shift+T. Press a different shortcut.", screen.AddMessage);
+        Assert.Equal("Manage tasks already uses Win+Alt+V. Press a different shortcut.", screen.AddMessage);
         Assert.Equal(AddDefault, screen.AddField.Text);
     }
 

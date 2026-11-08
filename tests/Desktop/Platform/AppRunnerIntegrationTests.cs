@@ -74,6 +74,32 @@ public class AppRunnerIntegrationTests
     }
 
     [Fact]
+    public void Run_stops_the_lifetime_while_its_message_window_is_still_usable()
+    {
+        using var host = HostProcess.Start("end-app");
+
+        var exitCode = host.WaitForExit();
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(1, host.Count("stopped"));
+        Assert.Contains("stop-resource available=True", host.Lines);
+    }
+
+    [Theory]
+    [InlineData("end-app-from-background-thread")]
+    [InlineData("session-ending")]
+    public void Run_keeps_the_lifetimes_message_window_usable_when_an_external_request_ends_the_app(string scenario)
+    {
+        using var host = HostProcess.Start(scenario);
+
+        var exitCode = host.WaitForExit();
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(1, host.Count("stopped"));
+        Assert.Contains("stop-resource available=True", host.Lines);
+    }
+
+    [Fact]
     public void Run_stops_the_lifetime_once_and_returns_zero_when_a_background_thread_ends_the_app()
     {
         using var host = HostProcess.Start("end-app-from-background-thread");

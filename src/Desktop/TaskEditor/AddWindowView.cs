@@ -29,6 +29,8 @@ internal sealed class AddWindowView : Window, IAddWindow
 
     void IAddWindow.Show() => WindowPlacement.ShowOnPointerScreen(this);
 
+    bool IAddWindow.IsOpen => IsVisible;
+
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);

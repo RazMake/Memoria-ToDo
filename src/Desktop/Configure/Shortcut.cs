@@ -21,9 +21,8 @@ public sealed record Shortcut
     /// <summary>Win+Alt+N, the shortcut Add new task starts with.</summary>
     internal static Shortcut AddNewTaskDefault { get; } = new(ModifierKeys.Windows | ModifierKeys.Alt, Key.N);
 
-    /// <summary>Win+Alt+Shift+T, the shortcut Manage tasks starts with.</summary>
-    internal static Shortcut ManageTasksDefault { get; } =
-        new(ModifierKeys.Windows | ModifierKeys.Alt | ModifierKeys.Shift, Key.T);
+    /// <summary>Win+Alt+V, the shortcut Manage tasks starts with.</summary>
+    internal static Shortcut ManageTasksDefault { get; } = new(ModifierKeys.Windows | ModifierKeys.Alt, Key.V);
 
     /// <summary>The modifier keys held with <see cref="Key"/>.</summary>
     public ModifierKeys Modifiers { get; }

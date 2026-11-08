@@ -15,16 +15,17 @@ internal static class Scenarios
     private const int WmEndSession = 0x0016;
     private static readonly nint EndSessionLogoff = unchecked((nint)0x80000000);
 
-    public static IReadOnlyDictionary<string, Action<Action>> All { get; } = new Dictionary<string, Action<Action>>
+    public static IReadOnlyDictionary<string, (Action<Action> Start, Action Stop)> All { get; }
+        = new Dictionary<string, (Action<Action> Start, Action Stop)>
     {
         // Start asks to end the app, as Shell does for the tray's Exit.
-        ["end-app"] = endApp => Post(endApp),
+        ["end-app"] = (Post, DoNothing),
 
         // Start asks to end the app from a background thread, as a module's background task may.
-        ["end-app-from-background-thread"] = endApp => new Thread(() => endApp()).Start(),
+        ["end-app-from-background-thread"] = (endApp => new Thread(() => endApp()).Start(), DoNothing),
 
         // Start opens a window and closes it again, then ends the app once the app has had time to react.
-        ["last-window-closed"] = endApp =>
+        ["last-window-closed"] = (endApp =>
         {
             var window = new Window();
             window.Show();
@@ -35,11 +36,11 @@ internal static class Scenarios
                 ScenarioLifetime.Say("still-running");
                 endApp();
             });
-        },
+        }, DoNothing),
 
         // Start sends the messages Windows sends when the session ends to every top-level window of the UI thread,
         // as Windows does. WPF raises SessionEnding only from the Application's own hidden window, not from a new Window.
-        ["session-ending"] = _ => Post(() =>
+        ["session-ending"] = (_ => Post(() =>
         {
             var windows = new List<nint>();
             EnumThreadWindows(GetCurrentThreadId(), (window, _) =>
@@ -62,17 +63,26 @@ internal static class Scenarios
             {
                 SendMessage(window, WmEndSession, 1, EndSessionLogoff);
             }
-        }),
+        }), DoNothing),
 
         // An error nobody handles on the UI thread, after Start finished.
-        ["ui-error"] = _ => Post(() => throw new InvalidOperationException("ui boom")),
+        ["ui-error"] = (_ => Post(() => throw new InvalidOperationException("ui boom")), DoNothing),
 
         // An error nobody handles on another thread.
-        ["thread-error"] = _ => new Thread(() => throw new InvalidOperationException("thread boom")).Start(),
+        ["thread-error"] = (ThreadError, DoNothing),
 
         // Start itself fails, as when the tray icon can't be added.
-        ["start-throws"] = _ => throw new InvalidOperationException("start boom"),
+        ["start-throws"] = (_ => throw new InvalidOperationException("start boom"), DoNothing),
+
+        ["stop-throws"] = (Post, StopError),
+        ["thread-error-stop-throws"] = (ThreadError, StopError),
     };
+
+    private static void DoNothing() { }
+
+    private static void StopError() => throw new InvalidOperationException("stop boom");
+
+    private static void ThreadError(Action _) => new Thread(() => throw new InvalidOperationException("thread boom")).Start();
 
     private static void Post(Action action) => Application.Current.Dispatcher.BeginInvoke(action);
 

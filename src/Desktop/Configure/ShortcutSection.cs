@@ -3,7 +3,7 @@ using System.Windows.Controls;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
-/// <summary>The Shortcuts section: its heading, how to change a shortcut, and a row for each shortcut.</summary>
+/// <summary>The Shortcuts section's content: how to change a shortcut, and a row for each shortcut.</summary>
 internal sealed class ShortcutSection : StackPanel
 {
     private readonly ShortcutRow[] _rows;
@@ -22,9 +22,8 @@ internal sealed class ShortcutSection : StackPanel
             _rows[row].AddTo(grid, row);
         }
 
-        Children.Add(ThemedText.Heading("Shortcuts", new Thickness(0, 0, 0, 4)));
-        Children.Add(ThemedText.Secondary(
-            "Click a box, then press the new shortcut. Esc keeps the current one.", new Thickness(0, 0, 0, 16)));
+        Children.Add(ThemedText.Help(
+            "Click a box, then press the new shortcut. Esc keeps the current one.", new Thickness(0, 0, 0, 8)));
         Children.Add(grid);
 
         _focus = new ShortcutFocus([addNewTask, manageTasks], _rows.Select(row => row.Field), RefreshRows);

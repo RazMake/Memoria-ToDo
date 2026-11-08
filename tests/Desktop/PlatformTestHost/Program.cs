@@ -11,12 +11,12 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        if (args.Length != 1 || !Scenarios.All.TryGetValue(args[0], out var whatStartDoes))
+        if (args.Length != 1 || !Scenarios.All.TryGetValue(args[0], out var scenario))
         {
             Console.Error.WriteLine($"Usage: PlatformTestHost <{string.Join('|', Scenarios.All.Keys)}>");
             return 2;
         }
 
-        return AppRunner.Run(() => new ScenarioLifetime(whatStartDoes));
+        return AppRunner.Run(() => new ScenarioLifetime(scenario.Start, scenario.Stop));
     }
 }

@@ -48,4 +48,7 @@ public sealed class SingleWindow
 
         WindowPlacement.ShowOnPointerScreen(_window);
     }
+
+    /// <summary>Whether a window this object made is showing now.</summary>
+    public bool IsOpen => _window?.IsVisible == true;
 }

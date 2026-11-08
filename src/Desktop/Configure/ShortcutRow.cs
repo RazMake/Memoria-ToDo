@@ -30,7 +30,7 @@ internal sealed class ShortcutRow
     public void AddTo(Grid grid, int row)
     {
         var name = new TextBlock { Text = _setting.Label, Margin = new Thickness(0, 6, 12, 0) };
-        var fieldAndMessage = new StackPanel { Margin = new Thickness(0, 0, 0, 8), Children = { Field, _message } };
+        var fieldAndMessage = new StackPanel { Margin = new Thickness(0, 0, 0, 5), Children = { Field, _message } };
         Grid.SetRow(name, row);
         Grid.SetRow(fieldAndMessage, row);
         Grid.SetColumn(fieldAndMessage, 1);
@@ -42,7 +42,7 @@ internal sealed class ShortcutRow
     public void Refresh()
     {
         Field.Show(_setting.Active);
-        _message.Text = _setting.Message ?? "";
+        ThemedText.ShowMessage(_message, _setting.Message);
     }
 
     private void Changed(Action change)

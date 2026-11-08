@@ -16,7 +16,14 @@ Memoria.ToDo.Desktop.Configure.Shortcut.Modifiers.get -> System.Windows.Input.Mo
 override Memoria.ToDo.Desktop.Configure.Shortcut.Equals(object? obj) -> bool
 override Memoria.ToDo.Desktop.Configure.Shortcut.GetHashCode() -> int
 override Memoria.ToDo.Desktop.Configure.Shortcut.ToString() -> string!
-static Memoria.ToDo.Desktop.Configure.ConfigureWindow.Create(Memoria.ToDo.Desktop.Configure.IStartWithWindows! startWithWindows) -> Memoria.ToDo.Desktop.Configure.IConfigureWindow!
+static Memoria.ToDo.Desktop.Configure.ConfigureWindow.Create(Memoria.ToDo.Desktop.Configure.IStartWithWindows! startWithWindows, Memoria.ToDo.Desktop.Configure.IRepositoryFolder! repositoryFolder) -> Memoria.ToDo.Desktop.Configure.IConfigureWindow!
 static Memoria.ToDo.Desktop.Configure.Shortcut.TryCreate(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key, out Memoria.ToDo.Desktop.Configure.Shortcut? shortcut) -> bool
 static Memoria.ToDo.Desktop.Configure.Shortcut.operator !=(Memoria.ToDo.Desktop.Configure.Shortcut? left, Memoria.ToDo.Desktop.Configure.Shortcut? right) -> bool
 static Memoria.ToDo.Desktop.Configure.Shortcut.operator ==(Memoria.ToDo.Desktop.Configure.Shortcut? left, Memoria.ToDo.Desktop.Configure.Shortcut? right) -> bool
+Memoria.ToDo.Desktop.Configure.IConfigureWindow.IsOpen.get -> bool
+Memoria.ToDo.Desktop.Configure.IRepositoryFolder
+Memoria.ToDo.Desktop.Configure.IRepositoryFolder.CloneAsync(string! url, string! folder, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Desktop.Configure.IRepositoryFolder.Current() -> string?
+Memoria.ToDo.Desktop.Configure.IRepositoryFolder.IdentityAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+Memoria.ToDo.Desktop.Configure.IRepositoryFolder.RemoteAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+Memoria.ToDo.Desktop.Configure.IRepositoryFolder.UseExisting(string! folder) -> void

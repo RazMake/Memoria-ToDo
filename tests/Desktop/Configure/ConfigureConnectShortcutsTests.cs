@@ -8,7 +8,7 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 [Unit]
 public class ConfigureConnectShortcutsTests
 {
-    private static IConfigureWindow NewConfigure() => ConfigureWindow.Create(new FakeStartWithWindows());
+    private static IConfigureWindow NewConfigure() => ConfigureWindow.Create(new FakeStartWithWindows(), new FakeRepositoryFolder());
 
     [Fact]
     public void Registers_Win_Alt_N_on_the_Add_new_task_action_once()
@@ -21,7 +21,7 @@ public class ConfigureConnectShortcutsTests
     }
 
     [Fact]
-    public void Registers_Win_Alt_Shift_T_on_the_Manage_tasks_action_once()
+    public void Registers_Win_Alt_V_on_the_Manage_tasks_action_once()
     {
         var manageTasks = new FakeShortcutAction();
 

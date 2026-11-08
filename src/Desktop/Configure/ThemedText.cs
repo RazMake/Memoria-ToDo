@@ -13,23 +13,27 @@ internal static class ThemedText
     public static TextBlock Heading(string text, Thickness margin) =>
         Make(text, margin, style: "SubtitleTextBlockStyle", brush: null);
 
-    /// <summary>A line of text in the theme's secondary color.</summary>
-    public static TextBlock Secondary(string text, Thickness margin) =>
-        Make(text, margin, style: null, brush: "TextFillColorSecondaryBrush");
+    /// <summary>Help text: small, in the theme's secondary color, and muted further so it stays behind the controls.</summary>
+    public static TextBlock Help(string text, Thickness margin)
+    {
+        var block = Make(text, margin, style: "CaptionTextBlockStyle", brush: "TextFillColorSecondaryBrush");
+        block.Opacity = 0.7;
+        return block;
+    }
 
-    /// <summary>A small line of text in the theme's secondary color.</summary>
-    public static TextBlock Footnote(string text, Thickness margin) =>
-        Make(text, margin, style: "CaptionTextBlockStyle", brush: "TextFillColorSecondaryBrush");
-
-    /// <summary>
-    /// An empty message in the theme's error color. It keeps room for two lines, so the window keeps its size when a
-    /// message comes and goes.
-    /// </summary>
+    /// <summary>An empty, hidden message in the theme's error color. <see cref="ShowMessage"/> sets it.</summary>
     public static TextBlock Message()
     {
         var message = Make("", new Thickness(0, 4, 0, 0), style: "CaptionTextBlockStyle", brush: "SystemFillColorCriticalBrush");
-        message.MinHeight = 32;
+        message.Visibility = Visibility.Collapsed;
         return message;
+    }
+
+    /// <summary>Shows the text in a <see cref="Message"/>, or hides the message when the text is empty.</summary>
+    public static void ShowMessage(TextBlock message, string? text)
+    {
+        message.Text = text ?? "";
+        message.Visibility = message.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private static TextBlock Make(string text, Thickness margin, string? style, string? brush)

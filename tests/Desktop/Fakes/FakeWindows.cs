@@ -13,6 +13,9 @@ public sealed class FakeAddWindow(List<string>? shownLog = null) : IAddWindow
     /// <summary>How many times Show was called.</summary>
     public int ShowCount { get; private set; }
 
+    /// <summary>What IsOpen answers; false when not set.</summary>
+    public bool IsOpen { get; set; }
+
     /// <inheritdoc />
     public void Show()
     {
@@ -26,6 +29,9 @@ public sealed class FakeViewTasksWindow(List<string>? shownLog = null) : IViewTa
 {
     /// <summary>How many times Show was called.</summary>
     public int ShowCount { get; private set; }
+
+    /// <summary>What IsOpen answers; false when not set.</summary>
+    public bool IsOpen { get; set; }
 
     /// <inheritdoc />
     public void Show()
@@ -48,6 +54,9 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
 
     /// <summary>How many times Show was called.</summary>
     public int ShowCount { get; private set; }
+
+    /// <summary>What IsOpen answers; false when not set.</summary>
+    public bool IsOpen { get; set; }
 
     /// <summary>How many times <see cref="ConnectShortcuts"/> was called.</summary>
     public int ConnectCount { get; private set; }

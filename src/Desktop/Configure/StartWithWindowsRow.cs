@@ -20,6 +20,8 @@ internal sealed class StartWithWindowsRow : StackPanel
         _box.Unchecked += (_, _) => Switch(false);
 
         Children.Add(_box);
+        Children.Add(ThemedText.Help(
+            "Starts the app in the notification area when you sign in to Windows.", new Thickness(28, 2, 0, 0)));
         Children.Add(_problem);
     }
 
@@ -33,11 +35,11 @@ internal sealed class StartWithWindowsRow : StackPanel
         try
         {
             _startWithWindows.Set(on);
-            _problem.Text = "";
+            ThemedText.ShowMessage(_problem, null);
         }
         catch (Exception error)
         {
-            _problem.Text = error.Message;
+            ThemedText.ShowMessage(_problem, error.Message);
             _reverting = true;
             _box.IsChecked = !on;
             _reverting = false;

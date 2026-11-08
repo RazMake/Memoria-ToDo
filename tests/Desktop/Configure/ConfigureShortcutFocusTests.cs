@@ -130,7 +130,7 @@ public class ConfigureShortcutFocusTests
         Assert.Equal(
             "Windows or another app already uses Win+Alt+N, so Add new task has no shortcut. Click the box and press a different one.",
             screen.AddMessage);
-        Assert.Equal("Win+Alt+Shift+T", screen.ManageField.Text);
+        Assert.Equal("Win+Alt+V", screen.ManageField.Text);
         Assert.Equal("", screen.ManageMessage);
     }
 
@@ -158,7 +158,7 @@ public class ConfigureShortcutFocusTests
         ConfigureScreen.Focus(screen.AddField);
 
         Assert.Equal("Windows refused to release it.", screen.ManageMessage);
-        Assert.Equal("Win+Alt+Shift+T", screen.ManageField.Text);
+        Assert.Equal("Win+Alt+V", screen.ManageField.Text);
         Assert.Equal(ShortcutCall.Unregister(), Last(screen.AddNewTask));
         Assert.Equal("", screen.AddMessage);
     }

@@ -19,7 +19,7 @@ The table lists every setting in Configure, the module that owns it, where it's 
 
 **Every device uses the same shortcuts.** Until the [Sync step](README.md#delivery-backlog), nothing saves them: the app starts with the defaults each time, and a new shortcut lasts until the app exits. From the Sync step, Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-and-one-settings-file) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
 
-**Until the Sync step, the window holds the shortcuts, Start with Windows, and one line.** Each shortcut and the Start with Windows check box show their problems under them, such as a taken shortcut or a failed write. One line names the features not built yet, sync and the deletion delay, as the [delivery backlog](README.md#delivery-backlog) requires. Configure doesn't say that the shortcuts aren't saved; this is the one exception to that backlog rule. A user who changes a shortcut finds its default back after the app restarts, with no warning, until the Sync step.
+**Until the Sync step, the window holds the shortcuts, Start with Windows, and the sync repository.** Each shortcut, the Start with Windows check box, and the repository section show their problems under them, such as a taken shortcut or a failed write. The window has no line naming features not built yet; this is an exception to that backlog rule, by the user's choice. A user who changes a shortcut finds its default back after the app restarts, with no warning, until the Sync step.
 
 Configure reads and changes the deletion delay through Tasks, so a change on one device reaches every device; [Tasks](../tasks.md#resolved-tasks-are-deleted-after-a-delay-every-device-shares) sets its allowed range. Configure sets up sync through Sync, in the steps that [Sync through git](../sync.md#configure-sets-up-a-device-by-cloning-the-repository) lists.
 
@@ -31,11 +31,12 @@ Proposed: the deletion delay shows in days. This is a decision to confirm.
 
 The window shows each shortcut with the name of what it does, Add new task and Manage tasks, and it's wide enough to read at a glance. Proposed, each a decision to confirm:
 
-- **Two sections, each under a heading: Shortcuts, then Startup.** The line about features not built yet comes last.
-- **Shortcuts starts with a line saying how to change one**: click its field and press the new keys, or press Esc to keep the current one. Then each shortcut has a row, Add new task first: its name on the left and its field on the right, with the row's message under the field. The names share one column, so both fields line up.
-- **Startup holds the Start with Windows check box**, with its message under it.
-- **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: headings in the theme's heading style, messages in its error color, and the how-to line and the last line in its secondary text color.
-- **The window keeps its size as messages come and go.** It has a fixed width, wide enough that each message fits on two lines, and each message keeps room for two lines even while empty. The user can't resize it, and it grows taller only for an error longer than two lines.
+- **Three collapsible sections, in order: Shortcuts, Startup, and Sync settings.** All start collapsed, and expanding one collapses the others, so one is open at a time.
+- **Shortcuts starts with a line saying how to change one**: click its field and press the new keys, or press Esc to keep the current one. Then each shortcut has a row, Add new task first: its name on the left and its field on the right, with the row's message under the field. The names share one column, so both fields line up, 5 pixels apart while neither has a message.
+- **Startup holds the Start with Windows check box**, a line of help under it, and its message.
+- **Sync settings shows the current repository and its local path**, and a Configure button offers two ways to change them: clone a repository, or use a clone the user already has. See [below](#the-sync-settings-section-sets-the-devices-clone).
+- **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: headings in the theme's heading style, messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
+- **The window keeps its width.** The user can't resize it; its height follows the open section and its messages, which take no room while empty.
 - **The window opens with no field focused**, so the shortcuts keep working until the user clicks a field, as [below](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) explains.
 
 ### A new shortcut is checked at once
@@ -105,6 +106,18 @@ The entry is named with the [app's name](../technology-stack.md#a-github-actions
 
 Not confirmed by a run: Windows' [Startup apps page](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows) seems to keep its own on and off list beside the key, so Configure could show on while Windows keeps the app off.
 
+### The Sync settings section sets the device's clone
+
+The section keeps the folder of this device's git clone, through a port Configure publishes and the composition root implements.
+
+- **The section shows three lines, each starting with its name in bold**: Repository, the clone's `origin` address; Local Path, the clone's folder; and Identity, the name and e-mail the clone's commits are made as, which git reads from the clone's settings, then the user's. Each shows "None" when there's none. A failure to read them shows as the section's message.
+- **A Configure button opens a menu with two choices**: Clone a repo, and Use existing repo clone. Each shows only its own controls under the lines, replacing the other's. Clicking Clone or Use this clone hides the controls at once; on success the lines update, and on failure the controls show again with the error. Proposed; a decision to confirm.
+- **Clone a repo** runs the installed `git clone` with the user's own git credentials, into an empty or new folder. A failure shows git's error, and the current folder stays.
+- **Use existing repo clone** takes a folder that has a `.git` entry. Any other folder is refused with a message.
+- **The folder's path is kept on this device**, in `repository-folder.txt` under `%LocalAppData%\Memoria-ToDo`, apart from Velopack's install folder.
+
+This is an interim step before [Sync through git](../sync.md#configure-sets-up-a-device-by-cloning-the-repository): it uses the installed git, not the app's own SSH key, and doesn't sync yet. Decisions to confirm: the installed git, the kept file, and the `.git` check.
+
 ### Configure shows how sync is doing
 
 Configure shows the last successful sync time, the files sync skipped, and, while sync fails, the error's details; the tray shows the same in short, as [Shell](shell.md#sync-stays-quiet-unless-something-is-wrong) says. Configure reads them from Sync. Its Sync now button starts a sync at once, as [Sync through git](../sync.md#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) decides.
@@ -113,8 +126,9 @@ Configure shows the last successful sync time, the files sync skipped, and, whil
 
 The composition root and Shell use these parts:
 
-- **Create Configure**: the composition root calls it when the app starts, with the implementation of the Start with Windows port below, and gives the result to Shell. The [Sync step](README.md#delivery-backlog) adds the parts Configure needs from Tasks and Sync. The window opens only on Show Configure.
-- **Show Configure**: opens the window, or brings it forward. Proposed: it uses the desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), which says where the window opens and what happens after the user closes it. This is a decision to confirm.
+- **Create Configure**: the composition root calls it when the app starts, with the implementations of the Start with Windows port and the repository folder port below, and gives the result to Shell. The [Sync step](README.md#delivery-backlog) adds the parts Configure needs from Tasks and Sync. The window opens only on Show Configure.
+- **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) meanwhile.
+- **A repository folder**: a port with the current clone's folder, the clone's `origin` address and commit identity read from git, Clone from a URL into a folder, and Use an existing clone. Each fails with a message the user can read, keeping the current folder. Proposed: it uses the desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), which says where the window opens and what happens after the user closes it. This is a decision to confirm.
 - **Connect the shortcuts**: Shell calls it once, when it starts, with one [shortcut action](#public-interface) for Add new task and one for Manage tasks. Configure registers each shortcut's default at once through its action, then each valid pick on that row, and releases and registers both as [a field's focus](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) comes and goes, always on the UI thread. It returns whether both shortcuts registered, so Shell can show Configure when one didn't. When an action fails, Configure treats it as a setting that [can't be applied](#failure-modes), and that shortcut counts as not registered.
 - **A shortcut action**: an interface Configure publishes and Shell implements, one for each shortcut, as [Shell](shell.md#public-interface) says. It has two parts:
   - Register takes a shortcut and registers it in place of the action's previous one. It returns false, keeping the previous one, when Windows or another app holds the shortcut, and true at once when the shortcut is already the action's.

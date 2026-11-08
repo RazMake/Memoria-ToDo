@@ -7,6 +7,52 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 [Integration]
 public class AppRunnerErrorIntegrationTests
 {
+    [Theory]
+    [InlineData("ui-error")]
+    [InlineData("thread-error")]
+    [InlineData("start-throws")]
+    public void Run_keeps_the_lifetimes_message_window_usable_during_cleanup_after_an_error(string scenario)
+    {
+        using var host = HostProcess.Start(scenario);
+
+        host.CloseMessageBox();
+        var exitCode = host.WaitForExit();
+
+        Assert.NotEqual(0, exitCode);
+        Assert.Equal(1, host.Count("stopped"));
+        Assert.Contains("stop-resource available=True", host.Lines);
+    }
+
+    [Fact]
+    public void Run_reports_a_failed_stop_once_and_returns_non_zero()
+    {
+        using var host = HostProcess.Start("stop-throws");
+
+        var text = host.CloseMessageBox();
+        var exitCode = host.WaitForExit();
+
+        Assert.Contains("stop boom", text);
+        Assert.NotEqual(0, exitCode);
+        Assert.Equal(1, host.Count("stopped"));
+        Assert.Contains("stop-resource available=True", host.Lines);
+    }
+
+    [Fact]
+    public void Run_reports_a_failed_stop_after_an_error_on_another_thread()
+    {
+        using var host = HostProcess.Start("thread-error-stop-throws");
+
+        var originalError = host.CloseMessageBox();
+        var stopError = host.CloseMessageBox();
+        var exitCode = host.WaitForExit();
+
+        Assert.Contains("thread boom", originalError);
+        Assert.Contains("stop boom", stopError);
+        Assert.NotEqual(0, exitCode);
+        Assert.Equal(1, host.Count("stopped"));
+        Assert.Contains("stop-resource available=True", host.Lines);
+    }
+
     [Fact]
     public void Run_shows_an_unhandled_error_on_the_UI_thread_in_a_message_box()
     {
