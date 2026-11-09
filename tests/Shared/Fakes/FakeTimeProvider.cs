@@ -1,4 +1,4 @@
-namespace Memoria.ToDo.Desktop.Fakes;
+namespace Memoria.ToDo.Shared.Fakes;
 
 /// <summary>
 /// The shared fake clock. Time moves only when a test calls <see cref="Advance"/>, which fires every timer that

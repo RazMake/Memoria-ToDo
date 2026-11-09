@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Desktop\Shell\Memoria.ToDo.Desktop.Shell.csproj" />
     <ProjectReference Include="..\Fakes\Memoria.ToDo.Desktop.Fakes.csproj" />
+    <ProjectReference Include="..\..\Shared\Fakes\Memoria.ToDo.Shared.Fakes.csproj" />
   </ItemGroup>
 
 </Project>

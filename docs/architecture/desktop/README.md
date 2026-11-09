@@ -21,7 +21,7 @@ Proposed: each window module names its own window, [Configure](configure.md#the-
 
 The desktop platform, `Memoria.ToDo.Desktop.Platform`, holds the app's startup, as [Modules](../modules.md#the-platform-serves-every-module-and-knows-none) decides. The composition root, `Memoria.ToDo.Desktop.App`, builds the app from the modules and hands it to the platform to run.
 
-The platform's public interface has two parts. Three more are proposed further down: one that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), one that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and the app's name. The two parts are:
+The platform's public interface has six parts. The three below are decided. The other three are proposed further down: a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name. The decided parts are:
 
 - **The app's lifetime**: an interface with two steps, start and stop. Start receives a way to end the app. [Shell](shell.md#public-interface) implements it, so the platform names no module. Proposed: the way to end the app works from any thread. The platform passes the call to the UI thread and returns without waiting, so a module that ends the app from a background task needs no thread rule of its own. This is a decision to confirm.
 - **Run the app**: takes a function that builds the lifetime, and returns the process's exit code. In order, it:
@@ -30,6 +30,39 @@ The platform's public interface has two parts. Three more are proposed further d
   3. sets the WPF application's theme to follow Windows' light or dark setting, before any window exists, so every window and the tray menu follow it ([ThemeMode](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.thememode));
   4. builds the lifetime and starts it on the UI thread, so the modules' windows are made after the WPF application exists;
   5. when the lifetime ends the app, or Windows ends the session ([SessionEnding](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.sessionending)), stops the lifetime once, then lets WPF shut down, and returns.
+- **The theme, the sixth part, says whether windows show the light or the dark theme**, and reports when Windows switches it. The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview) needs it to pick each palette color's value, and the Task list will too. The platform implements it from the same Windows setting its theme follows. The composition root passes it to the modules, so their UX tests use a fake:
+
+  ```csharp
+  namespace Memoria.ToDo.Desktop.Platform;
+
+  /// Whether the app's windows show the light or the dark theme, which follows Windows' setting.
+  public interface ITheme
+  {
+      /// True while windows show the dark theme.
+      bool IsDark { get; }
+
+      /// Raised on the UI thread after Windows switches between light and dark.
+      event System.EventHandler? Changed;
+  }
+  ```
+
+  Proposed: the platform's implementation is a class the composition root makes on the UI thread, in the function it passes to Run the app, after the WPF application exists. This is a decision to confirm.
+
+  ```csharp
+  namespace Memoria.ToDo.Desktop.Platform;
+
+  /// The theme Windows' light or dark setting sets for the app's windows.
+  public sealed class WindowsTheme : ITheme
+  {
+      /// Reads the current setting. Throws InvalidOperationException off a UI thread with a WPF application.
+      public WindowsTheme();
+
+      public bool IsDark { get; }
+
+      /// Raised on the thread that made this object.
+      public event System.EventHandler? Changed;
+  }
+  ```
 
 **Cleanup runs while the lifetime's Windows resources still work.** The platform stops the lifetime on the UI thread before WPF closes its windows or ends its message loop ([integration tests](../../../tests/Desktop/Platform/AppRunnerIntegrationTests.cs)). This also applies after startup or unhandled errors ([error tests](../../../tests/Desktop/Platform/AppRunnerErrorIntegrationTests.cs)). If cleanup itself fails, the platform shows that error and returns a non-zero exit code; it never retries Stop.
 
@@ -70,7 +103,7 @@ Proposed, each a decision to confirm:
 
 Add, View Tasks, and Configure open the same way, so the rule has one home: the platform, since [code shared by two modules moves to the platform](../modules.md#the-platform-serves-every-module-and-knows-none). Proposed, each a decision to confirm:
 
-- **A third part of the platform's public interface, Show on the pointer's screen, opens a module's window.** The [Task editor](task-editor.md#public-interface) calls it with its Add window. The [Task list](task-list.md#public-interface) and [Configure](configure.md#public-interface) reach it through the [fourth part](#a-closed-window-is-made-again-on-the-next-show). These two are the only platform parts the window modules use:
+- **A third part of the platform's public interface, Show on the pointer's screen, opens a module's window.** The [Task editor](task-editor.md#public-interface) calls it with its Add window. The [Task list](task-list.md#public-interface) and [Configure](configure.md#public-interface) reach it through the [fourth part](#a-closed-window-is-made-again-on-the-next-show). These two and the [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it) are the only platform parts the window modules use:
 
   ```csharp
   namespace Memoria.ToDo.Desktop.Platform;
@@ -144,7 +177,7 @@ The desktop design relies on rules that belong to the shared Tasks and Sync modu
 
 ## Delivery backlog
 
-The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1, 2, and 6 are scheduled; you choose each next row. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
+The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1, 2, and 6 are built, and step 3 is next; you choose each next row. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
 
 Until its row is built, a feature is missing, and the app says so:
 
@@ -155,14 +188,18 @@ Proposed, each a decision to confirm:
 
 - **Until its own step, each window holds only a one-line notice that its feature is coming soon**, so Add has no fields and no Save. Each window sizes to fit its notice, except Add, which already has [its own size](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title).
 - **Until sync status is built, the tray icon's tooltip shows the app's name.**
+- **Once Add saves tasks, and until the Sync step, Add says in one line that saved tasks don't sync yet.**
+- **Until the Sync step, a task file Tasks skips shows nowhere.** The sync status that names it comes with that step, as [Tasks](../tasks.md#failure-modes) says.
+- **Until the Sync step, a file changed outside the app, such as by a `git pull`, shows only after Tasks next reads the repository folder**, which it does when the app starts and when Configure changes the folder, as the Task editor's [Save](task-editor.md#save-writes-the-task-into-this-devices-clone) says.
+- **The Task editor publishes its editor and tag chips in the Viewing tasks step**, where the Task list first uses them.
 
 The table lists each step, what it builds, and its status:
 
 | # | Step | Builds | Status |
 | --- | --- | --- | --- |
-| 1 | Desktop shell: the tray app and its windows, with no task saved | The [startup](#the-platform-runs-the-app-and-the-composition-root-builds-it); Shell's [tray icon and menu](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), without the shortcuts or the redirect to Configure; the [hidden Add window](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title), without its fields; and the create and Show parts of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface) | Next |
+| 1 | Desktop shell: the tray app and its windows, with no task saved | The [startup](#the-platform-runs-the-app-and-the-composition-root-builds-it); Shell's [tray icon and menu](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), without the shortcuts or the redirect to Configure; the [hidden Add window](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title), without its fields; and the create and Show parts of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface) | Implemented |
 | 2 | Two shortcuts, start with Windows, one instance, and theme | Shell's [two shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), with Configure opening when one can't register, and its [one instance and what each start shows](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-view-tasks); the platform's [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it); Configure's [shortcut and Start with Windows settings](configure.md#each-setting-has-one-owner), with the shortcuts not saved yet, in [labeled sections](configure.md#the-window-shows-its-settings-in-labeled-sections), with its [shortcut check](configure.md#a-new-shortcut-is-checked-at-once), the shortcuts [released while a field has focus](configure.md#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released), a [message for every shortcut it can't use](configure.md#configure-explains-every-shortcut-it-cant-use), and the [`Run` key](configure.md#start-with-windows-is-the-run-key-itself) that installing writes and uninstalling removes; and the [Add window's size](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) | Implemented |
-| 3 | Adding tasks | The rest of the [Task editor](task-editor.md#behavior), on [Tasks](../tasks.md), [Editing](../editing.md), and [Rendering](../rendering.md) | Not scheduled |
+| 3 | Adding tasks | The rest of the [Task editor](task-editor.md#behavior), on [Tasks](../tasks.md), [Editing](../editing.md), [Rendering](../rendering.md), and the [shared platform](../platform.md); the platform's [theme part](#the-platform-runs-the-app-and-the-composition-root-builds-it), which tells modules whether windows are light or dark; and Shell keeping the draft when it [stops](shell.md#public-interface) | Next |
 | 4 | Viewing tasks | The [Task list](task-list.md#behavior), except its Sync button | Not scheduled |
 | 5 | Sync | [Sync through git](../sync.md); Shell's [sync status](shell.md#sync-stays-quiet-unless-something-is-wrong) and its redirect to Configure until the device is configured; Configure's [sync](configure.md#configure-shows-how-sync-is-doing), deletion delay, and saving and loading the [shortcuts](configure.md#each-setting-has-one-owner) in `settings.json`; the Task list's [Sync button](task-list.md#view-tasks-syncs-when-it-opens-and-on-its-sync-button). It needs the answer to Configure's [open question](configure.md#which-module-owns-the-shortcuts-in-settingsjson). | Not scheduled |
-| 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Next |
+| 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Implemented |

@@ -55,6 +55,8 @@ Proposed: each sync runs these steps. This is a decision to confirm.
 4. **Merge**, when both sides have new commits. The app computes the merged files with [Tasks' merge rules](tasks.md#two-versions-of-a-task-merge-field-by-field), never git's line-based merge, and commits a merge with two parents.
 5. **Push**. When another device pushed first, the push is rejected, and sync fetches and merges again.
 
+Sync ignores files ending in `.tmp`: it never commits, merges, or deletes them. Only a cut-off write leaves one, as the [shared platform](platform.md#files-are-read-and-written-whole-through-one-interface) says, so it stays on that device until the next write of the same file replaces it.
+
 Also proposed, each a decision to confirm:
 
 - Files outside `tasks/`, `images/`, and `settings.json`, such as a README, are left as the remote has them.

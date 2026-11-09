@@ -1,0 +1,15 @@
+Memoria.ToDo.Shared.Platform.DeviceStore
+Memoria.ToDo.Shared.Platform.DeviceStore.DeviceStore(string! folder) -> void
+Memoria.ToDo.Shared.Platform.DeviceStore.PathOf(string! name) -> string!
+Memoria.ToDo.Shared.Platform.IFileSystem
+Memoria.ToDo.Shared.Platform.IFileSystem.DeleteFile(string! path) -> void
+Memoria.ToDo.Shared.Platform.IFileSystem.DeleteFolder(string! path) -> void
+Memoria.ToDo.Shared.Platform.IFileSystem.FileExists(string! path) -> bool
+Memoria.ToDo.Shared.Platform.IFileSystem.ListFiles(string! folder) -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Platform.IFileSystem.MoveFile(string! sourcePath, string! targetPath) -> void
+Memoria.ToDo.Shared.Platform.IFileSystem.ReadFile(string! path) -> byte[]!
+Memoria.ToDo.Shared.Platform.IFileSystem.WriteFile(string! path, System.ReadOnlySpan<byte> content) -> void
+Memoria.ToDo.Shared.Platform.MarkdownText
+static Memoria.ToDo.Shared.Platform.MarkdownText.Escape(string! text) -> string!
+Memoria.ToDo.Shared.Platform.TypedTextMatch
+static Memoria.ToDo.Shared.Platform.TypedTextMatch.Matches(string! name, string! typed) -> bool

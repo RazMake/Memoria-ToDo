@@ -40,7 +40,7 @@ Proposed, each a decision to confirm:
 
 ### Six colors read well in light and dark themes
 
-Proposed: the palette below. Each color has a value for the light theme and one for the dark theme. Every value has a contrast of at least 4.5:1, the minimum for normal text in the Web Content Accessibility Guidelines ([WCAG 2.2](https://www.w3.org/TR/WCAG22/#contrast-minimum)), against the light theme's backgrounds `#ffffff` and `#f3f3f3` and the dark theme's `#1f1f1f` and `#2b2b2b`. This is a decision to confirm.
+The palette is below. Each color has a value for the light theme and one for the dark theme. Every value has a contrast of at least 4.5:1, the minimum for normal text in the Web Content Accessibility Guidelines ([WCAG 2.2](https://www.w3.org/TR/WCAG22/#contrast-minimum)), against the light theme's backgrounds `#ffffff` and `#f3f3f3` and the dark theme's `#1f1f1f` and `#2b2b2b`.
 
 | Name | Light theme | Dark theme |
 | --- | --- | --- |
@@ -71,7 +71,12 @@ The reason is safety: an address can name any program registered on the device, 
 
 Titles in the task list and the Markdown source in the editor show as native text, not in a web view. For them, Rendering returns styled spans: for each stretch of text, where it starts, how long it is, and its styles, such as bold, italic, code, strikethrough, a link's address, a color name, or a heading level. Each app maps the spans to its own text styles.
 
-Proposed: a title is parsed as inline Markdown only, so `# text` in a title shows as typed, not as a heading. This is a decision to confirm.
+A title is parsed as inline Markdown only, so `# text` in a title shows as typed, not as a heading.
+
+- Each span gives its stretch of the Markdown source, the text it shows, and its styles. The text it shows leaves out Markdown's markers and resolves escapes, such as `\*` to `*`; markers belong to no span. The editor styles the source stretches, and a title shown as native text joins the texts.
+- A title's span texts, joined, are the title as a reader sees it, which a [task reference](tasks.md#a-time-ordered-id-names-each-task-its-file-and-links-to-it) uses as its link text.
+
+Proposed: in the editor, headings and code blocks are styled. Other blocks, such as quotes, info blocks, lists, and tables, show their text with only its inline styles. This is a decision to confirm.
 
 ## Public interface
 

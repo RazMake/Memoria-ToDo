@@ -8,11 +8,13 @@ Editing is the shared module that changes task text when the user formats it, in
 
 ### Commands take text and a selection, and return new text and a selection
 
-Proposed: every command is a pure text operation. It takes the field's text and the selection, and returns the new text and the new selection. This is a decision to confirm.
+Every command is a pure text operation. It takes the field's text and the selection, and returns the new text and the new selection.
 
-- **No command reads a device.** Whatever a command needs from outside, such as the current time, a URL on the clipboard, a saved image's path, or a task's link, the app passes in. That keeps the commands fast and testable, and the same on both apps.
+- **No command reads a device.** Whatever a command needs from outside, such as the current time, a URL on the clipboard, a saved image's Markdown, or a task's link, the app passes in. That keeps the commands fast and testable, and the same on both apps.
 - **Each app maps keys or touch to commands.** The desktop keys are in the [Task editor](desktop/task-editor.md#every-formatting-command-and-snippet-has-a-key), and the phone's toolbar is in the Android [Task editor](android/task-editor.md#a-toolbar-above-the-keyboard-runs-the-common-commands).
 - **Some commands also work in the Title.** The Title is one line of inline Markdown, so commands that insert blocks or headings work only in the Description. The tables below say which work in the Title.
+
+Proposed: commands read `\r\n` or `\n` as one line break, and insert `\n`, since [Tasks](tasks.md#each-task-file-holds-nine-fields) stores `\n`. This is a decision to confirm.
 
 ### Formatting commands wrap the selection
 
@@ -34,12 +36,18 @@ Proposed, each a decision to confirm:
 
 - With no selection, a command inserts both markers with the cursor between them.
 - On text that already has the markers, the command removes them. The same heading level removes the heading, and another level replaces it.
+- Markers count as the text's when they sit just inside or just outside the selection, so selecting `urgent` or `**urgent**` both remove the bold from `**urgent**`.
+- A heading command changes every line the selection touches.
 - Choosing a text's own color again removes the color, and another color replaces it: blue turns `:red[urgent]` into `:blue[urgent]`.
 - The link command and the link snippet are one command. A URL on the clipboard becomes the address; otherwise the cursor waits in the empty address.
+- A URL on the clipboard is the clipboard's text, trimmed, when it's one absolute `http` or `https` address. Anything else counts as no URL.
+- With no selection, the link's cursor waits in its empty text, even when the clipboard gave the address.
 
 ### Lists continue as you type
 
 In the Description, Enter continues a bulleted or numbered list, and Enter on an empty item ends the list. Tab and Shift+Tab indent and outdent list items. Proposed: a continued numbered list counts on from the item above. This is a decision to confirm.
+
+Proposed: Tab moves an item to start under the text of the item above, so Markdown reads it as nested, and Shift+Tab moves it back one level. This is a decision to confirm.
 
 Proposed: a bulleted-list command adds `- ` at the start of each selected line in the Description, or removes it when every selected line has it. The Android toolbar's list button runs it, as the Android [Task editor](android/task-editor.md#a-toolbar-above-the-keyboard-runs-the-common-commands) decides. This is a decision to confirm.
 
@@ -53,15 +61,17 @@ The apps have a built-in set of snippets only. The table lists each snippet, wha
 | Date and time stamp | The local date and time, `yyyy-MM-dd HH:mm` | The current time | Yes |
 | Note, tip, or warning | An info block, such as `> [!NOTE]` | Nothing | No |
 | Link | `[text](address)`, filled from a URL on the clipboard | The clipboard's text | Yes |
-| Image | An image, from the clipboard or a file | The saved image's path, from Tasks | No |
+| Image | An image, from the clipboard or a file | The saved image's Markdown, from [Tasks](tasks.md#images-are-at-most-1-mb-and-live-beside-their-task) | No |
 | Code block | A fenced code block | Nothing | No |
 | Reference to another task | A link that opens the task, with its title as the text | The task's link and title, from Tasks | Yes |
 | Table | A table with 2 columns | Nothing | No |
 | Horizontal line | `---` | Nothing | No |
 
-For the task reference, the app lets the user pick a task by title, and Tasks decides the link's format, as [the desktop app page](desktop/README.md#later-designs-answer-what-these-files-leave-open) lists.
+For the task reference, the app lets the user pick a task by title, and Tasks decides the link's format, as [the desktop app page](desktop/README.md#later-designs-answer-what-these-files-leave-open) lists. Proposed: the snippet puts a backslash before each character in the title that Markdown could read as formatting, as the [shared platform](platform.md#text-rules-two-modules-follow-live-here-once) does, so the link's text shows the title exactly. This is a decision to confirm.
 
 Proposed: a snippet of more than one line starts on a line of its own, with a blank line before it where Markdown needs one. For example, `---` right under a line of text would turn that text into a heading. This is a decision to confirm.
+
+Proposed: each block snippet leaves the cursor where the user types next: on an info block's second line, after `> `; between a code block's fences; and in a table's first header cell. A table has a header row and one empty row, with empty cells. This is a decision to confirm.
 
 ### Typing a slash opens the snippet picker
 
@@ -69,7 +79,7 @@ Each snippet has a key, and a picker offers them all. Typing "/" at the start of
 
 Editing decides which snippets match the typed text; each app draws the list. Proposed, each a decision to confirm:
 
-- A snippet matches when any word of its name starts with the typed text, ignoring case.
+- A snippet matches when its name, from the start of any of its words, starts with the typed text, ignoring case. The typed text is everything between the "/" and the cursor, spaces included, so "date s" and "stamp" both match "Date stamp". The [shared platform](platform.md#text-rules-two-modules-follow-live-here-once) holds this rule's code, since Tasks' tag suggestions match the same way.
 - When nothing matches, the list closes and the typed text stays.
 
 ## Public interface

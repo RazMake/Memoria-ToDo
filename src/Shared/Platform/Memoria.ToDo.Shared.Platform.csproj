@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- The tests of the Platform's internal components. -->
+    <InternalsVisibleTo Include="Memoria.ToDo.Shared.Platform.Tests" />
+  </ItemGroup>
+
+</Project>

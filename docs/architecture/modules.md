@@ -19,7 +19,7 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 
 ### The platform serves every module and knows none
 
-- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the file system and clock interfaces, and each app's platform holds its startup.
+- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the file system interface, the device store for files that stay on the device, the clock, and the text rules two modules follow, as the [shared platform](platform.md) decides, and each app's platform holds its startup.
 - **Every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files.
 - **Code shared by two modules moves to the platform**, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) requires. Code shared only inside one module stays in that module.
 - **Only the composition root names modules.** Each app has one. It creates each module's parts and connects them, and it chooses the implementation of every interface a module or the platform publishes, as [AGENTS.md](../../AGENTS.md#code-design) says. A module wires its own `internal` code itself, as Sync does with its git code.
@@ -50,7 +50,7 @@ The shared library has four modules:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Tasks | Task files and their format, the in-memory list, every task operation, tags and search, task links, how two versions of a task merge, images and their shrinking, and the settings every device shares, such as the deletion delay | [Tasks](tasks.md) | None |
+| Tasks | Task files and their format, the in-memory list, every task operation, tags and search, task links, how two versions of a task merge, images and their shrinking, the draft each device keeps, and the settings every device shares, such as the deletion delay | [Tasks](tasks.md) | None |
 | Sync | Commit, fetch, merge, and push in the background through its own git code on LibGit2Sharp and SSH.NET, and the device's repository settings, SSH key, and known host keys | [Sync through git](sync.md) | Tasks |
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, and which links may open in the browser | [Rendering](rendering.md) | None |
