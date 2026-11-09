@@ -25,3 +25,14 @@ Memoria.ToDo.Desktop.Platform.WindowsThemeSetting
 Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.WindowsThemeSetting() -> void
 Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.ReadIsDark() -> bool
 Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.MayHaveChanged -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.AnyHeld.get -> bool
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Clear() -> void
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.HeldModifierKeys() -> void
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Modifiers.get -> System.Windows.Input.ModifierKeys
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.OtherKeyReached() -> void
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Pressed(System.Windows.Input.Key modifierKey) -> void
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Released(System.Windows.Input.Key key) -> System.Windows.Input.ModifierKeys
+Memoria.ToDo.Desktop.Platform.ModifierKey
+static Memoria.ToDo.Desktop.Platform.ModifierKey.Describe(System.Windows.Input.ModifierKeys modifiers) -> string!
+static Memoria.ToDo.Desktop.Platform.ModifierKey.Of(System.Windows.Input.Key key) -> System.Windows.Input.ModifierKeys

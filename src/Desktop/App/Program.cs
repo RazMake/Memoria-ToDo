@@ -3,6 +3,8 @@ using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Shell;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
+using Memoria.ToDo.Shared.Rendering;
+using Memoria.ToDo.Shared.Tasks;
 using Velopack;
 using Velopack.Locators;
 using Velopack.Logging;
@@ -26,18 +28,32 @@ internal static class Program
             .OnBeforeUninstallFastCallback(_ => HookSteps().Uninstall())
             .Run();
 
-        return AppRunner.Run(() => TrayApp.Create(
-            new TrayIcon(),
-            AddWindow.Create(),
-            ViewTasksWindow.Create(),
-            ConfigureWindow.Create(StartWithWindows(), new GitRepositoryFolder(RepositoryFolderSetting())),
-            new VelopackUpdates(RepositoryUrl),
-            new HotKeyShortcut(),
-            // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
-            // every copy must count as the same app.
-            new NamedSignalOneInstance($"{AppName.Value}.OneInstance"),
-            StartArguments.IsStartAtSignIn(args),
-            TimeProvider.System));
+        return AppRunner.Run(() =>
+        {
+            var files = new WindowsFileSystem();
+            var tasks = TaskStore.Create(files, new WpfImageEncoder(), TimeProvider.System, DraftFolder());
+            return TrayApp.Create(
+                new TrayIcon(),
+                AddWindow.Create(
+                    tasks,
+                    Palette.Colors,
+                    new WindowsTheme(new WindowsThemeSetting()),
+                    TimeProvider.System,
+                    new WpfClipboard(),
+                    new WpfImageFileChooser(),
+                    files),
+                ViewTasksWindow.Create(),
+                ConfigureWindow.Create(
+                    StartWithWindows(),
+                    new TasksFollowRepositoryFolder(new GitRepositoryFolder(RepositoryFolderSetting()), tasks)),
+                new VelopackUpdates(RepositoryUrl),
+                new HotKeyShortcut(),
+                // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
+                // every copy must count as the same app.
+                new NamedSignalOneInstance($"{AppName.Value}.OneInstance"),
+                StartArguments.IsStartAtSignIn(args),
+                TimeProvider.System);
+        });
     }
 
     private static RunKeyStartWithWindows StartWithWindows() => new(RunKeyPath, InstalledStarter.Find());
@@ -45,6 +61,10 @@ internal static class Program
     // Under %LocalAppData%, apart from Velopack's install folder, so updating or uninstalling leaves it.
     private static string RepositoryFolderSetting() => System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName.Value, "repository-folder.txt");
+
+    // The draft lives on this device only, apart from Velopack's install folder.
+    private static string DraftFolder() => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName.Value, "draft");
 
     // A hook shows no window, so a failed step goes to Velopack's log file.
     private static StartWithWindowsSteps HookSteps() => new(

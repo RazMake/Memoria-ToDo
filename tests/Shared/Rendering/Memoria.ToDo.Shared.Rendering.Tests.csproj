@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
+  </ItemGroup>
+
+</Project>

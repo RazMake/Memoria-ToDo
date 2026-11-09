@@ -19,13 +19,54 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 
 ### The platform serves every module and knows none
 
-- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the file system interface, and each app's platform holds its startup. The shared library's platform has no project until its first user, Tasks, is built; the file system interface is designed then.
+- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), and each app's platform holds its startup. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
 - **Every module takes the time from .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, which gives the time and timers, and the composition root passes the system's. The shared library has no clock interface of its own.
 - **Every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files.
 - **Code shared by two modules moves to the platform**, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) requires. Code shared only inside one module stays in that module.
 - **Only the composition root names modules.** Each app has one. It creates each module's parts and connects them, and it chooses the implementation of every interface a module or the platform publishes, as [AGENTS.md](../../AGENTS.md#code-design) says. A module wires its own `internal` code itself, as Sync does with its git code.
 - **Each app's own implementations of shared interfaces live beside its composition root**, such as its image shrinking for Tasks, because they name a module's interface.
 - **The git code both apps share lives inside Sync**, the only module that uses git. Sync's project references LibGit2Sharp and SSH.NET, which [How the apps fit together](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport) picks, and keeps its git code `internal`. Because Sync's tests use only its public interface, they can't replace git with a fake: tests of Sync's rules that touch git use real repositories and are integration tests. How two versions of a task merge belongs to Tasks, which doesn't touch git, so those rules keep unit tests.
+
+### The file system interface reads and writes whole files
+
+Modules reach files on the device only through the shared platform's file system interface, so their tests run on a fake with no real I/O. It works on whole files by full path, and names no module and no folder of its own.
+
+- **A write replaces the whole file, or leaves the old one whole.** It writes a temporary file beside the target, then replaces the target with it, so a crash or a full disk never leaves half a task file.
+- **Each call fails with the system's exception**, such as an `IOException`, and never returns a fallback. Only a missing file or folder is quietly fine: reading a missing file, or a file in a missing folder, fails with `FileNotFoundException`, but deleting a missing file or folder, or listing a missing folder, does nothing. A path of the wrong kind, such as listing a file or deleting a folder as a file, fails with an `IOException`, and so does any access failure.
+- **Each app implements it beside its composition root**, as [above](#the-platform-serves-every-module-and-knows-none) says: the desktop app in `src/Desktop/App/`.
+- **One fake, `FakeFileSystem`, keeps files in memory.** It sits in `Memoria.ToDo.Shared.Fakes`, in `tests/Shared/Fakes/`, as the [technology stack](technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test) places fakes.
+- **One contract test keeps the fake honest.** Its checks are written once, as an abstract test class beside the fake. The platform's test project runs them on the fake as unit tests, and the desktop composition root's test project, in `tests/Desktop/App/`, runs them on the Windows implementation as integration tests. So the fake can't drift from the real thing.
+
+```csharp
+namespace Memoria.ToDo.Shared.Platform;
+
+/// Files on this device, by full path. Each app implements it beside its composition root.
+/// Each method fails with the system's exception, such as IOException, and never returns a fallback.
+public interface IFileSystem
+{
+    /// Whether a file exists at path.
+    bool FileExists(string path);
+
+    /// The whole file. Throws FileNotFoundException when there's none.
+    byte[] ReadFile(string path);
+
+    /// Replaces the whole file, or creates it and its folders. A failure leaves the old file whole.
+    void WriteFile(string path, ReadOnlySpan<byte> content);
+
+    /// The full paths of the files directly in folder, in no set order; none when the folder doesn't exist.
+    /// Throws IOException when folder is a file.
+    IReadOnlyList<string> ListFiles(string folder);
+
+    /// Moves a file, creating the target's folders. Throws IOException when the target exists.
+    void MoveFile(string sourcePath, string targetPath);
+
+    /// Deletes a file. Does nothing when there's none; throws IOException when path is a folder.
+    void DeleteFile(string path);
+
+    /// Deletes a folder and everything in it. Does nothing when there's none; throws IOException when path is a file.
+    void DeleteFolder(string path);
+}
+```
 
 ### Modules depend only on what the map allows
 
@@ -51,7 +92,7 @@ The shared library has four modules:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Tasks | Task files and their format, the in-memory list, every task operation, tags and search, task links, how two versions of a task merge, images and their shrinking, and the settings every device shares, such as the deletion delay | [Tasks](tasks.md) | None |
+| Tasks | Task files and their format, the in-memory list, every task operation, tags and search, task links, how two versions of a task merge, images and their shrinking, this device's draft of a new task, and the settings every device shares, such as the deletion delay | [Tasks](tasks.md) | None |
 | Sync | Commit, fetch, merge, and push in the background through its own git code on LibGit2Sharp and SSH.NET, and the device's repository settings, SSH key, and known host keys | [Sync through git](sync.md) | Tasks |
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, and which links may open in the browser | [Rendering](rendering.md) | None |
@@ -110,3 +151,6 @@ The options below were considered and rejected, grouped by the decision they bel
 - Where the file system interface and the time come from:
   - **Tasks publishes the file system interface, and the shared library gets a platform project only when a second module reads files**: that second module would move the interface out of Tasks' public interface.
   - **A clock interface of ours, such as one Tasks publishes beside the file system interface**: it would repeat TimeProvider, and one app would get the time two ways.
+- How the file system interface reads and writes:
+  - **Streams instead of whole files**: the fake gets harder to write, and a caller could leave a file half written.
+  - **The [System.IO.Abstractions](https://github.com/TestableIO/System.IO.Abstractions) package**: a new dependency with a far larger surface than the seven calls Tasks needs.

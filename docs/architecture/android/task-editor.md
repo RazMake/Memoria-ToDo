@@ -57,7 +57,7 @@ Proposed, each a decision to confirm:
 
 ### Back keeps a draft on this phone
 
-Proposed: drafts work as on the [desktop](../desktop/task-editor.md#closing-without-saving-keeps-a-draft-on-this-device). Back, or leaving the app, keeps Add's text as a draft, the next Add opens with it, and a Discard button in the top app bar clears it. The draft is saved in the app's private storage, outside the clone, and never syncs. This is a decision to confirm.
+Proposed: drafts work as on the [desktop](../desktop/task-editor.md#closing-without-saving-keeps-a-draft-on-this-device). Back, or leaving the app, keeps Add's text as a draft, the next Add opens with it, and a Clear button in the top app bar clears it. The draft is saved in the app's private storage, outside the clone, and never syncs. This is a decision to confirm.
 
 ### Edit opens the same screen for a task in View Tasks
 

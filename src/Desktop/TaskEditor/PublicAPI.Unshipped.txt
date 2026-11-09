@@ -1,5 +1,20 @@
 Memoria.ToDo.Desktop.TaskEditor.AddWindow
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.Show() -> void
-static Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create() -> Memoria.ToDo.Desktop.TaskEditor.IAddWindow!
+static Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create(Memoria.ToDo.Shared.Tasks.ITasks! tasks, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files) -> Memoria.ToDo.Desktop.TaskEditor.IAddWindow!
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.IsOpen.get -> bool
+Memoria.ToDo.Desktop.TaskEditor.IClipboard
+Memoria.ToDo.Desktop.TaskEditor.IClipboard.ImagePng() -> byte[]?
+Memoria.ToDo.Desktop.TaskEditor.IClipboard.Text() -> string?
+Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser
+Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser.Choose() -> string?
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.TaskEditorControl(Memoria.ToDo.Shared.Tasks.ITasks! tasks, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files) -> void
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Value.get -> Memoria.ToDo.Shared.Tasks.TaskDraft!
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Value.set -> void
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.SaveRequested -> System.EventHandler?
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.SaveAndClearRequested -> System.EventHandler?
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.CancelRequested -> System.EventHandler?
+Memoria.ToDo.Desktop.TaskEditor.TagChips
+Memoria.ToDo.Desktop.TaskEditor.TagChips.TagChips(Memoria.ToDo.Shared.Tasks.ITasks! tasks) -> void
+Memoria.ToDo.Desktop.TaskEditor.TagChips.TagChosen -> System.EventHandler<string!>?

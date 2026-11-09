@@ -3,10 +3,19 @@
   <PropertyGroup>
     <TargetFramework>net11.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- AvalonEdit references the whole desktop framework, which brings in its WinForms analyzers; WFO2000 is meant for WinForms controls. -->
+    <NoWarn>$(NoWarn);WFO2000</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AvalonEdit" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
+    <ProjectReference Include="..\..\Shared\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
+    <ProjectReference Include="..\..\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
+    <ProjectReference Include="..\..\Shared\Editing\Memoria.ToDo.Shared.Editing.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Shared\Editing\Memoria.ToDo.Shared.Editing.csproj" />
+  </ItemGroup>
+
+</Project>

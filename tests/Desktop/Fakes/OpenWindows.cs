@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -44,6 +46,19 @@ public sealed class OpenWindows : IDisposable
             _ => null,
         }).OfType<string>().Where(text => text.Length > 0),
     ];
+
+    /// <summary>Clicks the button in the window whose text is <paramref name="text"/>, as the automation tools do.</summary>
+    public static void Click(Window window, string text)
+    {
+        Click(Descendants(window).OfType<Button>().Single(b => b.Content as string == text));
+    }
+
+    /// <summary>Clicks the button, as the automation tools do. Returns after the click has been handled, since the tools queue it.</summary>
+    public static void Click(Button button)
+    {
+        ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
+        button.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+    }
 
     /// <summary>Presses and releases Esc on the window, as the keyboard does: the tunneling event, then the bubbling one.</summary>
     public static void PressEscape(Window window)

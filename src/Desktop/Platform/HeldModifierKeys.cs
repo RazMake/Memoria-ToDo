@@ -1,13 +1,13 @@
 using System.Numerics;
 using System.Windows.Input;
 
-namespace Memoria.ToDo.Desktop.Configure;
+namespace Memoria.ToDo.Desktop.Platform;
 
 /// <summary>
 /// Works out from key events which modifier keys are held, and spots a chord of two or more modifier keys that was
 /// released with no other key in between: the sign of a shortcut that Windows or another app took.
 /// </summary>
-internal sealed class HeldModifierKeys
+public sealed class HeldModifierKeys
 {
     private readonly HashSet<Key> _held = [];
     private ModifierKeys _chord;

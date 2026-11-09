@@ -1,0 +1,104 @@
+Memoria.ToDo.Shared.Tasks.IImageEncoder
+Memoria.ToDo.Shared.Tasks.IImageEncoder.Read(byte[]! image) -> Memoria.ToDo.Shared.Tasks.ImageInfo!
+Memoria.ToDo.Shared.Tasks.IImageEncoder.SaveJpeg(byte[]! image, int longestSide, int quality) -> byte[]!
+Memoria.ToDo.Shared.Tasks.IImageEncoder.SavePng(byte[]! image, int longestSide) -> byte[]!
+Memoria.ToDo.Shared.Tasks.ImageFormat
+Memoria.ToDo.Shared.Tasks.ImageFormat.Jpeg = 1 -> Memoria.ToDo.Shared.Tasks.ImageFormat
+Memoria.ToDo.Shared.Tasks.ImageFormat.Other = 2 -> Memoria.ToDo.Shared.Tasks.ImageFormat
+Memoria.ToDo.Shared.Tasks.ImageFormat.Png = 0 -> Memoria.ToDo.Shared.Tasks.ImageFormat
+Memoria.ToDo.Shared.Tasks.ImageInfo
+Memoria.ToDo.Shared.Tasks.ImageInfo.<Clone>$() -> Memoria.ToDo.Shared.Tasks.ImageInfo!
+Memoria.ToDo.Shared.Tasks.ImageInfo.Deconstruct(out Memoria.ToDo.Shared.Tasks.ImageFormat Format, out int Width, out int Height) -> void
+Memoria.ToDo.Shared.Tasks.ImageInfo.Equals(Memoria.ToDo.Shared.Tasks.ImageInfo? other) -> bool
+Memoria.ToDo.Shared.Tasks.ImageInfo.Format.get -> Memoria.ToDo.Shared.Tasks.ImageFormat
+Memoria.ToDo.Shared.Tasks.ImageInfo.Format.init -> void
+Memoria.ToDo.Shared.Tasks.ImageInfo.Height.get -> int
+Memoria.ToDo.Shared.Tasks.ImageInfo.Height.init -> void
+Memoria.ToDo.Shared.Tasks.ImageInfo.ImageInfo(Memoria.ToDo.Shared.Tasks.ImageFormat Format, int Width, int Height) -> void
+Memoria.ToDo.Shared.Tasks.ImageInfo.Width.get -> int
+Memoria.ToDo.Shared.Tasks.ImageInfo.Width.init -> void
+Memoria.ToDo.Shared.Tasks.ImageTooLargeException
+Memoria.ToDo.Shared.Tasks.ImageTooLargeException.ImageTooLargeException() -> void
+Memoria.ToDo.Shared.Tasks.ITasks
+Memoria.ToDo.Shared.Tasks.ITasks.Add(Memoria.ToDo.Shared.Tasks.TaskDraft! draft) -> Memoria.ToDo.Shared.Tasks.TaskItem!
+Memoria.ToDo.Shared.Tasks.ITasks.All.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Tasks.TaskItem!>!
+Memoria.ToDo.Shared.Tasks.ITasks.Changed -> System.EventHandler?
+Memoria.ToDo.Shared.Tasks.ITasks.DiscardDraft() -> void
+Memoria.ToDo.Shared.Tasks.ITasks.KeepDraft(Memoria.ToDo.Shared.Tasks.TaskDraft! draft) -> void
+Memoria.ToDo.Shared.Tasks.ITasks.LinkAddress(string! taskId) -> string!
+Memoria.ToDo.Shared.Tasks.ITasks.LoadDraft() -> Memoria.ToDo.Shared.Tasks.TaskDraft?
+Memoria.ToDo.Shared.Tasks.ITasks.SaveDraftImage(string! taskId, byte[]! image, string! altText) -> string!
+Memoria.ToDo.Shared.Tasks.ITasks.Search(string! text) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Tasks.TaskItem!>!
+Memoria.ToDo.Shared.Tasks.ITasks.StartDraft() -> Memoria.ToDo.Shared.Tasks.TaskDraft!
+Memoria.ToDo.Shared.Tasks.ITasks.SuggestTags(string! typed, System.Collections.Generic.IReadOnlyList<string!>! tags) -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Tasks.ITasks.TagsInUse() -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Tasks.TagUse!>!
+Memoria.ToDo.Shared.Tasks.ITasks.TaskIdIn(string! address) -> string?
+Memoria.ToDo.Shared.Tasks.ITasks.UseRepositoryFolder(string? folder) -> void
+Memoria.ToDo.Shared.Tasks.ITasks.WithTag(System.Collections.Generic.IReadOnlyList<string!>! tags, string! typed) -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Tasks.NoRepositoryFolderException
+Memoria.ToDo.Shared.Tasks.NoRepositoryFolderException.NoRepositoryFolderException() -> void
+Memoria.ToDo.Shared.Tasks.TagUse
+Memoria.ToDo.Shared.Tasks.TagUse.<Clone>$() -> Memoria.ToDo.Shared.Tasks.TagUse!
+Memoria.ToDo.Shared.Tasks.TagUse.Count.get -> int
+Memoria.ToDo.Shared.Tasks.TagUse.Count.init -> void
+Memoria.ToDo.Shared.Tasks.TagUse.Deconstruct(out string! Tag, out int Count) -> void
+Memoria.ToDo.Shared.Tasks.TagUse.Equals(Memoria.ToDo.Shared.Tasks.TagUse? other) -> bool
+Memoria.ToDo.Shared.Tasks.TagUse.Tag.get -> string!
+Memoria.ToDo.Shared.Tasks.TagUse.Tag.init -> void
+Memoria.ToDo.Shared.Tasks.TagUse.TagUse(string! Tag, int Count) -> void
+Memoria.ToDo.Shared.Tasks.TaskDraft
+Memoria.ToDo.Shared.Tasks.TaskDraft.<Clone>$() -> Memoria.ToDo.Shared.Tasks.TaskDraft!
+Memoria.ToDo.Shared.Tasks.TaskDraft.Deconstruct(out string! TaskId, out string! Title, out string! Description, out System.Collections.Generic.IReadOnlyList<string!>! Tags) -> void
+Memoria.ToDo.Shared.Tasks.TaskDraft.Description.get -> string!
+Memoria.ToDo.Shared.Tasks.TaskDraft.Description.init -> void
+Memoria.ToDo.Shared.Tasks.TaskDraft.Equals(Memoria.ToDo.Shared.Tasks.TaskDraft? other) -> bool
+Memoria.ToDo.Shared.Tasks.TaskDraft.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Tasks.TaskDraft.Tags.init -> void
+Memoria.ToDo.Shared.Tasks.TaskDraft.TaskDraft(string! TaskId, string! Title, string! Description, System.Collections.Generic.IReadOnlyList<string!>! Tags) -> void
+Memoria.ToDo.Shared.Tasks.TaskDraft.TaskId.get -> string!
+Memoria.ToDo.Shared.Tasks.TaskDraft.TaskId.init -> void
+Memoria.ToDo.Shared.Tasks.TaskDraft.Title.get -> string!
+Memoria.ToDo.Shared.Tasks.TaskDraft.Title.init -> void
+Memoria.ToDo.Shared.Tasks.TaskItem
+Memoria.ToDo.Shared.Tasks.TaskItem.<Clone>$() -> Memoria.ToDo.Shared.Tasks.TaskItem!
+Memoria.ToDo.Shared.Tasks.TaskItem.Created.get -> System.DateTimeOffset
+Memoria.ToDo.Shared.Tasks.TaskItem.Created.init -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.Deconstruct(out string! Id, out string! Title, out string! Description, out string! Rank, out System.Collections.Generic.IReadOnlyList<string!>! Tags, out System.DateTimeOffset Created, out System.DateTimeOffset Updated, out System.DateTimeOffset? Resolved) -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.Description.get -> string!
+Memoria.ToDo.Shared.Tasks.TaskItem.Description.init -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.Equals(Memoria.ToDo.Shared.Tasks.TaskItem? other) -> bool
+Memoria.ToDo.Shared.Tasks.TaskItem.Id.get -> string!
+Memoria.ToDo.Shared.Tasks.TaskItem.Id.init -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.Rank.get -> string!
+Memoria.ToDo.Shared.Tasks.TaskItem.Rank.init -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.Resolved.get -> System.DateTimeOffset?
+Memoria.ToDo.Shared.Tasks.TaskItem.Resolved.init -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Tasks.TaskItem.Tags.init -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.TaskItem(string! Id, string! Title, string! Description, string! Rank, System.Collections.Generic.IReadOnlyList<string!>! Tags, System.DateTimeOffset Created, System.DateTimeOffset Updated, System.DateTimeOffset? Resolved) -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.Title.get -> string!
+Memoria.ToDo.Shared.Tasks.TaskItem.Title.init -> void
+Memoria.ToDo.Shared.Tasks.TaskItem.Updated.get -> System.DateTimeOffset
+Memoria.ToDo.Shared.Tasks.TaskItem.Updated.init -> void
+Memoria.ToDo.Shared.Tasks.TaskStore
+override Memoria.ToDo.Shared.Tasks.ImageInfo.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Tasks.ImageInfo.GetHashCode() -> int
+override Memoria.ToDo.Shared.Tasks.ImageInfo.ToString() -> string!
+override Memoria.ToDo.Shared.Tasks.TagUse.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Tasks.TagUse.GetHashCode() -> int
+override Memoria.ToDo.Shared.Tasks.TagUse.ToString() -> string!
+override Memoria.ToDo.Shared.Tasks.TaskDraft.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Tasks.TaskDraft.GetHashCode() -> int
+override Memoria.ToDo.Shared.Tasks.TaskDraft.ToString() -> string!
+override Memoria.ToDo.Shared.Tasks.TaskItem.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Tasks.TaskItem.GetHashCode() -> int
+override Memoria.ToDo.Shared.Tasks.TaskItem.ToString() -> string!
+static Memoria.ToDo.Shared.Tasks.ImageInfo.operator !=(Memoria.ToDo.Shared.Tasks.ImageInfo? left, Memoria.ToDo.Shared.Tasks.ImageInfo? right) -> bool
+static Memoria.ToDo.Shared.Tasks.ImageInfo.operator ==(Memoria.ToDo.Shared.Tasks.ImageInfo? left, Memoria.ToDo.Shared.Tasks.ImageInfo? right) -> bool
+static Memoria.ToDo.Shared.Tasks.TagUse.operator !=(Memoria.ToDo.Shared.Tasks.TagUse? left, Memoria.ToDo.Shared.Tasks.TagUse? right) -> bool
+static Memoria.ToDo.Shared.Tasks.TagUse.operator ==(Memoria.ToDo.Shared.Tasks.TagUse? left, Memoria.ToDo.Shared.Tasks.TagUse? right) -> bool
+static Memoria.ToDo.Shared.Tasks.TaskDraft.operator !=(Memoria.ToDo.Shared.Tasks.TaskDraft? left, Memoria.ToDo.Shared.Tasks.TaskDraft? right) -> bool
+static Memoria.ToDo.Shared.Tasks.TaskDraft.operator ==(Memoria.ToDo.Shared.Tasks.TaskDraft? left, Memoria.ToDo.Shared.Tasks.TaskDraft? right) -> bool
+static Memoria.ToDo.Shared.Tasks.TaskItem.operator !=(Memoria.ToDo.Shared.Tasks.TaskItem? left, Memoria.ToDo.Shared.Tasks.TaskItem? right) -> bool
+static Memoria.ToDo.Shared.Tasks.TaskItem.operator ==(Memoria.ToDo.Shared.Tasks.TaskItem? left, Memoria.ToDo.Shared.Tasks.TaskItem? right) -> bool
+static Memoria.ToDo.Shared.Tasks.TaskStore.Create(Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Tasks.IImageEncoder! images, System.TimeProvider! time, string! deviceFolder) -> Memoria.ToDo.Shared.Tasks.ITasks!

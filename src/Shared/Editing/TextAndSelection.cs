@@ -4,11 +4,24 @@ namespace Memoria.ToDo.Shared.Editing;
 public sealed record TextAndSelection
 {
     /// <exception cref="ArgumentOutOfRangeException">The selection is not inside the text.</exception>
-    public TextAndSelection(string text, int selectionStart, int selectionLength) => throw new NotImplementedException();
+    public TextAndSelection(string text, int selectionStart, int selectionLength)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfNegative(selectionStart);
+        ArgumentOutOfRangeException.ThrowIfNegative(selectionLength);
+        if (selectionStart > text.Length || selectionLength > text.Length - selectionStart)
+        {
+            throw new ArgumentOutOfRangeException(nameof(selectionLength), "The selection must end inside the text.");
+        }
 
-    public string Text => throw new NotImplementedException();
+        Text = text;
+        SelectionStart = selectionStart;
+        SelectionLength = selectionLength;
+    }
 
-    public int SelectionStart => throw new NotImplementedException();
+    public string Text { get; }
 
-    public int SelectionLength => throw new NotImplementedException();
+    public int SelectionStart { get; }
+
+    public int SelectionLength { get; }
 }

@@ -231,7 +231,7 @@ public class ConfigureRepositoryTests
 
     private static void Click(ConfigureScreen screen, string text)
     {
-        Invoke(OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == text));
+        OpenWindows.Click(screen.Window, text);
         Settle(screen);
     }
 

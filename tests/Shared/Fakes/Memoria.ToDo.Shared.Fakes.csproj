@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.extensibility.core" />
+    <PackageReference Include="xunit.v3.assert" />
+    <ProjectReference Include="..\..\..\src\Shared\Platform\Memoria.ToDo.Shared.Platform.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
+  </ItemGroup>
+
+</Project>

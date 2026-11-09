@@ -99,15 +99,8 @@ internal sealed class ConfigureScreen : IDisposable
     /// <summary>Presses the keys in order and releases them in reverse order, on the shortcut box.</summary>
     public void Chord(TextBox field, params Key[] keys)
     {
-        foreach (var key in keys)
-        {
-            KeyDown(field, key);
-        }
-
-        foreach (var key in keys.Reverse())
-        {
-            KeyUp(field, key);
-        }
+        Reveal(field);
+        SimulatedKey.Chord(field, keys);
     }
 
     /// <summary>Sends a key-down to the box. Returns whether the box took the key.</summary>
@@ -122,6 +115,7 @@ internal sealed class ConfigureScreen : IDisposable
     public static void Focus(UIElement element)
     {
         Reveal(element);
+        Window.GetWindow(element)?.Activate();
         Keyboard.Focus(element);
         Assert.True(element.IsKeyboardFocused, "The window couldn't give the element the keyboard focus.");
     }

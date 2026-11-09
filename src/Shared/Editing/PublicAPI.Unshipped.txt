@@ -1,0 +1,83 @@
+#nullable enable
+Memoria.ToDo.Shared.Editing.Formatting
+Memoria.ToDo.Shared.Editing.ISnippet
+Memoria.ToDo.Shared.Editing.ISnippet.Insert(Memoria.ToDo.Shared.Editing.TextAndSelection! field, Memoria.ToDo.Shared.Editing.SnippetInput! input) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+Memoria.ToDo.Shared.Editing.ISnippet.Name.get -> string!
+Memoria.ToDo.Shared.Editing.ISnippet.Needs.get -> Memoria.ToDo.Shared.Editing.SnippetNeeds
+Memoria.ToDo.Shared.Editing.ISnippet.WorksInTitle.get -> bool
+Memoria.ToDo.Shared.Editing.Lists
+Memoria.ToDo.Shared.Editing.SnippetInput
+Memoria.ToDo.Shared.Editing.SnippetInput.<Clone>$() -> Memoria.ToDo.Shared.Editing.SnippetInput!
+Memoria.ToDo.Shared.Editing.SnippetInput.ClipboardText.get -> string?
+Memoria.ToDo.Shared.Editing.SnippetInput.ClipboardText.init -> void
+Memoria.ToDo.Shared.Editing.SnippetInput.Equals(Memoria.ToDo.Shared.Editing.SnippetInput? other) -> bool
+Memoria.ToDo.Shared.Editing.SnippetInput.ImageMarkdown.get -> string?
+Memoria.ToDo.Shared.Editing.SnippetInput.ImageMarkdown.init -> void
+Memoria.ToDo.Shared.Editing.SnippetInput.Now.get -> System.DateTimeOffset?
+Memoria.ToDo.Shared.Editing.SnippetInput.Now.init -> void
+Memoria.ToDo.Shared.Editing.SnippetInput.SnippetInput() -> void
+Memoria.ToDo.Shared.Editing.SnippetInput.Task.get -> Memoria.ToDo.Shared.Editing.TaskToReference?
+Memoria.ToDo.Shared.Editing.SnippetInput.Task.init -> void
+Memoria.ToDo.Shared.Editing.SnippetNeeds
+Memoria.ToDo.Shared.Editing.SnippetNeeds.ClipboardText = 2 -> Memoria.ToDo.Shared.Editing.SnippetNeeds
+Memoria.ToDo.Shared.Editing.SnippetNeeds.ImageMarkdown = 3 -> Memoria.ToDo.Shared.Editing.SnippetNeeds
+Memoria.ToDo.Shared.Editing.SnippetNeeds.None = 0 -> Memoria.ToDo.Shared.Editing.SnippetNeeds
+Memoria.ToDo.Shared.Editing.SnippetNeeds.TaskToReference = 4 -> Memoria.ToDo.Shared.Editing.SnippetNeeds
+Memoria.ToDo.Shared.Editing.SnippetNeeds.Time = 1 -> Memoria.ToDo.Shared.Editing.SnippetNeeds
+Memoria.ToDo.Shared.Editing.SnippetPicker
+Memoria.ToDo.Shared.Editing.Snippets
+Memoria.ToDo.Shared.Editing.TaskToReference
+Memoria.ToDo.Shared.Editing.TaskToReference.<Clone>$() -> Memoria.ToDo.Shared.Editing.TaskToReference!
+Memoria.ToDo.Shared.Editing.TaskToReference.Address.get -> string!
+Memoria.ToDo.Shared.Editing.TaskToReference.Address.init -> void
+Memoria.ToDo.Shared.Editing.TaskToReference.Deconstruct(out string! Address, out string! Title) -> void
+Memoria.ToDo.Shared.Editing.TaskToReference.Equals(Memoria.ToDo.Shared.Editing.TaskToReference? other) -> bool
+Memoria.ToDo.Shared.Editing.TaskToReference.TaskToReference(string! Address, string! Title) -> void
+Memoria.ToDo.Shared.Editing.TaskToReference.Title.get -> string!
+Memoria.ToDo.Shared.Editing.TaskToReference.Title.init -> void
+Memoria.ToDo.Shared.Editing.TextAndSelection
+Memoria.ToDo.Shared.Editing.TextAndSelection.<Clone>$() -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+Memoria.ToDo.Shared.Editing.TextAndSelection.Equals(Memoria.ToDo.Shared.Editing.TextAndSelection? other) -> bool
+Memoria.ToDo.Shared.Editing.TextAndSelection.SelectionLength.get -> int
+Memoria.ToDo.Shared.Editing.TextAndSelection.SelectionStart.get -> int
+Memoria.ToDo.Shared.Editing.TextAndSelection.Text.get -> string!
+Memoria.ToDo.Shared.Editing.TextAndSelection.TextAndSelection(string! text, int selectionStart, int selectionLength) -> void
+override Memoria.ToDo.Shared.Editing.SnippetInput.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Editing.SnippetInput.GetHashCode() -> int
+override Memoria.ToDo.Shared.Editing.SnippetInput.ToString() -> string!
+override Memoria.ToDo.Shared.Editing.TaskToReference.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Editing.TaskToReference.GetHashCode() -> int
+override Memoria.ToDo.Shared.Editing.TaskToReference.ToString() -> string!
+override Memoria.ToDo.Shared.Editing.TextAndSelection.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Editing.TextAndSelection.GetHashCode() -> int
+override Memoria.ToDo.Shared.Editing.TextAndSelection.ToString() -> string!
+static Memoria.ToDo.Shared.Editing.Formatting.Bold(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+static Memoria.ToDo.Shared.Editing.Formatting.Color(Memoria.ToDo.Shared.Editing.TextAndSelection! field, string! color, System.Collections.Generic.IReadOnlyCollection<string!>! paletteNames) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+static Memoria.ToDo.Shared.Editing.Formatting.Heading(Memoria.ToDo.Shared.Editing.TextAndSelection! field, int level) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+static Memoria.ToDo.Shared.Editing.Formatting.InlineCode(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+static Memoria.ToDo.Shared.Editing.Formatting.Italic(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+static Memoria.ToDo.Shared.Editing.Formatting.Strikethrough(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+static Memoria.ToDo.Shared.Editing.Lists.Enter(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
+static Memoria.ToDo.Shared.Editing.Lists.Indent(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
+static Memoria.ToDo.Shared.Editing.Lists.Outdent(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
+static Memoria.ToDo.Shared.Editing.SnippetInput.operator !=(Memoria.ToDo.Shared.Editing.SnippetInput? left, Memoria.ToDo.Shared.Editing.SnippetInput? right) -> bool
+static Memoria.ToDo.Shared.Editing.SnippetInput.operator ==(Memoria.ToDo.Shared.Editing.SnippetInput? left, Memoria.ToDo.Shared.Editing.SnippetInput? right) -> bool
+static Memoria.ToDo.Shared.Editing.SnippetPicker.Insert(Memoria.ToDo.Shared.Editing.TextAndSelection! field, int slashIndex, Memoria.ToDo.Shared.Editing.ISnippet! snippet, Memoria.ToDo.Shared.Editing.SnippetInput! input) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+static Memoria.ToDo.Shared.Editing.SnippetPicker.Matching(Memoria.ToDo.Shared.Editing.TextAndSelection! field, int slashIndex) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Editing.ISnippet!>!
+static Memoria.ToDo.Shared.Editing.SnippetPicker.OpensAt(string! text, int slashIndex) -> bool
+static Memoria.ToDo.Shared.Editing.Snippets.All.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Editing.ISnippet!>!
+static Memoria.ToDo.Shared.Editing.Snippets.CodeBlock.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.DateAndTimeStamp.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.DateStamp.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.HorizontalLine.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.Image.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.Link.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.Note.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.Table.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.TaskReference.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.Tip.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.Snippets.Warning.get -> Memoria.ToDo.Shared.Editing.ISnippet!
+static Memoria.ToDo.Shared.Editing.TaskToReference.operator !=(Memoria.ToDo.Shared.Editing.TaskToReference? left, Memoria.ToDo.Shared.Editing.TaskToReference? right) -> bool
+static Memoria.ToDo.Shared.Editing.TaskToReference.operator ==(Memoria.ToDo.Shared.Editing.TaskToReference? left, Memoria.ToDo.Shared.Editing.TaskToReference? right) -> bool
+static Memoria.ToDo.Shared.Editing.TextAndSelection.operator !=(Memoria.ToDo.Shared.Editing.TextAndSelection? left, Memoria.ToDo.Shared.Editing.TextAndSelection? right) -> bool
+static Memoria.ToDo.Shared.Editing.TextAndSelection.operator ==(Memoria.ToDo.Shared.Editing.TextAndSelection? left, Memoria.ToDo.Shared.Editing.TextAndSelection? right) -> bool

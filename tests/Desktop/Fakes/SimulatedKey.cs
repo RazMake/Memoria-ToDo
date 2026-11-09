@@ -29,4 +29,18 @@ public static class SimulatedKey
         element.RaiseEvent(second);
         return second.Handled;
     }
+
+    /// <summary>Presses the keys in order and releases them in reverse order on the element, as a user holding a chord does.</summary>
+    public static void Chord(UIElement element, params Key[] keys)
+    {
+        foreach (var key in keys)
+        {
+            Raise(element, key, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
+        }
+
+        foreach (var key in keys.Reverse())
+        {
+            Raise(element, key, Keyboard.PreviewKeyUpEvent, Keyboard.KeyUpEvent);
+        }
+    }
 }

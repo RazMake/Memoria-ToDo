@@ -11,7 +11,7 @@ Rendering is the shared module that turns a task's Markdown into what the user s
 Rendering uses [Markdig](https://github.com/xoofx/markdig), which [How the apps fit together](overview.md#each-app-edits-in-its-own-text-box-with-shared-commands) approves, with these extensions on:
 
 - **Pipe tables**, for the table snippet.
-- **Alert blocks**, for info blocks such as `> [!NOTE]`. All five kinds render: note, tip, important, warning, and caution ([alert blocks](https://xoofx.github.io/markdig/docs/extensions/alert-blocks/)). Markdig added them in [0.36.0](https://github.com/xoofx/markdig/releases/tag/0.36.0); later releases fixed alert blocks of more than one paragraph and made the kind's name case-insensitive ([releases](https://github.com/xoofx/markdig/releases)). So Rendering needs Markdig **0.37.0 or later**.
+- **Alert blocks**, for info blocks such as `> [!NOTE]`. All five kinds render: note, tip, important, warning, and caution ([alert blocks](https://xoofx.github.io/markdig/docs/extensions/alert-blocks/)). Markdig added them in [0.36.0](https://github.com/xoofx/markdig/releases/tag/0.36.0); later releases fixed alert blocks of more than one paragraph and made the kind's name case-insensitive ([releases](https://github.com/xoofx/markdig/releases)). So Rendering needs Markdig **0.37.0 or later**, and uses [Markdig](https://www.nuget.org/packages/Markdig/1.5.1) 1.5.1, a new dependency of Rendering's project.
 - **Autolinks**, so a typed web address becomes a link.
 - **Strikethrough**, for `~~text~~`.
 
@@ -69,9 +69,13 @@ The reason is safety: an address can name any program registered on the device, 
 
 ### Titles and the editor get styled spans, not HTML
 
-Titles in the task list and the Markdown source in the editor show as native text, not in a web view. For them, Rendering returns styled spans: for each stretch of text, where it starts, how long it is, and its styles, such as bold, italic, code, strikethrough, a link's address, a color name, or a heading level. Each app maps the spans to its own text styles.
+Titles in the task list and the Markdown source in the editor show as native text, not in a web view. For them, Rendering returns styled spans: for each stretch of text, where it starts, how long it is, and its styles, such as bold, italic, code, strikethrough, a link's address, a color name, or a heading level. Each app maps the spans to its own text styles. The spans come in order, and never overlap.
 
-Proposed: a title is parsed as inline Markdown only, so `# text` in a title shows as typed, not as a heading. This is a decision to confirm.
+Proposed, each a decision to confirm:
+
+- A title is parsed as inline Markdown only, so `# text` in a title shows as typed, not as a heading.
+- The spans cover the whole text, with plain text in spans of no style.
+- Markdown's own characters, such as `**`, a link's `[` and `](address)`, an autolink's `<` and `>` (its text carries the address), a `\` before an escaped character, and a color's `:red[` and `]`, come in spans marked as markers. So the editor can dim them, and a title or a task reference can leave them out to show the text as a reader sees it.
 
 ## Public interface
 
@@ -83,6 +87,35 @@ Both apps use these parts:
 - **The browser check**: whether an address may open in the default browser.
 
 Rendering promises that the page holds no script and no raw HTML from the task, and that the same input always gives the same output. It reads no files and knows no task formats.
+
+Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the styled spans and the palette, in `Memoria.ToDo.Shared.Rendering`; step 4 adds the description page and the browser check. Every member is a pure function:
+
+```csharp
+namespace Memoria.ToDo.Shared.Rendering;
+
+public enum MarkdownField { Title, Description }
+
+[Flags]
+public enum SpanStyle { None = 0, Bold = 1, Italic = 2, Strikethrough = 4, Code = 8, Marker = 16 }
+
+/// One stretch of the text. LinkAddress and Color are null, and HeadingLevel is 0, when they don't apply.
+public sealed record StyledSpan(int Start, int Length, SpanStyle Styles, string? LinkAddress, string? Color, int HeadingLevel);
+
+public static class StyledSpans
+{
+    /// The spans of the field's Markdown, in order, never overlapping.
+    public static IReadOnlyList<StyledSpan> Of(string markdown, MarkdownField field);
+}
+
+/// A palette color's name and its values, such as #d1242f, for each theme.
+public sealed record PaletteColor(string Name, string Light, string Dark);
+
+public static class Palette
+{
+    /// The palette, in the table's order.
+    public static IReadOnlyList<PaletteColor> Colors { get; }
+}
+```
 
 ## Failure modes
 

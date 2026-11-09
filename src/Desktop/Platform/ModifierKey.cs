@@ -1,9 +1,9 @@
 using System.Windows.Input;
 
-namespace Memoria.ToDo.Desktop.Configure;
+namespace Memoria.ToDo.Desktop.Platform;
 
 /// <summary>Tells which keys are the modifier keys Ctrl, Alt, Shift, and Win.</summary>
-internal static class ModifierKey
+public static class ModifierKey
 {
     /// <summary>The modifier the key stands for, left or right, or <see cref="ModifierKeys.None"/> for any other key.</summary>
     public static ModifierKeys Of(Key key) => key switch
