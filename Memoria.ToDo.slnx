@@ -1,6 +1,5 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Shared/Platform/Memoria.ToDo.Shared.Platform.csproj" />
     <Project Path="src/Desktop/Platform/Memoria.ToDo.Desktop.Platform.csproj" />
     <Project Path="src/Desktop/Shell/Memoria.ToDo.Desktop.Shell.csproj" />
     <Project Path="src/Desktop/TaskEditor/Memoria.ToDo.Desktop.TaskEditor.csproj" />
@@ -16,8 +15,6 @@
     <Project Path="tests/Testing/UnitRunTiming/Memoria.ToDo.Testing.UnitRunTiming.csproj" />
     <Project Path="tests/Testing/UnitRunTiming.Tests/Memoria.ToDo.Testing.UnitRunTiming.Tests.csproj" />
     <Project Path="tests/Desktop/Fakes/Memoria.ToDo.Desktop.Fakes.csproj" />
-    <Project Path="tests/Shared/Fakes/Memoria.ToDo.Shared.Fakes.csproj" />
-    <Project Path="tests/Shared/Platform/Memoria.ToDo.Shared.Platform.Tests.csproj" />
     <Project Path="tests/Desktop/PlatformTestHost/Memoria.ToDo.Desktop.PlatformTestHost.csproj" />
     <Project Path="tests/Desktop/Platform/Memoria.ToDo.Desktop.Platform.Tests.csproj" />
     <Project Path="tests/Desktop/Shell/Memoria.ToDo.Desktop.Shell.Tests.csproj" />

@@ -30,7 +30,7 @@ The platform's public interface has six parts. The three below are decided. The 
   3. sets the WPF application's theme to follow Windows' light or dark setting, before any window exists, so every window and the tray menu follow it ([ThemeMode](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.thememode));
   4. builds the lifetime and starts it on the UI thread, so the modules' windows are made after the WPF application exists;
   5. when the lifetime ends the app, or Windows ends the session ([SessionEnding](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.sessionending)), stops the lifetime once, then lets WPF shut down, and returns.
-- **The theme, the sixth part, says whether windows show the light or the dark theme**, and reports when Windows switches it. The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview) needs it to pick each palette color's value, and the Task list will too. The platform implements it from the same Windows setting its theme follows. The composition root passes it to the modules, so their UX tests use a fake:
+- **The theme, the sixth part, says whether windows show the light or the dark theme**, and reports when Windows switches it. Run the app's third step already makes every window follow Windows' light or dark setting. This part reads that setting the way the pinned WPF does, only to tell modules which theme windows show: the app mode in Windows' settings; with no app mode, the Windows mode; with neither, dark ([WPF's source](https://github.com/dotnet/wpf/blob/v11.0.0-rc.3.26522.148/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/ThemeManager.cs#L454-L465)). The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview) needs it to pick each [palette color's](../rendering.md#six-colors-read-well-in-light-and-dark-themes) value, and the Task list will too. The composition root passes it to the modules, so their UX tests use a [fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test):
 
   ```csharp
   namespace Memoria.ToDo.Desktop.Platform;
@@ -46,23 +46,59 @@ The platform's public interface has six parts. The three below are decided. The 
   }
   ```
 
-  Proposed: the platform's implementation is a class the composition root makes on the UI thread, in the function it passes to Run the app, after the WPF application exists. This is a decision to confirm.
+  The platform's implementation is a public class that reads Windows' setting through a second interface, so tests can pass a fake setting and switch it. The platform implements that interface from Windows. The composition root makes both on the UI thread, in the function it passes to Run the app, after the WPF application exists, and passes the theme to each module that takes it:
 
   ```csharp
   namespace Memoria.ToDo.Desktop.Platform;
 
+  /// Windows' light or dark setting, read the way WPF reads it to pick the windows' theme.
+  public interface IThemeSetting
+  {
+      /// Reads the setting now: true when windows show the dark theme.
+      bool ReadIsDark();
+
+      /// Raised, on any thread, when Windows may have changed the setting; reading tells whether it did.
+      event System.EventHandler? MayHaveChanged;
+  }
+
+  /// The signed-in user's setting, from Windows. Making it reads and watches nothing.
+  public sealed class WindowsThemeSetting : IThemeSetting
+  {
+      public WindowsThemeSetting();
+      public bool ReadIsDark();
+      public event System.EventHandler? MayHaveChanged;
+  }
+
   /// The theme Windows' light or dark setting sets for the app's windows.
   public sealed class WindowsTheme : ITheme
   {
-      /// Reads the current setting. Throws InvalidOperationException off a UI thread with a WPF application.
-      public WindowsTheme();
-
+      public WindowsTheme(IThemeSetting setting);
       public bool IsDark { get; }
 
       /// Raised on the thread that made this object.
       public event System.EventHandler? Changed;
   }
   ```
+
+  Making the theme fails at once, before it touches the setting. A missing setting throws ArgumentNullException, as the platform's other parts check their arguments. No WPF application, or a thread other than its UI thread, throws InvalidOperationException. Only then does the theme start watching the setting and read it, so a switch while it's being made isn't lost.
+
+  Changed reports only the switches the UI thread sees. When the UI thread finds the setting changed since IsDark last said, it sets IsDark, then raises Changed once. Switches it never sees, such as to dark and straight back, raise nothing. A failure while it handles a switch, including one in a module's Changed handler, is an error no module handles, so it's shown and the app ends, as described below.
+
+  The theme watches the setting until the WPF application's UI thread has shut down, then stops. Windows' setting watches Windows only while something listens: from the first listener added to the last one removed. So after shutdown, nothing watches Windows and nothing keeps the theme alive. The theme has no Dispose method, since the app's shutdown is its end.
+
+  A setting value that isn't a number counts as missing, as WPF reads it, so IsDark still names the theme windows show.
+
+  Not confirmed by a test: that Windows' setting reports a real switch, and what it reads when a value is missing or isn't a number. Only changing the signed-in user's own settings shows them, so no test does. Tests switch a fake setting instead, and read Windows' setting only to check what the real one reads.
+
+  Seven options were ruled out:
+
+  - **Run the app makes the theme and passes it to the function that builds the lifetime**: Run the app's built signature, its tests, and the composition root would change.
+  - **Each window module reads WPF's theme itself**: the same code in two modules, and their UX tests couldn't switch between light and dark.
+  - **With no app mode, the theme says light**: WPF then shows the Windows mode, or dark, so modules would color text for a theme no window shows.
+  - **Changed is raised for every switch Windows makes**: switches the UI thread never sees would make modules recolor for a theme no window showed.
+  - **The theme reads Windows itself, with no setting interface**: no test could make it see a switch, or fail while it handles one, without changing the user's setting.
+  - **The theme needs only a WPF dispatcher, so its switch tests are unit tests**: a theme made on a background thread with its own dispatcher would work, and raise Changed where no window lives.
+  - **An integration test that switches Windows' setting and switches it back**: it changes the user's own theme for every app, and a test that stops midway leaves it switched.
 
 **Cleanup runs while the lifetime's Windows resources still work.** The platform stops the lifetime on the UI thread before WPF closes its windows or ends its message loop ([integration tests](../../../tests/Desktop/Platform/AppRunnerIntegrationTests.cs)). This also applies after startup or unhandled errors ([error tests](../../../tests/Desktop/Platform/AppRunnerErrorIntegrationTests.cs)). If cleanup itself fails, the platform shows that error and returns a non-zero exit code; it never retries Stop.
 
@@ -177,7 +213,12 @@ The desktop design relies on rules that belong to the shared Tasks and Sync modu
 
 ## Delivery backlog
 
-The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1, 2, and 6 are built, and step 3 is next; you choose each next row. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
+The desktop app is built in steps, one row each, and each row links to the design sections it builds. Step 2 is built, and so is step 3's theme part, built ahead of the rest of step 3, which isn't scheduled. Steps 1 and 6 are next; you choose each next row. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
+
+The theme part belongs to step 3, since the Task editor is its first user. Two other homes were ruled out:
+
+- **Step 2, whose row already names the theme**: it would reopen a built step. Step 2 builds only the theme every window follows.
+- **A step of its own**: one more row for one part of the platform.
 
 Until its row is built, a feature is missing, and the app says so:
 
@@ -188,18 +229,14 @@ Proposed, each a decision to confirm:
 
 - **Until its own step, each window holds only a one-line notice that its feature is coming soon**, so Add has no fields and no Save. Each window sizes to fit its notice, except Add, which already has [its own size](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title).
 - **Until sync status is built, the tray icon's tooltip shows the app's name.**
-- **Once Add saves tasks, and until the Sync step, Add says in one line that saved tasks don't sync yet.**
-- **Until the Sync step, a task file Tasks skips shows nowhere.** The sync status that names it comes with that step, as [Tasks](../tasks.md#failure-modes) says.
-- **Until the Sync step, a file changed outside the app, such as by a `git pull`, shows only after Tasks next reads the repository folder**, which it does when the app starts and when Configure changes the folder, as the Task editor's [Save](task-editor.md#save-writes-the-task-into-this-devices-clone) says.
-- **The Task editor publishes its editor and tag chips in the Viewing tasks step**, where the Task list first uses them.
 
 The table lists each step, what it builds, and its status:
 
 | # | Step | Builds | Status |
 | --- | --- | --- | --- |
-| 1 | Desktop shell: the tray app and its windows, with no task saved | The [startup](#the-platform-runs-the-app-and-the-composition-root-builds-it); Shell's [tray icon and menu](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), without the shortcuts or the redirect to Configure; the [hidden Add window](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title), without its fields; and the create and Show parts of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface) | Implemented |
-| 2 | Two shortcuts, start with Windows, one instance, and theme | Shell's [two shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), with Configure opening when one can't register, and its [one instance and what each start shows](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-view-tasks); the platform's [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it); Configure's [shortcut and Start with Windows settings](configure.md#each-setting-has-one-owner), with the shortcuts not saved yet, in [labeled sections](configure.md#the-window-shows-its-settings-in-labeled-sections), with its [shortcut check](configure.md#a-new-shortcut-is-checked-at-once), the shortcuts [released while a field has focus](configure.md#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released), a [message for every shortcut it can't use](configure.md#configure-explains-every-shortcut-it-cant-use), and the [`Run` key](configure.md#start-with-windows-is-the-run-key-itself) that installing writes and uninstalling removes; and the [Add window's size](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) | Implemented |
-| 3 | Adding tasks | The rest of the [Task editor](task-editor.md#behavior), on [Tasks](../tasks.md), [Editing](../editing.md), [Rendering](../rendering.md), and the [shared platform](../platform.md); the platform's [theme part](#the-platform-runs-the-app-and-the-composition-root-builds-it), which tells modules whether windows are light or dark; and Shell keeping the draft when it [stops](shell.md#public-interface) | Next |
+| 1 | Desktop shell: the tray app and its windows, with no task saved | The [startup](#the-platform-runs-the-app-and-the-composition-root-builds-it); Shell's [tray icon and menu](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), without the shortcuts or the redirect to Configure; the [hidden Add window](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title), without its fields; and the create and Show parts of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface) | Next |
+| 2 | Two shortcuts, start with Windows, one instance, and theme | Shell's [two shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), with Configure opening when one can't register, and its [one instance and what each start shows](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-view-tasks); the platform's [theme that every window follows](#the-platform-runs-the-app-and-the-composition-root-builds-it); Configure's [shortcut and Start with Windows settings](configure.md#each-setting-has-one-owner), with the shortcuts not saved yet, in [labeled sections](configure.md#the-window-shows-its-settings-in-labeled-sections), with its [shortcut check](configure.md#a-new-shortcut-is-checked-at-once), the shortcuts [released while a field has focus](configure.md#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released), a [message for every shortcut it can't use](configure.md#configure-explains-every-shortcut-it-cant-use), and the [`Run` key](configure.md#start-with-windows-is-the-run-key-itself) that installing writes and uninstalling removes; and the [Add window's size](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) | Implemented |
+| 3 | Adding tasks | The platform's [theme part](#the-platform-runs-the-app-and-the-composition-root-builds-it), which tells modules whether windows are light or dark, built first; then the rest of the [Task editor](task-editor.md#behavior), on [Tasks](../tasks.md), the shared library's [platform](../modules.md#the-platform-serves-every-module-and-knows-none), [Editing](../editing.md), and [Rendering](../rendering.md) | Not scheduled, except its theme part, which is Implemented |
 | 4 | Viewing tasks | The [Task list](task-list.md#behavior), except its Sync button | Not scheduled |
 | 5 | Sync | [Sync through git](../sync.md); Shell's [sync status](shell.md#sync-stays-quiet-unless-something-is-wrong) and its redirect to Configure until the device is configured; Configure's [sync](configure.md#configure-shows-how-sync-is-doing), deletion delay, and saving and loading the [shortcuts](configure.md#each-setting-has-one-owner) in `settings.json`; the Task list's [Sync button](task-list.md#view-tasks-syncs-when-it-opens-and-on-its-sync-button). It needs the answer to Configure's [open question](configure.md#which-module-owns-the-shortcuts-in-settingsjson). | Not scheduled |
-| 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Implemented |
+| 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Next |

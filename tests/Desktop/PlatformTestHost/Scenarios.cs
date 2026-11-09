@@ -76,6 +76,18 @@ internal static class Scenarios
 
         ["stop-throws"] = (Post, StopError),
         ["thread-error-stop-throws"] = (ThreadError, StopError),
+
+        // The theme: read, and made off the UI thread.
+        ["theme-read"] = (ThemeScenarios.Read, DoNothing),
+        ["theme-off-ui-thread"] = (ThemeScenarios.CreateOffUiThread, DoNothing),
+
+        // The theme with a fake setting: see ThemeScenarios.
+        ["theme-switch-during-creation"] = (ThemeScenarios.SwitchDuringCreation, DoNothing),
+        ["theme-switch-from-background-thread"] = (ThemeScenarios.SwitchFromBackgroundThread, DoNothing),
+        ["theme-switch-and-back-unseen"] = (ThemeScenarios.SwitchAndBackUnseen, DoNothing),
+        ["theme-changed-handler-throws"] = (ThemeScenarios.ChangedHandlerThrows, DoNothing),
+        ["theme-read-fails-while-refreshing"] = (ThemeScenarios.ReadFailsWhileRefreshing, DoNothing),
+        ["theme-listeners-across-shutdown"] = (ThemeScenarios.ListenersAcrossShutdown, DoNothing),
     };
 
     private static void DoNothing() { }

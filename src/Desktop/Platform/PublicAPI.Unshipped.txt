@@ -11,3 +11,17 @@ Memoria.ToDo.Desktop.Platform.WindowPlacement
 static Memoria.ToDo.Desktop.Platform.WindowPlacement.ShowOnPointerScreen(System.Windows.Window! window) -> void
 static Memoria.ToDo.Desktop.Platform.AppRunner.Run(System.Func<Memoria.ToDo.Desktop.Platform.IAppLifetime!>! createLifetime) -> int
 Memoria.ToDo.Desktop.Platform.SingleWindow.IsOpen.get -> bool
+Memoria.ToDo.Desktop.Platform.ITheme
+Memoria.ToDo.Desktop.Platform.ITheme.IsDark.get -> bool
+Memoria.ToDo.Desktop.Platform.ITheme.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.WindowsTheme
+Memoria.ToDo.Desktop.Platform.WindowsTheme.WindowsTheme(Memoria.ToDo.Desktop.Platform.IThemeSetting! setting) -> void
+Memoria.ToDo.Desktop.Platform.WindowsTheme.IsDark.get -> bool
+Memoria.ToDo.Desktop.Platform.WindowsTheme.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.IThemeSetting
+Memoria.ToDo.Desktop.Platform.IThemeSetting.ReadIsDark() -> bool
+Memoria.ToDo.Desktop.Platform.IThemeSetting.MayHaveChanged -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.WindowsThemeSetting
+Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.WindowsThemeSetting() -> void
+Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.ReadIsDark() -> bool
+Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.MayHaveChanged -> System.EventHandler?

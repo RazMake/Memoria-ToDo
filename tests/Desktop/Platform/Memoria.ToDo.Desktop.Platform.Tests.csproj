@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Desktop\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
+    <ProjectReference Include="..\Fakes\Memoria.ToDo.Desktop.Fakes.csproj" />
     <!-- Built so the integration tests can start it; its output isn't referenced. -->
     <ProjectReference Include="..\PlatformTestHost\Memoria.ToDo.Desktop.PlatformTestHost.csproj" ReferenceOutputAssembly="false" />
     <PackageReference Include="Xunit.StaFact" />

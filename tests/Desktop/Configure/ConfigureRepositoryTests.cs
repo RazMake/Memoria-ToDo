@@ -68,7 +68,7 @@ public class ConfigureRepositoryTests
     {
         using var screen = Opened(new FakeRepositoryFolder());
 
-        var line = OpenWindows.Descendants(screen.Window).OfType<TextBlock>().Single(b => b.Text.StartsWith(name, StringComparison.Ordinal));
+        var line = OpenWindows.Descendants(screen.Window).OfType<TextBlock>().Single(b => OpenWindows.TextOf(b).StartsWith(name, StringComparison.Ordinal));
         var first = Assert.IsType<System.Windows.Documents.Run>(line.Inlines.FirstInline, exactMatch: false);
         Assert.Equal(name, first.Text);
         Assert.Equal(FontWeights.Bold, first.FontWeight);

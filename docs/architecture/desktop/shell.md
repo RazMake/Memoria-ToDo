@@ -97,7 +97,6 @@ No module uses Shell. Only the composition root does, through one part:
     - **Unregister** releases the action's shortcut, so its keys reach the focused window, and does nothing when there's none. A later Register registers again.
     - Any failure of the port other than a taken shortcut passes on to Configure.
   - **Stopping** ends the update checks, releases both shortcuts, removes the tray icon, and gives up the claim, so a later start becomes the running instance.
-  - Proposed: Stopping first keeps the Add window's draft, through the Task editor's [keep the draft](task-editor.md#public-interface) part, so the draft survives the app's exit, a sign-out, or an update. When keeping it fails, Stopping still does the rest, then passes the failure on with any others. This is a decision to confirm.
   - Proposed: Stopping works even if Starting failed or never ran, and when it's repeated. It ends the update checks before it removes the icon. When the icon can't be added, Starting fails before it connects the shortcuts and begins the update checks. This is a decision to confirm.
   - Proposed: when a new shortcut registers but releasing the action's previous one fails, the action releases the new one again, keeps the previous one, and passes the failure on to Configure. When releasing a shortcut fails, Stopping still releases the other, removes the tray icon, and gives up the claim, then passes the failures on. This is a decision to confirm.
   - If releasing the new one again fails too, both stay registered until the app ends, the previous one stays active, and Configure gets both failures.
@@ -109,7 +108,7 @@ Shell publishes four ports. The composition root implements each one, and Shell'
 - **The global shortcut port** has two parts. Register takes a [shortcut](configure.md#public-interface) and the action its press runs, and returns whether Windows took it: false means Windows or another app holds it. Unregister releases a shortcut it registered. Both fail on any other error, and a failed Unregister leaves the shortcut registered. A press runs its action on the UI thread. Its implementation uses [RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey).
 - **The one-instance port** has two parts. Claim takes the action to run when a later instance starts, and returns whether this instance is the first in the Windows sign-in session. If it is, the action runs on the UI thread each time a later instance starts. If it isn't, the port has told the running instance and let it come to the front. Release gives up the claim, and does nothing when there's none. Its implementation uses a named Windows signal, one per sign-in session.
 - **Proposed: an implementation of the update port does no slow work before its first wait**, since Shell starts the first check on the UI thread while the app starts. This is a decision to confirm.
-- **Proposed: the time source is .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, which gives the update checks the time and their timer. The composition root passes the system's. Tests pass a hand-written fake, kept with the [shared fakes](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test), that moves time forward only when told, so no test waits. It needs no package and no interface of ours. The [shared platform](../platform.md#the-clock-is-nets-timeprovider) uses the same clock for the shared library, so Shell needs no change. This is a decision to confirm.
+- **The time source is .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, as for [every module](../modules.md#the-platform-serves-every-module-and-knows-none), which gives the update checks the time and their timer. The composition root passes the system's. Tests pass a hand-written fake, kept with the [shared fakes](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test), that moves time forward only when told, so no test waits. It needs no package and no interface of ours.
 
 ## Failure modes
 
@@ -160,8 +159,7 @@ The options below were considered and rejected, grouped by decision.
   - **Shell calls Velopack directly**: its update rules could only be tested against GitHub, the reason the tray implementation left Shell.
   - **The composition root runs the update checks**: the update rules would leave Shell, and the composition root only builds the app from the modules.
 - Where the update checks get the time:
-  - **A timer port of Shell's own**: the shared library's clock would later duplicate it.
-  - **The shared library's clock, built now**: it would be designed for one desktop need, before [Tasks](../tasks.md) says what it needs.
+  - **A timer port of Shell's own**: it would repeat TimeProvider, which every module uses; [Modules](../modules.md#ruled-out) rules out a clock interface of ours.
 - The installer's ID:
   - **`Memoria-ToDo`, with the SDK moved to another folder**: every developer PC would move its SDK, and a decided path would change.
   - **`Memoria.ToDo`, like the projects' names**: the dot reads like a file extension.

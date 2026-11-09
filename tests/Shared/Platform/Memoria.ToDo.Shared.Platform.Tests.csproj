@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Shared\Platform\Memoria.ToDo.Shared.Platform.csproj" />
-    <ProjectReference Include="..\Fakes\Memoria.ToDo.Shared.Fakes.csproj" />
-  </ItemGroup>
-
-</Project>

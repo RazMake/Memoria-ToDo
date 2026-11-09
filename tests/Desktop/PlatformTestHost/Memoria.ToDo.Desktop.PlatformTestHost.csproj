@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Desktop\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
+    <ProjectReference Include="..\Fakes\Memoria.ToDo.Desktop.Fakes.csproj" />
   </ItemGroup>
 
 </Project>

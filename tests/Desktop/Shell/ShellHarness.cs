@@ -2,7 +2,6 @@ using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Shell;
-using Memoria.ToDo.Shared.Fakes;
 
 namespace Memoria.ToDo.Desktop.Shell.Tests;
 

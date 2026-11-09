@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 
@@ -27,12 +28,18 @@ public sealed class OpenWindows : IDisposable
         }
     }
 
+    /// <summary>
+    /// The text a text block displays, including text made by its inlines (runs, bold). The one place tests read it,
+    /// so every lookup agrees.
+    /// </summary>
+    public static string TextOf(TextBlock block) => new TextRange(block.ContentStart, block.ContentEnd).Text;
+
     /// <summary>The texts the window displays in text blocks and in the string content of labels and buttons.</summary>
     public static IReadOnlyList<string> TextsIn(Window window) =>
     [
         .. Descendants(window).Select(d => d switch
         {
-            TextBlock block => block.Text,
+            TextBlock block => TextOf(block),
             ContentControl { Content: string text } => text,
             _ => null,
         }).OfType<string>().Where(text => text.Length > 0),
