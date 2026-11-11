@@ -46,8 +46,14 @@ internal sealed class StyledTextEditor : TextEditor
         TextArea.TextView.LineTransformers.Add(_styler);
 
         TextChanged += (_, _) => QueueStyling();
-        theme.Changed += (_, _) => QueueStyling();
+        WhileLoaded.Run(this, () =>
+        {
+            theme.Changed += OnThemeChanged;
+            QueueStyling();
+        }, () => theme.Changed -= OnThemeChanged);
     }
+
+    private void OnThemeChanged(object? sender, EventArgs e) => QueueStyling();
 
     /// <summary>Paints the border in the theme's error color while <paramref name="invalid"/>, else in the theme's text box border again.</summary>
     public void ShowInvalid(bool invalid)

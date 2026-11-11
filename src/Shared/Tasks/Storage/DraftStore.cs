@@ -67,12 +67,8 @@ internal sealed class DraftStore(IFileSystem files, string deviceFolder)
     }
 
     /// <summary>Where each of the task's draft images goes in the clone: its path now, and its path there.</summary>
-    public IReadOnlyList<(string From, string To)> ImageMoves(string taskId, string clone)
-    {
-        var target = RepositoryLayout.ImagesFolder(clone, taskId);
-        return [.. files.ListFiles(RepositoryLayout.ImagesFolder(deviceFolder, taskId))
-            .Select(path => (path, Path.Combine(target, Path.GetFileName(path))))];
-    }
+    public IReadOnlyList<(string From, string To)> ImageMoves(string taskId, string clone) =>
+        ImageFolderMoves.Of(files, RepositoryLayout.ImagesFolder(deviceFolder, taskId), RepositoryLayout.ImagesFolder(clone, taskId));
 
     private string? KeptId()
     {

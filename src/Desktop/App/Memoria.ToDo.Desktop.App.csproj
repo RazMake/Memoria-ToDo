@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net11.0-windows</TargetFramework>
+    <TargetFramework>$(MemoriaAppTargetFramework)</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -20,10 +21,13 @@
     <ProjectReference Include="..\..\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
     <ProjectReference Include="..\Shell\Memoria.ToDo.Desktop.Shell.csproj" />
     <ProjectReference Include="..\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
+    <ProjectReference Include="..\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\TaskList\Memoria.ToDo.Desktop.TaskList.csproj" />
     <ProjectReference Include="..\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
     <PackageReference Include="H.NotifyIcon.Wpf" />
     <PackageReference Include="Velopack" />
+    <!-- The description web view's adapter, as docs/architecture/desktop/formatted-view.md decides. -->
+    <PackageReference Include="Microsoft.Web.WebView2" />
   </ItemGroup>
 
   <ItemGroup>

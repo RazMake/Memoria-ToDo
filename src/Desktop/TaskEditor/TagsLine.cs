@@ -48,8 +48,14 @@ internal sealed class TagsLine : UserControl
         _input.TextChanged += (_, _) => ShowSuggestions();
         DataObject.AddPastingHandler(_input, TextPaste.JoinLines);
         _suggestions.PreviewMouseLeftButtonUp += OnSuggestionClicked;
-        tasks.Changed += (_, _) => ShowSuggestions();
+        WhileLoaded.Run(this, () =>
+        {
+            tasks.Changed += OnTasksChanged;
+            ShowSuggestions();
+        }, () => tasks.Changed -= OnTasksChanged);
     }
+
+    private void OnTasksChanged(object? sender, EventArgs e) => ShowSuggestions();
 
     /// <summary>The tags in the order they were added. Setting them clears the typed text.</summary>
     public IReadOnlyList<string> Tags

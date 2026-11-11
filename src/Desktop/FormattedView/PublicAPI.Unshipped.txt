@@ -1,0 +1,21 @@
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Dispose() -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.FormattedDescription(Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView! webView, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser) -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Markdown.get -> string!
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Markdown.set -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.OpenFailed -> System.EventHandler<System.Exception!>?
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.OtherLinkClicked -> System.EventHandler<string!>?
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.FormattedTitle(System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser) -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.get -> string!
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.set -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.OpenFailed -> System.EventHandler<System.Exception!>?
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.OtherLinkClicked -> System.EventHandler<string!>?
+Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser
+Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser.Open(string! address) -> void
+Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView
+Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.CloneAddress.get -> System.Uri!
+Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.Element.get -> System.Windows.FrameworkElement!
+Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.Failed -> System.EventHandler<string!>?
+Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.LinkClicked -> System.EventHandler<string!>?
+Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.Show(string! page) -> void

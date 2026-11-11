@@ -16,16 +16,6 @@ public sealed record StyledSpan(int Start, int Length, SpanStyle Styles, string?
 
 public static class StyledSpans
 {
-    private static readonly MarkdownPipeline DescriptionPipeline = new MarkdownPipelineBuilder()
-        .UsePipeTables()
-        .UseAlertBlocks()
-        .UseAutoLinks()
-        .UseEmphasisExtras(EmphasisExtraOptions.Strikethrough)
-        .DisableHtml()
-        .UsePreciseSourceLocation()
-        .UseColorDirective()
-        .Build();
-
     // A title is inline Markdown only: the only block is the paragraph.
     private static readonly MarkdownPipeline TitlePipeline = InlineOnly(new MarkdownPipelineBuilder())
         .UseAutoLinks()
@@ -39,7 +29,7 @@ public static class StyledSpans
     public static IReadOnlyList<StyledSpan> Of(string markdown, MarkdownField field)
     {
         ArgumentNullException.ThrowIfNull(markdown);
-        var pipeline = field == MarkdownField.Title ? TitlePipeline : DescriptionPipeline;
+        var pipeline = field == MarkdownField.Title ? TitlePipeline : DescriptionMarkdown.Pipeline;
         return SpanPainter.Paint(markdown, Markdown.Parse(markdown, pipeline));
     }
 
@@ -47,12 +37,6 @@ public static class StyledSpans
     {
         builder.BlockParsers.Clear();
         builder.BlockParsers.Add(new ParagraphBlockParser());
-        return builder;
-    }
-
-    private static MarkdownPipelineBuilder UseColorDirective(this MarkdownPipelineBuilder builder)
-    {
-        builder.InlineParsers.Insert(0, new ColorDirectiveParser());
         return builder;
     }
 }

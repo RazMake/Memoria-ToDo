@@ -30,7 +30,12 @@ public static class SimulatedKey
         return second.Handled;
     }
 
-    /// <summary>Presses the keys in order and releases them in reverse order on the element, as a user holding a chord does.</summary>
+    /// <summary>
+    /// Presses the keys in order and releases them in reverse order, as a user holding a chord does. The releases go to the
+    /// element that has the keyboard focus then: the pressed element when the key presses left it showing, otherwise
+    /// wherever the focus went, as the keyboard does when a key press closes what had the focus. They go nowhere when
+    /// nothing showing has the focus.
+    /// </summary>
     public static void Chord(UIElement element, params Key[] keys)
     {
         foreach (var key in keys)
@@ -40,7 +45,11 @@ public static class SimulatedKey
 
         foreach (var key in keys.Reverse())
         {
-            Raise(element, key, Keyboard.PreviewKeyUpEvent, Keyboard.KeyUpEvent);
+            var target = PresentationSource.FromVisual(element) is not null ? element : Keyboard.FocusedElement as UIElement;
+            if (target is not null && PresentationSource.FromVisual(target) is not null)
+            {
+                Raise(target, key, Keyboard.PreviewKeyUpEvent, Keyboard.KeyUpEvent);
+            }
         }
     }
 }

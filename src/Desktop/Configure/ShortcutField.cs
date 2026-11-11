@@ -86,12 +86,11 @@ internal sealed class ShortcutField : TextBox
         base.OnLostKeyboardFocus(e);
     }
 
-    // Alt arrives as Key.System, and an input method's keys as their own marker keys, each with the real key beside it.
+    // An input method's keys arrive as their own marker keys, with the real key beside them.
     private static Key KeyOf(KeyEventArgs e) => e.Key switch
     {
-        Key.System => e.SystemKey,
         Key.ImeProcessed => e.ImeProcessedKey,
         Key.DeadCharProcessed => e.DeadCharProcessedKey,
-        var key => key,
+        _ => EventKey.Of(e),
     };
 }

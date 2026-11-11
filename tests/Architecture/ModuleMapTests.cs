@@ -50,13 +50,11 @@ public sealed class The_module_map_and_the_projects
     }
 
     [Fact]
-    public void Map_lists_the_four_shared_modules_and_four_modules_in_each_app()
+    public void Map_lists_the_four_shared_modules_five_desktop_modules_and_four_android_modules()
     {
         Assert.Equal(["Tasks", "Sync", "Editing", "Rendering"], _map.Modules.Where(m => m.Part == "Shared").Select(m => m.Name));
-        foreach (var app in new[] { "Desktop", "Android" })
-        {
-            Assert.Equal(["Shell", "Task editor", "Task list", "Configure"], _map.Modules.Where(m => m.Part == app).Select(m => m.Name));
-        }
+        Assert.Equal(["Shell", "Task editor", "Task list", "Configure", "Formatted view"], _map.Modules.Where(m => m.Part == "Desktop").Select(m => m.Name));
+        Assert.Equal(["Shell", "Task editor", "Task list", "Configure"], _map.Modules.Where(m => m.Part == "Android").Select(m => m.Name));
     }
 
     [Fact]

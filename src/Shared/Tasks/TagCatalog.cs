@@ -64,5 +64,5 @@ internal sealed class TagCatalog
             .ToList();
     }
 
-    private static bool Has(IReadOnlyList<string> tags, string tag) => tags.Contains(tag, StringComparer.OrdinalIgnoreCase);
+    public static bool Has(IReadOnlyList<string> tags, string tag) => tags.Contains(tag, StringComparer.OrdinalIgnoreCase);
 }

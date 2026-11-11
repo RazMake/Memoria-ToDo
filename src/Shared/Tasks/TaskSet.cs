@@ -21,9 +21,30 @@ internal sealed class TaskSet
 
     public TagCatalog Tags { get; }
 
-    public bool Contains(string id) => Items.Any(task => task.Id == id);
+    public bool Contains(string id) => IndexOf(id) >= 0;
+
+    /// <summary>The task's place in <see cref="Items"/>, or -1 when it isn't there.</summary>
+    public int IndexOf(string id)
+    {
+        for (var i = 0; i < Items.Count; i++)
+        {
+            if (Items[i].Id == id)
+                return i;
+        }
+
+        return -1;
+    }
 
     public TaskSet WithTask(TaskItem task) => new(Items.Append(task));
+
+    /// <summary>The set with the task of the same ID replaced by <paramref name="task"/>.</summary>
+    public TaskSet ReplacingTask(TaskItem task) => new(Items.Where(item => item.Id != task.Id).Append(task));
+
+    public TaskSet WithoutTask(string id) => new(Items.Where(item => item.Id != id));
+
+    /// <summary><see cref="Search(string)"/>, narrowed to the tasks that have <paramref name="tag"/>, ignoring case.</summary>
+    public IReadOnlyList<TaskItem> Search(string text, string tag) =>
+        Search(text).Where(task => TagCatalog.Has(task.Tags, tag)).ToList();
 
     /// <summary>The tasks that hold every word of <paramref name="text"/> in their title, description, or tags, ignoring case.</summary>
     public IReadOnlyList<TaskItem> Search(string text)

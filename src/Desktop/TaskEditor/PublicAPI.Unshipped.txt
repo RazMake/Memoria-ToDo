@@ -12,6 +12,9 @@ Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.TaskEditorControl(Memoria.ToDo.Shared.Tasks.ITasks! tasks, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files) -> void
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Value.get -> Memoria.ToDo.Shared.Tasks.TaskDraft!
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Value.set -> void
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.HasChanges.get -> bool
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Save(System.Action<Memoria.ToDo.Shared.Tasks.TaskDraft!>! save) -> bool
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.FocusTitle() -> void
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.SaveRequested -> System.EventHandler?
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.SaveAndClearRequested -> System.EventHandler?
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.CancelRequested -> System.EventHandler?

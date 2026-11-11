@@ -9,3 +9,8 @@ public sealed class NoRepositoryFolderException : InvalidOperationException
 public sealed class ImageTooLargeException : InvalidOperationException
 {
 }
+
+/// <summary>The task isn't in <see cref="ITasks.All"/>, for example because it was deleted.</summary>
+public sealed class TaskNotFoundException : InvalidOperationException
+{
+}

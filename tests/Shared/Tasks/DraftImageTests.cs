@@ -15,7 +15,7 @@ public sealed class DraftImageTests
     private readonly TasksFixture f = new();
     private readonly string taskId = TasksFixture.Id(500);
 
-    private string Save(byte[] image, string alt = "pic") => f.Tasks.SaveDraftImage(taskId, image, alt);
+    private string Save(byte[] image, string alt = "pic") => f.Tasks.SaveImage(taskId, image, alt);
 
     private byte[] SavedBytes(string markdown)
     {
@@ -258,7 +258,7 @@ public sealed class DraftImageTests
     public void Refuses_a_task_id_that_is_not_a_valid_id_and_saves_nothing(string badId)
     {
         Assert.ThrowsAny<ArgumentException>(() =>
-            f.Tasks.SaveDraftImage(badId, FakeImageEncoder.Image(ImageFormat.Png, 10, 10, 200), "pic"));
+            f.Tasks.SaveImage(badId, FakeImageEncoder.Image(ImageFormat.Png, 10, 10, 200), "pic"));
 
         Assert.Empty(f.Files.ListFiles(Path.Combine(f.Device, "images")));
         Assert.Empty(f.Files.ListFiles(f.Device));
@@ -267,8 +267,8 @@ public sealed class DraftImageTests
     [Fact]
     public void Keeps_each_task_ids_images_apart()
     {
-        f.Tasks.SaveDraftImage(TasksFixture.Id(1), FakeImageEncoder.Image(ImageFormat.Png, 10, 10, 200), "a");
-        f.Tasks.SaveDraftImage(TasksFixture.Id(2), FakeImageEncoder.Image(ImageFormat.Png, 10, 10, 200), "b");
+        f.Tasks.SaveImage(TasksFixture.Id(1), FakeImageEncoder.Image(ImageFormat.Png, 10, 10, 200), "a");
+        f.Tasks.SaveImage(TasksFixture.Id(2), FakeImageEncoder.Image(ImageFormat.Png, 10, 10, 200), "b");
 
         Assert.Single(f.Files.ListFiles(f.DraftImages(TasksFixture.Id(1))));
         Assert.Single(f.Files.ListFiles(f.DraftImages(TasksFixture.Id(2))));

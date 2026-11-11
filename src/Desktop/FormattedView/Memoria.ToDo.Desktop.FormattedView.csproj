@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
+    <ProjectReference Include="..\..\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
+  </ItemGroup>
+
+</Project>

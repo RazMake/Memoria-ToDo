@@ -16,21 +16,11 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// </summary>
 internal sealed class AddWindowView : Window, IAddWindow
 {
-    private const string NoRepositoryMessage =
-        "There is no repository folder yet. Open Configure, choose a repository folder, then save again.";
-
     private const string DraftUnreadableMessage = "The kept draft couldn't be loaded, so Add opened empty.";
 
     private readonly ITasks _tasks;
     private readonly TaskEditorControl _editor;
     private bool _unreadableDraftOnDisk;
-    private readonly TextBlock _message = new()
-    {
-        TextWrapping = TextWrapping.Wrap,
-        Foreground = Brushes.Firebrick,
-        Margin = new Thickness(16, 0, 16, 8),
-        Visibility = Visibility.Collapsed,
-    };
 
     public AddWindowView(ITasks tasks, TaskEditorControl editor)
     {
@@ -66,14 +56,12 @@ internal sealed class AddWindowView : Window, IAddWindow
         var panel = new StackPanel();
         panel.Children.Add(clear);
         panel.Children.Add(editor);
-        panel.Children.Add(_message);
         panel.Children.Add(save);
         Content = panel;
 
         editor.SaveRequested += (_, _) => Save(keepOpen: false);
         editor.SaveAndClearRequested += (_, _) => Save(keepOpen: true);
         editor.CancelRequested += (_, _) => HideAndKeepDraft();
-        editor.ImageMessageChanged += (_, message) => ShowMessage(message);
         Deactivated += (_, _) =>
         {
             // The file dialog takes the focus, and that isn't clicking elsewhere.
@@ -173,31 +161,8 @@ internal sealed class AddWindowView : Window, IAddWindow
 
     private void Save(bool keepOpen)
     {
-        var draft = _editor.Value;
-        if (string.IsNullOrWhiteSpace(draft.Title))
+        if (!_editor.Save(draft => _tasks.Add(draft)))
         {
-            _editor.MarkTitleMissing();
-            _editor.FocusTitle();
-            return;
-        }
-
-        try
-        {
-            _tasks.Add(draft);
-        }
-        catch (NoRepositoryFolderException)
-        {
-            ShowMessage(NoRepositoryMessage);
-            return;
-        }
-        catch (AggregateException)
-        {
-            ShowMessage("The add was incomplete: the task was only partly added and couldn't be undone. Your text is kept; check the repository folder, then save again.");
-            return;
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or ImageTooLargeException)
-        {
-            ShowMessage($"The task wasn't saved: {e.Message}");
             return;
         }
 
@@ -212,9 +177,5 @@ internal sealed class AddWindowView : Window, IAddWindow
         }
     }
 
-    private void ShowMessage(string text)
-    {
-        _message.Text = text;
-        _message.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-    }
+    private void ShowMessage(string text) => _editor.ShowMessage(text);
 }

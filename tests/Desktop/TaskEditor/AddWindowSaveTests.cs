@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -47,6 +48,91 @@ public class AddWindowSaveTests
         screen.Save();
 
         Assert.Single(screen.Saved);
+    }
+
+    [WpfFact]
+    public void Ctrl_Enter_saves_tag_text_typed_and_not_yet_added()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Fill("Buy milk", "", "home");
+        screen.TypeTag("errand");
+
+        screen.Save();
+
+        Assert.Equal(["home", "errand"], Assert.Single(screen.Saved).Tags);
+    }
+
+    [WpfFact]
+    public void Ctrl_Shift_Enter_saves_tag_text_typed_and_not_yet_added()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Fill("Buy milk");
+        screen.TypeTag("errand");
+
+        screen.SaveAndClear();
+
+        Assert.Equal(["errand"], Assert.Single(screen.Saved).Tags);
+        Assert.Equal("", screen.TypedTag);
+    }
+
+    [WpfFact]
+    public void Saving_with_an_empty_Title_puts_the_cursor_in_the_Title()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Focus(EditorFields.Description);
+
+        screen.Save();
+
+        Assert.Equal(EditorFields.Title, screen.FocusedField);
+    }
+
+    [WpfFact]
+    public void Saving_with_an_empty_Title_keeps_tag_text_typed_as_a_tag()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.TypeTag("errand");
+
+        screen.Save();
+
+        Assert.Equal(["errand"], screen.Editor.Value.Tags);
+    }
+
+    [WpfFact]
+    public void A_failed_save_shows_its_message_in_the_editor_above_the_Save_button()
+    {
+        using var screen = new AddScreen(withRepository: false);
+        screen.Show();
+        screen.Fill("Buy milk");
+
+        screen.Save();
+
+        var message = Assert.Single(OpenWindows.Descendants(screen.Editor).OfType<System.Windows.Controls.TextBlock>(),
+            block => OpenWindows.TextOf(block).Contains("repository folder", StringComparison.OrdinalIgnoreCase));
+        screen.Window.UpdateLayout();
+        var messageTop = message.TransformToAncestor(screen.Window).Transform(new System.Windows.Point(0, 0)).Y;
+        var saveTop = screen.SaveButton.TransformToAncestor(screen.Window).Transform(new System.Windows.Point(0, 0)).Y;
+        Assert.True(messageTop < saveTop, "The message isn't above the Save button.");
+    }
+
+    [WpfFact]
+    public void A_save_that_works_after_a_failed_one_hides_the_window_and_leaves_no_stale_draft_text()
+    {
+        using var screen = new AddScreen(withRepository: false);
+        screen.Show();
+        screen.Fill("Buy milk");
+        screen.Save();
+        screen.Services.UseRepository();
+        var editor = screen.Editor;
+
+        screen.Save();
+
+        Assert.Equal("Buy milk", Assert.Single(screen.Saved).Title);
+        Assert.False(screen.IsShowing);
+        Assert.Equal("", editor.Value.Title);
     }
 
     [WpfFact]

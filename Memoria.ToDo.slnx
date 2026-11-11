@@ -7,6 +7,7 @@
     <Project Path="src/Desktop/Shell/Memoria.ToDo.Desktop.Shell.csproj" />
     <Project Path="src/Desktop/TaskEditor/Memoria.ToDo.Desktop.TaskEditor.csproj" />
     <Project Path="src/Desktop/TaskList/Memoria.ToDo.Desktop.TaskList.csproj" />
+    <Project Path="src/Desktop/FormattedView/Memoria.ToDo.Desktop.FormattedView.csproj" />
     <Project Path="src/Desktop/Configure/Memoria.ToDo.Desktop.Configure.csproj" />
     <Project Path="src/Desktop/App/Memoria.ToDo.Desktop.App.csproj" />
     <Project Path="src/Shared/Rendering/Memoria.ToDo.Shared.Rendering.csproj" />
@@ -27,6 +28,7 @@
     <Project Path="tests/Desktop/Platform/Memoria.ToDo.Desktop.Platform.Tests.csproj" />
     <Project Path="tests/Desktop/Shell/Memoria.ToDo.Desktop.Shell.Tests.csproj" />
     <Project Path="tests/Desktop/TaskEditor/Memoria.ToDo.Desktop.TaskEditor.Tests.csproj" />
+    <Project Path="tests/Desktop/FormattedView/Memoria.ToDo.Desktop.FormattedView.Tests.csproj" />
     <Project Path="tests/Desktop/TaskList/Memoria.ToDo.Desktop.TaskList.Tests.csproj" />
     <Project Path="tests/Desktop/Configure/Memoria.ToDo.Desktop.Configure.Tests.csproj" />
     <Project Path="tests/Desktop/App/Memoria.ToDo.Desktop.App.Tests.csproj" />

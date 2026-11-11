@@ -9,6 +9,7 @@
     <ProjectReference Include="..\..\Shared\Fakes\Memoria.ToDo.Shared.Fakes.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Shell\Memoria.ToDo.Desktop.Shell.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\TaskList\Memoria.ToDo.Desktop.TaskList.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
   </ItemGroup>

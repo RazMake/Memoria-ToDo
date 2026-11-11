@@ -140,7 +140,7 @@ public sealed class DraftTests
     public void Deletes_the_images_kept_for_another_task_id_when_the_draft_is_replaced()
     {
         var old = f.Draft("Old");
-        f.Tasks.SaveDraftImage(old.TaskId, SomePng(), "pic");
+        f.Tasks.SaveImage(old.TaskId, SomePng(), "pic");
         f.Tasks.KeepDraft(old);
 
         f.Tasks.KeepDraft(f.Draft("New"));
@@ -152,7 +152,7 @@ public sealed class DraftTests
     public void Keeps_the_images_of_the_draft_it_keeps()
     {
         var draft = f.Draft("Mine");
-        f.Tasks.SaveDraftImage(draft.TaskId, SomePng(), "pic");
+        f.Tasks.SaveImage(draft.TaskId, SomePng(), "pic");
         f.Tasks.KeepDraft(draft);
 
         f.Tasks.KeepDraft(draft with { Title = "Mine, edited" });
@@ -168,7 +168,7 @@ public sealed class DraftTests
     public void Deletes_the_kept_draft_and_its_images_when_the_new_draft_is_blank(string title, string description, string[] tags)
     {
         var kept = f.Draft("Something");
-        f.Tasks.SaveDraftImage(kept.TaskId, SomePng(), "pic");
+        f.Tasks.SaveImage(kept.TaskId, SomePng(), "pic");
         f.Tasks.KeepDraft(kept);
 
         f.Tasks.KeepDraft(kept with { Title = title, Description = description, Tags = tags });
@@ -278,7 +278,7 @@ public sealed class DraftTests
     public void Deletes_a_kept_draft_whose_id_is_already_a_task_and_loads_none()
     {
         var draft = f.Draft("Saved just before the app stopped");
-        f.Tasks.SaveDraftImage(draft.TaskId, SomePng(), "pic");
+        f.Tasks.SaveImage(draft.TaskId, SomePng(), "pic");
         f.Tasks.KeepDraft(draft);
         f.Seed(draft.TaskId, title: "Saved just before the app stopped");
         f.Tasks.UseRepositoryFolder(f.Clone);
@@ -304,7 +304,7 @@ public sealed class DraftTests
     public void Deletes_the_kept_draft_and_its_images_when_it_is_discarded()
     {
         var draft = f.Draft("Drop me");
-        f.Tasks.SaveDraftImage(draft.TaskId, SomePng(), "pic");
+        f.Tasks.SaveImage(draft.TaskId, SomePng(), "pic");
         f.Tasks.KeepDraft(draft);
 
         f.Tasks.DiscardDraft();
@@ -318,7 +318,7 @@ public sealed class DraftTests
     public void Deletes_images_saved_before_the_draft_was_first_kept_when_it_is_discarded()
     {
         var draft = f.Draft("Never kept");
-        f.Tasks.SaveDraftImage(draft.TaskId, SomePng(), "pic");
+        f.Tasks.SaveImage(draft.TaskId, SomePng(), "pic");
 
         f.Tasks.DiscardDraft();
 
@@ -331,7 +331,7 @@ public sealed class DraftTests
         var kept = f.Draft("Kept");
         var unkept = f.Draft("Never kept");
         f.Tasks.KeepDraft(kept);
-        f.Tasks.SaveDraftImage(unkept.TaskId, SomePng(), "pic");
+        f.Tasks.SaveImage(unkept.TaskId, SomePng(), "pic");
 
         f.Tasks.DiscardDraft();
 
@@ -353,7 +353,7 @@ public sealed class DraftTests
         var draft = f.Draft("Not yet", "text");
 
         f.Tasks.KeepDraft(draft);
-        f.Tasks.SaveDraftImage(draft.TaskId, SomePng(), "pic");
+        f.Tasks.SaveImage(draft.TaskId, SomePng(), "pic");
         f.Tasks.KeepDraft(draft with { Title = "Still not" });
 
         Assert.Empty(f.Files.ListFiles(f.Clone));

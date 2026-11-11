@@ -113,6 +113,31 @@ internal sealed class EditorHost : IDisposable
 
     public (int Save, int SaveAndClear, int Cancel) Counts => (save, saveAndClear, cancel);
 
+    /// <summary>The texts the editor displays beside its controls, such as its message line.</summary>
+    public IReadOnlyList<string> Texts => Memoria.ToDo.Desktop.Fakes.OpenWindows.TextsIn(window);
+
+    /// <summary>Whether a displayed text contains the words, ignoring case.</summary>
+    public bool ShowsText(string words) => Texts.Any(text => text.Contains(words, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Whether the Title field carries the status text that marks it as empty.</summary>
+    public bool TitleIsMarked =>
+        !string.IsNullOrEmpty(System.Windows.Automation.AutomationProperties.GetItemStatus(EditorFields.Field(Editor, EditorFields.Title)));
+
+    /// <summary>Gives the keyboard focus to the field.</summary>
+    public void Focus(string field)
+    {
+        var element = EditorFields.Field(Editor, field);
+        element.Focus();
+        Keyboard.Focus(element);
+    }
+
+    /// <summary>The name of the field that holds the keyboard focus.</summary>
+    public string? FocusedField => EditorFields.FocusedFieldName();
+
+    /// <summary>Fills the three fields, keeping the draft's task id.</summary>
+    public void Fill(string title, string description = "", params string[] tags) =>
+        Editor.Value = Services.Tasks.StartDraft() with { Title = title, Description = description, Tags = tags };
+
     public void Press(params Key[] keys) => Memoria.ToDo.Desktop.Fakes.SimulatedKey.Chord(
         Keyboard.FocusedElement as UIElement ?? Editor, keys);
 

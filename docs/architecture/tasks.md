@@ -86,13 +86,14 @@ When two devices changed the same task, Tasks compares each version with the one
 
 An edit can bring back a task that another device deleted. If that task is still resolved past the deletion delay, the next sync deletes it again, unless the user reopens it first.
 
+Saving an edit changes only what the edit changed, so it never undoes a change that arrived while the edit was open. Tasks compares the edit with the version the editor started from: a Title or Description the edit changed replaces the current one, and the tags the edit added or removed are added to or removed from the current tags. Every field the edit didn't touch keeps its current value.
+
 Proposed, each a decision to confirm:
 
 - The later edit is the one with the later `updated` time, from each device's own clock. A device with a wrong clock can win or lose wrongly; this is a known limit.
 - When both `updated` times are equal, the version already on the remote wins. The merged `updated` is the later of the two.
 - When both devices changed the resolved time, the later edit wins.
 - A task that comes back gets its images back too.
-- Saving an edit merges the same way, against the version the edit started from, so it never undoes a change that arrived while the edit was open.
 
 ### Resolved tasks are deleted after a delay every device shares
 
@@ -118,6 +119,7 @@ Each of these rules also holds:
 - Each image is named by its own UUID version 7, so two offline devices never pick the same name. A description links to it from the clone's root, such as `![alt](images/<task-id>/<image-id>.png)`, and [Rendering loads it from the clone](rendering.md#the-web-view-runs-no-scripts-and-loads-only-images-from-the-clone).
 - An image is deleted only with its task, even when no link to it is left, because a merge can drop the only link.
 - An image added to a draft or an open edit waits outside the clone, and moves into the task's folder on save. Discarding deletes it. A draft gets its task ID when it starts, so its image links are final.
+- Tasks tells an open edit's image from a draft's by its task ID: an image for a task that already exists belongs to that task's open edit. It waits apart from the draft's images, so keeping, discarding, or adding the draft never deletes it. Both apps' editors keep every image through the same call.
 
 Each app's image tools only read an image's format and size, scale it, and save it as PNG, or as JPEG at a given quality, through an interface Tasks publishes. Tasks runs the steps above, so both apps shrink images the same way.
 
@@ -164,13 +166,13 @@ Each app's modules and Sync use these parts:
 - **Tags and search**: the tags in use with how many tasks use each, and the tasks matching a search and a tag.
 - **Task links**: a task's link, and the task ID in a link's address, if it's a task link.
 - **Drafts**: start, load, keep, and discard this device's draft of a new task, with its images.
-- **Images**: save an image for a task or a draft and get its Markdown.
+- **Images**: save an image for a draft or an open edit and get its Markdown, and discard an open edit's images.
 - **Shared settings**: read and change the deletion delay, within its range.
 - **Merging, for Sync**: merge a task's three versions, or `settings.json`'s; list the tasks due for deletion; reload the files a sync changed.
 
 The same three versions always merge to the same result, on every device. Tasks reads and writes files through the shared platform's [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files), takes the time from .NET's TimeProvider, and publishes an interface for image shrinking. Each app implements the interfaces and passes the system's time, as [How the apps fit together](overview.md#two-apps-share-one-c-library) says.
 
-Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the part below, in `Memoria.ToDo.Shared.Tasks`; its calls are synchronous. Steps 4 and 5 add editing, moving, resolving, reopening, and deleting tasks, the tag filter, images for an open edit, shared settings, and merging.
+Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the part below, in `Memoria.ToDo.Shared.Tasks`; its calls are synchronous. Step 4 renames `SaveDraftImage` to `SaveImage`, and adds `DiscardEditImages`, `SaveEdit`, `Move`, `Resolve`, `Reopen`, `Delete`, the tag filter's `Search`, and `TaskNotFoundException`, all shown below. Step 5 adds shared settings and merging. `All` and `Search` hold resolved tasks too, in rank order; each screen picks open or resolved tasks by `Resolved`.
 
 ```csharp
 namespace Memoria.ToDo.Shared.Tasks;
@@ -229,10 +231,49 @@ public interface ITasks
     /// Deletes the kept draft and its images.
     void DiscardDraft();
 
-    /// Shrinks the image to at most 1 MB, keeps it with the draft, and returns its Markdown,
-    /// such as ![alt](images/<task-id>/<image-id>.png). Throws InvalidDataException when it
+    /// Shrinks the image to at most 1 MB and returns its Markdown, such as
+    /// ![alt](images/<task-id>/<image-id>.png). Keeps it with the open edit when taskId is a task
+    /// that already exists, and with the draft otherwise. Throws InvalidDataException when it
     /// isn't an image, and ImageTooLargeException when it can't be shrunk to 1 MB.
-    string SaveDraftImage(string taskId, byte[] image, string altText);
+    string SaveImage(string taskId, byte[] image, string altText);
+
+    /// Deletes the images kept for the task's open edit. Never touches the draft.
+    void DiscardEditImages(string taskId);
+
+    /// Saves an edit of started, the task as the editor got it, onto the task as it is now.
+    /// A Title or Description that differs from started's replaces the current one; the tags edited
+    /// added or removed, ignoring case, are added to or removed from the current tags. Every other
+    /// field keeps its current value. Moves the edit's images into the clone, then writes the file
+    /// and sets Updated, unless nothing changed. Returns the task as saved.
+    /// Throws, before any change: NoRepositoryFolderException when no folder is set;
+    /// TaskNotFoundException when the task isn't in All; ArgumentException when edited.TaskId isn't
+    /// started.Id, or for an empty or multi-line title or an invalid tag.
+    TaskItem SaveEdit(TaskItem started, TaskDraft edited);
+
+    /// Gives the task a rank that shows it after previousTaskId and before nextTaskId; a null ID
+    /// leaves that side open, so Move(taskId, null, null) changes nothing. Changes only the task's own
+    /// file and sets Updated. Changes nothing when the task already shows there. Returns the task as saved.
+    /// Throws TaskNotFoundException when any ID isn't in All, and ArgumentException when a neighbor
+    /// is the task itself, previousTaskId doesn't show before nextTaskId, or the neighbors share a rank,
+    /// so no rank of the task's own shows it between them.
+    TaskItem Move(string taskId, string? previousTaskId, string? nextTaskId);
+
+    /// Sets Resolved and Updated to now. A resolved task stays as it is. Returns the task as saved.
+    /// Throws TaskNotFoundException when the task isn't in All.
+    TaskItem Resolve(string taskId);
+
+    /// Clears Resolved and sets Updated to now. An open task stays as it is. Returns the task as saved.
+    /// Throws TaskNotFoundException when the task isn't in All.
+    TaskItem Reopen(string taskId);
+
+    /// Deletes the task's file, then its images in the clone, images/<task-id>/, then any images
+    /// kept for its open edit. Once the file is deleted, the task is gone from All and Changed is
+    /// raised, even when a later step throws. Throws TaskNotFoundException when the task isn't in All.
+    void Delete(string taskId);
+
+    /// Search(text), narrowed to the tasks that have tag, ignoring case.
+    /// Throws ArgumentException for an empty or multi-line tag; Search(text) filters by no tag.
+    IReadOnlyList<TaskItem> Search(string text, string tag);
 }
 
 public sealed record TaskItem(string Id, string Title, string Description, string Rank,
@@ -245,6 +286,9 @@ public sealed record TagUse(string Tag, int Count);
 public sealed class NoRepositoryFolderException : InvalidOperationException { }
 
 public sealed class ImageTooLargeException : InvalidOperationException { }
+
+/// The task isn't in All, for example because it was deleted.
+public sealed class TaskNotFoundException : InvalidOperationException { }
 
 /// Each app's image tools. Tasks runs the shrinking steps through it.
 public interface IImageEncoder
@@ -264,7 +308,18 @@ public enum ImageFormat { Png, Jpeg, Other }
 public sealed record ImageInfo(ImageFormat Format, int Width, int Height);
 ```
 
-Proposed: `SaveDraftImage`'s two exceptions, so the editor can say why an image wasn't saved. This is a decision to confirm.
+Proposed: `SaveImage`'s two exceptions, so the editor can say why an image wasn't saved. This is a decision to confirm.
+
+Also proposed for step 4, each a decision to confirm:
+
+- `SaveEdit` compares a Title after trimming, and a Description after storing its line breaks as `\n`, so only a real change counts. It adds tags in the edit's order, spelled as `WithTag` spells them.
+- `SaveEdit` of a task that's no longer in `All` throws, so a save never undoes a deletion that arrived while the edit was open. The editor keeps the text, so the user can copy it.
+- `SaveEdit` moves the edit's images first, so a failed write leaves them in the task's folder, and a retry works. An image in the task's folder with no link is kept, as the rule above says.
+- When `Move`'s neighbors share a rank, which only two offline devices adding tasks can cause, no key sorts between them, and a move changes only its own file. So `Move` refuses, unless the task already shows there, and the Task list shows the move failed. A later design can re-rank a neighbor instead.
+- `Move` with no neighbors changes nothing, even when other tasks exist, such as hidden by a filter that shows only this task.
+- `Search(text, tag)` refuses an empty tag instead of treating it as no filter, so a caller's mistake shows; a screen with no tag filter calls `Search(text)`.
+- `Delete` stops at the first step that fails and throws its error, with no new exception type. Deleting the file is the step that deletes the task: if it fails, the task and its images stay as they were; once it succeeds, the task is deleted even when removing its images then fails, and those images stay in the clone. A caller tells the two apart by whether the task is still in `All`. Like every call, `Delete` does all its file work while no other call's file work runs, so its last step can't delete an image saved after the file was deleted, such as for a task with the same ID in another repository. Then it raises `Changed`, including when a step after the file's deletion failed. As with every call, `Changed` is raised once other calls can run again, so another call may run before the handlers do; Tasks never holds other calls back while handlers run.
+- `Resolve` and `Reopen` raise `Changed` only when they change the task, and `Move` and `SaveEdit` likewise.
 
 ## Failure modes
 
@@ -296,6 +351,7 @@ The options below were considered and rejected, grouped by decision.
   - **The later edit wins, and the other Description is kept in a warning block**: not chosen.
   - **A line-by-line merge with conflict markers**: it needs a diff library, and the markers end up in the task.
   - **The deletion wins over an edit**: the edit would survive only in git history.
+  - **Saving an edit writes every field the editor holds**: it would undo a change that arrived while the edit was open.
 - Automatic deletion:
   - **Delete only when both the resolution and the last edit are older than the delay**: offered, and not chosen.
 - Image format:
@@ -309,3 +365,6 @@ The options below were considered and rejected, grouped by decision.
   - **A device store in the platform**: no second module needs one.
 - Tag suggestions:
   - **A matching rule in the shared platform**: only Tasks matches tags and tasks, so the rule stays in Tasks.
+- Images for an open edit:
+  - **The editor says whether it holds a draft or a task, and calls a separate image part for edits**: an extra setting on the editor, and two image parts that shrink images the same way.
+  - **Images added during an edit go straight into the clone**: a sync during the edit could push images that a discard then deletes, and git history would keep them.

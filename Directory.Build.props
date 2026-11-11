@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework Condition="'$(TargetFramework)' == ''">net11.0</TargetFramework>
+    <MemoriaAppTargetFramework>$(TargetFramework)-windows10.0.17763.0</MemoriaAppTargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

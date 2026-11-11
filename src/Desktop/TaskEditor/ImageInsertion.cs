@@ -75,7 +75,7 @@ internal sealed class ImageInsertion
             return false;
         }
 
-        Insert(field, snippet, replaceFrom, () => _tasks.SaveDraftImage(_taskId(), png, ClipboardAltText));
+        Insert(field, snippet, replaceFrom, () => _tasks.SaveImage(_taskId(), png, ClipboardAltText));
         return true;
     }
 
@@ -99,7 +99,7 @@ internal sealed class ImageInsertion
     private string Keep(string path)
     {
         var name = Path.GetFileNameWithoutExtension(path);
-        return _tasks.SaveDraftImage(_taskId(), _files.ReadFile(path), name.Length == 0 ? ClipboardAltText : name);
+        return _tasks.SaveImage(_taskId(), _files.ReadFile(path), name.Length == 0 ? ClipboardAltText : name);
     }
 
     // Leaves the text and the cursor as they were when there is no link, whether the user cancelled or it failed.

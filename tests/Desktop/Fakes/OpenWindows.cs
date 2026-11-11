@@ -31,10 +31,21 @@ public sealed class OpenWindows : IDisposable
     }
 
     /// <summary>
-    /// The text a text block displays, including text made by its inlines (runs, bold). The one place tests read it,
-    /// so every lookup agrees.
+    /// The text a text block displays, read from its inlines (runs, bold, links; a line break is a newline), so it does not
+    /// depend on layout: the block's Text and text ranges are not complete until WPF has measured it. The one place tests read it.
     /// </summary>
-    public static string TextOf(TextBlock block) => new TextRange(block.ContentStart, block.ContentEnd).Text;
+    public static string TextOf(TextBlock block) => TextOf(block.Inlines);
+
+    /// <summary>The text a link displays.</summary>
+    public static string TextOf(Hyperlink link) => TextOf(link.Inlines);
+
+    private static string TextOf(InlineCollection inlines) => string.Concat(inlines.Select(inline => inline switch
+    {
+        Run run => run.Text,
+        Span span => TextOf(span.Inlines),
+        LineBreak => "\n",
+        _ => string.Empty,
+    }));
 
     /// <summary>The texts the window displays in text blocks and in the string content of labels and buttons.</summary>
     public static IReadOnlyList<string> TextsIn(Window window) =>

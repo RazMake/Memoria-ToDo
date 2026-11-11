@@ -115,7 +115,31 @@ public static class Palette
     /// The palette, in the table's order.
     public static IReadOnlyList<PaletteColor> Colors { get; }
 }
+
+public static class DescriptionPage
+{
+    /// A full HTML page of the description for the web view, in the light or dark theme.
+    /// It holds no script and no raw HTML from the task, and loads images only from cloneAddress:
+    /// a relative image path, such as images/<task-id>/<image-id>.png, loads from it.
+    /// Throws ArgumentException when cloneAddress isn't an absolute http or https address ending in "/".
+    public static string Of(string markdown, bool dark, Uri cloneAddress);
+}
+
+public static class BrowserCheck
+{
+    /// Whether the address may open in the default browser: true only for an absolute http or https address.
+    public static bool MayOpen(string address);
+}
 ```
+
+Also proposed for step 4, each a decision to confirm:
+
+- The page is UTF-8 and carries the content security policy `default-src 'none'; img-src <clone address>; style-src 'unsafe-inline'`.
+- An image whose address doesn't start with the clone's address, once a relative path is resolved against it, shows as a link: its alt text, with the address as the link's address.
+- A color shows as a `span` whose `style` sets the palette's value for the theme, such as `<span style="color:#d1242f">`.
+- Each link keeps its address as written, so a task link stays `task:<id>`.
+- The page's text is `#1f1f1f` in the light theme and `#f3f3f3` in the dark theme, and the page sets no background, so the window's own background shows through the web view. Each text color is the other theme's darkest or lightest background in the [palette's](#six-colors-read-well-in-light-and-dark-themes) contrast check, so it reads well on its own theme's backgrounds.
+- `MayOpen` ignores the case of the scheme, so `HTTPS://` opens too.
 
 ## Failure modes
 

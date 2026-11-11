@@ -34,6 +34,9 @@ public interface ITasks
     /// <summary>Tasks whose title, description, or tags hold every typed word, ignoring case, in rank order.</summary>
     IReadOnlyList<TaskItem> Search(string text);
 
+    /// <summary><see cref="Search(string)"/>, narrowed to the tasks that have <paramref name="tag"/>, ignoring case.</summary>
+    IReadOnlyList<TaskItem> Search(string text, string tag);
+
     /// <summary>The address a link to the task uses: <c>task:&lt;id&gt;</c>.</summary>
     string LinkAddress(string taskId);
 
@@ -53,9 +56,46 @@ public interface ITasks
     void DiscardDraft();
 
     /// <summary>
-    /// Shrinks the image to at most 1 MB, keeps it with the draft, and returns its Markdown, such as
-    /// <c>![alt](images/&lt;task-id&gt;/&lt;image-id&gt;.png)</c>. Throws <see cref="InvalidDataException"/> when it
+    /// Shrinks the image to at most 1 MB and returns its Markdown, such as
+    /// <c>![alt](images/&lt;task-id&gt;/&lt;image-id&gt;.png)</c>. Keeps it with the open edit when <paramref name="taskId"/>
+    /// is a task that already exists, and with the draft otherwise. Throws <see cref="InvalidDataException"/> when it
     /// isn't an image, and <see cref="ImageTooLargeException"/> when it can't be shrunk to 1 MB.
     /// </summary>
-    string SaveDraftImage(string taskId, byte[] image, string altText);
+    string SaveImage(string taskId, byte[] image, string altText);
+
+    /// <summary>Deletes the images kept for the task's open edit. Never touches the draft.</summary>
+    void DiscardEditImages(string taskId);
+
+    /// <summary>
+    /// Saves an edit of <paramref name="started"/>, the task as the editor got it, onto the task as it is now. A Title or
+    /// Description that differs from started's replaces the current one; the tags edited added or removed, ignoring case, are
+    /// added to or removed from the current tags. Every other field keeps its current value. Moves the edit's images into the
+    /// clone, then writes the file and sets Updated, unless nothing changed. Returns the task as saved.
+    /// Throws, before any change: <see cref="NoRepositoryFolderException"/> when no folder is set;
+    /// <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>; <see cref="ArgumentException"/> when
+    /// <c>edited.TaskId</c> isn't <c>started.Id</c>, or for an empty or multi-line title or tag.
+    /// </summary>
+    TaskItem SaveEdit(TaskItem started, TaskDraft edited);
+
+    /// <summary>
+    /// Gives the task a rank that shows it after <paramref name="previousTaskId"/> and before <paramref name="nextTaskId"/>; null
+    /// means the top or the bottom. Changes only the task's own file and sets Updated. Changes nothing when the task already shows
+    /// there. Returns the task as saved. Throws <see cref="TaskNotFoundException"/> when any ID isn't in <see cref="All"/>, and
+    /// <see cref="ArgumentException"/> when a neighbor is the task itself, the previous task doesn't show before the next, or the
+    /// neighbors share a rank, so no rank of the task's own shows it between them.
+    /// </summary>
+    TaskItem Move(string taskId, string? previousTaskId, string? nextTaskId);
+
+    /// <summary>Sets Resolved and Updated to now. A resolved task stays as it is. Returns the task as saved. Throws <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
+    TaskItem Resolve(string taskId);
+
+    /// <summary>Clears Resolved and sets Updated to now. An open task stays as it is. Returns the task as saved. Throws <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
+    TaskItem Reopen(string taskId);
+
+    /// <summary>
+    /// Deletes the task's file, then its images in the clone, then any images kept for its open edit. Throws
+    /// <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>. Stops at the first step that fails and
+    /// throws its error; once the file is deleted, the task leaves <see cref="All"/> and <see cref="Changed"/> is raised even if a later step fails.
+    /// </summary>
+    void Delete(string taskId);
 }

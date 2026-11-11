@@ -97,21 +97,22 @@ The shared library has four modules:
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, and which links may open in the browser | [Rendering](rendering.md) | None |
 
-The desktop app has four modules of its own:
+The desktop app has five modules of its own:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
 | Shell | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Configure, Sync |
 | Task editor | The Add window, and the editor and tag chips View Tasks uses | [Task editor](desktop/task-editor.md) | Tasks, Editing, Rendering |
-| Task list | View Tasks: open tasks in rank order, expanded and edited in place, with the tag filter, search, resolving, deleting, resolved tasks, and the Sync button | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Sync |
+| Task list | View Tasks: open tasks in rank order, expanded and edited in place, with the tag filter, search, resolving, deleting, resolved tasks, and the Sync button | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Formatted view, Sync |
 | Configure | The two global shortcuts and the deletion delay, which every device shares; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Sync |
+| Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 
 Proposed, each a decision to confirm:
 
 - Shell may use Sync, so the tray shows sync status without going through Configure.
 - The Task list may use Sync, for its Sync button and the sync when View Tasks opens.
 
-The Android app has four modules with the same names, separate from the desktop app's:
+The Android app has four modules with the same names as the desktop app's first four, separate from them:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |

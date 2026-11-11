@@ -1,3 +1,5 @@
+Memoria.ToDo.Shared.Rendering.BrowserCheck
+Memoria.ToDo.Shared.Rendering.DescriptionPage
 Memoria.ToDo.Shared.Rendering.MarkdownField
 Memoria.ToDo.Shared.Rendering.MarkdownField.Description = 1 -> Memoria.ToDo.Shared.Rendering.MarkdownField
 Memoria.ToDo.Shared.Rendering.MarkdownField.Title = 0 -> Memoria.ToDo.Shared.Rendering.MarkdownField
@@ -44,6 +46,8 @@ override Memoria.ToDo.Shared.Rendering.PaletteColor.ToString() -> string!
 override Memoria.ToDo.Shared.Rendering.StyledSpan.Equals(object? obj) -> bool
 override Memoria.ToDo.Shared.Rendering.StyledSpan.GetHashCode() -> int
 override Memoria.ToDo.Shared.Rendering.StyledSpan.ToString() -> string!
+static Memoria.ToDo.Shared.Rendering.BrowserCheck.MayOpen(string! address) -> bool
+static Memoria.ToDo.Shared.Rendering.DescriptionPage.Of(string! markdown, bool dark, System.Uri! cloneAddress) -> string!
 static Memoria.ToDo.Shared.Rendering.Palette.Colors.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>!
 static Memoria.ToDo.Shared.Rendering.PaletteColor.operator !=(Memoria.ToDo.Shared.Rendering.PaletteColor? left, Memoria.ToDo.Shared.Rendering.PaletteColor? right) -> bool
 static Memoria.ToDo.Shared.Rendering.PaletteColor.operator ==(Memoria.ToDo.Shared.Rendering.PaletteColor? left, Memoria.ToDo.Shared.Rendering.PaletteColor? right) -> bool

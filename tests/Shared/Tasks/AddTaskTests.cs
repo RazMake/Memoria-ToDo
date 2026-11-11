@@ -269,7 +269,7 @@ public sealed class AddTaskTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var draft = f.Draft("Keep", "text");
         f.Tasks.KeepDraft(draft);
-        f.Tasks.SaveDraftImage(draft.TaskId, Fakes.FakeImageEncoder.Image(ImageFormat.Png, 10, 10), "pic");
+        f.Tasks.SaveImage(draft.TaskId, Fakes.FakeImageEncoder.Image(ImageFormat.Png, 10, 10), "pic");
         f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
 
         Assert.Throws<IOException>(() => f.Tasks.Add(draft));
@@ -284,7 +284,7 @@ public sealed class AddTaskTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var draft = f.Draft("Keep", "text");
         f.Tasks.KeepDraft(draft);
-        f.Tasks.SaveDraftImage(draft.TaskId, Fakes.FakeImageEncoder.Image(ImageFormat.Png, 10, 10), "pic");
+        f.Tasks.SaveImage(draft.TaskId, Fakes.FakeImageEncoder.Image(ImageFormat.Png, 10, 10), "pic");
         f.Files.FailWritesUnder(Path.Combine(f.Clone, "images"));
 
         Assert.Throws<IOException>(() => f.Tasks.Add(draft));
@@ -299,7 +299,7 @@ public sealed class AddTaskTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var draft = f.Draft("With pictures");
         var png = Fakes.FakeImageEncoder.Image(ImageFormat.Png, 10, 10, 500);
-        f.Tasks.SaveDraftImage(draft.TaskId, png, "pic");
+        f.Tasks.SaveImage(draft.TaskId, png, "pic");
         var name = Path.GetFileName(Assert.Single(f.Files.ListFiles(f.DraftImages(draft.TaskId))));
 
         f.Tasks.Add(draft);
@@ -333,7 +333,7 @@ public sealed class AddTaskTests
             Fakes.FakeImageEncoder.Image(ImageFormat.Png, 20, 10, 600),
         ];
         foreach (var image in images)
-            f.Tasks.SaveDraftImage(draft.TaskId, image, "pic");
+            f.Tasks.SaveImage(draft.TaskId, image, "pic");
         var names = f.Files.ListFiles(f.DraftImages(draft.TaskId)).Select(Path.GetFileName).Cast<string>().ToArray();
         Assert.Equal(2, names.Length);
         return (draft, names, images);

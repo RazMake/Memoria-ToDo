@@ -6,7 +6,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build desktop app",
-      "program": "${workspaceFolder}/src/Desktop/App/bin/Debug/net11.0-windows/Memoria.ToDo.Desktop.App.exe",
+      "program": "${workspaceFolder}/src/Desktop/App/bin/Debug/Memoria.ToDo.Desktop.App.exe",
       "cwd": "${workspaceFolder}/src/Desktop/App",
       "env": {
         "DOTNET_ROOT": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet"

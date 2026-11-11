@@ -19,9 +19,7 @@ internal static class EditorFields
     private static readonly string[] Names = [Title, Description, Tags];
 
     /// <summary>The field with the name, found below <paramref name="root"/>.</summary>
-    public static FrameworkElement Field(DependencyObject root, string name) =>
-        OpenWindows.Descendants(root).OfType<FrameworkElement>()
-            .Single(element => AutomationProperties.GetAutomationId(element) == name);
+    public static FrameworkElement Field(DependencyObject root, string name) => TextFields.Find(root, name);
 
     /// <summary>The element that lists the task's tags, in order, as the items of an items control.</summary>
     public const string TagList = "TagList";
@@ -33,29 +31,10 @@ internal static class EditorFields
     public const string TagChips = "TagChips";
 
     /// <summary>Sets what the user has typed in the field, as typing does.</summary>
-    public static void Type(DependencyObject root, string name, string text)
-    {
-        switch (Field(root, name))
-        {
-            case ICSharpCode.AvalonEdit.TextEditor editor:
-                editor.Text = text;
-                break;
-            case System.Windows.Controls.TextBox box:
-                box.Text = text;
-                break;
-            default:
-                throw new InvalidOperationException($"The {name} field isn't a text field.");
-        }
-    }
+    public static void Type(DependencyObject root, string name, string text) => TextFields.Type(Field(root, name), text);
 
     /// <summary>What the field's text holds now.</summary>
-    public static string TextOf(DependencyObject root, string name) =>
-        Field(root, name) switch
-        {
-            ICSharpCode.AvalonEdit.TextEditor editor => editor.Text,
-            System.Windows.Controls.TextBox box => box.Text,
-            _ => throw new InvalidOperationException($"The {name} field isn't a text field."),
-        };
+    public static string TextOf(DependencyObject root, string name) => TextFields.TextOf(Field(root, name));
 
     /// <summary>The element that lists the palette's colors, as the items of an items control, while the color list is open.</summary>
     public const string ColorList = "ColorList";

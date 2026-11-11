@@ -27,6 +27,13 @@ public sealed class FakeFileSystem : IFileSystem
         failingDeleteFolders.Clear();
     }
 
+    /// <summary>Every file at or below <paramref name="folder"/>, in any subfolder, for tests that must not assume a folder layout.</summary>
+    public IReadOnlyList<string> AllFilesUnder(string folder)
+    {
+        var full = System.IO.Path.GetFullPath(folder);
+        return files.Keys.Where(file => IsUnder(file, full)).ToList();
+    }
+
     /// <inheritdoc />
     public bool FileExists(string path) => files.ContainsKey(System.IO.Path.GetFullPath(path));
 

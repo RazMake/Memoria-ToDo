@@ -27,7 +27,7 @@ Proposed: the technology stack row's place and scope. This is a decision to conf
 | 2 | High-level architecture: the apps, the shared parts, and how they connect | [How the apps fit together](overview.md) | Decided |
 | 3 | How each module marks its public interface, so a reviewer finds it fast | [Modules](modules.md) | Decided |
 | 4 | The first modules and the [module map](modules.md#module-map) | [Modules](modules.md) | Decided |
-| 5 | Desktop app: its own Shell, Task editor, Task list, and Configure modules. Designed together with Editing and Rendering. | [Desktop app](desktop/README.md), folder `desktop/` | Drafting |
+| 5 | Desktop app: its own Shell, Task editor, Task list, Formatted view, and Configure modules. Designed together with Editing and Rendering. | [Desktop app](desktop/README.md), folder `desktop/` | Drafting |
 | 6 | Editing: the formatting, snippet, and list commands. Designed together with the desktop app. | [Editing](editing.md) | Decided |
 | 7 | Rendering: Markdown to HTML, which Markdig extensions, and how images and links render. Designed together with the desktop app. | [Rendering](rendering.md) | Decided |
 | 8 | Tasks: the task file format, task IDs, rank, merge rules, automatic deletion, and images. Designed together with sync. | [Tasks](tasks.md) | Decided |

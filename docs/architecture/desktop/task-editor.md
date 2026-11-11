@@ -58,7 +58,7 @@ Proposed, each a decision to confirm:
 - Ctrl+V runs the image route only when the clipboard holds an image, and pastes as usual otherwise. Ctrl+V, Ctrl+Shift+I, and file drops work in the Description only; the Title ignores them.
 - A chosen or dropped file's alt text is its name without the extension, and `image` when that is empty, as is an image from the clipboard's. A drop inserts at the cursor, in place of the selection, and uses only the first dropped file. A dropped file that isn't an image shows an error. Drops that carry no file, such as dragged text, keep their usual meaning in the editor.
 - The snippet list's Image entry does what Ctrl+Shift+I does, in place of the "/" and what was typed after it. When the dialog is cancelled, the typed text stays.
-- An image that can't be read, isn't an image, can't be shrunk to 1 MB, or can't be kept shows an error in the Add window's message line. The error mentions the image, nothing is inserted, and the text, cursor, and focus stay as they were. The next image that is added clears the message.
+- An image that can't be read, isn't an image, can't be shrunk to 1 MB, or can't be kept shows an error on the [editor's message line](#add-and-view-tasks-save-the-same-way-through-the-editor). The error mentions the image, nothing is inserted, and the text, cursor, and focus stay as they were. The next image that is added clears the message.
 - Opening the file dialog doesn't hide Add, though the dialog takes the focus.
 
 ### Every formatting command and snippet has a key
@@ -145,6 +145,16 @@ Proposed, each a decision to confirm:
 
 A saved new task goes to the top of the order, where the user sees it first in View Tasks. Tasks computes its rank, as [the desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists.
 
+### Add and View Tasks save the same way, through the editor
+
+The editor runs every save itself, so Add and the Task list's [edit in place](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) save the same way. Its user passes the function that saves: Add passes [Tasks'](../tasks.md#public-interface) add, and the Task list passes Tasks' save of an edit. Each save takes three steps:
+
+1. Tag text typed and not yet added becomes a tag, so no typing is lost.
+2. An empty Title is marked, the cursor goes to it, and nothing is saved.
+3. The editor calls the function. If it fails, the editor keeps the text and says why on its own message line.
+
+The editor tells its user whether the task was saved, so Add can clear or close, and the Task list can leave the edit. The editor knows the failures Tasks' saves throw, so each failure gets one message on both screens. The message line sits under the Tags line, so in Add it is still above Save, and it also says why an image wasn't added. The editor also lets its user put the cursor in the Title.
+
 ### With no clone folder, saving points to Configure
 
 Tasks keeps tasks in [Configure's repository folder](configure.md#the-sync-settings-section-sets-the-devices-clone). Until one is set, Add still opens and keeps a draft, but saving fails: Add stays open with the text and says to set the repository folder in Configure. The composition root gives Tasks the folder when the app starts, and again after Configure clones or picks one. It does this by wrapping Configure's repository-folder port in an App class, `TasksFollowRepositoryFolder`: it calls `UseRepositoryFolder` with the saved folder when it is built, and after each successful clone or use of an existing folder. Configure and Tasks stay unaware of each other. (Decision to confirm.)
@@ -155,11 +165,15 @@ The composition root, Shell, and the Task list use these parts:
 
 - **Create the Add window**: the composition root creates it when the app starts, as [above](#add-opens-at-once-with-the-cursor-in-the-title), and gives it to Shell.
 - **Show Add**: shows the Add window, with the draft if there is one. Shell calls it from the [Add new task shortcut](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), the tray icon, and the tray menu.
-- **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user saves or cancels. The Task list uses it to edit a task in place.
+- **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-view-tasks-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. The Task list uses it to edit a task in place. The user decided that the editor tells what changed, so the Task list shows its [Undo bar](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) only for an edit with changes, and never loses tag text typed and not yet added.
 - **The tag chips**: the five most-used tags as buttons, reporting the chosen tag. The Task list uses them to filter.
 - **Two ports**, the clipboard and the image file dialog, which the desktop app implements beside its composition root, so the Task editor's tests run on [fakes](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test).
 
-[Rendering](../rendering.md#public-interface) and [Editing](../editing.md#public-interface) are plain functions, so the Task editor calls them directly. The Task editor reads a dropped or chosen image file through Shared's `IFileSystem`, which `Create` and the editor's constructor take last (decision to confirm), and keeps each image through [Tasks' draft image](../tasks.md#a-draft-waits-on-this-device-until-its-saved).
+Proposed: the editor and the tag chips follow Tasks' changes and the theme only while they're on screen, so a closed window or a left edit holds no subscription, as the [Formatted view](formatted-view.md#it-shows-what-rendering-decides-never-markdown) does. Each shows the current tags and theme when it's made, and again when it's back on screen, such as an edit reopened by Undo. This is a decision to confirm.
+
+[Rendering](../rendering.md#public-interface) and [Editing](../editing.md#public-interface) are plain functions, so the Task editor calls them directly. The Task editor reads a dropped or chosen image file through Shared's `IFileSystem`, which `Create` and the editor's constructor take last (decision to confirm), and keeps each image through [Tasks' `SaveImage`](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task), for a draft or an open edit alike.
+
+Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) adds the editor's `Save`, `FocusTitle`, and `HasChanges`, which the Task list needs.
 
 ```csharp
 namespace Memoria.ToDo.Desktop.TaskEditor;
@@ -187,8 +201,21 @@ public sealed class TaskEditorControl : UserControl
     public TaskEditorControl(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files);
 
-    /// What the fields hold now. Setting it replaces all three fields.
+    /// What the fields hold now, without tag text typed and not yet added. Setting it replaces all
+    /// three fields and clears that text.
     public TaskDraft Value { get; set; }
+
+    /// Whether anything changed since Value was last set, or since the editor was made; it starts false. A Title or
+    /// Description changes when its text differs at all, and Tags when a tag was added or removed,
+    /// compared as Tasks' SaveEdit compares tags. Non-blank tag text typed and not yet added counts too.
+    public bool HasChanges { get; }
+
+    /// Adds typed tag text as a tag, then calls save with Value, unless the Title is empty, which it marks.
+    /// Returns false, keeping the text, when the Title is empty or save failed; the editor says why.
+    public bool Save(Action<TaskDraft> save);
+
+    /// Puts the cursor in the Title.
+    public void FocusTitle();
 
     public event EventHandler? SaveRequested;          // Ctrl+Enter
     public event EventHandler? SaveAndClearRequested;  // Ctrl+Shift+Enter
@@ -225,7 +252,8 @@ public interface IImageFileChooser
 
 - **No clone folder is set**: Add stays open with the text, says to set the repository folder in Configure, and keeps the draft.
 - **Saving fails**, for example because the task file can't be written: Add stays open with the text, shows the error, and keeps the draft.
-- **Saving fails and Tasks can't undo it** (it throws an `AggregateException`): Add stays open with the text and the draft, and says the add was incomplete, so the user checks the repository folder before saving again. (Decision to confirm: the wording.)
+- **Saving fails and Tasks can't undo it** (it throws an `AggregateException`): Add stays open with the text and the draft, and the editor says the save was incomplete, so the user checks the repository folder before saving again. The Task list's edit gets the same message. (Decision to confirm: the wording.)
+- **The edited task was deleted**, on this device or another (Tasks throws `TaskNotFoundException`): the edit stays open with the text, and the editor says "This task no longer exists. Copy your changes before leaving the editor." (Decision to confirm: the wording.)
 - **An image can't be read or saved**: nothing is inserted, and Add says why.
 - **The draft can't be read**: Add opens empty, says the draft couldn't be loaded, and leaves the draft file as it is.
 
@@ -246,6 +274,13 @@ The options below were considered and rejected, grouped by decision.
   - **A button for Ctrl+Shift+Enter too**: one more button in a compact window, for a key the user can learn.
   - **Clear and Save inside the editor the Task list reuses**: the Task list's in-place edit has [its own design](task-list.md#edit-turns-the-open-task-into-the-editor-in-place).
   - **Renaming Tasks' `DiscardDraft` to match Clear**: it would change a public interface only for the name on a button.
+- Which part of saving the editor owns:
+  - **The editor publishes its save steps, and each screen runs them and shows its own messages**: Add and the Task list would repeat the same steps and messages, which the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) forbids.
+  - **A ready-made in-place edit panel from the Task editor, which saves through Tasks itself**: the Task editor would take on editing existing tasks, which the [Task list](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) owns.
+- How the Task list tells whether a discarded edit changed anything:
+  - **Always show the Undo bar when an edit is left without saving**: it would say an edit was discarded when nothing changed.
+  - **Publishing the tag text typed and not yet added**: the Task list would decide what counts as a change in the editor, splitting that rule across two modules.
+  - **Counting typed tag text in `Value`**: Add's draft would then keep it as a tag, which the [draft rule](#closing-without-saving-keeps-a-draft-on-this-device) excludes.
 - Closing without saving:
   - **Esc discards the text, after a confirmation**: a draft keeps the text without asking.
   - **Closing saves the task automatically**: an accidental close would create a half-written task on every device.

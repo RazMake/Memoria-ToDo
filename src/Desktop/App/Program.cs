@@ -32,20 +32,34 @@ internal static class Program
         {
             var files = new WindowsFileSystem();
             var tasks = TaskStore.Create(files, new WpfImageEncoder(), TimeProvider.System, DraftFolder());
+            var theme = new WindowsTheme(new WindowsThemeSetting());
+            var clipboard = new WpfClipboard();
+            var imageFiles = new WpfImageFileChooser();
+            var repositoryFolder = new GitRepositoryFolder(RepositoryFolderSetting());
             return TrayApp.Create(
                 new TrayIcon(),
                 AddWindow.Create(
                     tasks,
                     Palette.Colors,
-                    new WindowsTheme(new WindowsThemeSetting()),
+                    theme,
                     TimeProvider.System,
-                    new WpfClipboard(),
-                    new WpfImageFileChooser(),
+                    clipboard,
+                    imageFiles,
                     files),
-                ViewTasksWindow.Create(),
+                ViewTasksWindow.Create(
+                    tasks,
+                    Palette.Colors,
+                    theme,
+                    TimeProvider.System,
+                    clipboard,
+                    imageFiles,
+                    files,
+                    // Each open of View Tasks serves the folder the repository is in then.
+                    () => new WpfDescriptionWebView(repositoryFolder.Current(), BrowserDataFolder()),
+                    new ShellDefaultBrowser()),
                 ConfigureWindow.Create(
                     StartWithWindows(),
-                    new TasksFollowRepositoryFolder(new GitRepositoryFolder(RepositoryFolderSetting()), tasks)),
+                    new TasksFollowRepositoryFolder(repositoryFolder, tasks)),
                 new VelopackUpdates(RepositoryUrl),
                 new HotKeyShortcut(),
                 // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
@@ -65,6 +79,10 @@ internal static class Program
     // The draft lives on this device only, apart from Velopack's install folder.
     private static string DraftFolder() => System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName.Value, "draft");
+
+    // The web view's browser data lives on this device only, apart from Velopack's install folder.
+    private static string BrowserDataFolder() => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName.Value, "WebView2");
 
     // A hook shows no window, so a failed step goes to Velopack's log file.
     private static StartWithWindowsSteps HookSteps() => new(

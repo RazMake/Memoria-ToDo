@@ -6,6 +6,20 @@ namespace Memoria.ToDo.Shared.Rendering.Tests;
 [Unit]
 public class StyledSpansLinkAndHeadingTests
 {
+    [Theory]
+    [InlineData("Read [the docs](https://example.com/docs)", "Read the docs")]
+    [InlineData("[the docs](https://example.com/docs)", "the docs")]
+    [InlineData("Read [the docs](https://example.com/docs) now", "Read the docs now")]
+    public void Shows_a_title_link_in_any_position_as_its_text_with_its_address(string markdown, string rendered)
+    {
+        var shown = StyledSpans.Of(markdown, MarkdownField.Title).Where(s => !s.Styles.HasFlag(SpanStyle.Marker)).ToList();
+
+        Assert.Equal(rendered, string.Concat(shown.Select(s => markdown.Substring(s.Start, s.Length))));
+        var linked = shown.Where(s => s.LinkAddress is not null).ToList();
+        Assert.Equal("the docs", string.Concat(linked.Select(s => markdown.Substring(s.Start, s.Length))));
+        Assert.All(linked, s => Assert.Equal("https://example.com/docs", s.LinkAddress));
+    }
+
     [Fact]
     public void Gives_a_links_text_its_address()
     {

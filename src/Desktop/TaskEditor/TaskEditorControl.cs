@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Editing;
 using Memoria.ToDo.Shared.Platform;
@@ -31,8 +32,18 @@ public sealed class TaskEditorControl : UserControl
     private readonly PopupLists _popups;
     private readonly IReadOnlyList<string> _colorNames;
     private readonly ImageInsertion _images;
+    private readonly TextBlock _message = new()
+    {
+        TextWrapping = TextWrapping.Wrap,
+        Foreground = Brushes.Firebrick,
+        Margin = new Thickness(0, 0, 0, 8),
+        Visibility = Visibility.Collapsed,
+    };
     private StyledTextEditor? _colorTarget;
     private string _taskId = "";
+    private string _baselineTitle = "";
+    private string _baselineDescription = "";
+    private HashSet<string> _baselineTags = new(StringComparer.OrdinalIgnoreCase);
 
     public TaskEditorControl(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files)
@@ -53,7 +64,7 @@ public sealed class TaskEditorControl : UserControl
         _popups = new PopupLists(_colors, snippetList, taskList);
         var taskReferences = new TaskReferencePicking(tasks, taskList, _popups);
         var images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId,
-            message => ImageMessageChanged?.Invoke(this, message));
+            ShowMessage);
         _images = images;
         var snippets = new SnippetInserter(time, clipboard, taskReferences.Open, images.InsertClipboardOrChosen);
         _ = new SnippetPicking(_description, snippetList, _popups, snippets);
@@ -68,6 +79,7 @@ public sealed class TaskEditorControl : UserControl
         panel.Children.Add(snippetList);
         panel.Children.Add(taskList);
         Add(panel, "Tags", _tags);
+        panel.Children.Add(_message);
         Content = panel;
 
         _editorKeys
@@ -117,7 +129,7 @@ public sealed class TaskEditorControl : UserControl
     private void Listen(UIElement element)
     {
         element.PreviewKeyDown += OnPreviewKeyDown;
-        element.PreviewKeyUp += (_, e) => _held.Released(KeyOf(e));
+        element.PreviewKeyUp += (_, e) => _held.Released(EventKey.Of(e));
         element.IsKeyboardFocusWithinChanged += (_, e) =>
         {
             if (!(bool)e.NewValue)
@@ -138,8 +150,21 @@ public sealed class TaskEditorControl : UserControl
             _title.Text = value.Title;
             _description.Text = value.Description;
             _tags.Tags = value.Tags;
+            _baselineTitle = _title.Text;
+            _baselineDescription = _description.Text;
+            _baselineTags = new HashSet<string>(_tags.Tags, StringComparer.OrdinalIgnoreCase);
         }
     }
+
+    /// <summary>
+    /// Whether anything changed since <see cref="Value"/> was last set, or since the editor was made. Tags are compared
+    /// as Tasks' edit compares them: ignoring case and order. Non-blank tag text typed and not yet added counts too.
+    /// </summary>
+    public bool HasChanges =>
+        _title.Text != _baselineTitle
+        || _description.Text != _baselineDescription
+        || !_baselineTags.SetEquals(_tags.Tags)
+        || !string.IsNullOrWhiteSpace(_tags.TypedText);
 
     /// <summary>The Tags text typed and not yet added as a tag. It isn't part of <see cref="Value"/>, and setting <see cref="Value"/> clears it.</summary>
     internal string TypedTags
@@ -158,10 +183,45 @@ public sealed class TaskEditorControl : UserControl
     public event EventHandler? CancelRequested;
 
     /// <summary>Puts the cursor in the Title.</summary>
-    internal void FocusTitle() => Focus(_title);
+    public void FocusTitle() => Focus(_title);
 
-    /// <summary>Raised with the text to show when an image couldn't be added, and with an empty text when one was added.</summary>
-    internal event EventHandler<string>? ImageMessageChanged;
+    /// <summary>
+    /// Adds typed tag text as a tag, then calls <paramref name="save"/> with <see cref="Value"/>, unless the Title is
+    /// empty, which it marks and puts the cursor in. Returns false, keeping the text, when the Title is empty or
+    /// <paramref name="save"/> threw a failure Tasks' saves are known to throw; the editor says why. Other failures propagate.
+    /// </summary>
+    public bool Save(Action<TaskDraft> save)
+    {
+        ArgumentNullException.ThrowIfNull(save);
+        _tags.AddTypedText();
+        var draft = Value;
+        if (string.IsNullOrWhiteSpace(draft.Title))
+        {
+            MarkTitleMissing();
+            FocusTitle();
+            return false;
+        }
+
+        try
+        {
+            save(draft);
+        }
+        catch (Exception e) when (SaveFailures.MessageOf(e) is not null)
+        {
+            ShowMessage(SaveFailures.MessageOf(e)!);
+            return false;
+        }
+
+        ShowMessage("");
+        return true;
+    }
+
+    /// <summary>Shows the text under the Tags line, or hides the line when the text is empty.</summary>
+    internal void ShowMessage(string text)
+    {
+        _message.Text = text;
+        _message.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
 
     /// <summary>Whether the image file dialog is open.</summary>
     internal bool IsChoosingImageFile => _images.IsChoosingFile;
@@ -170,7 +230,7 @@ public sealed class TaskEditorControl : UserControl
     internal bool CloseOpenList() => _popups.CloseOpen() || _tags.CloseSuggestions();
 
     /// <summary>Marks the Title as empty, for the eye (a red border) and for assistive tools, until it is edited.</summary>
-    internal void MarkTitleMissing()
+    private void MarkTitleMissing()
     {
         AutomationProperties.SetItemStatus(_title, MissingTitleStatus);
         _title.ShowInvalid(true);
@@ -187,8 +247,6 @@ public sealed class TaskEditorControl : UserControl
 
     private static void Focus(UIElement field) => KeyboardFocus.MoveTo(field);
 
-    private static Key KeyOf(KeyEventArgs e) => e.Key == Key.System ? e.SystemKey : e.Key;
-
     // Typed tag text becomes a tag first, so saving loses none of what the user typed.
     private void RequestSave(EventHandler? requested)
     {
@@ -198,7 +256,7 @@ public sealed class TaskEditorControl : UserControl
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        var key = KeyOf(e);
+        var key = EventKey.Of(e);
         if (ModifierKey.Of(key) != ModifierKeys.None)
         {
             _held.Pressed(key);
@@ -232,7 +290,7 @@ public sealed class TaskEditorControl : UserControl
 
     private void Handle(KeyMap keys, KeyEventArgs e)
     {
-        if (!e.Handled && keys.TryRun(_held.Modifiers, KeyOf(e)))
+        if (!e.Handled && keys.TryRun(_held.Modifiers, EventKey.Of(e)))
         {
             e.Handled = true;
         }

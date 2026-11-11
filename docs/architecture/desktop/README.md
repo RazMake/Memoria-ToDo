@@ -1,8 +1,8 @@
 # How the desktop app is built
 
-The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, View Tasks, and Configure. This page lists its four modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
+The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, View Tasks, and Configure. This page lists its five modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
 
-## Four modules make up the desktop app
+## Five modules make up the desktop app
 
 Each module is a project of its own, and the [module map](../modules.md#module-map) says which modules each may use. The table lists them in the order a user meets them:
 
@@ -11,6 +11,7 @@ Each module is a project of its own, and the [module map](../modules.md#module-m
 | [Shell](shell.md) | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, updates, and how sync status shows |
 | [Task editor](task-editor.md) | The Add window: its fields, keys, draft, and tags. View Tasks edits a task with the same editor. |
 | [Task list](task-list.md) | View Tasks: the list in rank order, expanding and editing in place, the tag filter, search, resolving, deleting, and the Sync button |
+| [Formatted view](formatted-view.md) | A task's title and description as a reader sees them, with no Markdown characters, the web view the description shows in, and which links open in the default browser |
 | [Configure](configure.md) | The settings window: the two global shortcuts, starting with Windows, the shared deletion delay, and sync status details |
 
 Two shared modules serve the desktop app: [Editing](../editing.md) holds the formatting and snippet commands, and [Rendering](../rendering.md) turns Markdown into HTML and styled text. [How the apps fit together](../overview.md) picks the main libraries, such as AvalonEdit for the editor and WebView2 for rendered descriptions.
@@ -21,7 +22,7 @@ Proposed: each window module names its own window, [Configure](configure.md#the-
 
 The desktop platform, `Memoria.ToDo.Desktop.Platform`, holds the app's startup, as [Modules](../modules.md#the-platform-serves-every-module-and-knows-none) decides. The composition root, `Memoria.ToDo.Desktop.App`, builds the app from the modules and hands it to the platform to run.
 
-The platform's public interface has six parts. The three below are decided. The other three are proposed further down: a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name. The decided parts are:
+The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share. The decided parts are:
 
 - **The app's lifetime**: an interface with two steps, start and stop. Start receives a way to end the app. [Shell](shell.md#public-interface) implements it, so the platform names no module. Proposed: the way to end the app works from any thread. The platform passes the call to the UI thread and returns without waiting, so a module that ends the app from a background task needs no thread rule of its own. This is a decision to confirm.
 - **Run the app**: takes a function that builds the lifetime, and returns the process's exit code. In order, it:
@@ -107,7 +108,7 @@ The platform's public interface has six parts. The three below are decided. The 
 - **Shell sets the theme when it starts**: it would change app-wide state the platform created, after the hidden Add window already exists.
 - **The classic light look until the theme is no longer experimental**: the app would have no dark mode.
 
-When the app starts, the composition root calls the create part of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), giving Configure its [Start with Windows port](configure.md#public-interface). It builds Shell's lifetime from the results, the implementations of [Shell's ports](shell.md#public-interface), and whether the app started at sign-in, and passes it to Run the app. The windows themselves stay `internal`, as all of a module's code does ([Modules](../modules.md#a-module-is-one-capability-behind-a-small-interface)).
+When the app starts, the composition root calls the create part of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), giving Configure its [Start with Windows port](configure.md#public-interface), and the Task list the [Formatted view's](formatted-view.md#the-app-supplies-the-web-view-and-the-browser) web view and default browser. It builds Shell's lifetime from the results, the implementations of [Shell's ports](shell.md#public-interface), and whether the app started at sign-in, and passes it to Run the app. The windows themselves stay `internal`, as all of a module's code does ([Modules](../modules.md#a-module-is-one-capability-behind-a-small-interface)).
 
 **An error no module handles is shown, then the app ends.** The platform shows the error's message in a message box, then ends the app with a non-zero exit code. This covers errors on the UI thread ([DispatcherUnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.dispatcherunhandledexception)) and on other threads ([UnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.appdomain.unhandledexception)). Each module still reports its own expected failures, such as a sync error. Catching nothing, WPF's default, was ruled out: the app would vanish from the tray with no message.
 
@@ -139,7 +140,7 @@ Proposed, each a decision to confirm:
 
 Add, View Tasks, and Configure open the same way, so the rule has one home: the platform, since [code shared by two modules moves to the platform](../modules.md#the-platform-serves-every-module-and-knows-none). Proposed, each a decision to confirm:
 
-- **A third part of the platform's public interface, Show on the pointer's screen, opens a module's window.** The [Task editor](task-editor.md#public-interface) calls it with its Add window. The [Task list](task-list.md#public-interface) and [Configure](configure.md#public-interface) reach it through the [fourth part](#a-closed-window-is-made-again-on-the-next-show). These two and the [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it) are the only platform parts the window modules use:
+- **A third part of the platform's public interface, Show on the pointer's screen, opens a module's window.** The [Task editor](task-editor.md#public-interface) calls it with its Add window. The [Task list](task-list.md#public-interface) and [Configure](configure.md#public-interface) reach it through the [fourth part](#a-closed-window-is-made-again-on-the-next-show). These two, the [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it), and the [keyboard parts](#window-modules-read-keys-through-the-platform) are the only platform parts the window modules use:
 
   ```csharp
   namespace Memoria.ToDo.Desktop.Platform;
@@ -157,7 +158,8 @@ Add, View Tasks, and Configure open the same way, so the rule has one home: the 
 
 - **The work area is the screen minus the taskbar**, so a window never opens under it. A window wider or taller than the work area starts at the work area's left or top edge, so its title bar stays on the screen, and stays centered in the other direction.
 - **Activated means in front of other windows, with the keyboard focus, but not always on top.** Windows may refuse to bring a window to the front while the user works in another app, and flashes its taskbar button instead ([SetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow)). Not confirmed by a run: that a click on the tray icon, or a global shortcut, lets the app come to the front.
-- **A window hidden while minimized opens in the normal state**, centered like any hidden window. This happens when the user closes the minimized Add window from its taskbar button. Windows can't restore a window without showing it, so the platform restores it while it's cloaked, invisible to the user, and hides it again before placing it ([DWMWA_CLOAK](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute)). Proposed, a decision to confirm. Not confirmed by eye: that nothing flashes on the screen or the taskbar.- **The app is aware of each screen's own scale**, declared in the composition root's app manifest, so windows stay sharp on a screen whose scale differs from the main one. WPF apps use one scale for every screen unless they declare this ([per-monitor DPI](https://github.com/microsoft/WPF-Samples/tree/main/PerMonitorDPI)). Not confirmed by a run: that a window opens centered on a screen whose scale differs from the main one, since WPF may place a window that isn't shown yet at the main screen's scale.
+- **A window hidden while minimized opens in the normal state**, centered like any hidden window. This happens when the user closes the minimized Add window from its taskbar button. Windows can't restore a window without showing it, so the platform restores it while it's cloaked, invisible to the user, and hides it again before placing it ([DWMWA_CLOAK](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute)). Proposed, a decision to confirm. Not confirmed by eye: that nothing flashes on the screen or the taskbar.
+- **The app is aware of each screen's own scale**, declared in the composition root's app manifest, so windows stay sharp on a screen whose scale differs from the main one. WPF apps use one scale for every screen unless they declare this ([per-monitor DPI](https://github.com/microsoft/WPF-Samples/tree/main/PerMonitorDPI)). Not confirmed by a run: that a window opens centered on a screen whose scale differs from the main one, since WPF may place a window that isn't shown yet at the main screen's scale.
 - **Its tests are UX tests in the platform's test project**, each showing a plain test window. The window modules' UX tests check that Show shows and activates their window, not where it opens.
 
 Windows Forms' `Screen` class, which finds the pointer's screen, was ruled out: it would load Windows Forms into the app for one lookup, and Windows' own functions give the same answer.
@@ -192,6 +194,28 @@ View Tasks and Configure close when the user closes them, and WPF can't show a c
 - **The modules use the class itself, not an interface**, as they use Show on the pointer's screen. It has one implementation, and no test needs a fake of it, so a port would add an interface for nothing ([patterns](../overview.md#each-pattern-serves-one-requirement)).
 - **Its tests are UX tests in the platform's test project**, each with a plain test window. The Task list's and Configure's own UX tests stay as they are, since what their Show does doesn't change.
 
+### Window modules read keys through the platform
+
+The Task list, the Task editor, and Configure read keys the same way, so that knowledge has one home: the platform, since [code shared by two modules moves to the platform](../modules.md#the-platform-serves-every-module-and-knows-none). The platform has three keyboard parts. Two were already in its public interface: `ModifierKey` says which modifier a key stands for and names modifiers for users, and `HeldModifierKeys` tracks the modifiers held down.
+
+**The third, Event key, gives the key a key event is for**, as you chose. WPF reports a key pressed with Alt as `Key.System`, with the key itself in `SystemKey` ([KeyEventArgs.SystemKey](https://learn.microsoft.com/en-us/dotnet/api/system.windows.input.keyeventargs.systemkey)). The three modules use this part instead of each unwrapping it in a copy of its own:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+public static class EventKey
+{
+    /// The key a key event is for: SystemKey when WPF reports Key.System, for a key pressed
+    /// with Alt; otherwise Key, unchanged.
+    public static System.Windows.Input.Key Of(System.Windows.Input.KeyEventArgs e);
+}
+```
+
+- **It unwraps only Alt.** A key an input method or a dead key handles stays as WPF reports it, so the Enter that confirms an input method's text isn't taken as the Task list's or the editor's Enter. Only Configure's shortcut field also unwraps those two itself, so a [shortcut](configure.md#public-interface) is always made of a real key.
+- **What each key does stays in the design of the module that reads it**: the Task list's [keys](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) and [tag list](task-list.md#tags-and-search-narrow-the-list), the [Task editor's keys](task-editor.md#keys-save-close-and-move-between-fields), and [Configure's shortcut checks](configure.md#configure-explains-every-shortcut-it-cant-use).
+
+Two other homes were ruled out: a method on `ModifierKey`, since its one job is saying which keys are modifiers; and one copy shared inside the Task list only, which would leave the same code in the Task editor and Configure.
+
 ## Later designs answer what these files leave open
 
 The desktop design relies on rules that belong to the shared Tasks and Sync modules and to the technology stack, a later row of the [design backlog](../README.md#design-backlog). The table lists each, the desktop modules that need it, and the design that answers it:
@@ -214,7 +238,7 @@ The desktop design relies on rules that belong to the shared Tasks and Sync modu
 
 ## Delivery backlog
 
-The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1 and 2 are built, and so is step 3's theme part, built ahead of the rest of step 3. Steps 3 and 6 are next; you choose each next row. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
+The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1 to 4 are built. Step 6 is next; you choose each next row. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
 
 The theme part belongs to step 3, since the Task editor is its first user. Two other homes were ruled out:
 
@@ -240,6 +264,6 @@ The table lists each step, what it builds, and its status:
 | 1 | Desktop shell: the tray app and its windows, with no task saved | The [startup](#the-platform-runs-the-app-and-the-composition-root-builds-it); Shell's [tray icon and menu](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), without the shortcuts or the redirect to Configure; the [hidden Add window](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title), without its fields; and the create and Show parts of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface) | Implemented |
 | 2 | Two shortcuts, start with Windows, one instance, and theme | Shell's [two shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), with Configure opening when one can't register, and its [one instance and what each start shows](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-view-tasks); the platform's [theme that every window follows](#the-platform-runs-the-app-and-the-composition-root-builds-it); Configure's [shortcut and Start with Windows settings](configure.md#each-setting-has-one-owner), with the shortcuts not saved yet, in [labeled sections](configure.md#the-window-shows-its-settings-in-labeled-sections), with its [shortcut check](configure.md#a-new-shortcut-is-checked-at-once), the shortcuts [released while a field has focus](configure.md#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released), a [message for every shortcut it can't use](configure.md#configure-explains-every-shortcut-it-cant-use), and the [`Run` key](configure.md#start-with-windows-is-the-run-key-itself) that installing writes and uninstalling removes; and the [Add window's size](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) | Implemented |
 | 3 | Adding tasks | The platform's [theme part](#the-platform-runs-the-app-and-the-composition-root-builds-it), which tells modules whether windows are light or dark, built first; then the rest of the [Task editor](task-editor.md#behavior), on [Tasks](../tasks.md), the shared library's [platform](../modules.md#the-file-system-interface-reads-and-writes-whole-files), [Editing](../editing.md), and [Rendering's](../rendering.md#public-interface) styled spans and palette | Implemented |
-| 4 | Viewing tasks | The [Task list](task-list.md#behavior), except its Sync button | Not scheduled |
-| 5 | Sync | [Sync through git](../sync.md); Shell's [sync status](shell.md#sync-stays-quiet-unless-something-is-wrong) and its redirect to Configure until the device is configured; Configure's [sync](configure.md#configure-shows-how-sync-is-doing), deletion delay, and saving and loading the [shortcuts](configure.md#each-setting-has-one-owner) in `settings.json`; the Task list's [Sync button](task-list.md#view-tasks-syncs-when-it-opens-and-on-its-sync-button). It needs the answer to Configure's [open question](configure.md#which-module-owns-the-shortcuts-in-settingsjson). | Not scheduled |
+| 4 | Viewing tasks | The [Formatted view](formatted-view.md#behavior), and the [Task list](task-list.md#behavior) except its Sync button and the sync when View Tasks opens | Implemented |
+| 5 | Sync | [Sync through git](../sync.md); Shell's [sync status](shell.md#sync-stays-quiet-unless-something-is-wrong) and its redirect to Configure until the device is configured; Configure's [sync](configure.md#configure-shows-how-sync-is-doing), deletion delay, and saving and loading the [shortcuts](configure.md#each-setting-has-one-owner) in `settings.json`; the Task list's [Sync button and the sync when View Tasks opens](task-list.md#view-tasks-syncs-when-it-opens-and-on-its-sync-button). It needs the answer to Configure's [open question](configure.md#which-module-owns-the-shortcuts-in-settingsjson). | Not scheduled |
 | 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Next |

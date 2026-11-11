@@ -23,6 +23,76 @@ internal static class RankKey
         return Decrement(top) ?? throw new InvalidDataException($"No rank sorts before '{top}'.");
     }
 
+    /// <summary>
+    /// A key that sorts strictly between <paramref name="lower"/> and <paramref name="upper"/>; null means no limit on that side.
+    /// Throws <see cref="ArgumentException"/> when <paramref name="lower"/> doesn't sort before <paramref name="upper"/>,
+    /// and <see cref="InvalidDataException"/> for a key that isn't valid.
+    /// </summary>
+    public static string Between(string? lower, string? upper)
+    {
+        if (lower is null)
+            return Before(upper);
+        var lowerLength = IntegerLength(lower);
+        if (upper is null)
+            return Increment(lower[..lowerLength]) ?? lower[..lowerLength] + Midpoint(lower[lowerLength..], null);
+        if (string.CompareOrdinal(lower, upper) >= 0)
+            throw new ArgumentException("The lower key must sort before the upper key.", nameof(lower));
+
+        var upperLength = IntegerLength(upper);
+        var integer = lower[..lowerLength];
+        if (integer == upper[..upperLength])
+            return integer + Midpoint(lower[lowerLength..], upper[upperLength..]);
+        var next = Increment(integer) ?? throw new InvalidDataException($"No rank sorts between '{lower}' and '{upper}'.");
+        return string.CompareOrdinal(next, upper) < 0 ? next : integer + Midpoint(lower[lowerLength..], null);
+    }
+
+    /// <summary>A fraction that sorts strictly between <paramref name="lower"/> and <paramref name="upper"/>; null means no upper limit.</summary>
+    private static string Midpoint(string lower, string? upper)
+    {
+        if (lower.EndsWith('0') || upper is not null && upper.EndsWith('0'))
+            throw new InvalidDataException("A rank fraction can't end in 0.");
+        if (upper is not null)
+        {
+            var common = 0;
+            while (common < upper.Length && (common < lower.Length ? lower[common] : '0') == upper[common])
+                common++;
+            if (common > 0)
+                return upper[..common] + Midpoint(lower[Math.Min(common, lower.Length)..], upper[common..]);
+        }
+
+        var low = lower.Length == 0 ? 0 : Digits.IndexOf(lower[0]);
+        var high = upper is null ? Digits.Length : Digits.IndexOf(upper[0]);
+        if (high - low > 1)
+            return Digits[(low + high + 1) / 2].ToString();
+        return upper is { Length: > 1 } ? upper[..1] : Digits[low] + Midpoint(lower.Length == 0 ? "" : lower[1..], null);
+    }
+
+    private static string? Increment(string integer)
+    {
+        var chars = integer.ToCharArray();
+        for (var i = chars.Length - 1; i >= 1; i--)
+        {
+            if (chars[i] != 'z')
+            {
+                chars[i] = Digits[Digits.IndexOf(chars[i]) + 1];
+                return new string(chars);
+            }
+
+            chars[i] = '0';
+        }
+
+        // Every digit carried: the whole-number part moves to the next head letter.
+        var head = chars[0];
+        if (head == 'Z')
+            return "a0";
+        if (head == 'z')
+            return null;
+        var next = (char)(head + 1);
+        return next > 'a'
+            ? next + new string(chars, 1, chars.Length - 1) + '0'
+            : next + new string(chars, 1, chars.Length - 2);
+    }
+
     private static int IntegerLength(string key)
     {
         var head = key.Length > 0 ? key[0] : '\0';
