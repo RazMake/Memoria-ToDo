@@ -5,7 +5,10 @@ using System.Text.Json;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
-/// <summary>Reading and writing the JSON of task and draft files, so both keep one style and one set of rules.</summary>
+/// <summary>Marks an <see cref="InvalidDataException"/> as caused by a <c>version</c> newer than this app reads, so only a newer app can read the file.</summary>
+internal sealed class NewerVersionException() : Exception("The file needs a newer version of the app.");
+
+/// <summary>Reading and writing the JSON of task, draft, and settings files, so all keep one style and one set of rules.</summary>
 internal static class JsonFields
 {
     public const int CurrentVersion = 1;
@@ -70,11 +73,22 @@ internal static class JsonFields
     /// <summary>Throws <see cref="InvalidDataException"/> unless the file's <c>version</c> is one this app reads.</summary>
     public static void RequireSupportedVersion(JsonElement obj)
     {
-        if (!Field(obj, "version", JsonValueKind.Number).TryGetInt32(out var version) || version < 1 || version > CurrentVersion)
+        if (!Field(obj, "version", JsonValueKind.Number).TryGetInt32(out var version) || version < 1)
             throw new InvalidDataException("Unsupported version.");
+        if (version > CurrentVersion)
+            throw new InvalidDataException("The file needs a newer version of the app.", new NewerVersionException());
     }
 
     public static string String(JsonElement obj, string name) => Field(obj, name, JsonValueKind.String).GetString()!;
+
+    public static JsonElement Object(JsonElement obj, string name) => Field(obj, name, JsonValueKind.Object);
+
+    public static int Int32(JsonElement obj, string name) =>
+        Field(obj, name, JsonValueKind.Number).TryGetInt32(out var value) ? value : throw new InvalidDataException($"'{name}' isn't a whole number.");
+
+    /// <summary>A string, or null when the field is <c>null</c>. The field must be there.</summary>
+    public static string? OptionalString(JsonElement obj, string name) =>
+        obj.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Null ? null : String(obj, name);
 
     public static DateTimeOffset Time(JsonElement obj, string name) => ParseTime(String(obj, name), name);
 

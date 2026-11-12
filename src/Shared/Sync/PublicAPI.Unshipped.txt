@@ -1,0 +1,67 @@
+Memoria.ToDo.Shared.Sync.IDeviceKeyStore
+Memoria.ToDo.Shared.Sync.IDeviceKeyStore.Generate() -> Memoria.ToDo.Shared.Sync.IDeviceSigningKey!
+Memoria.ToDo.Shared.Sync.IDeviceKeyStore.HasKey.get -> bool
+Memoria.ToDo.Shared.Sync.IDeviceKeyStore.Open() -> Memoria.ToDo.Shared.Sync.IDeviceSigningKey!
+Memoria.ToDo.Shared.Sync.IDeviceSigningKey
+Memoria.ToDo.Shared.Sync.IDeviceSigningKey.PublicKeyBlob.get -> System.ReadOnlyMemory<byte>
+Memoria.ToDo.Shared.Sync.IDeviceSigningKey.Sign(System.ReadOnlySpan<byte> data, Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm algorithm) -> byte[]!
+Memoria.ToDo.Shared.Sync.IRepositorySelection
+Memoria.ToDo.Shared.Sync.IRepositorySelection.Load() -> void
+Memoria.ToDo.Shared.Sync.IRepositorySelection.Select(string! folder) -> void
+Memoria.ToDo.Shared.Sync.ISshHostKey
+Memoria.ToDo.Shared.Sync.ISshHostKey.Algorithm.get -> string!
+Memoria.ToDo.Shared.Sync.ISshHostKey.CanAccept.get -> bool
+Memoria.ToDo.Shared.Sync.ISshHostKey.Fingerprint.get -> string!
+Memoria.ToDo.Shared.Sync.ISshHostKey.Host.get -> string!
+Memoria.ToDo.Shared.Sync.ISshHostKey.Port.get -> int
+Memoria.ToDo.Shared.Sync.ISyncService
+Memoria.ToDo.Shared.Sync.ISyncService.Setup.get -> Memoria.ToDo.Shared.Sync.ISyncSetup!
+Memoria.ToDo.Shared.Sync.ISyncService.Start() -> void
+Memoria.ToDo.Shared.Sync.ISyncService.Status.get -> Memoria.ToDo.Shared.Sync.ISyncStatus!
+Memoria.ToDo.Shared.Sync.ISyncService.StatusChanged -> System.EventHandler?
+Memoria.ToDo.Shared.Sync.ISyncService.StopAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Shared.Sync.ISyncService.SyncNowAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Memoria.ToDo.Shared.Sync.ISyncStatus!>!
+Memoria.ToDo.Shared.Sync.ISyncSetup
+Memoria.ToDo.Shared.Sync.ISyncSetup.AcceptHostKeyAsync(string! fingerprint, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Shared.Sync.ISyncSetup.Changed -> System.EventHandler?
+Memoria.ToDo.Shared.Sync.ISyncSetup.CloneAsync(string! address, string! folder, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Shared.Sync.ISyncSetup.ForgetHostKeyAsync(string! host, int port, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Shared.Sync.ISyncSetup.GenerateKeyAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Shared.Sync.ISyncSetup.SetDeviceNameAsync(string! name, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Shared.Sync.ISyncSetup.State.get -> Memoria.ToDo.Shared.Sync.ISyncSetupState!
+Memoria.ToDo.Shared.Sync.ISyncSetup.UseExistingAsync(string! address, string! folder, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Shared.Sync.ISyncSetupState
+Memoria.ToDo.Shared.Sync.ISyncSetupState.AddKeyPage.get -> System.Uri?
+Memoria.ToDo.Shared.Sync.ISyncSetupState.DeviceName.get -> string!
+Memoria.ToDo.Shared.Sync.ISyncSetupState.HostKey.get -> Memoria.ToDo.Shared.Sync.ISshHostKey?
+Memoria.ToDo.Shared.Sync.ISyncSetupState.IsConfigured.get -> bool
+Memoria.ToDo.Shared.Sync.ISyncSetupState.PublicKey.get -> string?
+Memoria.ToDo.Shared.Sync.ISyncSetupState.RepositoryAddress.get -> string?
+Memoria.ToDo.Shared.Sync.ISyncSetupState.RepositoryFolder.get -> string?
+Memoria.ToDo.Shared.Sync.ISyncStatus
+Memoria.ToDo.Shared.Sync.ISyncStatus.Details.get -> string?
+Memoria.ToDo.Shared.Sync.ISyncStatus.Failure.get -> Memoria.ToDo.Shared.Sync.SyncFailure?
+Memoria.ToDo.Shared.Sync.ISyncStatus.HasPendingChanges.get -> bool
+Memoria.ToDo.Shared.Sync.ISyncStatus.LastSuccessfulSync.get -> System.DateTimeOffset?
+Memoria.ToDo.Shared.Sync.ISyncStatus.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile!>!
+Memoria.ToDo.Shared.Sync.ISyncStatus.State.get -> Memoria.ToDo.Shared.Sync.SyncState
+Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm
+Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm.Sha256 = 0 -> Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm
+Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm.Sha512 = 1 -> Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm
+Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.Authentication = 1 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.ChangedHostKey = 3 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.Connection = 0 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.InvalidFile = 6 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.LocalStorage = 7 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.PushRejected = 5 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.Repository = 4 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.Unexpected = 8 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncFailure.UnknownHostKey = 2 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncService
+Memoria.ToDo.Shared.Sync.SyncState
+Memoria.ToDo.Shared.Sync.SyncState.Error = 3 -> Memoria.ToDo.Shared.Sync.SyncState
+Memoria.ToDo.Shared.Sync.SyncState.Idle = 0 -> Memoria.ToDo.Shared.Sync.SyncState
+Memoria.ToDo.Shared.Sync.SyncState.Offline = 2 -> Memoria.ToDo.Shared.Sync.SyncState
+Memoria.ToDo.Shared.Sync.SyncState.Working = 1 -> Memoria.ToDo.Shared.Sync.SyncState
+static Memoria.ToDo.Shared.Sync.SyncService.Create(Memoria.ToDo.Shared.Tasks.ITaskSynchronization! tasks, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Sync.IDeviceKeyStore! keys, Memoria.ToDo.Shared.Sync.IRepositorySelection! repositories, System.TimeProvider! time, string! deviceFolder, string! defaultDeviceName, System.TimeSpan? periodicInterval) -> Memoria.ToDo.Shared.Sync.ISyncService!

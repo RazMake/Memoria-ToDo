@@ -33,10 +33,14 @@ public sealed class FakeViewTasksWindow(List<string>? shownLog = null) : IViewTa
     /// <summary>What IsOpen answers; false when not set.</summary>
     public bool IsOpen { get; set; }
 
+    /// <summary>The managed id of the thread of each Show call, in order.</summary>
+    public List<int> ShownOnThreads { get; } = [];
+
     /// <inheritdoc />
     public void Show()
     {
         ShowCount++;
+        ShownOnThreads.Add(Environment.CurrentManagedThreadId);
         shownLog?.Add("View Tasks");
     }
 }
@@ -64,6 +68,9 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     /// <summary>What <see cref="ConnectShortcuts"/> answers; true, as when both shortcuts registered, when not set.</summary>
     public bool ConnectAnswer { get; set; } = true;
 
+    public int DisposeCount { get; private set; }
+    public void Dispose() => DisposeCount++;
+
     /// <summary>The Add new task action Shell connected.</summary>
     /// <exception cref="InvalidOperationException">Shell hasn't connected the shortcuts.</exception>
     public IShortcutAction AddNewTask => addNewTask ?? throw NotConnected();
@@ -72,10 +79,14 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     /// <exception cref="InvalidOperationException">Shell hasn't connected the shortcuts.</exception>
     public IShortcutAction ManageTasks => manageTasks ?? throw NotConnected();
 
+    /// <summary>The managed id of the thread of each Show call, in order.</summary>
+    public List<int> ShownOnThreads { get; } = [];
+
     /// <inheritdoc />
     public void Show()
     {
         ShowCount++;
+        ShownOnThreads.Add(Environment.CurrentManagedThreadId);
         shownLog?.Add("Configure");
     }
 

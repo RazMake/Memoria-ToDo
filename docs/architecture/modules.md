@@ -37,6 +37,11 @@ Modules reach files on the device only through the shared platform's file system
 - **One fake, `FakeFileSystem`, keeps files in memory.** It sits in `Memoria.ToDo.Shared.Fakes`, in `tests/Shared/Fakes/`, as the [technology stack](technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test) places fakes.
 - **One contract test keeps the fake honest.** Its checks are written once, as an abstract test class beside the fake. The platform's test project runs them on the fake as unit tests, and the desktop composition root's test project, in `tests/Desktop/App/`, runs them on the Windows implementation as integration tests. So the fake can't drift from the real thing.
 
+Approved: the [filesystem source contract](../../src/Shared/Platform/IFileSystem.cs) also provides the physical
+directory-containment check. Each app resolves its filesystem's aliases; modules never use platform-native APIs
+or substitute textual paths for physical containment. The source defines equality, missing suffixes, and failures.
+Sync calls this I/O operation only on its owned worker, before effects; creation remains I/O-free.
+
 ```csharp
 namespace Memoria.ToDo.Shared.Platform;
 
@@ -92,7 +97,7 @@ The shared library has four modules:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Tasks | Task files and their format, the in-memory list, every task operation, tags and search, task links, how two versions of a task merge, images and their shrinking, this device's draft of a new task, and the settings every device shares, such as the deletion delay | [Tasks](tasks.md) | None |
+| Tasks | Task files and their format, the in-memory list, every task operation, tags and search, task links, how two versions of a task merge, images and their shrinking, this device's draft of a new task, and [shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs) | [Tasks](tasks.md) | None |
 | Sync | Commit, fetch, merge, and push in the background through its own git code on LibGit2Sharp and SSH.NET, and the device's repository settings, SSH key, and known host keys | [Sync through git](sync.md) | Tasks |
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, and which links may open in the browser | [Rendering](rendering.md) | None |

@@ -11,20 +11,28 @@ internal sealed class UpdateSchedule(IAppUpdates updates, TimeProvider time)
     private static readonly TimeSpan MaxLook = TimeSpan.FromHours(1);
 
     private CancellationTokenSource? stop;
+    private Task running = Task.CompletedTask;
 
     /// <summary>Begins the checks without waiting for the first one.</summary>
     public void Start()
     {
         stop = new CancellationTokenSource();
-        _ = RunAsync(stop.Token);
+        running = RunAsync(stop.Token);
     }
 
-    /// <summary>Cancels a running check and ends the schedule.</summary>
-    public void Stop()
+    /// <summary>Cancels a running check and ends the schedule; the task completes when the checks have ended.</summary>
+    public async Task StopAsync()
     {
         stop?.Cancel();
-        stop?.Dispose();
-        stop = null;
+        try
+        {
+            await running;
+        }
+        finally
+        {
+            stop?.Dispose();
+            stop = null;
+        }
     }
 
     private async Task RunAsync(CancellationToken cancellationToken)

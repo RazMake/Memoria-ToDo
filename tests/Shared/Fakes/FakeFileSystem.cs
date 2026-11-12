@@ -9,6 +9,10 @@ public sealed class FakeFileSystem : IFileSystem
     private readonly List<string> failingFolders = [];
     private readonly List<string> failingReadFolders = [];
     private readonly List<string> failingDeleteFolders = [];
+    private readonly Dictionary<string, string> aliases = new(StringComparer.Ordinal);
+    private int physicalChecks;
+    private bool physicalChecksFail;
+    private Exception? physicalFailure;
 
     /// <summary>From now on, writes and moves into <paramref name="folder"/> or below it fail with an <see cref="IOException"/>, and leave what's there whole.</summary>
     public void FailWritesUnder(string folder) => failingFolders.Add(System.IO.Path.GetFullPath(folder));
@@ -25,6 +29,52 @@ public sealed class FakeFileSystem : IFileSystem
         failingFolders.Clear();
         failingReadFolders.Clear();
         failingDeleteFolders.Clear();
+    }
+
+    /// <summary>Makes <paramref name="alias"/> and everything under it physically the same place as <paramref name="target"/>, as a folder link does.</summary>
+    public void AddAlias(string alias, string target) => aliases[System.IO.Path.GetFullPath(alias)] = System.IO.Path.GetFullPath(target);
+
+    /// <summary>From now on, <see cref="IsSameOrDescendantDirectory"/> fails with <paramref name="failure"/>, or with an <see cref="IOException"/> as when the real location can't be found.</summary>
+    public void FailPhysicalChecks(Exception? failure = null)
+    {
+        physicalFailure = failure ?? new IOException("The real location can't be found.");
+        physicalChecksFail = true;
+    }
+
+    /// <summary>How many times <see cref="IsSameOrDescendantDirectory"/> was asked.</summary>
+    public int PhysicalChecks => Volatile.Read(ref physicalChecks);
+
+    /// <summary>Whether <paramref name="directory"/> is, after resolving aliases, the same folder as <paramref name="ancestor"/> or inside it. It creates nothing.</summary>
+    public bool IsSameOrDescendantDirectory(string directory, string ancestor)
+    {
+        RequireFullyQualified(directory, nameof(directory));
+        RequireFullyQualified(ancestor, nameof(ancestor));
+        Interlocked.Increment(ref physicalChecks);
+        if (physicalChecksFail)
+            throw physicalFailure!;
+        var inner = Resolve(directory);
+        var outer = Resolve(ancestor);
+        return inner == outer || IsUnder(inner, outer);
+    }
+
+    private static void RequireFullyQualified(string path, string name)
+    {
+        if (!System.IO.Path.IsPathFullyQualified(path))
+            throw new ArgumentException($"Not a full path: {path}", name);
+    }
+
+    private string Resolve(string path)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        foreach (var (alias, target) in aliases)
+        {
+            if (full == alias)
+                return target;
+            if (IsUnder(full, alias))
+                return target + full[alias.Length..];
+        }
+
+        return full;
     }
 
     /// <summary>Every file at or below <paramref name="folder"/>, in any subfolder, for tests that must not assume a folder layout.</summary>

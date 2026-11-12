@@ -1,76 +1,86 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
+using Memoria.ToDo.Shared.Sync;
 using Microsoft.Win32;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// The Sync settings section's content: the current repository's address, local path, and commit identity, and a
-/// Configure button
-/// whose menu shows the controls to clone a repository or to use a clone the user already has.
+/// The repository part of the Sync settings section: the current repository's address, local path, and commit
+/// identity, and a Configure button whose menu shows the controls to clone a repository or to use a clone the user
+/// already has. Both choices share one address box and one folder box.
 /// </summary>
 internal sealed class RepositorySection : StackPanel
 {
-    private readonly IRepositoryFolder _repository;
+    private readonly SyncUi _ui;
     private readonly TextBlock _remote = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _folder = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
     private readonly TextBlock _identity = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 8) };
-    private readonly TextBox _url = new() { Margin = new Thickness(0, 0, 0, 5) };
-    private readonly TextBox _cloneFolder = new();
-    private readonly TextBox _existingFolder = new();
+    private readonly TextBox _address = new() { Margin = new Thickness(0, 0, 0, 5) };
+    private readonly TextBox _localFolder = new();
     private readonly Button _clone = new() { Content = "Clone", HorizontalAlignment = HorizontalAlignment.Left };
     private readonly Button _use = new() { Content = "Use this clone", HorizontalAlignment = HorizontalAlignment.Left };
-    private readonly StackPanel _clonePanel = new() { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 0) };
-    private readonly StackPanel _existingPanel = new() { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 0) };
+    private readonly StackPanel _controls = new() { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 0) };
     private readonly TextBlock _message = ThemedText.Message();
 
-    public RepositorySection(IRepositoryFolder repository)
+    public RepositorySection(SyncUi ui)
     {
-        ArgumentNullException.ThrowIfNull(repository);
-        _repository = repository;
-        _clone.Click += async (_, _) => await CloneAsync();
-        _use.Click += async (_, _) => await UseExistingAsync();
+        _ui = ui;
+        AutomationProperties.SetName(_address, "Repository address");
+        AutomationProperties.SetName(_localFolder, "Local folder");
+        _clone.Click += async (_, _) => await ChangeAsync(
+            (address, folder, token) => _ui.Sync.Setup.CloneAsync(address, folder, token));
+        _use.Click += async (_, _) => await ChangeAsync(
+            (address, folder, token) => _ui.Sync.Setup.UseExistingAsync(address, folder, token));
 
-        _clonePanel.Children.Add(Label("Repository URL"));
-        _clonePanel.Children.Add(_url);
-        _clonePanel.Children.Add(Label("Folder to clone into"));
-        _clonePanel.Children.Add(FolderRow(_cloneFolder));
-        _clonePanel.Children.Add(_clone);
-        _existingPanel.Children.Add(Label("Folder of your clone"));
-        _existingPanel.Children.Add(FolderRow(_existingFolder));
-        _existingPanel.Children.Add(_use);
+        _controls.Children.Add(Label("Repository address"));
+        _controls.Children.Add(_address);
+        _controls.Children.Add(Label("Local folder"));
+        _controls.Children.Add(FolderRow(_localFolder));
+        _controls.Children.Add(_clone);
+        _controls.Children.Add(_use);
 
         Children.Add(ThemedText.Help("Your tasks are kept in a git repository.", new Thickness(0, 0, 0, 8)));
         Children.Add(_remote);
         Children.Add(_folder);
         Children.Add(_identity);
         Children.Add(ConfigureButton());
-        Children.Add(_clonePanel);
-        Children.Add(_existingPanel);
+        Children.Add(_controls);
         Children.Add(_message);
-        _ = ShowCurrentAsync();
+        Refresh();
+    }
+
+    /// <summary>Shows the repository, folder, and identity the setup holds now.</summary>
+    public void Refresh()
+    {
+        var state = _ui.Sync.Setup.State;
+        Show(_remote, "Repository:", state.RepositoryAddress ?? "None");
+        Show(_folder, "Local Path:", state.RepositoryFolder ?? "None");
+        Show(_identity, "Identity:", state.DeviceName);
     }
 
     private Button ConfigureButton()
     {
         var button = new Button { Content = "Configure", HorizontalAlignment = HorizontalAlignment.Left };
         var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
-        menu.Items.Add(Choice("Clone a repo", _clonePanel));
-        menu.Items.Add(Choice("Use existing repo clone", _existingPanel));
+        menu.Items.Add(Choice("Clone a repo", _clone, _use));
+        menu.Items.Add(Choice("Use existing repo clone", _use, _clone));
         button.ContextMenu = menu;
         button.Click += (_, _) => menu.IsOpen = true;
         return button;
     }
 
-    private MenuItem Choice(string header, StackPanel panel)
+    private MenuItem Choice(string header, Button show, Button hide)
     {
         var item = new MenuItem { Header = header };
         item.Click += (_, _) =>
         {
-            _clonePanel.Visibility = _existingPanel.Visibility = Visibility.Collapsed;
-            panel.Visibility = Visibility.Visible;
+            show.Visibility = Visibility.Visible;
+            hide.Visibility = Visibility.Collapsed;
+            _controls.Visibility = Visibility.Visible;
             ThemedText.ShowMessage(_message, null);
         };
         return item;
@@ -100,75 +110,38 @@ internal sealed class RepositorySection : StackPanel
         return row;
     }
 
-    private async Task CloneAsync()
+    // Hides the controls at once, runs the change and then one sync; on failure shows the controls again with why.
+    private async Task ChangeAsync(Func<string, string, CancellationToken, Task> change)
     {
-        var url = _url.Text.Trim();
-        var folder = _cloneFolder.Text.Trim();
-        if (url.Length == 0 || folder.Length == 0)
+        var address = _address.Text.Trim();
+        var folder = _localFolder.Text.Trim();
+        if (address.Length == 0 || folder.Length == 0)
         {
-            ThemedText.ShowMessage(_message, "Enter the repository's URL and the folder to clone it into.");
+            ThemedText.ShowMessage(_message, "Enter the repository's address and the local folder.");
             return;
         }
 
-        await ChangeAsync(() => _repository.CloneAsync(url, folder, CancellationToken.None));
-    }
-
-    private async Task UseExistingAsync()
-    {
-        var folder = _existingFolder.Text.Trim();
-        if (folder.Length == 0)
-        {
-            ThemedText.ShowMessage(_message, "Enter or browse to the folder of your clone.");
-            return;
-        }
-
-        await ChangeAsync(() =>
-        {
-            _repository.UseExisting(folder);
-            return Task.CompletedTask;
-        });
-    }
-
-    // Hides the controls at once and runs the change; on success shows the new repository, on failure shows the
-    // controls again with why.
-    private async Task ChangeAsync(Func<Task> change)
-    {
-        var shown = _clonePanel.Visibility == Visibility.Visible ? _clonePanel : _existingPanel;
-        _clonePanel.Visibility = _existingPanel.Visibility = Visibility.Collapsed;
+        _controls.Visibility = Visibility.Collapsed;
         ThemedText.ShowMessage(_message, null);
-        try
-        {
-            await change();
-        }
-        catch (Exception error)
-        {
-            shown.Visibility = Visibility.Visible;
-            ThemedText.ShowMessage(_message, error.Message);
-            return;
-        }
-
-        await ShowCurrentAsync();
-    }
-
-    private async Task ShowCurrentAsync()
-    {
-        Show(_folder, "Local Path:", _repository.Current() ?? "None");
-        Show(_remote, "Repository:", "…");
-        Show(_identity, "Identity:", "…");
-        try
-        {
-            Show(_remote, "Repository:", await _repository.RemoteAsync(CancellationToken.None) ?? "None");
-            Show(_identity, "Identity:", await _repository.IdentityAsync(CancellationToken.None) ?? "None");
-        }
-        catch (Exception error)
-        {
-            if (_remote.Text.EndsWith('…'))
+        var failed = false;
+        await _ui.RunAsync(
+            async token =>
             {
-                Show(_remote, "Repository:", "Unknown");
-            }
-
-            Show(_identity, "Identity:", "Unknown");
-            ThemedText.ShowMessage(_message, error.Message);
+                await change(address, folder, token);
+                var status = await _ui.Sync.SyncNowAsync(token);
+                if (status.State is SyncState.Error or SyncState.Offline)
+                {
+                    ThemedText.ShowMessage(_message, status.Details);
+                }
+            },
+            error =>
+            {
+                failed = true;
+                ThemedText.ShowMessage(_message, error);
+            });
+        if (failed)
+        {
+            _controls.Visibility = Visibility.Visible;
         }
     }
 

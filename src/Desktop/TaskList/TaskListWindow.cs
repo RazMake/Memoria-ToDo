@@ -31,6 +31,7 @@ internal sealed class TaskListWindow : Window
     private readonly FormattedDescription _description;
     private readonly Border _park = new() { Height = 0 };
     private readonly ListHeader _header;
+    private readonly ListSync _sync;
     private readonly PendingUndo _pending;
     private readonly StackPanel _panel = new() { Margin = new Thickness(8, 0, 8, 8) };
     private readonly Button _resolvedButton = new() { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 0, 8) };
@@ -48,8 +49,9 @@ internal sealed class TaskListWindow : Window
 
     public TaskListWindow(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
-        IDefaultBrowser browser, string? message, Action<string> carry)
+        IDefaultBrowser browser, ListSync sync, string? message, Action<string> carry)
     {
+        _sync = sync;
         _tasks = tasks;
         _palette = palette;
         _theme = theme;
@@ -92,8 +94,10 @@ internal sealed class TaskListWindow : Window
 
         var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _panel };
         var layout = new DockPanel();
+        DockPanel.SetDock(_sync, Dock.Top);
         DockPanel.SetDock(_header, Dock.Top);
         DockPanel.SetDock(_park, Dock.Bottom);
+        layout.Children.Add(_sync);
         layout.Children.Add(_header);
         layout.Children.Add(_park);
         layout.Children.Add(scroll);
@@ -122,6 +126,7 @@ internal sealed class TaskListWindow : Window
         }
         finally
         {
+            _sync.Dispose();
             _pending.Dispose();
             _description.Dispose();
         }
@@ -596,6 +601,13 @@ internal sealed class TaskListWindow : Window
         }
 
         _held.OtherKeyReached();
+        if (key == Key.F5 && _held.Modifiers == ModifierKeys.None)
+        {
+            SyncOnKey();
+            e.Handled = true;
+            return;
+        }
+
         if (e.Handled)
         {
             return;
@@ -613,6 +625,8 @@ internal sealed class TaskListWindow : Window
             e.Handled = true;
         }
     }
+
+    private async void SyncOnKey() => await _sync.SyncAsync();
 
     private bool InEditor(object source) =>
         _edit is { } edit && source is DependencyObject element && (edit.Editor == element || edit.Editor.IsAncestorOf(element));

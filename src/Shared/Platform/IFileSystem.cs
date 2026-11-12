@@ -6,6 +6,18 @@ namespace Memoria.ToDo.Shared.Platform;
 /// </summary>
 public interface IFileSystem
 {
+    /// <summary>
+    /// Whether directory is ancestor itself or physically below it, resolving filesystem aliases.
+    /// Both arguments are full paths. Only genuinely absent suffixes are resolved from their nearest existing
+    /// directory ancestor; a dangling link or junction is not an absent suffix. Performs no writes and never
+    /// falls back to a textual comparison when physical resolution fails.
+    /// </summary>
+    /// <exception cref="ArgumentException">An argument is not a valid full path.</exception>
+    /// <exception cref="IOException">Physical resolution fails, including a file where a directory is required
+    /// or a link or junction whose target is missing. Existing files are left unchanged.</exception>
+    /// <exception cref="UnauthorizedAccessException">Physical resolution is denied.</exception>
+    bool IsSameOrDescendantDirectory(string directory, string ancestor);
+
     /// <summary>Whether a file exists at <paramref name="path"/>.</summary>
     bool FileExists(string path);
 

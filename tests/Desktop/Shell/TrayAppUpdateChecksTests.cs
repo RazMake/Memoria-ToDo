@@ -139,7 +139,7 @@ public class TrayAppUpdateChecksTests
         app.Start();
         await app.Updates.WaitForCallsAsync(1);
 
-        app.Lifetime.Stop();
+        await app.Lifetime.StopAsync(CancellationToken.None);
         await app.Updates.WaitForCancellationAsync();
 
         Assert.Equal(1, app.Updates.CompletedCallCount);
@@ -150,7 +150,7 @@ public class TrayAppUpdateChecksTests
     {
         var app = await StartedAndFirstCheckDone();
 
-        app.Lifetime.Stop();
+        await app.Lifetime.StopAsync(CancellationToken.None);
         app.Time.Advance(Day * 3);
 
         Assert.Equal(1, app.Updates.CallCount);

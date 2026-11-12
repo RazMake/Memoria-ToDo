@@ -5,6 +5,7 @@ using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
+using Memoria.ToDo.Shared.Sync;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
@@ -17,7 +18,7 @@ public static class ViewTasksWindow
     /// </summary>
     public static IViewTasksWindow Create(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser)
+        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync)
     {
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(palette);
@@ -28,25 +29,41 @@ public static class ViewTasksWindow
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(createWebView);
         ArgumentNullException.ThrowIfNull(browser);
-        return new Opener(tasks, palette, theme, time, clipboard, imageFiles, files, createWebView, browser);
+        ArgumentNullException.ThrowIfNull(sync);
+        return new Opener(tasks, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync);
     }
 
-    // Holds a failure from a delete finished while the window closed, so the next window shows it.
+    // Holds a failure from a delete finished while the window closed, so the next window shows it, and the sync
+    // request each opening starts. That request shows its own failure and never throws.
     private sealed class Opener : IViewTasksWindow
     {
         private readonly SingleWindow _window;
         private string? _carried;
+        private Task _opening = Task.CompletedTask;
 
         public Opener(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
             IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-            Func<IDescriptionWebView> createWebView, IDefaultBrowser browser)
+            Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync)
         {
             _window = new SingleWindow(() =>
             {
                 var message = _carried;
-                _carried = null;
-                return new TaskListWindow(tasks, palette, theme, time, clipboard, imageFiles, files, createWebView(), browser,
-                    message, failure => _carried = failure);
+                var webView = createWebView();
+                var listSync = new ListSync(sync);
+                try
+                {
+                    var window = new TaskListWindow(tasks, palette, theme, time, clipboard, imageFiles, files, webView,
+                        browser, listSync, message, failure => _carried = failure);
+                    _carried = null;
+                    _opening = listSync.SyncAsync();
+                    return window;
+                }
+                catch
+                {
+                    listSync.Dispose();
+                    webView.Dispose();
+                    throw;
+                }
             });
         }
 

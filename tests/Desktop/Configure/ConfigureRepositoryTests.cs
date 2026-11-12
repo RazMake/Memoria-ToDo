@@ -1,9 +1,10 @@
+using System.IO;
 using System.Windows;
-using System.Windows.Automation.Peers;
-using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -15,49 +16,25 @@ public class ConfigureRepositoryTests
     [WpfFact]
     public void Shows_none_for_the_repository_and_local_path_when_the_device_has_no_clone()
     {
-        using var screen = Opened(new FakeRepositoryFolder());
+        using var screen = Opened();
 
         Assert.True(screen.ShowsText("Repository: None"));
         Assert.True(screen.ShowsText("Local Path: None"));
     }
 
     [WpfFact]
-    public void Shows_the_current_repository_address_and_local_path()
+    public void Shows_the_selected_clone_address_and_device_identity()
     {
-        var folder = new FakeRepositoryFolder { Folder = @"C:\Tasks" };
-        folder.Remotes[@"C:\Tasks"] = "https://example.com/tasks.git";
+        var sync = new FakeSyncService();
+        sync.SetupControl.Publish(new FakeSyncSetupState
+        {
+            RepositoryFolder = @"C:\Tasks", RepositoryAddress = "git@example.com:tasks.git", DeviceName = "Desk"
+        });
+        using var screen = Opened(sync);
 
-        using var screen = Opened(folder);
-
-        Assert.True(screen.ShowsText("Repository: https://example.com/tasks.git"));
+        Assert.True(screen.ShowsText("Repository: git@example.com:tasks.git"));
         Assert.True(screen.ShowsText(@"Local Path: C:\Tasks"));
-    }
-
-    [WpfFact]
-    public void Shows_why_the_repository_address_cannot_be_read()
-    {
-        using var screen = Opened(new FakeRepositoryFolder { Folder = @"C:\Tasks", RemoteFailure = new InvalidOperationException("git is missing.") });
-
-        Assert.True(screen.ShowsText("git is missing."));
-    }
-
-    [WpfFact]
-    public void Shows_the_identity_the_clone_commits_as()
-    {
-        var folder = new FakeRepositoryFolder { Folder = @"C:\Tasks" };
-        folder.Identities[@"C:\Tasks"] = "Ana Pop <ana@example.com>";
-
-        using var screen = Opened(folder);
-
-        Assert.True(screen.ShowsText("Identity: Ana Pop <ana@example.com>"));
-    }
-
-    [WpfFact]
-    public void Shows_none_for_the_identity_when_the_device_has_no_clone()
-    {
-        using var screen = Opened(new FakeRepositoryFolder());
-
-        Assert.True(screen.ShowsText("Identity: None"));
+        Assert.True(screen.ShowsText("Identity: Desk"));
     }
 
     [WpfTheory]
@@ -66,182 +43,299 @@ public class ConfigureRepositoryTests
     [InlineData("Identity:")]
     public void Shows_the_field_name_in_bold(string name)
     {
-        using var screen = Opened(new FakeRepositoryFolder());
+        using var screen = Opened();
 
-        var line = OpenWindows.Descendants(screen.Window).OfType<TextBlock>().Single(b => OpenWindows.TextOf(b).StartsWith(name, StringComparison.Ordinal));
+        var line = OpenWindows.Descendants(screen.Window).OfType<TextBlock>()
+            .Single(b => OpenWindows.TextOf(b).StartsWith(name, StringComparison.Ordinal));
         var first = Assert.IsType<System.Windows.Documents.Run>(line.Inlines.FirstInline, exactMatch: false);
         Assert.Equal(name, first.Text);
         Assert.Equal(FontWeights.Bold, first.FontWeight);
     }
 
     [WpfFact]
-    public void Clone_hides_the_boxes_as_soon_as_it_is_clicked()
+    public void Clone_and_existing_clone_choices_replace_each_others_controls()
     {
-        var slow = new TaskCompletionSource();
-        using var screen = Opened(new FakeRepositoryFolder { Pending = slow.Task });
-        Choose(screen, "Clone a repo");
-        VisibleBoxes(screen)[0].Text = "https://example.com/tasks.git";
-        VisibleBoxes(screen)[1].Text = @"C:\New Tasks";
-
-        Click(screen, "Clone");
-
-        Assert.Empty(VisibleBoxes(screen));
-        slow.SetResult();
-        Settle(screen);
-        Assert.True(screen.ShowsText(@"Local Path: C:\New Tasks"));
-    }
-
-    [WpfFact]
-    public void Shows_no_boxes_until_a_configure_choice_is_made()
-    {
-        using var screen = Opened(new FakeRepositoryFolder());
-
-        Assert.Empty(VisibleBoxes(screen));
-    }
-
-    [WpfFact]
-    public void Clone_a_repo_shows_the_url_and_folder_boxes()
-    {
-        using var screen = Opened(new FakeRepositoryFolder());
-
-        Choose(screen, "Clone a repo");
-
-        Assert.Equal(2, VisibleBoxes(screen).Count);
+        using var screen = Opened();
+        screen.ChooseRepositoryAction("Clone a repo");
         Assert.True(VisibleButton(screen, "Clone"));
         Assert.False(VisibleButton(screen, "Use this clone"));
-    }
 
-    [WpfFact]
-    public void Use_existing_repo_clone_shows_only_the_folder_box_in_place_of_the_clone_boxes()
-    {
-        using var screen = Opened(new FakeRepositoryFolder());
-        Choose(screen, "Clone a repo");
+        screen.ChooseRepositoryAction("Use existing repo clone");
 
-        Choose(screen, "Use existing repo clone");
-
-        Assert.Single(VisibleBoxes(screen));
         Assert.True(VisibleButton(screen, "Use this clone"));
         Assert.False(VisibleButton(screen, "Clone"));
     }
 
     [WpfFact]
-    public void Clone_clones_the_url_into_the_folder_shows_it_and_hides_the_boxes()
+    public void Clone_uses_the_SSH_address_and_folder_then_checks_writable_sync()
     {
-        using var screen = Opened(new FakeRepositoryFolder());
-        Choose(screen, "Clone a repo");
+        using var screen = Opened();
+        screen.ChooseRepositoryAction("Clone a repo");
+        screen.Box("Repository address").Text = "git@example.com:tasks.git";
+        screen.Box("Local folder").Text = @"C:\New Tasks";
 
-        VisibleBoxes(screen)[0].Text = "https://example.com/tasks.git";
-        VisibleBoxes(screen)[1].Text = @"C:\New Tasks";
-        Click(screen, "Clone");
+        screen.Click("Clone");
 
-        Assert.Equal([("https://example.com/tasks.git", @"C:\New Tasks")], screen.RepositoryFolder.Clones);
-        Assert.True(screen.ShowsText("Repository: https://example.com/tasks.git"));
+        Assert.Equal([("git@example.com:tasks.git", @"C:\New Tasks")], screen.Sync.SetupControl.Clones);
+        Assert.Equal(1, screen.Sync.SyncCount);
         Assert.True(screen.ShowsText(@"Local Path: C:\New Tasks"));
-        Assert.Empty(VisibleBoxes(screen));
+        Assert.False(VisibleButton(screen, "Clone"));
     }
 
     [WpfFact]
-    public void Clone_without_a_url_or_folder_asks_for_them_and_clones_nothing()
+    public void A_pending_clone_hides_its_controls_until_it_finishes()
     {
-        using var screen = Opened(new FakeRepositoryFolder());
-        Choose(screen, "Clone a repo");
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sync = new FakeSyncService();
+        sync.SetupControl.BeforeOperation = _ => pending.Task;
+        using var screen = Opened(sync);
+        screen.ChooseRepositoryAction("Clone a repo");
+        screen.Box("Repository address").Text = "git@example.com:tasks.git";
+        screen.Box("Local folder").Text = @"C:\New";
 
-        VisibleBoxes(screen)[0].Text = "https://example.com/tasks.git";
-        Click(screen, "Clone");
+        screen.Click("Clone");
 
-        Assert.Empty(screen.RepositoryFolder.Clones);
-        Assert.True(screen.ShowsText("Enter the repository's URL and the folder"));
+        Assert.False(VisibleButton(screen, "Clone"));
+        pending.SetResult();
     }
 
     [WpfFact]
-    public void A_failed_clone_shows_the_error_and_keeps_the_current_folder()
+    public void Missing_clone_input_is_reported_without_selecting_anything()
     {
-        using var screen = Opened(new FakeRepositoryFolder { Folder = @"C:\Old", Failure = new InvalidOperationException("Clone refused.") });
-        Choose(screen, "Clone a repo");
+        using var screen = Opened();
+        screen.ChooseRepositoryAction("Clone a repo");
+        screen.Box("Repository address").Text = "git@example.com:tasks.git";
 
-        VisibleBoxes(screen)[0].Text = "https://example.com/tasks.git";
-        VisibleBoxes(screen)[1].Text = @"C:\New";
-        Click(screen, "Clone");
+        screen.Click("Clone");
+
+        Assert.Empty(screen.Sync.SetupControl.Clones);
+        Assert.Equal(0, screen.Sync.SyncCount);
+        Assert.True(screen.ShowsText("folder"));
+        Assert.True(VisibleButton(screen, "Clone"));
+    }
+
+    [WpfFact]
+    public void A_failed_clone_keeps_the_current_selection_and_restores_its_controls()
+    {
+        var sync = new FakeSyncService();
+        sync.SetupControl.Publish(new FakeSyncSetupState { RepositoryFolder = @"C:\Old" });
+        sync.SetupControl.Failure = new IOException("Clone refused.");
+        using var screen = Opened(sync);
+        screen.ChooseRepositoryAction("Clone a repo");
+        screen.Box("Repository address").Text = "git@example.com:tasks.git";
+        screen.Box("Local folder").Text = @"C:\New";
+
+        screen.Click("Clone");
 
         Assert.True(screen.ShowsText("Clone refused."));
         Assert.True(screen.ShowsText(@"Local Path: C:\Old"));
-        Assert.Equal(2, VisibleBoxes(screen).Count);
+        Assert.True(VisibleButton(screen, "Clone"));
     }
 
     [WpfFact]
-    public void Use_this_clone_makes_an_existing_folder_current_and_shows_its_address()
+    public void An_existing_clone_is_selected_through_Sync_and_checked_for_writable_access()
     {
-        var folder = new FakeRepositoryFolder();
-        folder.Remotes[@"C:\Existing"] = "https://example.com/existing.git";
-        using var screen = Opened(folder);
-        Choose(screen, "Use existing repo clone");
+        using var screen = Opened();
+        screen.ChooseRepositoryAction("Use existing repo clone");
+        screen.Box("Repository address").Text = "git@example.com:tasks.git";
+        screen.Box("Local folder").Text = @"C:\Existing";
 
-        VisibleBoxes(screen)[0].Text = @"C:\Existing";
-        Click(screen, "Use this clone");
+        screen.Click("Use this clone");
 
-        Assert.Equal(@"C:\Existing", folder.Folder);
-        Assert.True(screen.ShowsText("Repository: https://example.com/existing.git"));
+        Assert.Equal([("git@example.com:tasks.git", @"C:\Existing")], screen.Sync.SetupControl.Selections);
+        Assert.Equal(1, screen.Sync.SyncCount);
         Assert.True(screen.ShowsText(@"Local Path: C:\Existing"));
-        Assert.Empty(VisibleBoxes(screen));
+    }
+
+    [WpfTheory]
+    [InlineData(SyncState.Error, SyncFailure.Authentication)]
+    [InlineData(SyncState.Offline, SyncFailure.Connection)]
+    public void A_failed_first_sync_keeps_the_clone_but_reports_that_setup_is_not_complete(
+        SyncState state, SyncFailure failure)
+    {
+        var sync = new FakeSyncService();
+        sync.SetupControl.Publish(new FakeSyncSetupState { IsConfigured = false });
+        sync.SyncOperation = _ => Task.FromResult<ISyncStatus>(new FakeSyncStatus
+        {
+            State = state, Failure = failure, Details = "Read-only key"
+        });
+        using var screen = Opened(sync);
+        screen.ChooseRepositoryAction("Use existing repo clone");
+        screen.Box("Repository address").Text = "git@example.com:tasks.git";
+        screen.Box("Local folder").Text = @"C:\Existing";
+
+        screen.Click("Use this clone");
+
+        Assert.True(screen.ShowsText(@"Local Path: C:\Existing"));
+        Assert.True(screen.ShowsText("Read-only key"));
+        Assert.False(sync.Setup.State.IsConfigured);
     }
 
     [WpfFact]
-    public void Use_this_clone_shows_why_a_folder_is_refused()
+    public void Key_actions_generate_locally_copy_the_public_key_and_open_the_hosts_page()
     {
-        var folder = new FakeRepositoryFolder { Failure = new InvalidOperationException("Not a git clone.") };
-        using var screen = Opened(folder);
-        Choose(screen, "Use existing repo clone");
+        var sync = new FakeSyncService();
+        var page = new Uri("https://example.com/settings/keys");
+        sync.SetupControl.Publish(new FakeSyncSetupState { AddKeyPage = page });
+        using var screen = Opened(sync);
 
-        VisibleBoxes(screen)[0].Text = @"C:\Plain";
-        Click(screen, "Use this clone");
+        screen.Click("Generate key");
+        screen.Click("Copy public key");
+        screen.Click("Add key at host");
 
-        Assert.True(screen.ShowsText("Not a git clone."));
-        Assert.Null(folder.Folder);
+        Assert.Equal(1, sync.SetupControl.GenerateCount);
+        Assert.Equal(sync.Setup.State.PublicKey, screen.SetupActions.CopiedPublicKey);
+        Assert.Equal(page, screen.SetupActions.OpenedKeyPage);
     }
 
-    private static ConfigureScreen Opened(FakeRepositoryFolder folder)
+    [WpfFact]
+    public async Task Setup_and_status_notices_from_a_worker_thread_update_the_open_window()
     {
-        var screen = new ConfigureScreen(repositoryFolder: folder);
+        using var screen = Opened();
+
+        await Task.Run(() =>
+        {
+            screen.Sync.SetupControl.Publish(new FakeSyncSetupState { DeviceName = "Updated elsewhere" });
+            screen.Sync.Publish(new FakeSyncStatus
+            {
+                State = SyncState.Error, Failure = SyncFailure.Authentication, Details = "Key rejected"
+            });
+        });
+        await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+
+        Assert.True(screen.ShowsText("Identity: Updated elsewhere"));
+        Assert.True(screen.ShowsText("Key rejected"));
+    }
+
+    [WpfFact]
+    public void An_unknown_custom_host_shows_its_key_and_accepts_that_exact_fingerprint()
+    {
+        var sync = new FakeSyncService();
+        sync.SetupControl.Publish(new FakeSyncSetupState
+        {
+            HostKey = new FakeSshHostKey("self.example", 2222, "ssh-ed25519", "SHA256:unknown-test-key", true)
+        });
+        using var screen = Opened(sync);
+
+        Assert.True(screen.ShowsText("self.example:2222"));
+        Assert.True(screen.ShowsText("ssh-ed25519"));
+        Assert.True(screen.ShowsText("SHA256:unknown-test-key"));
+        screen.Click("Accept host key");
+
+        Assert.Equal("SHA256:unknown-test-key", sync.SetupControl.AcceptedFingerprint);
+    }
+
+    [WpfFact]
+    public void A_changed_trusted_key_cannot_be_accepted()
+    {
+        var sync = new FakeSyncService();
+        sync.SetupControl.Publish(new FakeSyncSetupState
+        {
+            HostKey = new FakeSshHostKey("self.example", 2222, "ssh-ed25519", "SHA256:changed-test-key", false)
+        });
+        using var screen = Opened(sync);
+
+        Assert.True(screen.ShowsText("SHA256:changed-test-key"));
+        Assert.DoesNotContain(OpenWindows.Descendants(screen.Window).OfType<Button>(),
+            button => button.Content as string == "Accept host key" && button.IsVisible && button.IsEnabled);
+        Assert.Null(sync.SetupControl.AcceptedFingerprint);
+    }
+
+    [WpfFact]
+    public void Forgetting_a_custom_host_passes_its_host_and_port()
+    {
+        var sync = new FakeSyncService();
+        sync.SetupControl.Publish(new FakeSyncSetupState
+        {
+            HostKey = new FakeSshHostKey("self.example", 2222, "ssh-ed25519", "SHA256:old-test-key", false)
+        });
+        using var screen = Opened(sync);
+
+        screen.Click("Forget host key");
+
+        Assert.Equal(("self.example", 2222), sync.SetupControl.ForgottenHost);
+    }
+
+    [WpfFact]
+    public void Changing_the_device_name_saves_when_focus_leaves_the_box()
+    {
+        using var screen = Opened();
+        var name = screen.Box("Device name");
+        ConfigureScreen.Focus(name);
+        name.Text = "Work laptop";
+
+        screen.FocusStartWithWindowsBox();
+
+        Assert.Equal("Work laptop", screen.Sync.Setup.State.DeviceName);
+        Assert.True(screen.ShowsText("Identity: Work laptop"));
+    }
+
+    [WpfFact]
+    public void A_device_name_save_failure_restores_the_saved_name_and_shows_why()
+    {
+        var sync = new FakeSyncService();
+        sync.SetupControl.Failure = new IOException("Device storage is full.");
+        using var screen = Opened(sync);
+        var name = screen.Box("Device name");
+        ConfigureScreen.Focus(name);
+        name.Text = "Unsaved name";
+
+        screen.FocusStartWithWindowsBox();
+
+        Assert.Equal("Test device", name.Text);
+        Assert.True(screen.ShowsText("Device storage is full."));
+    }
+
+    [WpfFact]
+    public void Sync_status_shows_the_last_success_pending_changes_and_skipped_files()
+    {
+        var sync = new FakeSyncService();
+        sync.Publish(new FakeSyncStatus
+        {
+            LastSuccessfulSync = new DateTimeOffset(2038, 2, 1, 12, 0, 0, TimeSpan.Zero),
+            HasPendingChanges = true,
+            SkippedFiles = [new FakeSkippedFile("tasks/newer.json", "Newer task format", true)]
+        });
+        using var screen = Opened(sync);
+
+        Assert.True(screen.ShowsText("2038"));
+        Assert.True(screen.ShowsText("Changes wait to be synced."));
+        Assert.True(screen.ShowsText("tasks/newer.json"));
+        Assert.True(screen.ShowsText("Newer task format"));
+    }
+
+    [WpfFact]
+    public void An_offline_status_shows_its_failure_details()
+    {
+        var sync = new FakeSyncService();
+        sync.Publish(new FakeSyncStatus
+        {
+            State = SyncState.Offline, Failure = SyncFailure.Connection, Details = "Host unreachable"
+        });
+        using var screen = Opened(sync);
+
+        Assert.True(screen.ShowsText("Host unreachable"));
+    }
+
+    [WpfFact]
+    public void Sync_now_requests_a_pass()
+    {
+        using var screen = Opened();
+
+        screen.Click("Sync now");
+
+        Assert.Equal(1, screen.Sync.SyncCount);
+    }
+
+    private static ConfigureScreen Opened(FakeSyncService? sync = null)
+    {
+        var screen = new ConfigureScreen(sync: sync);
         screen.Open();
         screen.Expand("Sync settings");
-        Settle(screen);
+        screen.Window.UpdateLayout();
         return screen;
-    }
-
-    // The section's boxes the user can see; the two shortcut boxes come first in the window and are skipped.
-    private static List<TextBox> VisibleBoxes(ConfigureScreen screen)
-    {
-        Settle(screen);
-        return [.. OpenWindows.Descendants(screen.Window).OfType<TextBox>().Skip(2).Where(box => box.IsVisible)];
     }
 
     private static bool VisibleButton(ConfigureScreen screen, string text) =>
         OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == text).IsVisible;
-
-    // Opens the Configure button's menu and picks the choice, as a user's clicks do.
-    private static void Choose(ConfigureScreen screen, string choice)
-    {
-        var configure = OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == "Configure");
-        Invoke(configure);
-        var item = configure.ContextMenu.Items.OfType<MenuItem>().Single(i => (string)i.Header == choice);
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-        configure.ContextMenu.IsOpen = false;
-        Settle(screen);
-    }
-
-    private static void Click(ConfigureScreen screen, string text)
-    {
-        OpenWindows.Click(screen.Window, text);
-        Settle(screen);
-    }
-
-    private static void Invoke(Button button) =>
-        ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
-
-    // Runs pending work, such as the address read and the clone's continuation, and the layout that follows.
-    private static void Settle(ConfigureScreen screen)
-    {
-        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
-        screen.Window.UpdateLayout();
-    }
 }

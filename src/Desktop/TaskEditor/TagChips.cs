@@ -30,7 +30,7 @@ public sealed class TagChips : UserControl
     /// <summary>Raised with the tag of the chip the user clicked.</summary>
     public event EventHandler<string>? TagChosen;
 
-    private void OnTasksChanged(object? sender, EventArgs e) => Refresh();
+    private void OnTasksChanged(object? sender, EventArgs e) => OnElementThread.Run(this, Refresh);
 
     private void Refresh() => _chips.ItemsSource = _tasks.TagsInUse().Take(ChipCount).Select(use => use.Tag).ToList();
 }

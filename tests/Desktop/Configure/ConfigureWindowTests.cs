@@ -15,7 +15,7 @@ public class ConfigureWindowTests
     {
         using var windows = new OpenWindows();
 
-        ConfigureWindow.Create(new FakeStartWithWindows(), new FakeRepositoryFolder());
+        using var configure = new ConfigureServices().Create();
 
         Assert.Empty(windows.Visible());
     }
@@ -24,7 +24,7 @@ public class ConfigureWindowTests
     public void Show_opens_the_window_visible_and_active()
     {
         using var windows = new OpenWindows();
-        var configure = ConfigureWindow.Create(new FakeStartWithWindows(), new FakeRepositoryFolder());
+        using var configure = new ConfigureServices().Create();
 
         configure.Show();
 
@@ -36,7 +36,7 @@ public class ConfigureWindowTests
     public void A_second_Show_while_open_brings_the_same_window_forward()
     {
         using var windows = new OpenWindows();
-        var configure = ConfigureWindow.Create(new FakeStartWithWindows(), new FakeRepositoryFolder());
+        using var configure = new ConfigureServices().Create();
         configure.Show();
         var first = Assert.Single(windows.Visible());
 

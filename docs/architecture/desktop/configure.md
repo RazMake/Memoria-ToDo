@@ -12,16 +12,18 @@ The table lists every setting in Configure, the module that owns it, where it's 
 
 | Setting | Owner | Kept | Default |
 | --- | --- | --- | --- |
-| Global shortcuts for Add new task and Manage tasks | Not decided: [the open question](#which-module-owns-the-shortcuts-in-settingsjson) | In the repository's `settings.json`, shared by every device, from the [Sync step](README.md#delivery-backlog); until then, nowhere | As [Shell](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
+| Global shortcuts for Add new task and Manage tasks | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device, from the [Sync step](README.md#delivery-backlog); until then, nowhere | As [Shell](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
 | Start with Windows | Configure | In the current user's `Run` registry key, on this device, as [below](#start-with-windows-is-the-run-key-itself) | On |
 | Days before a resolved task is deleted | Tasks | In the repository, shared by every device | One week, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides |
-| The repository's SSH address, the device name, the device's SSH key, and the accepted host keys | Sync | On this device | The device name starts as the machine's name; the rest is set up as [Sync through git](../sync.md#configure-sets-up-a-device-by-cloning-the-repository) says |
+| The repository's SSH address, the device name, the device's SSH key, and the accepted host keys | Sync | On this device | The device name starts as the machine's name; the rest is set up as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says |
 
 **Every device uses the same shortcuts.** Until the [Sync step](README.md#delivery-backlog), nothing saves them: the app starts with the defaults each time, and a new shortcut lasts until the app exits. From the Sync step, Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-and-one-settings-file) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
 
+Tasks keeps the two shortcuts as shared text settings without interpreting them. Windows Configure checks their values against its [shortcut rules](#a-new-shortcut-is-checked-at-once). Android preserves them through merges but neither displays nor uses them.
+
 **Until the Sync step, the window holds the shortcuts, Start with Windows, and the sync repository.** Each shortcut, the Start with Windows check box, and the repository section show their problems under them, such as a taken shortcut or a failed write. The window has no line naming features not built yet; this is an exception to that backlog rule, by the user's choice. A user who changes a shortcut finds its default back after the app restarts, with no warning, until the Sync step.
 
-Configure reads and changes the deletion delay through Tasks, so a change on one device reaches every device; [Tasks](../tasks.md#resolved-tasks-are-deleted-after-a-delay-every-device-shares) sets its allowed range. Configure sets up sync through Sync, in the steps that [Sync through git](../sync.md#configure-sets-up-a-device-by-cloning-the-repository) lists.
+Configure reads and changes the deletion delay through Tasks, so a change on one device reaches every device; [Tasks](../tasks.md#resolved-tasks-are-deleted-after-a-delay-every-device-shares) sets its allowed range. Configure sets up sync through Sync, in the steps that [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) lists.
 
 **Configure checks each value as it's entered, and applies or saves nothing invalid.**
 
@@ -112,23 +114,56 @@ The section keeps the folder of this device's git clone, through a port Configur
 
 - **The section shows three lines, each starting with its name in bold**: Repository, the clone's `origin` address; Local Path, the clone's folder; and Identity, the name and e-mail the clone's commits are made as, which git reads from the clone's settings, then the user's. Each shows "None" when there's none. A failure to read them shows as the section's message.
 - **A Configure button opens a menu with two choices**: Clone a repo, and Use existing repo clone. Each shows only its own controls under the lines, replacing the other's. Clicking Clone or Use this clone hides the controls at once; on success the lines update, and on failure the controls show again with the error. Proposed; a decision to confirm.
-- **Clone a repo** runs the installed `git clone` with the user's own git credentials, into an empty or new folder. A failure shows git's error, and the current folder stays.
-- **Use existing repo clone** takes a folder that has a `.git` entry. Any other folder is refused with a message.
+- **Clone a repo** uses Sync's device-key SSH transport, into an empty or new folder. A clone failure shows its error, and the current folder stays.
+- **Use existing repo clone** asks Sync to validate and select the folder. The currently selected clone remains the starting point; setup never forces a replacement clone.
 - **The folder's path is kept on this device**, in `repository-folder.txt` under `%LocalAppData%\Memoria-ToDo`, apart from Velopack's install folder.
 
-This is an interim step before [Sync through git](../sync.md#configure-sets-up-a-device-by-cloning-the-repository): it uses the installed git, not the app's own SSH key, and doesn't sync yet. Decisions to confirm: the installed git, the kept file, and the `.git` check.
+From the Sync step, [Sync's setup contract](../../../src/Shared/Sync/Setup/ISyncSetup.cs) replaces the interim
+installed-Git port. Keep the existing section layout and clone/existing-clone choices. The Identity line now names
+the device used for Sync commits, rather than reading a separate installed-Git identity. Address and device name
+are editable during setup. Generate, Copy public key, and the host's add-key-page action use Sync's cached setup
+state; an unknown custom host offers explicit fingerprint acceptance, never implicit trust. After selecting or
+cloning, Configure awaits the first manual sync so a read-only key fails here. An offline or failed first pass
+leaves the selected clone available for retry and local work, but does not mark setup complete.
 
 ### Configure shows how sync is doing
 
 Configure shows the last successful sync time, the files sync skipped, and, while sync fails, the error's details; the tray shows the same in short, as [Shell](shell.md#sync-stays-quiet-unless-something-is-wrong) says. Configure reads them from Sync. Its Sync now button starts a sync at once, as [Sync through git](../sync.md#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) decides.
 
+Available Offline details stay visible inline, including before the first success: "Not synced yet" does not
+replace the reason. Shell's quiet-offline policy does not hide these details.
+Setup and status presentation subscriptions belong to each open window and detach when it closes. Closing
+cancels and observes that window's waits, not the shared sync. These subscriptions are separate from the
+[settings/shortcut lifetime watcher](#shared-settings-refresh-even-while-configure-is-closed).
+
+### Shared settings refresh even while Configure is closed
+
+Configure receives [`ISharedTaskSettings`](../../../src/Shared/Tasks/ISharedTaskSettings.cs), not another settings
+store. It loads the two shortcut texts when Shell connects their actions and keeps watching imported changes while
+the window is closed, so global shortcuts update without opening Configure. Null uses the existing defaults.
+The existing shortcut display formatter is also the Windows text format; one internal parser reverses it.
+Invalid imported text stays stored, is reported, and leaves that action's previous valid local shortcut in place;
+if there is none, Configure tries its existing default. It never writes a guessed repair into the shared file.
+
+Valid local picks and deletion-delay edits save through the typed setters. Failed persistence restores the prior
+local value and registration and reports the failure, including any restoration failure. Existing duplicate-key,
+reserved-key, Esc, focus release/restore, and taken-shortcut behavior stays unchanged. Settings notices arriving
+off-thread dispatch to the UI; a notice during a focused shortcut edit does not re-register a released action.
+
+The deletion delay is shown in days inside Sync settings, using Tasks' range and defaults rather than new literals.
+A failed delay read shows its error and retains the last successfully shown text, or leaves the field blank if no
+value has been shown. It never substitutes or writes a guessed default. A successful refresh shows the current value
+and clears the stale read error.
+The settings/shortcut watcher outlives an ordinary window close and ends when Shell disposes Configure.
+Queued UI callbacks do nothing after disposal.
+
 ## Public interface
 
 The composition root and Shell use these parts:
 
-- **Create Configure**: the composition root calls it when the app starts, with the implementations of the Start with Windows port and the repository folder port below, and gives the result to Shell. The [Sync step](README.md#delivery-backlog) adds the parts Configure needs from Tasks and Sync. The window opens only on Show Configure.
+- **[Create Configure](../../../src/Desktop/Configure/ConfigureWindow.cs)**: App supplies Start with Windows, typed Tasks settings, the shared Sync service, and the setup-actions port. The window opens only on Show Configure.
 - **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) meanwhile.
-- **A repository folder**: a port with the current clone's folder, the clone's `origin` address and commit identity read from git, Clone from a URL into a folder, and Use an existing clone. Each fails with a message the user can read, keeping the current folder. Proposed: it uses the desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), which says where the window opens and what happens after the user closes it. This is a decision to confirm.
+- **Setup and status** come directly from Sync; Configure publishes no parallel clone, Git identity, or repository-settings port. The desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show) still governs opening and closing.
 - **Connect the shortcuts**: Shell calls it once, when it starts, with one [shortcut action](#public-interface) for Add new task and one for Manage tasks. Configure registers each shortcut's default at once through its action, then each valid pick on that row, and releases and registers both as [a field's focus](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) comes and goes, always on the UI thread. It returns whether both shortcuts registered, so Shell can show Configure when one didn't. When an action fails, Configure treats it as a setting that [can't be applied](#failure-modes), and that shortcut counts as not registered.
 - **A shortcut action**: an interface Configure publishes and Shell implements, one for each shortcut, as [Shell](shell.md#public-interface) says. It has two parts:
   - Register takes a shortcut and registers it in place of the action's previous one. It returns false, keeping the previous one, when Windows or another app holds the shortcut, and true at once when the shortcut is already the action's.
@@ -137,9 +172,16 @@ The composition root and Shell use these parts:
 - **A shortcut**: a value of modifier keys and one other key. Configure makes only shortcuts that follow the first two of its [rules](#a-new-shortcut-is-checked-at-once); Shell and its global shortcut port pass them on. Proposed, each a decision to confirm:
   - It's made of WPF's [modifier keys](https://learn.microsoft.com/en-us/dotnet/api/system.windows.input.modifierkeys) and [key](https://learn.microsoft.com/en-us/dotnet/api/system.windows.input.key), so no module converts between key formats.
   - It accepts only Ctrl, Alt, Shift, and Win as modifier keys, and only a real key: one WPF defines, but not the placeholders WPF reports for a key pressed with Alt, a key an input method handles, or a dead key. So every shortcut a caller gets follows the rules.
-- **Whether the device is configured**, from Sync's settings.
+- **Dispose Configure**: detaches shared settings/setup/status subscriptions and closes its window. Shell still owns shortcut unregistration and Sync's lifetime.
 
-Configure publishes one port, **Start with Windows**, with two parts. Is on returns whether the `Run` key holds the app's entry. Turn on or off writes or removes the entry. Turning it on or off fails when the app isn't installed or Windows refuses the write. The composition root implements it, and its real adapter has integration tests; Configure's UX tests use its [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test).
+Configure publishes two ports:
+
+- **Start with Windows** retains its existing `Run`-key contract.
+- **[Setup actions](../../../src/Desktop/Configure/ISetupActions.cs)** copies the displayed public key and opens Sync's supplied add-key page. App adapts its existing clipboard and browser components; Configure never reaches another window module's port. Failures are shown under setup.
+
+The composition root implements these ports. Their real adapters have integration tests; Configure's UX tests use
+the existing shared fake projects. The old repository-folder port and its production/test adapters are retired,
+not retained as compatibility paths beside Sync.
 
 ## Failure modes
 
@@ -158,6 +200,9 @@ The options below were considered and rejected, grouped by decision.
 
 - Where the shortcuts are kept:
   - **Each device keeps its own shortcuts, in a file on the device**: each PC could work around its own conflicts, but the same shortcuts on every device were preferred.
+- Which module owns the shared shortcuts:
+  - **Tasks keeps named settings of any kind, and Configure owns the shortcuts' names and meaning**: an extension point for desktop-only settings, with different rules for the deletion delay and shortcuts.
+  - **Tasks owns the shortcuts' validation too**: Windows keyboard rules would live in the library Android loads.
 - Where Start with Windows is kept:
   - **A file of this device's settings under `%LocalAppData%`, which each start makes the `Run` key match**: two homes for one fact, and a file that can be unreadable. A key another tool removed would come back at the next start.
   - **No setting in Configure, only Windows' Startup apps page**: Configure loses a setting, and users must find Windows' page.
@@ -186,17 +231,3 @@ The options below were considered and rejected, grouped by decision.
   - **The line shows only after the user changes a shortcut**: the same line, shown later.
 
 The other settings Configure shows were chosen elsewhere, with their rejected options: the default shortcuts in [Shell](shell.md#ruled-out), the deletion delay in [purpose and scope](../purpose.md#ruled-out), and the sync settings in [Sync through git](../sync.md#ruled-out).
-
-## Open questions
-
-### Which module owns the shortcuts in `settings.json`?
-
-Only the [Sync step](README.md#delivery-backlog) needs this answer. The [module map](../modules.md#module-map) gives Tasks the settings every device shares, but only the desktop app has global shortcuts.
-
-| Option | Gains | Costs |
-| --- | --- | --- |
-| (a) Tasks keeps them as two more shared settings, as text it doesn't interpret. Configure checks each one when it reads it: an invalid value is rejected, the app uses that shortcut's default, and Configure says so. The Android app carries them through merges and never shows them. | Follows the module map, so `settings.json` keeps one owner | The shared library names settings only the desktop uses |
-| (b) Tasks keeps named settings of any kind, and Configure owns the shortcuts' names and meaning | Tasks knows nothing of the desktop | An extension point for desktop-only settings, and the deletion delay and the shortcuts follow different rules |
-| (c) Tasks owns the shortcuts fully, including which values are valid, as it owns the deletion delay's range | One owner for the values and their rules | Windows keyboard rules in the library the Android app loads too |
-
-We recommend (a).

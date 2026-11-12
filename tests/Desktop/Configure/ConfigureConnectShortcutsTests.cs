@@ -8,7 +8,7 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 [Unit]
 public class ConfigureConnectShortcutsTests
 {
-    private static IConfigureWindow NewConfigure() => ConfigureWindow.Create(new FakeStartWithWindows(), new FakeRepositoryFolder());
+    private static IConfigureWindow NewConfigure() => new ConfigureServices().Create();
 
     [Fact]
     public void Registers_Win_Alt_N_on_the_Add_new_task_action_once()

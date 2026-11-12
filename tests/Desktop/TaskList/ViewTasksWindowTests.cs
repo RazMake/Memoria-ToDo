@@ -1,4 +1,8 @@
+using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Rendering;
+using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -97,10 +101,47 @@ public class ViewTasksWindowTests
     }
 
     [WpfFact]
-    public void Has_no_Sync_button_until_sync_is_built()
+    public void Offers_a_Sync_button()
     {
         using var screen = new TaskListScreen(new ListServices());
 
-        Assert.False(screen.HasButton("Sync"));
+        Assert.True(screen.HasButton("Sync"));
     }
+
+    [WpfFact]
+    public void Leaves_no_sync_status_subscription_or_sync_request_when_the_web_view_cannot_be_made()
+    {
+        var services = new ListServices();
+        var failure = new InvalidOperationException("No web view");
+        var viewTasks = CreateWindow(services, services.Sync, () => throw failure);
+
+        var thrown = Assert.Throws<InvalidOperationException>(viewTasks.Show);
+
+        Assert.Same(failure, thrown);
+        Assert.Equal(0, services.Sync.StatusSubscriberCount);
+        Assert.Equal(0, services.Sync.SyncCount);
+        Assert.False(viewTasks.IsOpen);
+    }
+
+    [WpfFact]
+    public void Opens_cleanly_after_an_opening_failed_because_the_web_view_could_not_be_made()
+    {
+        using var windows = new OpenWindows();
+        var services = new ListServices();
+        var fail = true;
+        var viewTasks = CreateWindow(services, services.Sync, () =>
+            fail ? throw new InvalidOperationException("No web view") : new FakeDescriptionWebView());
+        Assert.Throws<InvalidOperationException>(viewTasks.Show);
+        fail = false;
+
+        viewTasks.Show();
+
+        Assert.True(viewTasks.IsOpen);
+        Assert.Equal(1, services.Sync.StatusSubscriberCount);
+        Assert.Equal(1, services.Sync.SyncCount);
+    }
+
+    private static IViewTasksWindow CreateWindow(ListServices services, ISyncService sync, Func<IDescriptionWebView> createWebView) =>
+        ViewTasksWindow.Create(services.Tasks, Palette.Colors, services.Theme, services.Time, services.Clipboard,
+            new FakeImageFileChooser(), services.Files, createWebView, services.Browser, sync);
 }

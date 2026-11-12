@@ -80,6 +80,9 @@ internal sealed class EditorServices
         }
     }
 
+    /// <summary>Like <see cref="UseTag"/>, but from a worker thread, so Tasks raises Changed there as a background sync does.</summary>
+    public Task UseTagOnWorkerThread(string tag, int count = 1) => Task.Run(() => UseTag(tag, count));
+
     public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
 
     public TaskEditorControl CreateEditor() => new(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);

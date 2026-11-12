@@ -55,7 +55,7 @@ internal sealed class TagsLine : UserControl
         }, () => tasks.Changed -= OnTasksChanged);
     }
 
-    private void OnTasksChanged(object? sender, EventArgs e) => ShowSuggestions();
+    private void OnTasksChanged(object? sender, EventArgs e) => OnElementThread.Run(this, ShowSuggestions);
 
     /// <summary>The tags in the order they were added. Setting them clears the typed text.</summary>
     public IReadOnlyList<string> Tags

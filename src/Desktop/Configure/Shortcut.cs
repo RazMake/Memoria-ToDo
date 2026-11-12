@@ -70,4 +70,28 @@ public sealed record Shortcut
 
     /// <summary>The shortcut as the user reads it, such as <c>Win+Alt+T</c>.</summary>
     internal string ToDisplayText() => $"{ModifierKey.Describe(Modifiers)}+{Key}";
+
+    /// <summary>
+    /// Reads text that <see cref="ToDisplayText"/> wrote, and also follows the rules of <see cref="Check"/>. Returns
+    /// null for any other text, including the same keys in a different spelling or order.
+    /// </summary>
+    internal static Shortcut? Parse(string? text)
+    {
+        var parts = text?.Split('+');
+        if (parts is not { Length: > 1 } || !Enum.TryParse<Key>(parts[^1], out var key))
+        {
+            return null;
+        }
+
+        var modifiers = ModifierKeys.None;
+        foreach (var flag in new[] { ModifierKeys.Windows, ModifierKeys.Control, ModifierKeys.Alt, ModifierKeys.Shift })
+        {
+            if (parts[..^1].Contains(ModifierKey.Describe(flag)))
+            {
+                modifiers |= flag;
+            }
+        }
+
+        return Check(modifiers, key, out var shortcut) is null && shortcut!.ToDisplayText() == text ? shortcut : null;
+    }
 }

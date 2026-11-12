@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
+    <ProjectReference Include="..\Fakes\Memoria.ToDo.Shared.Fakes.csproj" />
+    <PackageReference Include="Microsoft.DevTunnels.Ssh.Tcp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\src\Desktop\App\WindowsFileSystem.cs" Link="Integration\WindowsFileSystem.cs" />
+    <Compile Include="..\..\..\src\Desktop\App\WindowsDirectoryIdentity.cs" Link="Integration\WindowsDirectoryIdentity.cs" />
+  </ItemGroup>
+
+</Project>

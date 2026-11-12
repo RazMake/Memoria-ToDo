@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Automation;
@@ -71,6 +72,41 @@ internal sealed class TaskListScreen : IDisposable
     public string? ResolvedLabel => Buttons(Window).Select(LabelOf).FirstOrDefault(label => ResolvedCountLabel.IsMatch(label));
 
     public bool HasButton(string label, DependencyObject? within = null) => FindButton(label, within ?? Window) is not null;
+
+    /// <summary>The words on the Sync button, which show whether a pass is running; throws when the button or its words are missing.</summary>
+    public string SyncButtonText =>
+        FindButton("Sync", Window)?.Content as string is { Length: > 0 } words
+            ? words
+            : throw new InvalidOperationException("No Sync button with words shows.");
+
+    /// <summary>
+    /// Completes when the Sync button shows the words, as soon as they appear; fails with a TimeoutException after the limit.
+    /// Call it before the action that changes the words, then await it: it watches the button's content, so no sleep or polling is needed.
+    /// </summary>
+    public async Task SyncButtonShowsAsync(string words, TimeSpan limit)
+    {
+        var button = FindButton("Sync", Window) ?? throw new InvalidOperationException("No Sync button shows.");
+        var shown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var content = DependencyPropertyDescriptor.FromProperty(ContentControl.ContentProperty, typeof(ButtonBase));
+        void OnContentChanged(object? sender, EventArgs e)
+        {
+            if (button.Content as string == words)
+            {
+                shown.TrySetResult();
+            }
+        }
+
+        content.AddValueChanged(button, OnContentChanged);
+        try
+        {
+            OnContentChanged(button, EventArgs.Empty);
+            await shown.Task.WaitAsync(limit);
+        }
+        finally
+        {
+            content.RemoveValueChanged(button, OnContentChanged);
+        }
+    }
 
     /// <summary>How many buttons with the label show.</summary>
     public int CountButtons(string label) => Buttons(Window).Count(b => LabelOf(b) == label);

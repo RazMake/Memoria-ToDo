@@ -42,6 +42,42 @@ Memoria.ToDo.Shared.Tasks.ITasks.TagsInUse() -> System.Collections.Generic.IRead
 Memoria.ToDo.Shared.Tasks.ITasks.TaskIdIn(string! address) -> string?
 Memoria.ToDo.Shared.Tasks.ITasks.UseRepositoryFolder(string? folder) -> void
 Memoria.ToDo.Shared.Tasks.ITasks.WithTag(System.Collections.Generic.IReadOnlyList<string!>! tags, string! typed) -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.Classify(string! relativePath) -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.ImagesFolderName.get -> string!
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.MergeSettings(byte[]? basis, byte[]? local, byte[]? remote) -> byte[]?
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.MergeTask(string! expectedTaskId, byte[]? basis, byte[]? local, byte[]? remote) -> byte[]?
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.SettingsFileName.get -> string!
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.TaskIdInPath(string! relativePath) -> string?
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.TasksFolderName.get -> string!
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.AddNewTaskShortcut.get -> string?
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.Changed -> System.EventHandler?
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.DeletionDelayDays.get -> int
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.ManageTasksShortcut.get -> string?
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetAddNewTaskShortcut(string? shortcut) -> void
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetDeletionDelayDays(int days) -> void
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetManageTasksShortcut(string? shortcut) -> void
+Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile
+Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile.Reason.get -> string!
+Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile.RelativePath.get -> string!
+Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile.RequiresUpdate.get -> bool
+Memoria.ToDo.Shared.Tasks.ITaskStore
+Memoria.ToDo.Shared.Tasks.ITaskStore.Settings.get -> Memoria.ToDo.Shared.Tasks.ISharedTaskSettings!
+Memoria.ToDo.Shared.Tasks.ITaskStore.Synchronization.get -> Memoria.ToDo.Shared.Tasks.ITaskSynchronization!
+Memoria.ToDo.Shared.Tasks.ITaskSynchronization
+Memoria.ToDo.Shared.Tasks.ITaskSynchronization.DeleteExpiredTasks() -> void
+Memoria.ToDo.Shared.Tasks.ITaskSynchronization.EnsureSettings() -> void
+Memoria.ToDo.Shared.Tasks.ITaskSynchronization.Files.get -> Memoria.ToDo.Shared.Tasks.IRepositoryFileRules!
+Memoria.ToDo.Shared.Tasks.ITaskSynchronization.LocalSaved -> System.EventHandler?
+Memoria.ToDo.Shared.Tasks.ITaskSynchronization.RepositoryFolder.get -> string?
+Memoria.ToDo.Shared.Tasks.ITaskSynchronization.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile!>!
+Memoria.ToDo.Shared.Tasks.ITaskSynchronization.UpdateRepository(string! expectedFolder, System.Action! update) -> void
+Memoria.ToDo.Shared.Tasks.RepositoryFileKind
+Memoria.ToDo.Shared.Tasks.RepositoryFileKind.Image = 2 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
+Memoria.ToDo.Shared.Tasks.RepositoryFileKind.Settings = 3 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
+Memoria.ToDo.Shared.Tasks.RepositoryFileKind.Task = 1 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
+Memoria.ToDo.Shared.Tasks.RepositoryFileKind.Unmanaged = 0 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
 Memoria.ToDo.Shared.Tasks.NoRepositoryFolderException
 Memoria.ToDo.Shared.Tasks.NoRepositoryFolderException.NoRepositoryFolderException() -> void
 Memoria.ToDo.Shared.Tasks.TagUse
@@ -110,4 +146,4 @@ static Memoria.ToDo.Shared.Tasks.TaskDraft.operator !=(Memoria.ToDo.Shared.Tasks
 static Memoria.ToDo.Shared.Tasks.TaskDraft.operator ==(Memoria.ToDo.Shared.Tasks.TaskDraft? left, Memoria.ToDo.Shared.Tasks.TaskDraft? right) -> bool
 static Memoria.ToDo.Shared.Tasks.TaskItem.operator !=(Memoria.ToDo.Shared.Tasks.TaskItem? left, Memoria.ToDo.Shared.Tasks.TaskItem? right) -> bool
 static Memoria.ToDo.Shared.Tasks.TaskItem.operator ==(Memoria.ToDo.Shared.Tasks.TaskItem? left, Memoria.ToDo.Shared.Tasks.TaskItem? right) -> bool
-static Memoria.ToDo.Shared.Tasks.TaskStore.Create(Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Tasks.IImageEncoder! images, System.TimeProvider! time, string! deviceFolder) -> Memoria.ToDo.Shared.Tasks.ITasks!
+static Memoria.ToDo.Shared.Tasks.TaskStore.Create(Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Tasks.IImageEncoder! images, System.TimeProvider! time, string! deviceFolder) -> Memoria.ToDo.Shared.Tasks.ITaskStore!

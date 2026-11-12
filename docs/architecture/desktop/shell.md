@@ -26,16 +26,18 @@ The tray icon's menu offers Add new task, Manage tasks, Configure, and Exit, for
 
 Proposed: a left click opens Add at once, without waiting to tell it from a double click, since the icon has no double-click action. This is a decision to confirm.
 
-Proposed: **when either shortcut can't register at start, Shell opens Configure**, which shows the shortcut without keys and why. A shortcut that silently does nothing looked broken. After a start by hand, Configure opens after View Tasks, so it's in front; after a start at sign-in, it's the only window that opens. A later start of a running app registers nothing, so it doesn't open Configure. This is a decision to confirm.
+Proposed: **when either shortcut can't register at start, Shell opens Configure**, which shows the shortcut without keys and why. A shortcut that silently does nothing looked broken. After a start by hand on a configured device, View Tasks opens first, then Configure, so Configure is in front; after a start at sign-in, Configure is the only window that opens. An unconfigured device or failed local initialization follows the decided setup rule below instead. A later start of a running app registers nothing, so it doesn't open Configure. This is a decision to confirm.
 
 Proposed: the tray menu's first two items take the shortcuts' names, so the menu and Configure call each function the same. The windows keep their titles, Add new Task and View Tasks. This is a decision to confirm.
 
-Proposed: until the device is configured, the first start, Add, and View Tasks open Configure, since there are no tasks to show yet. This is a decision to confirm.
+**Decided by the user:** until the device is configured, the first start, Add, and View Tasks open Configure.
+After local initialization reports an unconfigured device or fails, startup opens Configure even at Windows
+sign-in, so setup or its error is visible.
 
 ### Only one instance runs, and a start by hand shows View Tasks
 
 - **One instance runs per Windows sign-in session.** Starting the app while it runs shows View Tasks in the running instance. The new instance lets the running one come to the front, which Windows may otherwise refuse ([AllowSetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-allowsetforegroundwindow)). Then it ends, without adding a tray icon, registering the shortcuts, or starting update checks. Every instance counts as the same app, even one run from a build folder.
-- **A start by hand shows View Tasks, and a start at sign-in shows only the tray icon.** A start from the Start menu is by hand, and so is the first start after installing. The [`Run` key's entry](configure.md#start-with-windows-is-the-run-key-itself) adds the argument `--at-sign-in`, which marks a start at sign-in, and the composition root tells Shell which kind of start it is. From the Sync step, the [proposed](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) redirect to Configure applies to a start by hand until the device is configured. Either kind of start also opens Configure when a shortcut can't register, as [proposed](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) above.
+- **For a configured device, a start by hand shows View Tasks, and a start at sign-in shows only the tray icon.** A start from the Start menu is by hand, and so is the first start after installing. The [`Run` key's entry](configure.md#start-with-windows-is-the-run-key-itself) adds the argument `--at-sign-in`, which marks a start at sign-in, and the composition root tells Shell which kind of start it is. The [startup exceptions above](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) govern unconfigured devices, failed initialization, and shortcut-registration failures.
 - **Add is ready before it's needed.** The Add window is created hidden when the app starts, as the [Task editor](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) decides, so Shell shows it at once.
 
 Proposed, each a decision to confirm:
@@ -66,6 +68,48 @@ Shell shows sync status in the tray and never interrupts while sync works. The t
 - Clicking the notification opens Configure.
 - Shell reads sync status from Sync directly, which adds Sync to the modules Shell may use in the [module map](../modules.md#module-map).
 
+Shell starts the shared service only after winning the one-instance claim. Before Start, it subscribes to setup
+and status notices. Automatic startup navigation waits for Sync's
+[initial local publication](../sync.md#one-owned-worker-keeps-synchronous-git-and-ssh-off-the-ui-thread), not its first
+network result: the cold snapshot's false `IsConfigured` must not send an already configured device to Configure.
+The initialization result, including failure, resolves pending startup navigation under the
+[decided startup rule](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions).
+This uses the existing local publication, not an additional status-only startup route.
+
+This pending navigation runs at most once, on the UI thread. Shortcut-registration failure is an input to that
+startup choice, handled by the [startup rules above](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions),
+not a separate early navigation that consumes it. Opening a window for an explicit user action consumes the
+pending choice; shutdown cancels it. Queued notices must not open a window after either event. No polling,
+timeout, or blocking startup wait is added.
+
+Manual Add, Manage tasks, left click, and later-instance handoff still use the cached setup state at the time:
+until configured they show Configure instead. This preserves the existing "no shortcut action while a window is open" guard.
+An already configured device that becomes offline keeps opening its task windows; offline is not lost setup.
+
+[`ITrayIcon`](../../../src/Desktop/Shell/ITrayIcon.cs) adds status updates and error notifications, not Sync or WPF
+types. Its adapter marshals those calls to the UI, while Shell's status handling uses no WPF objects. Idle/working
+use the plain icon, offline uses its badge without a notification, and errors use the warning badge. Shell remembers
+notified failure kinds until a clean success, so retries do not spam notifications. Notification clicks open Configure.
+
+Decision to confirm: the tooltip has one line for the app's name, then `Last synced` and the successful time in
+the user's local short date/time format when there is one, then error/offline details when present. Put the sync
+time before free-form details so long errors do not displace it when the tray adapter truncates the text.
+Before the first success, the time line is absent. Lines use the platform's newline. Working adds no extra line.
+
+### Shutdown joins owned work without blocking the dispatcher
+
+[`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) replaces synchronous Stop.
+The first call detaches sync notices, cancels and observes Shell's pending waits and startup navigation, disposes Configure, and releases
+both shortcuts and the tray on the UI thread. It then awaits the shared Sync service's disposal and the owned
+update-loop completion, and only then releases the one-instance claim. Cleanup attempts every step and retains
+all failures. Repeated calls join the same cleanup; cancelling a caller's wait does not abandon it.
+
+The update scheduler must retain its run Task instead of discarding it. Its adapter still follows the
+[existing uncancellable-check policy](#velopack-installs-the-app-and-keeps-it-up-to-date), observing a check that
+outlives cancellation. Shell never waits synchronously for either update or sync work.
+The platform's [shutdown path](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) keeps WPF's
+dispatcher running through the awaits. No public compatibility Stop method is retained.
+
 ### Velopack installs the app and keeps it up to date
 
 The app installs with [Velopack](https://www.nuget.org/packages/Velopack/1.2.0) 1.2.0: a per-user setup.exe that installs under `%LocalAppData%` without administrator rights ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). The app checks this repository's GitHub Releases for updates, downloads them in the background, and applies them on the next start ([Velopack integration](https://docs.velopack.io/integrating/overview)). The repository is public, so the check needs no token.
@@ -90,13 +134,13 @@ Proposed, each a decision to confirm:
 
 No module uses Shell. Only the composition root does, through one part:
 
-- **Create the tray app**: takes the Show parts of the [Task editor](task-editor.md#public-interface) and the [Task list](task-list.md#public-interface); [Configure's part](configure.md#public-interface), which Shell uses to show Configure and to connect the shortcuts; the implementations of Shell's four ports below; whether the app started at sign-in; and a time source. It returns the app's lifetime, which the [desktop platform](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) starts and stops.
-  - **Starting** first asks the one-instance port to claim the sign-in session. If another instance runs, Starting ends the app and does nothing else. Otherwise it adds the tray icon with its menu, connects Configure's shortcuts, begins the [update checks](#velopack-installs-the-app-and-keeps-it-up-to-date), and shows View Tasks after a start by hand. Then, when Configure answers that a shortcut didn't register, it shows Configure. Each menu item calls its window's Show part, and Exit ends the app. A left click and the Add new task shortcut call Show Add, the Manage tasks shortcut calls Show View Tasks, and each later start calls Show View Tasks.
+- **[Create the tray app](../../../src/Desktop/Shell/TrayApp.cs)** retains its existing arguments and adds the shared Sync service last. It returns the platform's async-stop lifetime; no duplicate instance starts Sync.
+  - **Starting** first asks the one-instance port to claim the sign-in session. If another instance runs, Starting ends the app and does nothing else. Otherwise it adds the tray icon with its menu, connects Configure's shortcuts, begins the [update checks](#velopack-installs-the-app-and-keeps-it-up-to-date), and resolves its windows through the [startup rules](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) after local initialization. Each menu item calls its window's Show part, and Exit ends the app. A left click and the Add new task shortcut call Show Add, the Manage tasks shortcut calls Show View Tasks, and each later start calls Show View Tasks.
   - **Connecting the shortcuts** hands Configure two [shortcut actions](configure.md#public-interface): Add new task's opens Add, and Manage tasks' opens View Tasks. Each action has at most one shortcut registered, through the global shortcut port, and neither touches the other's.
     - **Register** registers a new shortcut; when Windows takes it, the action releases its previous one. The shortcut already registered stays, and Register returns true without registering it again.
     - **Unregister** releases the action's shortcut, so its keys reach the focused window, and does nothing when there's none. A later Register registers again.
     - Any failure of the port other than a taken shortcut passes on to Configure.
-  - **Stopping** ends the update checks, releases both shortcuts, removes the tray icon, and gives up the claim, so a later start becomes the running instance.
+  - **Stopping** follows the [owned asynchronous cleanup](#shutdown-joins-owned-work-without-blocking-the-dispatcher), so a later instance cannot claim the session while this one still owns native sync work.
   - Proposed: Stopping works even if Starting failed or never ran, and when it's repeated. It ends the update checks before it removes the icon. When the icon can't be added, Starting fails before it connects the shortcuts and begins the update checks. This is a decision to confirm.
   - Proposed: when a new shortcut registers but releasing the action's previous one fails, the action releases the new one again, keeps the previous one, and passes the failure on to Configure. When releasing a shortcut fails, Stopping still releases the other, removes the tray icon, and gives up the claim, then passes the failures on. This is a decision to confirm.
   - If releasing the new one again fails too, both stay registered until the app ends, the previous one stays active, and Configure gets both failures.
@@ -143,12 +187,16 @@ The options below were considered and rejected, grouped by decision.
   - **The desktop platform hosts the tray implementation**: only Shell uses it, so it does not belong among code shared by modules.
 - What a start shows:
   - **Every first start shows only the tray icon**: Windows may hide the icon in the tray's overflow, so a start from the Start menu would seem to do nothing.
+  - **Remain tray-only at sign-in when local initialization reports an unconfigured device or fails**: the user
+    chose to show Configure immediately rather than leave setup trouble unnoticed.
 - How a second start reaches the running instance:
   - **The platform checks before it creates the WPF application, and Run the app returns at once in a later instance**: the platform's public interface would grow, and the rule would leave Shell for a place with only integration tests.
   - **The running instance confirms each handover, and a new instance that gets no confirmation in time takes over**: more code and a time limit, for a rare case that loses nothing and that starting again fixes.
 - Sync status:
   - **A notification for every failure**: it nags during long offline stretches.
   - **Status only in Configure**: a broken sync would go unnoticed.
+  - **Error details before the last successful sync time in the tooltip**: a long error can push the time past
+    the tray adapter's text limit.
 - Installing:
   - **Inno Setup**: no automatic updates.
   - **No installer, a zipped folder**: updates by hand.

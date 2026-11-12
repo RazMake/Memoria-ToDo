@@ -157,7 +157,7 @@ The editor tells its user whether the task was saved, so Add can clear or close,
 
 ### With no clone folder, saving points to Configure
 
-Tasks keeps tasks in [Configure's repository folder](configure.md#the-sync-settings-section-sets-the-devices-clone). Until one is set, Add still opens and keeps a draft, but saving fails: Add stays open with the text and says to set the repository folder in Configure. The composition root gives Tasks the folder when the app starts, and again after Configure clones or picks one. It does this by wrapping Configure's repository-folder port in an App class, `TasksFollowRepositoryFolder`: it calls `UseRepositoryFolder` with the saved folder when it is built, and after each successful clone or use of an existing folder. Configure and Tasks stay unaware of each other. (Decision to confirm.)
+Tasks keeps tasks in [Configure's repository folder](configure.md#the-sync-settings-section-sets-the-devices-clone). Until one is set, Add still opens and keeps a draft, but saving fails: Add stays open with the text and says to set the repository folder in Configure. App's [selection adapter](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) gives Tasks the selected folder. Configure and Tasks stay unaware of each other.
 
 ## Public interface
 

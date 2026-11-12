@@ -8,8 +8,9 @@ public static class AppRunner
 {
     /// <summary>
     /// Rejects a call from a non-STA thread, creates the WPF application (it ends only when told to) with its theme
-    /// following Windows' light or dark setting, builds the lifetime and starts it on the UI thread, then stops it once when it ends the app or
-    /// Windows ends the session. Shows an unhandled error in a message box and ends with a non-zero code.
+    /// following Windows' light or dark setting, builds the lifetime and starts it on the UI thread, then stops it once
+    /// when it ends the app or Windows ends the session, keeping the dispatcher running until the asynchronous stop
+    /// finishes. Shows an unhandled error in a message box and ends with a non-zero code.
     /// </summary>
     /// <returns>The process's exit code.</returns>
     public static int Run(Func<IAppLifetime> createLifetime)
@@ -22,7 +23,7 @@ public static class AppRunner
         return new Session(createLifetime).Run();
     }
 
-    /// <summary>One run of the app: the application, the lifetime, and the once-only stop.</summary>
+    /// <summary>One run of the app: the application, the lifetime, and the once-only asynchronous shutdown.</summary>
     private sealed class Session(Func<IAppLifetime> createLifetime)
     {
         private const int ErrorExitCode = 1;
@@ -30,6 +31,7 @@ public static class AppRunner
 
         private Application? _application;
         private IAppLifetime? _started;
+        private Task? _shutdown;
         private int _exitCode;
 
         public int Run()
@@ -44,48 +46,52 @@ public static class AppRunner
                 Fail(e.Exception);
             };
             AppDomain.CurrentDomain.UnhandledException += (_, e) => FailOnOtherThread((Exception)e.ExceptionObject);
-            application.SessionEnding += (_, _) => Stop();
+            application.SessionEnding += (_, _) => BeginShutdown();
 
             try
             {
                 var lifetime = createLifetime();
                 _started = lifetime;
-                lifetime.Start(() => application.Dispatcher.InvokeAsync(Shutdown));
-                application.Run();
+                lifetime.Start(() => application.Dispatcher.InvokeAsync(BeginShutdown));
             }
             catch (Exception error)
             {
                 Fail(error);
             }
-            finally
+
+            try
             {
-                Stop();
+                application.Run();
+            }
+            catch (Exception error)
+            {
+                // The pump is gone, so nothing can await the stop: report, and run the stop's synchronous part
+                // (icon and shortcut release) on this still-owning UI thread.
+                _exitCode = ErrorExitCode;
+                ErrorBox.Show(error);
+                BeginShutdown();
             }
 
             return _exitCode;
         }
 
+        // Shutdown always starts from the pump, so it never runs before application.Run, and the dispatcher stays alive
+        // until the lifetime's stop has finished.
         private void Fail(Exception error)
         {
             _exitCode = ErrorExitCode;
             ErrorBox.Show(error);
-            Shutdown();
+            _application!.Dispatcher.InvokeAsync(BeginShutdown);
         }
 
-        private void Shutdown()
-        {
-            Stop();
-            _application!.Shutdown();
-        }
-
-        // The process is ending: stop the lifetime on the UI thread (a tray icon would linger otherwise), then exit
-        // here, because the runtime would otherwise end it with Windows' error report.
+        // The process is ending: start stopping the lifetime on the UI thread (a tray icon would linger otherwise), then
+        // exit here, because the runtime would otherwise end it with Windows' error report.
         private void FailOnOtherThread(Exception error)
         {
             ErrorBox.Show(error);
             try
             {
-                _application!.Dispatcher.Invoke(Stop, DispatcherPriority.Send, CancellationToken.None, StopWait);
+                _application!.Dispatcher.Invoke(BeginShutdown, DispatcherPriority.Send, CancellationToken.None, StopWait);
             }
             finally
             {
@@ -93,17 +99,25 @@ public static class AppRunner
             }
         }
 
-        private void Stop()
+        // UI thread only. Every request joins the one shutdown.
+        private void BeginShutdown() => _shutdown ??= ShutDownAsync();
+
+        private async Task ShutDownAsync()
         {
             try
             {
-                Interlocked.Exchange(ref _started, null)?.Stop();
+                if (_started is { } lifetime)
+                {
+                    await lifetime.StopAsync(CancellationToken.None);
+                }
             }
             catch (Exception error)
             {
                 _exitCode = ErrorExitCode;
                 ErrorBox.Show(error);
             }
+
+            _application!.Shutdown();
         }
     }
 }

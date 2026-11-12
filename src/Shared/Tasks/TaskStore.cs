@@ -2,11 +2,11 @@ using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
-/// <summary>Creates the one <see cref="ITasks"/> an app uses.</summary>
+/// <summary>Creates the task store an app uses.</summary>
 public static class TaskStore
 {
     /// <summary>Creates Tasks. <paramref name="deviceFolder"/> is this device's folder for the draft, outside the clone.</summary>
-    public static ITasks Create(IFileSystem files, IImageEncoder images, TimeProvider time, string deviceFolder)
+    public static ITaskStore Create(IFileSystem files, IImageEncoder images, TimeProvider time, string deviceFolder)
     {
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(images);

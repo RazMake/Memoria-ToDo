@@ -7,6 +7,33 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 [Integration]
 public class AppRunnerIntegrationTests
 {
+    [Theory]
+    [InlineData("async-stop")]
+    [InlineData("end-app-twice")]
+    public void Run_keeps_the_dispatcher_alive_until_async_shutdown_completes_once(string scenario)
+    {
+        using var host = HostProcess.Start(scenario);
+
+        var exitCode = host.WaitForExit();
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(1, host.Count("stopped"));
+        Assert.Equal(1, host.Count("async-stop-completed ui-thread=True"));
+        Assert.Contains("stop-resource available=True", host.Lines);
+    }
+
+    [Fact]
+    public void Run_does_not_refuse_Windows_logoff_while_async_cleanup_is_pending()
+    {
+        using var host = HostProcess.Start("session-ending-async-stop");
+
+        var exitCode = host.WaitForExit();
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(1, host.Count("stopped"));
+        Assert.DoesNotContain("session-ending-refused", host.Lines);
+    }
+
     [Fact]
     public void Run_creates_the_WPF_application_before_building_the_lifetime()
     {

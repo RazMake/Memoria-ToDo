@@ -300,6 +300,26 @@ public abstract class FileSystemContract
         Assert.Equal("x", Read(Path("folder", "a.txt")));
     }
 
+    [Theory]
+    [InlineData("folder")]
+    [InlineData(@"..\outside")]
+    [InlineData("C:folder")]
+    [InlineData("C:")]
+    public void Rejects_a_relative_or_drive_relative_directory_when_asking_about_containment(string relative)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => FileSystem.IsSameOrDescendantDirectory(relative, Root));
+    }
+
+    [Theory]
+    [InlineData("folder")]
+    [InlineData(@"..\outside")]
+    [InlineData("C:folder")]
+    [InlineData("C:")]
+    public void Rejects_a_relative_or_drive_relative_ancestor_when_asking_about_containment(string relative)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => FileSystem.IsSameOrDescendantDirectory(Root, relative));
+    }
+
     [Fact]
     public void Fails_to_delete_a_file_as_if_it_were_a_folder_and_keeps_the_file()
     {

@@ -1,6 +1,7 @@
 using Xunit;
 using Memoria.ToDo.Desktop.Shell;
 using Memoria.ToDo.Testing;
+using System.Windows.Threading;
 
 namespace Memoria.ToDo.Desktop.App.Tests;
 
@@ -13,13 +14,36 @@ public class TrayIconTests
 {
     private static readonly IReadOnlyList<TrayMenuItem> Menu = [new TrayMenuItem("Add", () => { }), new TrayMenuItem("Exit", () => { })];
 
+    // Far longer than the notification area shows (Windows keeps about 128 characters); only "does not fail" is checked.
+    private static readonly string LongTooltip = "Memoria" + Environment.NewLine + new string('x', 1000);
+
+    [WpfFact]
+    public async Task Worker_thread_status_updates_can_be_drawn_and_queued_updates_after_removal_are_safe()
+    {
+        ITrayIcon icon = new TrayIcon();
+        icon.Show("Memoria", Menu, () => { });
+        try
+        {
+            await Task.Run(() => icon.UpdateStatus("Offline", TraySyncBadge.Offline));
+            await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+            await Task.Run(() => icon.UpdateStatus(LongTooltip, TraySyncBadge.Warning));
+            icon.Remove();
+            await Task.Run(() => icon.UpdateStatus("Already closed", TraySyncBadge.None));
+            await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+        }
+        finally
+        {
+            icon.Remove();
+        }
+    }
+
     [WpfFact]
     public void Shows_the_icon_with_its_tooltip_menu_and_left_click_without_failing()
     {
         var icon = new TrayIcon();
         try
         {
-            icon.Show("Memoria", Menu, () => { });
+            icon.Show(LongTooltip, Menu, () => { });
         }
         finally
         {

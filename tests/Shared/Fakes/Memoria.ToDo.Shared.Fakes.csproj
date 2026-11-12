@@ -5,6 +5,8 @@
     <PackageReference Include="xunit.v3.assert" />
     <ProjectReference Include="..\..\..\src\Shared\Platform\Memoria.ToDo.Shared.Platform.csproj" />
     <ProjectReference Include="..\..\..\src\Shared\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
+    <InternalsVisibleTo Include="Memoria.ToDo.Shared.Sync.Tests" />
   </ItemGroup>
 
 </Project>

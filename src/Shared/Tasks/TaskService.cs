@@ -2,16 +2,19 @@ using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
-/// <summary>The <see cref="ITasks"/> an app gets from <see cref="TaskStore"/>. Every call runs under one lock.</summary>
-internal sealed class TaskService(IFileSystem files, IImageEncoder encoder, TimeProvider time, string deviceFolder) : ITasks
+/// <summary>The <see cref="ITaskStore"/> an app gets from <see cref="TaskStore"/>. Every call, and Sync's repository updates, run under one lock.</summary>
+internal sealed partial class TaskService(IFileSystem files, IImageEncoder encoder, TimeProvider time, string deviceFolder) : ITaskStore
 {
     private readonly Lock gate = new();
     private readonly TaskFolder folder = new(files);
+    private readonly SettingsFolder settingsFolder = new(files);
     private readonly DraftStore drafts = new(files, deviceFolder);
     private readonly EditImageStore editImages = new(files, deviceFolder);
     private readonly ImageShrinker shrinker = new(encoder);
     private string? clone;
     private TaskSet set = TaskSet.Empty;
+    private SettingsLoad settings = new(SharedSettings.Defaults, false, null);
+    private IReadOnlyList<ISkippedRepositoryFile> skipped = [];
 
     public event EventHandler? Changed;
 
@@ -30,13 +33,58 @@ internal sealed class TaskService(IFileSystem files, IImageEncoder encoder, Time
             throw new ArgumentException("Must be a folder path, or null.", nameof(repositoryFolder));
         lock (gate)
         {
-            var loaded = repositoryFolder is null ? TaskSet.Empty : new TaskSet(folder.Read(repositoryFolder));
+            var loaded = repositoryFolder is null ? Loaded.Empty : Load(repositoryFolder);
             clone = repositoryFolder;
-            set = loaded;
+            Apply(loaded);
         }
 
-        Changed?.Invoke(this, EventArgs.Empty);
+        Announce(Notice.Tasks | Notice.Settings);
     }
+
+    /// <summary>Everything a reload reads, built whole so a failure leaves the current state untouched.</summary>
+    private sealed record Loaded(TaskSet Set, SettingsLoad Settings, IReadOnlyList<ISkippedRepositoryFile> Skipped)
+    {
+        public static readonly Loaded Empty = new(TaskSet.Empty, new SettingsLoad(SharedSettings.Defaults, false, null), []);
+    }
+
+    private Loaded Load(string root)
+    {
+        var (tasks, skippedTasks) = folder.Read(root);
+        var loadedSettings = settingsFolder.Read(root);
+        if (loadedSettings.Failure is not null)
+            skippedTasks.Add(SkippedRepositoryFile.Of(RepositoryLayout.SettingsFileName, loadedSettings.Failure));
+        return new Loaded(new TaskSet(tasks), loadedSettings, skippedTasks);
+    }
+
+    private void Apply(Loaded loaded)
+    {
+        set = loaded.Set;
+        settings = loaded.Settings;
+        skipped = loaded.Skipped;
+    }
+
+    [Flags]
+    private enum Notice
+    {
+        None = 0,
+        Tasks = 1,
+        Settings = 2,
+        LocalSaved = 4,
+    }
+
+    /// <summary>Raises the events for what changed. Call it after leaving the lock, so handlers never run inside it.</summary>
+    private void Announce(Notice notice)
+    {
+        if (notice.HasFlag(Notice.Tasks))
+            Changed?.Invoke(this, EventArgs.Empty);
+        if (notice.HasFlag(Notice.Settings))
+            settingsChanged?.Invoke(this, EventArgs.Empty);
+        if (notice.HasFlag(Notice.LocalSaved))
+            localSaved?.Invoke(this, EventArgs.Empty);
+    }
+
+    private EventHandler? settingsChanged;
+    private EventHandler? localSaved;
 
     public TaskItem Add(TaskDraft draft)
     {
@@ -58,7 +106,7 @@ internal sealed class TaskService(IFileSystem files, IImageEncoder encoder, Time
             set = set.WithTask(task);
         }
 
-        Changed?.Invoke(this, EventArgs.Empty);
+        Announce(Notice.Tasks | Notice.LocalSaved);
         return task;
     }
 
@@ -164,7 +212,7 @@ internal sealed class TaskService(IFileSystem files, IImageEncoder encoder, Time
             set = set.ReplacingTask(saved);
         }
 
-        Changed?.Invoke(this, EventArgs.Empty);
+        Announce(Notice.Tasks | Notice.LocalSaved);
         return saved;
     }
 
@@ -217,19 +265,25 @@ internal sealed class TaskService(IFileSystem files, IImageEncoder encoder, Time
             lock (gate)
             {
                 Find(taskId);
-                folder.Delete(clone!, taskId);
-                set = set.WithoutTask(taskId);
-                removed = true;
-                files.DeleteFolder(RepositoryLayout.ImagesFolder(clone!, taskId));
-                editImages.Discard(taskId);
+                RemoveTask(taskId, ref removed);
             }
         }
         finally
         {
             // Deleting the task file is the commit: once it succeeded the removal is published, even if the image cleanup threw.
             if (removed)
-                Changed?.Invoke(this, EventArgs.Empty);
+                Announce(Notice.Tasks | Notice.LocalSaved);
         }
+    }
+
+    /// <summary>Deletes the task's file, then its images. Call under the lock; <paramref name="removed"/> is set once the file is gone.</summary>
+    private void RemoveTask(string taskId, ref bool removed)
+    {
+        folder.Delete(clone!, taskId);
+        set = set.WithoutTask(taskId);
+        removed = true;
+        files.DeleteFolder(RepositoryLayout.ImagesFolder(clone!, taskId));
+        editImages.Discard(taskId);
     }
 
     /// <summary>Saves what <paramref name="change"/> makes of the task, unless it returns the task itself. Raises <see cref="Changed"/> after a save.</summary>
@@ -246,7 +300,7 @@ internal sealed class TaskService(IFileSystem files, IImageEncoder encoder, Time
             set = set.ReplacingTask(saved);
         }
 
-        Changed?.Invoke(this, EventArgs.Empty);
+        Announce(Notice.Tasks | Notice.LocalSaved);
         return saved;
     }
 

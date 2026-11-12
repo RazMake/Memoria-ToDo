@@ -2,6 +2,7 @@ using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
+using Memoria.ToDo.Shared.Sync;
 
 namespace Memoria.ToDo.Desktop.Shell;
 
@@ -13,10 +14,12 @@ public static class TrayApp
     /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Manage tasks, Configure,
     /// Exit; a left click shows Add), connects Configure's two shortcuts (a press shows Add or View Tasks, and does
     /// nothing while any of the app's windows is open), begins the
-    /// update checks, shows View Tasks when <paramref name="startedAtSignIn"/> is false, and then shows Configure when
-    /// a default shortcut couldn't be registered; each later start shows View Tasks only.
-    /// Stop ends the checks, unregisters both shortcuts, removes the icon, and releases the claim, then passes on any
-    /// release failure.
+    /// update checks and the shared sync service. Startup and later actions open Configure until setup is complete;
+    /// otherwise startup shows View Tasks when <paramref name="startedAtSignIn"/> is false.
+    /// Configure also opens when an initial shortcut could not be registered, after View Tasks on a configured
+    /// start by hand. These startup windows wait for local initialization.
+    /// StopAsync joins sync and update cleanup without blocking the UI, unregisters both shortcuts,
+    /// removes the icon, and releases the claim. Cleanup still completes when one step fails.
     /// </summary>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static IAppLifetime Create(
@@ -28,7 +31,8 @@ public static class TrayApp
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
-        TimeProvider time)
+        TimeProvider time,
+        ISyncService sync)
     {
         ArgumentNullException.ThrowIfNull(trayIcon);
         ArgumentNullException.ThrowIfNull(add);
@@ -38,18 +42,27 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(shortcut);
         ArgumentNullException.ThrowIfNull(oneInstance);
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(sync);
 
         bool AnyWindowOpen() => add.IsOpen || viewTasks.IsOpen || configure.IsOpen;
 
+        var redirect = new SetupRedirect(sync, configure);
+        var showAdd = redirect.Through(add.Show);
+        var showViewTasks = redirect.Through(viewTasks.Show);
+        var startup = new StartupNavigation(sync.Setup, configure.Show, showViewTasks, startedAtSignIn);
+        var addByUser = startup.ByUser(showAdd);
+        var viewTasksByUser = startup.ByUser(showViewTasks);
+
         return new ShellLifetime(
             trayIcon,
-            add,
-            viewTasks,
+            showAdd,
+            showViewTasks,
             configure,
             oneInstance,
-            new ActiveShortcut(shortcut, () => { if (!AnyWindowOpen()) add.Show(); }),
-            new ActiveShortcut(shortcut, () => { if (!AnyWindowOpen()) viewTasks.Show(); }),
-            startedAtSignIn,
-            new UpdateSchedule(updates, time));
+            new ActiveShortcut(shortcut, () => { if (!AnyWindowOpen()) { addByUser(); } }),
+            new ActiveShortcut(shortcut, () => { if (!AnyWindowOpen()) { viewTasksByUser(); } }),
+            startup,
+            new UpdateSchedule(updates, time),
+            sync);
     }
 }

@@ -6,6 +6,9 @@ namespace Memoria.ToDo.Desktop.App;
 /// <summary>Files on this Windows device. A write goes to a temporary file first, so a failure leaves the old file whole.</summary>
 internal sealed class WindowsFileSystem : IFileSystem
 {
+    public bool IsSameOrDescendantDirectory(string directory, string ancestor) =>
+        WindowsDirectoryIdentity.IsSameOrDescendant(directory, ancestor);
+
     public bool FileExists(string path) => File.Exists(path);
 
     public byte[] ReadFile(string path)

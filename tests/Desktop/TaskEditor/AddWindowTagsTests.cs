@@ -111,6 +111,20 @@ public class AddWindowTagSuggestionsTests
     }
 
     [WpfFact]
+    public async Task Suggestions_refresh_when_Tasks_changes_on_a_worker_thread()
+    {
+        using var screen = new AddScreen();
+        screen.Services.UseTag("home");
+        screen.Show();
+        screen.TypeTag("ho");
+
+        await screen.Services.UseTagOnWorkerThread("hobby", 2);
+        await RenderedField.Settled();
+
+        Assert.Equal(["hobby", "home"], screen.Suggestions);
+    }
+
+    [WpfFact]
     public void Esc_closes_the_suggestions_first_and_Add_stays_open()
     {
         using var screen = new AddScreen();
@@ -475,6 +489,19 @@ public class AddWindowTagChipsTests
         screen.Show();
 
         screen.Services.UseTag("work", 2);
+
+        Assert.Equal(["work", "home"], screen.ChipTags);
+    }
+
+    [WpfFact]
+    public async Task Chips_refresh_when_Tasks_changes_on_a_worker_thread()
+    {
+        using var screen = new AddScreen();
+        screen.Services.UseTag("home");
+        screen.Show();
+
+        await screen.Services.UseTagOnWorkerThread("work", 2);
+        await RenderedField.Settled();
 
         Assert.Equal(["work", "home"], screen.ChipTags);
     }

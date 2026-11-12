@@ -35,6 +35,7 @@ internal sealed class ShellHarness
     public FakeGlobalShortcut GlobalShortcut { get; } = new();
     public FakeOneInstance OneInstance { get; } = new();
     public FakeTimeProvider Time { get; } = new();
+    public FakeSyncService Sync { get; } = new();
     public int EndAppCalls { get; private set; }
     public IAppLifetime Lifetime { get; }
 
@@ -50,7 +51,7 @@ internal sealed class ShellHarness
         ViewTasks = new FakeViewTasksWindow(Shown);
         Configure = new FakeConfigureWindow(Shown);
         Lifetime = TrayApp.Create(
-            TrayIcon, Add, ViewTasks, Configure, Updates, GlobalShortcut, OneInstance, startedAtSignIn, Time);
+            TrayIcon, Add, ViewTasks, Configure, Updates, GlobalShortcut, OneInstance, startedAtSignIn, Time, Sync);
     }
 
     /// <summary>Starts the app, with an end action that counts its calls.</summary>

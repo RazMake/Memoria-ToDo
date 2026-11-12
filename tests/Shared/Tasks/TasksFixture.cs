@@ -26,6 +26,9 @@ internal sealed class TasksFixture
     public FakeTimeProvider Time { get; }
     public ITasks Tasks { get; }
 
+    /// <summary>The same store, with the settings and synchronization capabilities.</summary>
+    public ITaskStore Store => Xunit.Assert.IsAssignableFrom<ITaskStore>(Tasks);
+
     public string Clone { get; } = Path.Combine(Root, "clone");
     public string Device { get; } = Path.Combine(Root, "device");
 
@@ -39,6 +42,24 @@ internal sealed class TasksFixture
 
     /// <summary>Another Tasks over the same files, as after the app restarts.</summary>
     public ITasks Restarted() => TaskStore.Create(Files, Encoder, Time, Device);
+
+    public string SettingsFile => Path.Combine(Clone, "settings.json");
+
+    /// <summary>Writes settings.json in the clone as literal JSON. Each setting is a value and a UTC time.</summary>
+    public void SeedSettings(int days = 7, string? add = null, string? manage = null, int version = 1,
+        string daysTime = "2026-01-01T00:00:00.000Z", string addTime = "2026-01-01T00:00:00.000Z", string manageTime = "2026-01-01T00:00:00.000Z") =>
+        WriteText(SettingsFile, SettingsJson(days, add, manage, version, daysTime, addTime, manageTime));
+
+    public static string SettingsJson(int days = 7, string? add = null, string? manage = null, int version = 1,
+        string daysTime = "2026-01-01T00:00:00.000Z", string addTime = "2026-01-01T00:00:00.000Z", string manageTime = "2026-01-01T00:00:00.000Z") =>
+        $$"""
+        {
+          "version": {{version}},
+          "deletionDelayDays": { "value": {{days}}, "updated": {{Quote(daysTime)}} },
+          "addNewTaskShortcut": { "value": {{(add is null ? "null" : Quote(add))}}, "updated": {{Quote(addTime)}} },
+          "manageTasksShortcut": { "value": {{(manage is null ? "null" : Quote(manage))}}, "updated": {{Quote(manageTime)}} }
+        }
+        """;
 
     public void WriteText(string path, string text) => Files.WriteFile(path, Encoding.UTF8.GetBytes(text));
 

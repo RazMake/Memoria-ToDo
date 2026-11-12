@@ -16,10 +16,10 @@ namespace Memoria.ToDo.Desktop.PlatformTestHost;
 internal sealed class ScenarioLifetime : IAppLifetime
 {
     private readonly Action<Action> _whatStartDoes;
-    private readonly Action _whatStopDoes;
+    private readonly Func<Task> _whatStopDoes;
     private HwndSource? _messageWindow;
 
-    public ScenarioLifetime(Action<Action> whatStartDoes, Action whatStopDoes)
+    public ScenarioLifetime(Action<Action> whatStartDoes, Func<Task> whatStopDoes)
     {
         _whatStartDoes = whatStartDoes;
         _whatStopDoes = whatStopDoes;
@@ -43,15 +43,20 @@ internal sealed class ScenarioLifetime : IAppLifetime
         _whatStartDoes(endApp);
     }
 
-    public void Stop()
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_messageWindow is not null)
-        {
-            Say($"stop-resource available={!_messageWindow.IsDisposed}");
-            _messageWindow.Dispose();
-        }
-
         Say("stopped");
-        _whatStopDoes();
+        try
+        {
+            await _whatStopDoes();
+        }
+        finally
+        {
+            if (_messageWindow is not null)
+            {
+                Say($"stop-resource available={!_messageWindow.IsDisposed}");
+                _messageWindow.Dispose();
+            }
+        }
     }
 }

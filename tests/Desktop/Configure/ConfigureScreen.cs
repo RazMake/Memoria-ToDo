@@ -5,6 +5,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Tasks;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.Configure.Tests;
@@ -19,6 +21,7 @@ internal sealed class ConfigureScreen : IDisposable
 {
     private readonly OpenWindows windows = new();
     private readonly IConfigureWindow configure;
+    private readonly ConfigureServices services;
 
     /// <param name="startWithWindows">The port the window gets; a new fake, off, when null.</param>
     /// <param name="addNewTask">The Add new task action; a new fake that accepts every shortcut when null.</param>
@@ -27,21 +30,26 @@ internal sealed class ConfigureScreen : IDisposable
         FakeStartWithWindows? startWithWindows = null,
         FakeShortcutAction? addNewTask = null,
         FakeShortcutAction? manageTasks = null,
-        FakeRepositoryFolder? repositoryFolder = null)
+        FakeSyncService? sync = null,
+        Action<ISharedTaskSettings>? initialSettings = null,
+        Func<ISharedTaskSettings, ISharedTaskSettings>? wrapSettings = null)
     {
-        StartWithWindows = startWithWindows ?? new FakeStartWithWindows();
+        services = new ConfigureServices(startWithWindows, sync, wrapSettings);
         AddNewTask = addNewTask ?? new FakeShortcutAction();
         ManageTasks = manageTasks ?? new FakeShortcutAction();
-        RepositoryFolder = repositoryFolder ?? new FakeRepositoryFolder();
-        configure = ConfigureWindow.Create(StartWithWindows, RepositoryFolder);
+        initialSettings?.Invoke(Store.Settings);
+        configure = services.Create();
         Connected = configure.ConnectShortcuts(AddNewTask, ManageTasks);
         AddNewTask.ClearCalls();
         ManageTasks.ClearCalls();
     }
 
-    public FakeStartWithWindows StartWithWindows { get; }
+    public FakeStartWithWindows StartWithWindows => services.StartWithWindows;
 
-    public FakeRepositoryFolder RepositoryFolder { get; }
+    public FakeSyncService Sync => services.Sync;
+    public FakeSetupActions SetupActions => services.SetupActions;
+    public FakeFileSystem Files => services.Files;
+    public ITaskStore Store => services.Store;
 
     /// <summary>The window's collapsible sections, in order.</summary>
     public IReadOnlyList<Expander> Sections => [.. OpenWindows.Descendants(Window).OfType<Expander>()];
@@ -74,6 +82,10 @@ internal sealed class ConfigureScreen : IDisposable
 
     /// <summary>The message under the Manage tasks row's box; empty when none.</summary>
     public string ManageMessage => MessageUnder(ManageField);
+
+    /// <summary>The message under the deletion delay's box, in Sync settings; empty when none.</summary>
+    public string DeletionDelayMessage =>
+        OpenWindows.TextOf(((Panel)Box("Deletion delay (days)").Parent).Children.OfType<TextBlock>().Last());
 
     /// <summary>The texts the window displays beside its controls, not the shortcut boxes'.</summary>
     public IReadOnlyList<string> Texts => OpenWindows.TextsIn(Window);
@@ -134,7 +146,31 @@ internal sealed class ConfigureScreen : IDisposable
     public bool ShowsText(string words) =>
         Texts.Any(text => text.Contains(words, StringComparison.OrdinalIgnoreCase));
 
-    public void Dispose() => windows.Dispose();
+    public void Dispose()
+    {
+        configure.Dispose();
+        windows.Dispose();
+    }
+
+    public TextBox Box(string name) =>
+        OpenWindows.Descendants(Window).OfType<TextBox>()
+            .Single(box => System.Windows.Automation.AutomationProperties.GetName(box) == name);
+
+    public void Click(string text)
+    {
+        OpenWindows.Click(Window, text);
+        Settle();
+    }
+
+    public void ChooseRepositoryAction(string choice)
+    {
+        var button = OpenWindows.Descendants(Window).OfType<Button>().Single(b => b.Content as string == "Configure");
+        ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
+        var item = button.ContextMenu.Items.OfType<MenuItem>().Single(i => (string)i.Header == choice);
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        button.ContextMenu.IsOpen = false;
+        Settle();
+    }
 
     // A row's message is the text block that follows its box in the panel they share.
     private static string MessageUnder(TextBox field) =>

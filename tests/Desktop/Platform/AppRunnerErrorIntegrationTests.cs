@@ -7,6 +7,21 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 [Integration]
 public class AppRunnerErrorIntegrationTests
 {
+    [Fact]
+    public void Run_reports_a_shutdown_failure_after_an_await_and_still_closes_resources()
+    {
+        using var host = HostProcess.Start("async-stop-throws");
+
+        var text = host.CloseMessageBox();
+        var exitCode = host.WaitForExit();
+
+        Assert.Contains("async stop boom", text);
+        Assert.NotEqual(0, exitCode);
+        Assert.Equal(1, host.Count("stopped"));
+        Assert.Contains("async-stop-completed ui-thread=True", host.Lines);
+        Assert.Contains("stop-resource available=True", host.Lines);
+    }
+
     [Theory]
     [InlineData("ui-error")]
     [InlineData("thread-error")]

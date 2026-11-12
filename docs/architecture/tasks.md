@@ -16,7 +16,7 @@ The table lists what Tasks keeps in the task repository:
 | --- | --- |
 | `tasks/<id>.json` | One task, in a file named by the task's ID |
 | `images/<id>/` | That task's images, one file each |
-| `settings.json` | The settings every device shares, such as the deletion delay and the desktop app's two global shortcuts, whose owner [Configure](desktop/configure.md#which-module-owns-the-shortcuts-in-settingsjson) leaves open |
+| `settings.json` | The deletion delay and the desktop app's two shortcut texts, whose validation belongs to [Configure](desktop/configure.md#each-setting-has-one-owner) |
 
 Deleting a task removes its file and its image folder.
 
@@ -93,6 +93,7 @@ Proposed, each a decision to confirm:
 - The later edit is the one with the later `updated` time, from each device's own clock. A device with a wrong clock can win or lose wrongly; this is a known limit.
 - When both `updated` times are equal, the version already on the remote wins. The merged `updated` is the later of the two.
 - When both devices changed the resolved time, the later edit wins.
+- The merged `created` time is the earlier of the two versions' times, rather than rewriting the task's age.
 - A task that comes back gets its images back too.
 
 ### Resolved tasks are deleted after a delay every device shares
@@ -102,8 +103,59 @@ The deletion delay is one setting in `settings.json`, the same on every device, 
 Proposed, each a decision to confirm:
 
 - During each sync, any device deletes the tasks resolved longer ago than the delay. Two devices deleting the same task merge cleanly, and an edit still wins, as the table above says.
-- The delay is 1 to 365 whole days.
-- `settings.json` merges one setting at a time, and the later change wins. Each setting keeps its value and the UTC time it changed, and the file has its own `version`.
+
+The approved range, stored format, and settings merge rules are defined in the [shared settings format](#one-versioned-file-holds-the-three-shared-settings).
+
+### One versioned file holds the three shared settings
+
+The approved `settings.json` format is one object with these fields, in this order:
+
+| Field | Value |
+| --- | --- |
+| `version` | `1` |
+| `deletionDelayDays` | An object with `value`, an integer from 1 to 365, and `updated`, a UTC timestamp |
+| `addNewTaskShortcut` | An object with `value`, text or `null`, and `updated`, a UTC timestamp |
+| `manageTasksShortcut` | An object with `value`, text or `null`, and `updated`, a UTC timestamp |
+
+Each setting writes `value` before `updated`. The file uses the [task file's JSON style](#each-task-file-holds-nine-fields)
+and UTC times to the millisecond. Tasks interprets the deletion delay, but keeps shortcut text without interpreting,
+trimming, or rejecting it. Windows [Configure](desktop/configure.md#each-setting-has-one-owner) validates that text;
+Android preserves it without using it. A null shortcut means Configure's existing default, not a second default in Tasks.
+
+Each setting merges by its own `updated` time; the later time wins, and equal times take the remote value.
+An absent file contributes no settings and never deletes settings from a present file. Three absent files merge to no file.
+A present file must hold all three settings with valid types and times. An unsupported version or unreadable file
+is reported, left untouched, and cannot be replaced by a setter or initialization.
+
+With no file, reads supply the existing deletion default and null shortcuts without writing. `EnsureSettings` creates
+the file during synchronization. Setters also create a missing file, changing only the selected setting's time.
+A setter with an unchanged value does nothing. With no selected clone, reads supply defaults and setters fail before writing.
+
+Decision to confirm: untouched defaults carry `1970-01-01T00:00:00.000Z`, so initialization cannot overwrite a
+setting another device explicitly changed. A setting changed by the user gets the current time from TimeProvider.
+
+An unreadable settings file does not prevent readable tasks from loading. It makes settings reads and writes fail
+with `InvalidDataException`, and prevents automatic deletion, rather than deleting tasks using a guessed delay.
+
+### Sync shares Tasks' local update lock, never a network wait
+
+Sync obtains [its capability](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs) from the same store as
+the task operations. `UpdateRepository` checks that the expected clone is still selected before calling its synchronous
+callback under Tasks' existing lock. A changed selection fails before the callback runs. Commit and merge application
+use this operation; fetch, push, and every other network wait stay outside it. Sync rechecks and commits intervening
+local edits before applying a fetched merge.
+
+The operation reloads tasks, settings, and skipped-file diagnostics while still holding the lock, including after a
+failed callback. It then releases the lock before raising notices. A callback failure propagates; a reload failure too
+is kept with it in `AggregateException`. This is local coordination, not a transaction that undoes a failed Git update.
+
+`LocalSaved` reports durable local repository changes, including settings and automatic deletion. It excludes repository
+selection, imported updates, sync's settings initialization, drafts, and images still waiting outside the clone. The existing task `Changed` notice
+continues to refresh screens; settings have their own notice. A reload never starts another sync by pretending to be
+a local save. Skipped-file snapshots name corrupt, unreadable, and newer-version files without deleting them.
+
+Decisions to confirm: a reload always raises the settings-change notice, even when values are unchanged;
+`EnsureSettings` raises no `LocalSaved` notice because initialization is already part of a sync pass.
 
 ### Images are at most 1 MB and live beside their task
 
@@ -167,12 +219,12 @@ Each app's modules and Sync use these parts:
 - **Task links**: a task's link, and the task ID in a link's address, if it's a task link.
 - **Drafts**: start, load, keep, and discard this device's draft of a new task, with its images.
 - **Images**: save an image for a draft or an open edit and get its Markdown, and discard an open edit's images.
-- **Shared settings**: read and change the deletion delay, within its range.
-- **Merging, for Sync**: merge a task's three versions, or `settings.json`'s; list the tasks due for deletion; reload the files a sync changed.
+- **[Shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs)**: the typed settings capability used by Configure.
+- **[Synchronization](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs)**: Sync's separate capability, including its [pure file rules](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs). The source contracts define initialization, automatic deletion, coordinated updates, reloads, and diagnostics.
 
 The same three versions always merge to the same result, on every device. Tasks reads and writes files through the shared platform's [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files), takes the time from .NET's TimeProvider, and publishes an interface for image shrinking. Each app implements the interfaces and passes the system's time, as [How the apps fit together](overview.md#two-apps-share-one-c-library) says.
 
-Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the part below, in `Memoria.ToDo.Shared.Tasks`; its calls are synchronous. Step 4 renames `SaveDraftImage` to `SaveImage`, and adds `DiscardEditImages`, `SaveEdit`, `Move`, `Resolve`, `Reopen`, `Delete`, the tag filter's `Search`, and `TaskNotFoundException`, all shown below. Step 5 adds shared settings and merging. `All` and `Search` hold resolved tasks too, in rank order; each screen picks open or resolved tasks by `Resolved`.
+Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the part below, in `Memoria.ToDo.Shared.Tasks`; its calls are synchronous. Step 4 renames `SaveDraftImage` to `SaveImage`, and adds `DiscardEditImages`, `SaveEdit`, `Move`, `Resolve`, `Reopen`, `Delete`, the tag filter's `Search`, and `TaskNotFoundException`, all shown below. Step 5 adds the [separate settings and synchronization capabilities](#step-5-publishes-small-capabilities-without-growing-task-operations). `All` and `Search` hold resolved tasks too, in rank order; each screen picks open or resolved tasks by `Resolved`.
 
 ```csharp
 namespace Memoria.ToDo.Shared.Tasks;
@@ -307,6 +359,38 @@ public enum ImageFormat { Png, Jpeg, Other }
 
 public sealed record ImageInfo(ImageFormat Format, int Width, int Height);
 ```
+
+### Step 5 publishes small capabilities without growing task operations
+
+The source contracts below define the approved implementation boundary. They are the reference for callers;
+this section describes the design, not a claim that final validation or delivery has finished.
+
+| Contract | What its caller gets |
+| --- | --- |
+| [`ITaskStore`](../../src/Shared/Tasks/ITaskStore.cs) | Existing `ITasks` operations, plus `Settings` and `Synchronization` |
+| [`ISharedTaskSettings`](../../src/Shared/Tasks/ISharedTaskSettings.cs) | Three typed values, one setter each, and a settings-change notice |
+| [`ITaskSynchronization`](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs) | Selected folder, skipped files, local-save notice, settings initialization, automatic deletion, and exclusive local updates |
+| [`IRepositoryFileRules`](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs) | Canonical managed paths and pure three-version task/settings byte merges |
+| [`ISkippedRepositoryFile`](../../src/Shared/Tasks/Synchronization/ISkippedRepositoryFile.cs) | Immutable relative path, reason, and whether updating the app is needed |
+
+The [factory contract](../../src/Shared/Tasks/TaskStore.cs) exposes these capabilities through `ITaskStore`.
+Existing callers can still use the result as `ITasks`; Configure receives only `Settings`, and
+Sync receives only `Synchronization`. No caller casts a concrete implementation or creates another store.
+
+`IRepositoryFileRules` is the only public home of the managed directory/file names and their classification.
+Its implementation reuses `RepositoryLayout` and the existing codecs. A Git-relative path uses `/`, is never rooted,
+and contains no `.` or `..` segment. Task and settings merges do no I/O and reject unreadable inputs rather than
+returning a success-shaped fallback. Sync catches that failure per file, reports it, and leaves its bytes intact,
+except for the user-approved [bounded Sync discard policy](sync.md#each-sync-commits-fetches-merges-and-pushes-one-branch).
+
+Approved: the task-merge contract receives the expected task ID from the classified repository path. Tasks checks
+every present input against that ID, including the basis and a surviving side of a deletion, before merging.
+The [source contract](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs) owns the signature and failure
+behavior. Sync supplies the ID through the same file-rules capability; it never duplicates Tasks' payload parser.
+
+Low-risk clarification to confirm: an invalid expected-ID argument is a caller error, rejected before payload
+inspection even when all inputs are absent. The source contract defines its exception; malformed file content
+remains a separate data error. This uses Tasks' existing canonical-ID validation, not another ID format.
 
 Proposed: `SaveImage`'s two exceptions, so the editor can say why an image wasn't saved. This is a decision to confirm.
 

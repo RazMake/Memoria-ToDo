@@ -4,6 +4,7 @@ using Memoria.ToDo.Desktop.Shell;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
 using Memoria.ToDo.Shared.Rendering;
+using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
 using Velopack;
 using Velopack.Locators;
@@ -35,7 +36,18 @@ internal static class Program
             var theme = new WindowsTheme(new WindowsThemeSetting());
             var clipboard = new WpfClipboard();
             var imageFiles = new WpfImageFileChooser();
-            var repositoryFolder = new GitRepositoryFolder(RepositoryFolderSetting());
+            var browser = new ShellDefaultBrowser();
+            var deviceFolder = DeviceFolder();
+            var repositories = new RepositorySelection(files, tasks, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
+            var sync = SyncService.Create(
+                tasks.Synchronization,
+                files,
+                new WindowsDeviceKeyStore(files, new WindowsUserProtection(), deviceFolder),
+                repositories,
+                TimeProvider.System,
+                deviceFolder,
+                Environment.MachineName,
+                TimeSpan.FromMinutes(30));
             return TrayApp.Create(
                 new TrayIcon(),
                 AddWindow.Create(
@@ -55,26 +67,31 @@ internal static class Program
                     imageFiles,
                     files,
                     // Each open of View Tasks serves the folder the repository is in then.
-                    () => new WpfDescriptionWebView(repositoryFolder.Current(), BrowserDataFolder()),
-                    new ShellDefaultBrowser()),
+                    () => new WpfDescriptionWebView(tasks.Synchronization.RepositoryFolder, BrowserDataFolder()),
+                    browser,
+                    sync),
                 ConfigureWindow.Create(
                     StartWithWindows(),
-                    new TasksFollowRepositoryFolder(repositoryFolder, tasks)),
+                    tasks.Settings,
+                    sync,
+                    new WindowsSetupActions(browser)),
                 new VelopackUpdates(RepositoryUrl),
                 new HotKeyShortcut(),
                 // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
                 // every copy must count as the same app.
                 new NamedSignalOneInstance($"{AppName.Value}.OneInstance"),
                 StartArguments.IsStartAtSignIn(args),
-                TimeProvider.System);
+                TimeProvider.System,
+                sync);
         });
     }
 
     private static RunKeyStartWithWindows StartWithWindows() => new(RunKeyPath, InstalledStarter.Find());
 
-    // Under %LocalAppData%, apart from Velopack's install folder, so updating or uninstalling leaves it.
-    private static string RepositoryFolderSetting() => System.IO.Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName.Value, "repository-folder.txt");
+    // Under %LocalAppData%, apart from Velopack's install folder, so updating or uninstalling leaves it. The one
+    // authority for the device's own files, outside every repository clone; the saved repository folder stays in it.
+    private static string DeviceFolder() => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName.Value);
 
     // The draft lives on this device only, apart from Velopack's install folder.
     private static string DraftFolder() => System.IO.Path.Combine(

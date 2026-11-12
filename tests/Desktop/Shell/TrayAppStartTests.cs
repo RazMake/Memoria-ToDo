@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -58,7 +59,7 @@ public class TrayAppStartTests
     }
 
     [Fact]
-    public void A_start_by_hand_shows_Configure_after_View_Tasks_when_a_shortcut_did_not_register()
+    public void A_start_by_hand_on_a_configured_device_shows_View_Tasks_then_Configure_when_a_shortcut_did_not_register()
     {
         var app = new ShellHarness(startedAtSignIn: false);
         app.Configure.ConnectAnswer = false;
@@ -66,6 +67,18 @@ public class TrayAppStartTests
         app.Start();
 
         Assert.Equal(["View Tasks", "Configure"], app.Shown);
+    }
+
+    [Fact]
+    public void An_unconfigured_start_shows_Configure_once_when_a_shortcut_did_not_register_and_sync_publishes_during_Start()
+    {
+        var app = new ShellHarness(startedAtSignIn: false);
+        app.Sync.SetupControl.Publish(new FakeSyncSetupState { IsConfigured = false });
+        app.Configure.ConnectAnswer = false;
+
+        app.Start();
+
+        Assert.Equal(["Configure"], app.Shown);
     }
 
     [Fact]

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform\Memoria.ToDo.Shared.Platform.csproj" />
+    <ProjectReference Include="..\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
+    <PackageReference Include="LibGit2Sharp" />
+    <PackageReference Include="SSH.NET" />
+    <InternalsVisibleTo Include="Memoria.ToDo.Shared.Sync.Tests" />
+    <InternalsVisibleTo Include="Memoria.ToDo.Shared.Fakes" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\docs\architecture\sync-host-keys.json"
+                      LogicalName="Memoria.ToDo.Shared.Sync.HostKeys.json" />
+  </ItemGroup>
+
+</Project>

@@ -26,6 +26,33 @@ public sealed class FakeTrayIcon : ITrayIcon
     /// <summary>When set, <see cref="Show"/> throws it and the icon isn't added.</summary>
     public Exception? ShowFailure { get; set; }
 
+    public TraySyncBadge Badge { get; private set; }
+    public List<string> Notifications { get; } = [];
+    private Action? notificationClick;
+
+    public void UpdateStatus(string toolTip, TraySyncBadge badge)
+    {
+        if (!IsShown)
+        {
+            return;
+        }
+        ToolTip = toolTip;
+        Badge = badge;
+    }
+
+    public void NotifySyncError(string message, Action clicked)
+    {
+        if (!IsShown)
+        {
+            return;
+        }
+        Notifications.Add(message);
+        notificationClick = clicked;
+    }
+
+    public void ClickNotification() => (notificationClick ??
+        throw new InvalidOperationException("No sync notification was shown."))();
+
     /// <inheritdoc />
     public void Show(string toolTip, IReadOnlyList<TrayMenuItem> menu, Action leftClick)
     {

@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Shared.Sync;
+using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -8,17 +10,48 @@ namespace Memoria.ToDo.Desktop.Configure;
 internal sealed class ConfigureShow : IConfigureWindow
 {
     private readonly SingleWindow _window;
-    private readonly ShortcutSetting _addNewTask = new("Add new task", Shortcut.AddNewTaskDefault);
-    private readonly ShortcutSetting _manageTasks = new("Manage tasks", Shortcut.ManageTasksDefault);
+    private readonly ISharedTaskSettings _settings;
+    private readonly UiNotices _notices = new();
+    private readonly ShortcutSetting _addNewTask;
+    private readonly ShortcutSetting _manageTasks;
+    private Window? _open;
+    private Action? _refreshOpen;
+    private bool _disposed;
 
-    public ConfigureShow(IStartWithWindows startWithWindows, IRepositoryFolder repositoryFolder)
+    public ConfigureShow(
+        IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
-        ArgumentNullException.ThrowIfNull(repositoryFolder);
-        _window = new SingleWindow(() => NewWindow(startWithWindows, repositoryFolder));
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(sync);
+        ArgumentNullException.ThrowIfNull(setupActions);
+        _settings = settings;
+        _addNewTask = new("Add new task", Shortcut.AddNewTaskDefault,
+            () => settings.AddNewTaskShortcut, settings.SetAddNewTaskShortcut);
+        _manageTasks = new("Manage tasks", Shortcut.ManageTasksDefault,
+            () => settings.ManageTasksShortcut, settings.SetManageTasksShortcut);
+        _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions));
+        settings.Changed += OnSettingsChanged;
     }
 
-    public void Show() => _window.Show();
+    public void Show()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _window.Show();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _settings.Changed -= OnSettingsChanged;
+        _notices.Stop();
+        _open?.Close();
+    }
 
     public bool IsOpen => _window.IsOpen;
 
@@ -31,13 +64,24 @@ internal sealed class ConfigureShow : IConfigureWindow
         return addConnected && manageConnected;
     }
 
-    private Window NewWindow(IStartWithWindows startWithWindows, IRepositoryFolder repositoryFolder)
+    private void OnSettingsChanged(object? sender, EventArgs e) => _notices.Post(() =>
+    {
+        _addNewTask.SettingsChanged();
+        _manageTasks.SettingsChanged();
+        _refreshOpen?.Invoke();
+    });
+
+    private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)
     {
         var shortcuts = new ShortcutSection(_addNewTask, _manageTasks);
+        var delay = new DeletionDelayRow(_settings);
+        var ui = new SyncUi(sync, setupActions, _notices);
+        var syncSettings = new SyncSettingsSection(ui);
+        syncSettings.Children.Insert(0, delay);
         var sections = new Accordion { Margin = new Thickness(24) };
         sections.Add("Shortcuts", shortcuts);
         sections.Add("Startup", new StartWithWindowsRow(startWithWindows));
-        sections.Add("Sync settings", new RepositorySection(repositoryFolder));
+        sections.Add("Sync settings", syncSettings);
         var window = new Window
         {
             Title = "Configure",
@@ -46,7 +90,19 @@ internal sealed class ConfigureShow : IConfigureWindow
             ResizeMode = ResizeMode.NoResize,
             Content = sections,
         };
-        window.Closed += (_, _) => shortcuts.WindowClosed();
+        _open = window;
+        _refreshOpen = () =>
+        {
+            shortcuts.Refresh();
+            delay.Refresh();
+        };
+        window.Closed += (_, _) =>
+        {
+            shortcuts.WindowClosed();
+            ui.Dispose();
+            _open = null;
+            _refreshOpen = null;
+        };
         return window;
     }
 }

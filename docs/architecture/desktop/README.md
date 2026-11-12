@@ -101,7 +101,28 @@ The platform's public interface has these parts: the three below, which are deci
   - **The theme needs only a WPF dispatcher, so its switch tests are unit tests**: a theme made on a background thread with its own dispatcher would work, and raise Changed where no window lives.
   - **An integration test that switches Windows' setting and switches it back**: it changes the user's own theme for every app, and a test that stops midway leaves it switched.
 
-**Cleanup runs while the lifetime's Windows resources still work.** The platform stops the lifetime on the UI thread before WPF closes its windows or ends its message loop ([integration tests](../../../tests/Desktop/Platform/AppRunnerIntegrationTests.cs)). This also applies after startup or unhandled errors ([error tests](../../../tests/Desktop/Platform/AppRunnerErrorIntegrationTests.cs)). If cleanup itself fails, the platform shows that error and returns a non-zero exit code; it never retries Stop.
+**Cleanup runs while the lifetime's Windows resources still work.** The platform begins
+[`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) on the UI thread and awaits its one owned
+shutdown before ending the dispatcher ([integration tests](../../../tests/Desktop/Platform/AppRunnerIntegrationTests.cs)).
+Repeated exit requests join that shutdown; they do not retry failed cleanup. A cleanup failure is shown and gives
+a non-zero exit code, after the remaining cleanup is attempted.
+
+The STA `Main` and [`AppRunner.Run`](../../../src/Desktop/Platform/AppRunner.cs) keep their synchronous signatures:
+WPF's native message pump is not a wait on a Task. An async shutdown handler awaits cleanup while that pump remains
+alive, then calls WPF shutdown. Startup failures and handled UI errors use the same path. There is no `.Wait()`,
+`.Result`, or `GetAwaiter().GetResult()` bridge, and no async work left to a synchronous `finally` after the pump ends.
+Event handlers may be async only at this event boundary, with their failures observed and reported.
+
+Windows session ending and a fatal runtime exception can force process termination before
+async cleanup finishes. They request the same once-only shutdown without cancelling Windows' logoff or promising
+an impossible join. Normal Exit always awaits it. The existing five-second fatal-error allowance bounds best-effort
+UI cleanup, not a blocking wait on a Task. This replaces the earlier assumption that every termination can finish
+synchronous cleanup.
+
+The SessionEnding handler starts that owned cleanup and returns without setting `Cancel`. It neither blocks nor
+uses an unfinished shutdown Task as a reason to veto logoff. Cleanup observes its own failures while the process
+and dispatcher remain alive; Windows may end either before completion. Only ordinary app exit keeps the dispatcher
+alive until cleanup finishes. These paths share the once-only cleanup, not the same completion guarantee.
 
 **The theme is experimental in WPF, so the build allows that at its one call.** The pinned SDK marks the theme setting with the compiler's experimental-API error, WPF0001 ([what's new in WPF for .NET 9](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90)). The build allows WPF0001 only at the platform's one call, never for a whole project. Two options were ruled out:
 
@@ -109,6 +130,32 @@ The platform's public interface has these parts: the three below, which are deci
 - **The classic light look until the theme is no longer experimental**: the app would have no dark mode.
 
 When the app starts, the composition root calls the create part of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), giving Configure its [Start with Windows port](configure.md#public-interface), and the Task list the [Formatted view's](formatted-view.md#the-app-supplies-the-web-view-and-the-browser) web view and default browser. It builds Shell's lifetime from the results, the implementations of [Shell's ports](shell.md#public-interface), and whether the app started at sign-in, and passes it to Run the app. The windows themselves stay `internal`, as all of a module's code does ([Modules](../modules.md#a-module-is-one-capability-behind-a-small-interface)).
+
+For the Sync step, App creates one `ITaskStore` and constructs one
+[`ISyncService`](../../../src/Shared/Sync/ISyncService.cs) with that store's synchronization capability, the system
+clock, the device data folder, the machine name, and the desktop interval specified by [Sync](../sync.md#public-interface).
+Only App chooses the filesystem, secure-key, repository-selection, and setup-action adapters. It passes Tasks'
+typed settings to Configure and the same Sync instance to Configure, Task list, and Shell. No factory gets a dummy
+service, optional test switch, or old overload unused by production.
+
+The selection adapter replaces the installed-Git responsibilities of `GitRepositoryFolder` and
+`TasksFollowRepositoryFolder`: it reuses `repository-folder.txt`, loads Tasks, and never clones, invokes Git, or
+stores a second path. Failed adoption restores the previous saved path and Tasks selection; rollback failures
+retain the original error too. Its initial load follows [Sync's approved initialization boundary](../sync.md#public-interface),
+not composition. Client Git/SSH operations now belong only to Sync. The web-view factory reads the
+selected folder from Tasks when making each new web view. The setup-action adapter reuses App's existing clipboard
+and default-browser components, without adding dependencies between Configure and the window modules.
+
+Decision to confirm: App supplies `%LocalAppData%` joined with the platform's `AppName.Value` as the device folder.
+That is the existing selected-path file's home, not a new Sync subfolder: the file stays in place, with no second
+copy or migration. The app-name value still comes from the build's Product property, not another literal.
+The existing draft and browser-data folders stay where they are. Sync enforces the
+[device-folder boundary](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) when accepting a clone.
+
+The secure-key adapter implements [Sync's key port](../../../src/Shared/Sync/DeviceKeys/IDeviceKeyStore.cs), using
+the [approved Windows envelope](../sync.md#the-windows-key-file-is-encrypted-and-only-the-users-account-unlocks-it).
+Its constructor does no I/O or crypto; all key operations run on Sync's owned worker. ProtectedData is already in the pinned WindowsDesktop framework's WPF reference and runtime sets, so App needs no
+additional package. The runtime, SDK, and tools are unchanged.
 
 **An error no module handles is shown, then the app ends.** The platform shows the error's message in a message box, then ends the app with a non-zero exit code. This covers errors on the UI thread ([DispatcherUnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.dispatcherunhandledexception)) and on other threads ([UnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.appdomain.unhandledexception)). Each module still reports its own expected failures, such as a sync error. Catching nothing, WPF's default, was ruled out: the app would vanish from the tray with no message.
 
@@ -238,7 +285,7 @@ The desktop design relies on rules that belong to the shared Tasks and Sync modu
 
 ## Delivery backlog
 
-The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1 to 4 are built. Step 6 is next; you choose each next row. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
+The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1 to 4 are built. You choose the remaining delivery order, recorded below the table. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
 
 The theme part belongs to step 3, since the Task editor is its first user. Two other homes were ruled out:
 
@@ -265,5 +312,13 @@ The table lists each step, what it builds, and its status:
 | 2 | Two shortcuts, start with Windows, one instance, and theme | Shell's [two shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions), with Configure opening when one can't register, and its [one instance and what each start shows](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-view-tasks); the platform's [theme that every window follows](#the-platform-runs-the-app-and-the-composition-root-builds-it); Configure's [shortcut and Start with Windows settings](configure.md#each-setting-has-one-owner), with the shortcuts not saved yet, in [labeled sections](configure.md#the-window-shows-its-settings-in-labeled-sections), with its [shortcut check](configure.md#a-new-shortcut-is-checked-at-once), the shortcuts [released while a field has focus](configure.md#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released), a [message for every shortcut it can't use](configure.md#configure-explains-every-shortcut-it-cant-use), and the [`Run` key](configure.md#start-with-windows-is-the-run-key-itself) that installing writes and uninstalling removes; and the [Add window's size](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) | Implemented |
 | 3 | Adding tasks | The platform's [theme part](#the-platform-runs-the-app-and-the-composition-root-builds-it), which tells modules whether windows are light or dark, built first; then the rest of the [Task editor](task-editor.md#behavior), on [Tasks](../tasks.md), the shared library's [platform](../modules.md#the-file-system-interface-reads-and-writes-whole-files), [Editing](../editing.md), and [Rendering's](../rendering.md#public-interface) styled spans and palette | Implemented |
 | 4 | Viewing tasks | The [Formatted view](formatted-view.md#behavior), and the [Task list](task-list.md#behavior) except its Sync button and the sync when View Tasks opens | Implemented |
-| 5 | Sync | [Sync through git](../sync.md); Shell's [sync status](shell.md#sync-stays-quiet-unless-something-is-wrong) and its redirect to Configure until the device is configured; Configure's [sync](configure.md#configure-shows-how-sync-is-doing), deletion delay, and saving and loading the [shortcuts](configure.md#each-setting-has-one-owner) in `settings.json`; the Task list's [Sync button and the sync when View Tasks opens](task-list.md#view-tasks-syncs-when-it-opens-and-on-its-sync-button). It needs the answer to Configure's [open question](configure.md#which-module-owns-the-shortcuts-in-settingsjson). | Not scheduled |
-| 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Next |
+| 5 | Sync | [Sync through git](../sync.md); Shell's [sync status](shell.md#sync-stays-quiet-unless-something-is-wrong) and its redirect to Configure until the device is configured; Configure's [sync](configure.md#configure-shows-how-sync-is-doing), deletion delay, and saving and loading the [shortcuts](configure.md#each-setting-has-one-owner) in `settings.json`; the Task list's [Sync button and the sync when View Tasks opens](task-list.md#view-tasks-syncs-when-it-opens-and-on-its-sync-button). | Next |
+| 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Not scheduled |
+
+The remaining work follows this order:
+
+1. Sync (step 5).
+2. Install and updates (step 6).
+3. Review and refine [Tasks View](task-list.md), including its decisions awaiting confirmation. This review is deferred, not waived.
+4. Add the [Add window's formatted preview](task-editor.md).
+5. Build the [Android app](../android/README.md).

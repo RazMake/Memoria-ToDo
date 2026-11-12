@@ -2,6 +2,8 @@ Memoria.ToDo.Desktop.Shell.IAppUpdates
 Memoria.ToDo.Desktop.Shell.IAppUpdates.DownloadNewerVersionAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Memoria.ToDo.Desktop.Shell.ITrayIcon
 Memoria.ToDo.Desktop.Shell.ITrayIcon.Remove() -> void
+Memoria.ToDo.Desktop.Shell.ITrayIcon.UpdateStatus(string! toolTip, Memoria.ToDo.Desktop.Shell.TraySyncBadge badge) -> void
+Memoria.ToDo.Desktop.Shell.ITrayIcon.NotifySyncError(string! message, System.Action! clicked) -> void
 Memoria.ToDo.Desktop.Shell.ITrayIcon.Show(string! toolTip, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Shell.TrayMenuItem!>! menu, System.Action! leftClick) -> void
 Memoria.ToDo.Desktop.Shell.TrayApp
 Memoria.ToDo.Desktop.Shell.TrayMenuItem
@@ -24,4 +26,8 @@ Memoria.ToDo.Desktop.Shell.IGlobalShortcut.Unregister(Memoria.ToDo.Desktop.Confi
 Memoria.ToDo.Desktop.Shell.IOneInstance
 Memoria.ToDo.Desktop.Shell.IOneInstance.Claim(System.Action! laterStart) -> bool
 Memoria.ToDo.Desktop.Shell.IOneInstance.Release() -> void
-static Memoria.ToDo.Desktop.Shell.TrayApp.Create(Memoria.ToDo.Desktop.Shell.ITrayIcon! trayIcon, Memoria.ToDo.Desktop.TaskEditor.IAddWindow! add, Memoria.ToDo.Desktop.TaskList.IViewTasksWindow! viewTasks, Memoria.ToDo.Desktop.Configure.IConfigureWindow! configure, Memoria.ToDo.Desktop.Shell.IAppUpdates! updates, Memoria.ToDo.Desktop.Shell.IGlobalShortcut! shortcut, Memoria.ToDo.Desktop.Shell.IOneInstance! oneInstance, bool startedAtSignIn, System.TimeProvider! time) -> Memoria.ToDo.Desktop.Platform.IAppLifetime!
+static Memoria.ToDo.Desktop.Shell.TrayApp.Create(Memoria.ToDo.Desktop.Shell.ITrayIcon! trayIcon, Memoria.ToDo.Desktop.TaskEditor.IAddWindow! add, Memoria.ToDo.Desktop.TaskList.IViewTasksWindow! viewTasks, Memoria.ToDo.Desktop.Configure.IConfigureWindow! configure, Memoria.ToDo.Desktop.Shell.IAppUpdates! updates, Memoria.ToDo.Desktop.Shell.IGlobalShortcut! shortcut, Memoria.ToDo.Desktop.Shell.IOneInstance! oneInstance, bool startedAtSignIn, System.TimeProvider! time, Memoria.ToDo.Shared.Sync.ISyncService! sync) -> Memoria.ToDo.Desktop.Platform.IAppLifetime!
+Memoria.ToDo.Desktop.Shell.TraySyncBadge
+Memoria.ToDo.Desktop.Shell.TraySyncBadge.None = 0 -> Memoria.ToDo.Desktop.Shell.TraySyncBadge
+Memoria.ToDo.Desktop.Shell.TraySyncBadge.Offline = 1 -> Memoria.ToDo.Desktop.Shell.TraySyncBadge
+Memoria.ToDo.Desktop.Shell.TraySyncBadge.Warning = 2 -> Memoria.ToDo.Desktop.Shell.TraySyncBadge

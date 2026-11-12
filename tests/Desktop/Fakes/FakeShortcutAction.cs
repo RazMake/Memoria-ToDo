@@ -28,6 +28,7 @@ public sealed class FakeShortcutAction : IShortcutAction
 
     /// <summary>Every call since the fake was made or <see cref="ClearCalls"/> ran, in order.</summary>
     public IReadOnlyList<ShortcutCall> Calls => calls;
+    public Shortcut? Registered { get; private set; }
 
     /// <summary>What Register answers for a shortcut; true for every shortcut when not set.</summary>
     public Func<Shortcut, bool> Answer { get; set; } = _ => true;
@@ -45,7 +46,12 @@ public sealed class FakeShortcutAction : IShortcutAction
     public bool Register(Shortcut shortcut)
     {
         calls.Add(ShortcutCall.Register(shortcut));
-        return RegisterFailure is null ? Answer(shortcut) : throw RegisterFailure;
+        var accepted = RegisterFailure is null ? Answer(shortcut) : throw RegisterFailure;
+        if (accepted)
+        {
+            Registered = shortcut;
+        }
+        return accepted;
     }
 
     /// <inheritdoc />
@@ -56,5 +62,6 @@ public sealed class FakeShortcutAction : IShortcutAction
         {
             throw UnregisterFailure;
         }
+        Registered = null;
     }
 }

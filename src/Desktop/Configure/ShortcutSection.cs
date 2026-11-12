@@ -26,13 +26,14 @@ internal sealed class ShortcutSection : StackPanel
             "Click a box, then press the new shortcut. Esc keeps the current one.", new Thickness(0, 0, 0, 8)));
         Children.Add(grid);
 
-        _focus = new ShortcutFocus([addNewTask, manageTasks], _rows.Select(row => row.Field), RefreshRows);
+        _focus = new ShortcutFocus([addNewTask, manageTasks], _rows.Select(row => row.Field), Refresh);
     }
 
     /// <summary>Registers the shortcuts again if a field still holds them released.</summary>
     public void WindowClosed() => _focus.Restore();
 
-    private void RefreshRows()
+    /// <summary>Shows each row's current shortcut and message.</summary>
+    public void Refresh()
     {
         foreach (var row in _rows)
         {

@@ -15,11 +15,23 @@ internal static class Scenarios
     private const int WmEndSession = 0x0016;
     private static readonly nint EndSessionLogoff = unchecked((nint)0x80000000);
 
-    public static IReadOnlyDictionary<string, (Action<Action> Start, Action Stop)> All { get; }
-        = new Dictionary<string, (Action<Action> Start, Action Stop)>
+    public static IReadOnlyDictionary<string, (Action<Action> Start, Func<Task> Stop)> All { get; }
+        = new Dictionary<string, (Action<Action> Start, Func<Task> Stop)>
     {
         // Start asks to end the app, as Shell does for the tray's Exit.
         ["end-app"] = (Post, DoNothing),
+        ["async-stop"] = (Post, StopAfterDispatch),
+        ["session-ending-async-stop"] = (endApp => All!["session-ending"].Start(endApp), StopAfterDispatch),
+        ["end-app-twice"] = (endApp => Post(() =>
+        {
+            endApp();
+            endApp();
+        }), StopAfterDispatch),
+        ["async-stop-throws"] = (Post, async () =>
+        {
+            await StopAfterDispatch();
+            throw new InvalidOperationException("async stop boom");
+        }),
 
         // Start asks to end the app from a background thread, as a module's background task may.
         ["end-app-from-background-thread"] = (endApp => new Thread(() => endApp()).Start(), DoNothing),
@@ -56,7 +68,10 @@ internal static class Scenarios
             ScenarioLifetime.Say("session-ending-sent");
             foreach (var window in windows)
             {
-                SendMessage(window, WmQueryEndSession, 0, EndSessionLogoff);
+                if (SendMessage(window, WmQueryEndSession, 0, EndSessionLogoff) == 0)
+                {
+                    ScenarioLifetime.Say("session-ending-refused");
+                }
             }
 
             foreach (var window in windows)
@@ -90,9 +105,15 @@ internal static class Scenarios
         ["theme-listeners-across-shutdown"] = (ThemeScenarios.ListenersAcrossShutdown, DoNothing),
     };
 
-    private static void DoNothing() { }
+    private static Task DoNothing() => Task.CompletedTask;
 
-    private static void StopError() => throw new InvalidOperationException("stop boom");
+    private static Task StopError() => Task.FromException(new InvalidOperationException("stop boom"));
+
+    private static async Task StopAfterDispatch()
+    {
+        await Dispatcher.Yield(DispatcherPriority.Background);
+        ScenarioLifetime.Say($"async-stop-completed ui-thread={Application.Current.Dispatcher.CheckAccess()}");
+    }
 
     private static void ThreadError(Action _) => new Thread(() => throw new InvalidOperationException("thread boom")).Start();
 

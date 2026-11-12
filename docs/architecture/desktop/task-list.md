@@ -82,7 +82,21 @@ Resolved tasks are hidden by default, as [purpose and scope](../purpose.md#resol
 
 ### View Tasks syncs when it opens and on its Sync button
 
-Opening View Tasks starts a sync, and its Sync button starts one at once, as [Sync through git](../sync.md#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) decides. The user asked for the button, to sync faster. Step 5 of the [delivery backlog](README.md#delivery-backlog) builds both; until then, View Tasks has no Sync button and starts no sync.
+Opening View Tasks starts a sync without delaying the window, and its Sync button starts one at once, as
+[Sync through git](../sync.md#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) decides.
+Both use the shared service's manual-sync operation, which joins an active pass rather than starting another.
+The opener owns and observes the opening request; window button/event handlers await their requests and handle
+errors. Closing the window cancels its waits and detaches its status subscription, not the shared pass.
+Background notices dispatch to the UI and never update a closed window. Existing search, pending undo, editor,
+and web-view lifetime behavior stays unchanged.
+
+**Decided by the user:** unexpected failures from View Tasks' opening, button, or F5 sync requests are observed
+and reported in its existing failure line. The window remains usable; the failure never becomes an unobserved
+Task fault or a success-shaped fallback. This adds no automatic retry.
+
+Window-owned sync requests handle the service's
+[`SyncNowAsync` disposal contract](../../../src/Shared/Sync/ISyncService.cs) quietly during shutdown, including
+queued requests: service disposal is not a user-facing sync failure.
 
 Proposed, each a decision to confirm:
 
@@ -95,29 +109,9 @@ Proposed, each a decision to confirm:
 - **Create View Tasks**: the composition root calls it when the app starts, with the parts View Tasks needs, and gives the result to Shell. The window opens only on Show View Tasks. It takes the Task editor's parts, since it builds the editor, and the [Formatted view's](formatted-view.md#public-interface) two ports: a function that makes a new description web view each time View Tasks opens, and the default browser.
 - **Show View Tasks**: opens the window, or brings it forward. Shell calls it from the tray menu and when the app is started a second time. Proposed: it uses the desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), which says where the window opens and what happens after the user closes it. This is a decision to confirm.
 
-Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) gives `Create` its parameters:
-
-```csharp
-namespace Memoria.ToDo.Desktop.TaskList;
-
-public static class ViewTasksWindow
-{
-    /// Creates View Tasks. The window opens only on IViewTasksWindow.Show.
-    public static IViewTasksWindow Create(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme,
-        TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser);
-}
-
-/// View Tasks, as Shell uses it.
-public interface IViewTasksWindow
-{
-    /// Opens the window, or brings it forward.
-    void Show();
-
-    /// Whether the window is open now.
-    bool IsOpen { get; }
-}
-```
+[`ViewTasksWindow.Create`](../../../src/Desktop/TaskList/ViewTasksWindow.cs) retains its existing arguments and
+adds the shared `ISyncService` as its last argument. Its Show/IsOpen interface does not change. There is no
+sync-less overload, test-only switch, or second service created by this module.
 
 ## Failure modes
 
@@ -140,5 +134,8 @@ The options below were considered and rejected, grouped by decision.
   - **Say why and go on, with no cleanup before a new edit**: saving a later edit of the task would put the leftover images in the clone, where they sync.
   - **Stop until deleting works**, keeping the Undo bar and refusing to close: a lasting disk problem would block editing, deleting, and closing View Tasks.
   - **Retry on a timer, or delete every waiting edit image when the app starts**: either needs a new rule for how long an edit's images live, and Tasks shares that rule with the Android app.
+- Unexpected sync-request failures:
+  - **Terminate the app through its central fail-fast boundary**: the user chose an inline failure so an
+    unsuccessful sync request does not end local task work.
 
 Who shows formatted Markdown, and who opens links, is decided in the [Formatted view](formatted-view.md#ruled-out).

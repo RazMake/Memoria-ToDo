@@ -10,6 +10,7 @@
     <ProjectReference Include="..\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
     <ProjectReference Include="..\TaskList\Memoria.ToDo.Desktop.TaskList.csproj" />
     <ProjectReference Include="..\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
+    <ProjectReference Include="..\..\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
   </ItemGroup>
 
 </Project>

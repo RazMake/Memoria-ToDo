@@ -76,6 +76,28 @@ public class TagChipsTests
     }
 
     [WpfFact]
+    public async Task Refreshes_when_Tasks_changes_on_a_worker_thread()
+    {
+        using var host = new ChipsHost(("home", 1));
+
+        await host.Services.UseTagOnWorkerThread("work", 2);
+        await RenderedField.Settled();
+
+        Assert.Equal(["work", "home"], host.Tags);
+    }
+
+    [WpfFact]
+    public async Task Shows_no_chips_after_the_repository_folder_is_cleared_on_a_worker_thread()
+    {
+        using var host = new ChipsHost(("home", 1));
+
+        await Task.Run(() => host.Services.Tasks.UseRepositoryFolder(null));
+        await RenderedField.Settled();
+
+        Assert.Empty(host.Tags);
+    }
+
+    [WpfFact]
     public void Shows_no_chips_after_the_repository_folder_is_cleared()
     {
         using var host = new ChipsHost(("home", 1));

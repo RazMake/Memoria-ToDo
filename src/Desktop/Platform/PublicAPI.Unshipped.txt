@@ -3,7 +3,7 @@ Memoria.ToDo.Desktop.Platform.AppName
 static Memoria.ToDo.Desktop.Platform.AppName.Value.get -> string!
 Memoria.ToDo.Desktop.Platform.IAppLifetime
 Memoria.ToDo.Desktop.Platform.IAppLifetime.Start(System.Action! endApp) -> void
-Memoria.ToDo.Desktop.Platform.IAppLifetime.Stop() -> void
+Memoria.ToDo.Desktop.Platform.IAppLifetime.StopAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Memoria.ToDo.Desktop.Platform.SingleWindow
 Memoria.ToDo.Desktop.Platform.SingleWindow.SingleWindow(System.Func<System.Windows.Window!>! createWindow) -> void
 Memoria.ToDo.Desktop.Platform.SingleWindow.Show() -> void

@@ -25,6 +25,7 @@ internal sealed class ListServices
     public FakeDefaultBrowser Browser { get; } = new();
 
     public FakeClipboard Clipboard { get; } = new();
+    public FakeSyncService Sync { get; } = new();
 
     public ITasks Tasks { get; }
 
@@ -70,5 +71,5 @@ internal sealed class ListServices
             webViews.Add(view);
             return view;
         },
-        Browser);
+        Browser, Sync);
 }
