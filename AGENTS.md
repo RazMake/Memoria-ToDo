@@ -86,7 +86,8 @@ At [final validation](#tests), run `node --test .agents/generate.test.mjs`. Thes
 The main session plans, asks the user, and accepts results. Agents do the work the [process](docs/contributing/process.md) assigns them.
 
 - **Explain what you changed and checked.** Name the concrete component or script, say what it does in plain words, and explain what its tests verify and leave unverified. Don't use labels such as "generator tests" without that context.
-- **Delegate exploration to `explorer`**: any search or reading beyond a couple of files you already know. Ask it a specific question.
+- **Delegate each step to its role**, as the [process](docs/contributing/process.md) table assigns them. Send `explorer` any search or reading beyond a couple of files you already know, with a specific question.
+- **Never substitute a built-in agent for a role.** Copilot's `explore`, `task`, `general-purpose`, `code-review`, and `rubber-duck`, and Claude Code's `Explore`, `Plan`, and `general-purpose`, don't follow these rules. Use one only for work no role covers, such as web research. If the roles aren't offered, tell the user; a new session loads them.
 - **Give every agent a self-contained brief**, not a fork of your conversation. Keep its configured model unless selecting a reviewer under [Independent review](docs/contributing/process.md#independent-review). In Codex, set `agent_type` to the role and `fork_turns` to `"none"`.
 - **Agents can't ask the user.** They stop and return their questions. Ask the user one decision at a time, recommended option first, with the `ask_user` tool when it's available.
 - **Make trivial edits yourself.** Review every agent's result before accepting it.
