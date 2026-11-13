@@ -98,8 +98,20 @@ internal sealed class FakeGitOperations : IGitOperations
     /// <inheritdoc />
     public void WriteReceipt(string folder, GitReceipt receipt)
     {
-        lock (gate) { receipts[folder] = receipt; }
+        lock (gate)
+        {
+            if (NextWriteReceiptFailure is { } failure)
+            {
+                NextWriteReceiptFailure = null;
+                throw failure;
+            }
+
+            receipts[folder] = receipt;
+        }
     }
+
+    /// <summary>When set, the next receipt write fails with it, and the failure is then forgotten.</summary>
+    public Exception? NextWriteReceiptFailure { get; set; }
 
     /// <summary>Runs when an existing clone is about to be used, so a test can record what was true at that moment.</summary>
     public Action? OnUseExisting { get; set; }

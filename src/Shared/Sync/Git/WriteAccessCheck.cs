@@ -10,12 +10,18 @@ internal static class WriteAccessCheck
     /// <summary>Checks inside the running operation, whose scope supplies the connection, token and clock.</summary>
     public static void Run(SshAddress address)
     {
+        var link = SshLink.Open(address, OperationScope.Current);
+        Run(link, address.Path);
+    }
+
+    /// <summary>Checks write access to the repository at <paramref name="path"/> over an open link, which it closes.</summary>
+    internal static void Run(SshLink link, string path)
+    {
         var scope = OperationScope.Current;
-        var link = SshLink.Open(address, scope);
         var advertised = false;
         try
         {
-            var io = link.Start("git-receive-pack", address.Path, scope.Token);
+            var io = link.Start("git-receive-pack", path, scope.Token);
             if (io.Read(new byte[4096], 4096) > 0)
             {
                 advertised = true;
@@ -23,9 +29,9 @@ internal static class WriteAccessCheck
                 io.Write("0000"u8.ToArray(), 4);
             }
 
-            // Empty output proves nothing by itself: why the command ended is the exit status, judged by the awaited cleanup.
+            // Empty output proves nothing by itself: why the command ended is the exit status, judged by the awaited
+            // cleanup, which also sends EOF.
             scope.Token.ThrowIfCancellationRequested();
-            io.SendEof();
         }
         catch (Exception ex)
         {
@@ -43,7 +49,7 @@ internal static class WriteAccessCheck
     private static async Task CloseThenJudge(SshLink link, OperationScope scope, bool advertised)
     {
         await link.CloseAsync().ConfigureAwait(false);
-        if (!advertised)
+        if (!advertised && scope.Failure is null)
         {
             scope.Record(new GitFailureException(SyncFailure.Repository,
                 "git-receive-pack advertised nothing, so write access couldn't be verified."));

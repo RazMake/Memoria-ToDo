@@ -75,7 +75,7 @@ internal sealed class TestSshServer : IDisposable
 
     public int Port { get; private set; }
 
-    /// <summary>Runs before git serves a command, with the verb (<c>upload-pack</c> or <c>receive-pack</c>) and the bare repository's folder.</summary>
+    /// <summary>Runs before git serves a command, or before the server refuses a <c>receive-pack</c> (see <see cref="AllowPush"/>), with the verb (<c>upload-pack</c> or <c>receive-pack</c>) and the bare repository's folder.</summary>
     public Func<string, string, Task>? BeforeCommand { get; set; }
 
     /// <summary>
@@ -96,7 +96,7 @@ internal sealed class TestSshServer : IDisposable
     /// </summary>
     public Func<string, uint?>? ExitCodeAfterServing { get; set; }
 
-    /// <summary>Whether to refuse the command request for the verb outright, as a host that closes the session before running anything. Null accepts every command.</summary>
+    /// <summary>Whether to refuse the command request for the verb, as OpenSSH does: the server answers the request with a failure and leaves the channel open. Null accepts every command.</summary>
     public Func<string, bool>? RefuseCommand { get; set; }
 
     /// <summary>How the server ends a command: with its exit status, as every host does, or without one.</summary>
@@ -165,6 +165,9 @@ internal sealed class TestSshServer : IDisposable
                 return;
 
             lock (commands) { commands.Add(verb); }
+            if (BeforeCommand is { } before)
+                await before(verb, repository);
+
             if (verb == "receive-pack" && !AllowPush)
             {
                 if (DenialText is { } denial)
@@ -172,9 +175,6 @@ internal sealed class TestSshServer : IDisposable
                 exitCode = RefusedExitCode;
                 return;
             }
-
-            if (BeforeCommand is { } before)
-                await before(verb, repository);
 
             var start = new ProcessStartInfo("git")
             {

@@ -112,6 +112,7 @@ public sealed class RemoteFailureIntegrationTests
 
         Assert.Equal(SyncState.Error, status.State);
         Assert.Equal(SyncFailure.Repository, status.Failure);
+        Assert.True(status.HasPendingChanges);
     }
 
     [Theory]
@@ -225,7 +226,7 @@ public sealed class RemoteFailureIntegrationTests
 
     [Theory]
     [MemberData(nameof(Refusals))]
-    public async Task Setup_refuses_an_existing_clone_whose_key_the_host_will_not_let_push_and_keeps_the_hosts_explanation(string hostText, SyncFailure expected)
+    public async Task The_first_sync_of_an_existing_clone_fails_as_the_hosts_explanation_says_when_the_key_may_not_push_and_the_device_stays_not_configured(string hostText, SyncFailure expected)
     {
         var ct = TestContext.Current.CancellationToken;
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
@@ -233,10 +234,8 @@ public sealed class RemoteFailureIntegrationTests
         world.Server.DenialText = hostText;
         var device = world.AddDevice("a");
         Repository.Clone(world.Origin.Path, device.CloneFolder);
-        await device.Sync.Setup.GenerateKeyAsync(ct);
 
-        await TrustingAsync(device, () => device.Sync.Setup.UseExistingAsync(world.Address, device.CloneFolder, ct), ct);
-        var status = device.Sync.Status;
+        var status = await FirstSyncOfExistingCloneAsync(world, device, ct);
 
         Assert.False(device.Sync.Setup.State.IsConfigured);
         Assert.Equal(SyncState.Error, status.State);
@@ -245,7 +244,7 @@ public sealed class RemoteFailureIntegrationTests
     }
 
     [Fact]
-    public async Task Setup_does_not_take_a_command_that_exits_zero_without_advertising_anything_as_proof_of_write_access()
+    public async Task The_first_sync_of_an_existing_clone_does_not_take_a_command_that_exits_zero_without_advertising_anything_as_proof_of_write_access()
     {
         var ct = TestContext.Current.CancellationToken;
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
@@ -253,10 +252,8 @@ public sealed class RemoteFailureIntegrationTests
         world.Server.RefusedExitCode = 0;
         var device = world.AddDevice("a");
         Repository.Clone(world.Origin.Path, device.CloneFolder);
-        await device.Sync.Setup.GenerateKeyAsync(ct);
 
-        await TrustingAsync(device, () => device.Sync.Setup.UseExistingAsync(world.Address, device.CloneFolder, ct), ct);
-        var status = device.Sync.Status;
+        var status = await FirstSyncOfExistingCloneAsync(world, device, ct);
 
         // Exit zero is necessary but not enough: receive-pack must also advertise. Nothing here says the key is denied, so it is a protocol failure.
         Assert.False(device.Sync.Setup.State.IsConfigured);
@@ -265,17 +262,16 @@ public sealed class RemoteFailureIntegrationTests
     }
 
     [Fact]
-    public async Task Setup_names_a_connection_failure_when_the_host_refuses_to_start_the_write_check()
+    public async Task The_first_sync_of_an_existing_clone_names_a_connection_failure_when_the_host_refuses_to_start_the_write_check()
     {
         var ct = TestContext.Current.CancellationToken;
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
         world.Server.RefuseCommand = verb => verb == "receive-pack";
-        var device = world.AddDevice("a");
+        var device = world.AddDevice("a", TimeProvider.System);
         Repository.Clone(world.Origin.Path, device.CloneFolder);
-        await device.Sync.Setup.GenerateKeyAsync(ct);
 
-        await TrustingAsync(device, () => device.Sync.Setup.UseExistingAsync(world.Address, device.CloneFolder, ct), ct);
-        var status = device.Sync.Status;
+        // The refused request leaves the channel open and SSH.NET ignores the refusal, so Sync sees a stall: only the real clock's network watchdog ends it.
+        var status = await FirstSyncOfExistingCloneAsync(world, device, ct, StallBound);
 
         // Fetching worked, so the host is reachable and the key is known; a refused session is no verdict on write access.
         Assert.False(device.Sync.Setup.State.IsConfigured);
@@ -288,10 +284,21 @@ public sealed class RemoteFailureIntegrationTests
     {
         var ct = TestContext.Current.CancellationToken;
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
+
+        // Another device synced first, so the origin holds the settings.json a sync creates and the first sync below has
+        // nothing to commit: it reaches the write check, not a push.
+        await world.AddDevice("other").ConnectAndSyncAsync(ct);
         world.Server.AllowPush = false;
         world.Server.DenialText = "ERROR: The key is marked as read only";
         var device = world.AddDevice("a");
         Repository.Clone(world.Origin.Path, device.CloneFolder);
+        using (var repo = new Repository(device.CloneFolder))
+        {
+            // The arrangement itself is checked: the clone is at the origin's tip with settings.json and nothing uncommitted.
+            Assert.Equal(world.Origin.MainTip, repo.Head.Tip.Sha);
+            Assert.NotNull(repo.Head.Tip["settings.json"]);
+            Assert.False(repo.RetrieveStatus(new StatusOptions()).IsDirty);
+        }
 
         await AssertNotConfiguredUntilTheKeyMayPushAsync(world, device, ct);
     }
@@ -322,17 +329,46 @@ public sealed class RemoteFailureIntegrationTests
     }
 
     [Fact]
+    public async Task A_clone_the_host_denies_write_access_removes_every_file_it_cloned_and_fails_with_that_denial()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
+        var a = await TrustingDeviceWithAReadOnlyKeyAsync(world, ct);
+        var originTip = world.Origin.MainTip;
+
+        // The arrangement itself is checked: the write check is the clone's last remote step, so the cloned files exist by then.
+        var clonedBeforeTheCheck = false;
+        world.Server.BeforeCommand = (verb, _) =>
+        {
+            if (verb == "receive-pack")
+            {
+                clonedBeforeTheCheck = File.Exists(Path.Combine(a.CloneFolder, "notes.txt"));
+            }
+
+            return Task.CompletedTask;
+        };
+
+        await Assert.ThrowsAnyAsync<IOException>(() => a.Sync.Setup.CloneAsync(world.Address, a.CloneFolder, ct).WaitAsync(Bound, ct));
+        var status = a.Sync.Status;
+
+        Assert.True(clonedBeforeTheCheck);
+        Assert.False(Directory.Exists(a.CloneFolder) && Directory.EnumerateFileSystemEntries(a.CloneFolder).Any(),
+            "Cloned files remain in the clone folder after the refused clone.");
+        Assert.Equal(SyncState.Error, status.State);
+        Assert.Equal(SyncFailure.Authentication, status.Failure);
+        Assert.Contains("marked as read only", status.Details);
+        Assert.False(a.Sync.Setup.State.IsConfigured);
+        Assert.Null(a.Sync.Setup.State.RepositoryFolder);
+        Assert.Equal(originTip, world.Origin.MainTip);
+    }
+
+    [Fact]
     public async Task A_clone_the_host_denies_write_access_keeps_that_denial_as_its_failure_when_undoing_the_clone_also_fails()
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "An open file only blocks its own deletion on Windows.");
         var ct = TestContext.Current.CancellationToken;
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
-        world.Server.AllowPush = false;
-        world.Server.DenialText = "ERROR: The key is marked as read only";
-        var a = world.AddDevice("a");
-        await a.Sync.Setup.GenerateKeyAsync(ct);
-        Assert.False(await a.TryCloneAsync(ct));
-        await a.Sync.Setup.AcceptHostKeyAsync(a.Sync.Setup.State.HostKey!.Fingerprint, ct);
+        var a = await TrustingDeviceWithAReadOnlyKeyAsync(world, ct);
         var originTip = world.Origin.MainTip;
 
         // The write check is the clone's last remote step, so by the time git asks for receive-pack the clone's files exist.
@@ -366,23 +402,29 @@ public sealed class RemoteFailureIntegrationTests
         }
     }
 
+    // A new device with a key and the host's key trusted, not yet cloned, whose key the host lets fetch but refuses to let push.
+    private static async Task<Device> TrustingDeviceWithAReadOnlyKeyAsync(SyncWorld world, CancellationToken ct)
+    {
+        world.Server.AllowPush = false;
+        world.Server.DenialText = "ERROR: The key is marked as read only";
+        var device = world.AddDevice("a");
+        await device.Sync.Setup.GenerateKeyAsync(ct);
+        Assert.False(await device.TryCloneAsync(ct));
+        await device.Sync.Setup.AcceptHostKeyAsync(device.Sync.Setup.State.HostKey!.Fingerprint, ct);
+        return device;
+    }
+
     // Setup with a key the host refuses to let push must not finish, however the sync then ends; once the key may push, it finishes and the origin is as it was.
     private static async Task AssertNotConfiguredUntilTheKeyMayPushAsync(SyncWorld world, Device device, CancellationToken ct)
     {
         var originTip = world.Origin.MainTip;
-        await device.Sync.Setup.GenerateKeyAsync(ct);
 
-        await TrustingAsync(device, () => device.Sync.Setup.UseExistingAsync(world.Address, device.CloneFolder, ct), ct);
-        var status = await device.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
-        if (status.Failure == SyncFailure.UnknownHostKey)
-        {
-            await device.Sync.Setup.AcceptHostKeyAsync(device.Sync.Setup.State.HostKey!.Fingerprint, ct);
-            status = await device.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
-        }
+        var status = await FirstSyncOfExistingCloneAsync(world, device, ct);
 
         Assert.False(device.Sync.Setup.State.IsConfigured);
         Assert.Equal(SyncState.Error, status.State);
         Assert.Equal(SyncFailure.Authentication, status.Failure);
+        Assert.False(status.HasPendingChanges);
         Assert.Equal(originTip, world.Origin.MainTip);
 
         world.Server.AllowPush = true;
@@ -393,25 +435,21 @@ public sealed class RemoteFailureIntegrationTests
         Assert.True(device.Sync.Setup.State.IsConfigured);
     }
 
-    // Runs one setup call; when the server's host key is offered for the first time, trusts it, as the person setting up would, and runs it again.
-    private static async Task TrustingAsync(Device device, Func<Task> setup, CancellationToken ct)
+    // Using an existing clone contacts no host and checks no write access, so it succeeds; the first sync verifies push access.
+    // The person setting up trusts the host key when that sync first offers it, and the sync runs again.
+    // The bound defaults to Bound; a test that waits for the network watchdog on the real clock passes StallBound.
+    private static async Task<ISyncStatus> FirstSyncOfExistingCloneAsync(SyncWorld world, Device device, CancellationToken ct, TimeSpan? bound = null)
     {
-        for (var attempt = 0; attempt < 2; attempt++)
+        var limit = bound ?? Bound;
+        await device.Sync.Setup.GenerateKeyAsync(ct);
+        await device.Sync.Setup.UseExistingAsync(world.Address, device.CloneFolder, ct);
+        var status = await device.Sync.SyncNowAsync(ct).WaitAsync(limit, ct);
+        if (status.Failure == SyncFailure.UnknownHostKey)
         {
-            try
-            {
-                await setup();
-                return;
-            }
-            catch (IOException) when (attempt == 0 && device.Sync.Setup.State.HostKey is { CanAccept: true } offered)
-            {
-                await device.Sync.Setup.AcceptHostKeyAsync(offered.Fingerprint, ct);
-            }
-            catch (IOException)
-            {
-                // A read-only key may make setup itself fail; the sync below shows the same refusal in status.
-                return;
-            }
+            await device.Sync.Setup.AcceptHostKeyAsync(device.Sync.Setup.State.HostKey!.Fingerprint, ct);
+            status = await device.Sync.SyncNowAsync(ct).WaitAsync(limit, ct);
         }
+
+        return status;
     }
 }

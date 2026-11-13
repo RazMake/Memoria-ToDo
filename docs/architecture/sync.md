@@ -87,7 +87,8 @@ Also proposed, each a decision to confirm:
   changes, and use Git's existing change information without parsing Tasks' files or adding a public interface.
 - Files outside `tasks/`, `images/`, and `settings.json`, such as a README, are left as the remote has them.
 - A task file from the remote that can't be read is skipped, never deleted, and named in the sync status.
-- After 3 rejected pushes in a row, the sync fails with an error and retries later.
+- After 3 rejected pushes in a row, the sync fails with an error and retries later. Only pushes within one sync
+  count, whatever reason the remote gives for rejecting them. The write-access check below isn't a push.
 
 **Decided by the user:** allow the remote version or deletion to replace local work in these two cases:
 
@@ -171,6 +172,27 @@ completed command without that status, including a remote exit signal, as Reposi
 and error details. This reports the incomplete command outcome without guessing why the channel closed.
 Alternative: classify an unexplained channel close as Connection, inviting a connectivity retry but inferring a
 transport cause without evidence. Neither option allows success without explicit exit zero.
+
+Decision to confirm: how Sync judges a command when sending EOF fails, and which failure an operation reports when
+several arrive. Recommended:
+
+- When sending EOF fails with a plain fault, such as a channel the host closed after writing its refusal, Sync still
+  waits for the exit report within the graceful-completion wait below. It skips that wait when the caller cancelled
+  or the stalled-network timeout already expired. It then judges the command as the two paragraphs above say,
+  including a finished command without an exit status. Only a command that doesn't report within the wait is a
+  Connection failure. So the same refusal gets the same failure, whatever the timing.
+- An operation reports the first failure it records, with one exception: a Connection failure guessed from a plain
+  I/O fault, which the host didn't explain, gives way to a later Repository or Authentication failure that Sync read
+  from the host's own output or exit status. Nothing else replaces a recorded failure, not even another guess.
+
+Alternative: always keep the first failure, and end the command at the EOF fault. The same host refusal then shows
+as Repository or as Offline, depending on timing.
+
+Decision to confirm: what Sync reports when the host refuses to start a command at all. The pinned SSH.NET
+2026.0.0 ignores that refusal and leaves the channel open, so Sync can't tell it from a stalled network.
+Recommended: treat it as a stall, a Connection failure at the 30-second stalled-network timeout below. Alternatives:
+read SSH.NET's private channel by reflection to see the refusal at once, which can break silently on an SSH.NET
+update; or replace SSH.NET, which is a new dependency.
 
 Creation validates arguments only; it performs no file, Git, or key-store I/O. Its initial setup snapshot can name
 the already selected folder and default device name from memory, but it does not yet know the saved origin,
@@ -315,8 +337,10 @@ The normalized origin is permanent, not a temporary URL toggle. No second stored
 dependency is added. Existing unsafe-state checks still run before changing an existing repository's origin.
 
 `UseExistingAsync` can reuse the currently selected clone; it validates before changing its origin or selection.
-`CloneAsync` selects only after cloning succeeds. Neither operation counts as the first successful writable sync:
-Configure then awaits `SyncNowAsync`, which verifies push access even when there are no new local commits.
+It contacts no host, so it doesn't check push access. `CloneAsync` checks push access right after cloning, removes
+what it cloned when that check fails, and selects only after both succeed. Neither operation counts as the first
+successful writable sync: Configure then awaits `SyncNowAsync`, which verifies push access even when there are no
+new local commits.
 A failed first sync leaves the selected clone available for offline work and setup retry. A detached HEAD,
 non-default branch, or unfinished Git operation is reported before changing task files or making commits, rather
 than silently switching branches or discarding work. This safety refusal is a decision to confirm.
@@ -387,6 +411,23 @@ The table lists each failure, whether it shows as offline or as an error, and wh
 
 On the desktop, being offline and errors show as [Shell](desktop/shell.md#sync-stays-quiet-unless-something-is-wrong) decides.
 
+**Decided by the user:** a failed sync still shows the local changes it found that haven't reached the remote.
+When a sync fails at or after its first contact with the host, for example offline, at the stalled-network timeout,
+or when the host refuses the push, it shows pending changes if the clone holds uncommitted changes to tasks, images,
+or settings, or commits the remote doesn't have as last fetched or pushed. A sync whose Git work finished but that
+then failed, such as when its receipt can't be written, shows what that work found.
+
+Decision to confirm: when the Git work fails and closing its session then fails too, such as when the key handle
+can't be closed, the sync reports the closing failure and shows the pending value the Git work found. Recommended:
+this, which keeps which failure is reported unchanged. Alternative: report the Git work's failure and append the
+closing failure's details, as a failed setup refresh does below; that carries both failures out of the session.
+
+Decision to confirm: a sync that fails earlier, in its local checks, keeps the pending value shown before. Those
+checks cover an unusable or rejected folder, a missing or unreadable key, a folder that isn't a Git repository, a
+missing or unusable origin, and unsafe repository state. Recommended: keep that last known value, with no extra
+scan of the clone. Alternative: scan the clone after every failure; it reads a clone that may be the problem, and
+the scan can fail too.
+
 A setup-snapshot refresh failure never replaces a pass's primary failure kind or details: append the refresh
 details while retaining that outcome. If the pass otherwise succeeded, report the refresh failure instead of a
 success-shaped fallback. Unsafe repository state is a Repository failure detected before setup changes origin
@@ -403,8 +444,8 @@ argument-error behavior.
 
 Decision to confirm: when a cancelled clone also fails to remove its partial files, setup reports an IOException
 classified as LocalStorage, retaining the cancellation and cleanup failure together in an AggregateException.
-Its details explain that partial clone files may remain. Cancellation without a cleanup failure still reports
-cancellation; a cleanup failure must not look like a successfully cancelled, fully cleaned-up operation.
+Its details warn that some cloned files may remain in the folder. Cancellation without a cleanup failure still
+reports cancellation; a cleanup failure must not look like a successfully cancelled, fully cleaned-up operation.
 
 ## Ruled out
 
@@ -438,3 +479,6 @@ The options below were considered and rejected, grouped by decision. The git and
 - A cancelled clone whose cleanup also fails:
   - **Report only cancellation**: the caller can overlook partial files that could not be removed.
   - **Report only the cleanup failure**: it loses the cancellation that caused cleanup to run.
+- Pending changes after a failed sync:
+  - **Keep the previous value on every failure**: a sync that found new local work and then failed would say
+    nothing is waiting to be sent.

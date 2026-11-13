@@ -94,8 +94,18 @@ internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvid
         });
     }
 
-    public Task<GitPassResult> RunPass(GitConnection connection, string folder, CancellationToken cancellationToken) =>
-        Run(connection, cancellationToken, () => new GitPass(tasks, time, folder, connection, cancellationToken).Run());
+    public async Task<GitPassResult> RunPass(GitConnection connection, string folder, CancellationToken cancellationToken)
+    {
+        var pass = new GitPass(tasks, time, folder, connection, cancellationToken);
+        try
+        {
+            return await Run(connection, cancellationToken, pass.Run).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && pass.PendingIfFailed is { } pending)
+        {
+            throw new PassFailedException(ex, pending);
+        }
+    }
 
     // The operation ends only after its transport cleanup, so a command's exit status, which arrives after its output,
     // can still fail an operation whose body returned normally. The scope is cleared before the first await, on the

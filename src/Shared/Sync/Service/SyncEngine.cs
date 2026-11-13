@@ -232,8 +232,9 @@ internal sealed class SyncEngine : ISyncService
         }
         catch (Exception ex) when (!IsStopping(ex, token))
         {
-            var (kind, details) = FailureReport.Of(ex);
-            outcome = s => s.Failed(kind, details, []);
+            var (kind, details) = FailureReport.Of(ex is PassFailedException { InnerException: { } failure } ? failure : ex);
+            var pending = (ex as PassFailedException)?.HasPendingChanges;
+            outcome = s => s.Failed(kind, details, []) with { HasPendingChanges = pending ?? s.HasPendingChanges };
         }
 
         // The refresh outcome is folded in first, so the pass publishes exactly one final state.
@@ -288,14 +289,39 @@ internal sealed class SyncEngine : ISyncService
 
     private async Task<(Func<StatusSnapshot, StatusSnapshot> Outcome, bool Clean)> RunPassAsync(string folder, CancellationToken token)
     {
-        var (result, fingerprint) = await session.RunAsync(async connection =>
+        // Once the Git work has ended knowing the pending changes, a later failure (closing the session, writing the
+        // receipt) still shows what it found.
+        bool? found = null;
+        GitPassResult result;
+        DateTimeOffset now;
+        try
         {
-            var pass = await git.RunPass(connection, folder, token).ConfigureAwait(false);
-            return (pass, DeviceMetadata.Fingerprint(connection.Key.PublicKeyBlob.Span));
-        }).ConfigureAwait(false);
+            string fingerprint;
+            (result, fingerprint) = await session.RunAsync(async connection =>
+            {
+                GitPassResult pass;
+                try
+                {
+                    pass = await git.RunPass(connection, folder, token).ConfigureAwait(false);
+                }
+                catch (PassFailedException failed)
+                {
+                    found = failed.HasPendingChanges;
+                    throw;
+                }
 
-        var now = time.GetUtcNow();
-        await worker.Run(() => git.WriteReceipt(folder, new GitReceipt(now, fingerprint))).ConfigureAwait(false);
+                found = pass.HasPendingChanges;
+                return (pass, DeviceMetadata.Fingerprint(connection.Key.PublicKeyBlob.Span));
+            }).ConfigureAwait(false);
+
+            now = time.GetUtcNow();
+            await worker.Run(() => git.WriteReceipt(folder, new GitReceipt(now, fingerprint))).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (found is { } pending && ex is not PassFailedException && !IsStopping(ex, token))
+        {
+            throw new PassFailedException(ex, pending);
+        }
+
         var skipped = MergedSkippedFile.Combine(result.Skipped, tasks.SkippedFiles);
         if (skipped.Count > 0)
         {

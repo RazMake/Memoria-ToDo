@@ -71,3 +71,12 @@ internal sealed class GitFailureException(SyncFailure kind, string message, Exce
 {
     public SyncFailure Kind { get; } = kind;
 }
+
+/// <summary>
+/// A pass that failed once it knew whether the clone holds work the remote doesn't have. <see cref="Exception.InnerException"/>
+/// is the failure to report; a cancel is never wrapped. A pass failure without this wrapper keeps the pending value shown before.
+/// </summary>
+internal sealed class PassFailedException(Exception failure, bool hasPendingChanges) : Exception(failure.Message, failure)
+{
+    public bool HasPendingChanges { get; } = hasPendingChanges;
+}

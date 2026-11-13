@@ -12,14 +12,14 @@ internal sealed class SshLink
 {
     private static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(30);
 
-    private readonly SshClient client;
+    private readonly IRemoteHost host;
     private readonly OperationScope scope;
     private readonly InactivityWatchdog watchdog;
     private readonly List<SshCommandIo> commands = [];
 
-    private SshLink(SshClient client, OperationScope scope)
+    internal SshLink(IRemoteHost host, OperationScope scope)
     {
-        this.client = client;
+        this.host = host;
         this.scope = scope;
         // A host that stays silent for the whole timeout is cut off, which ends the blocked read. The timeout is
         // recorded first, so the errors the cut-off causes are only secondary.
@@ -47,7 +47,7 @@ internal sealed class SshLink
     {
         try
         {
-            client.Disconnect();
+            host.Disconnect();
         }
         catch (Exception ex)
         {
@@ -112,12 +112,12 @@ internal sealed class SshLink
             scope.Token.ThrowIfCancellationRequested();
         }
 
-        return new SshLink(client, scope);
+        return new SshLink(new SshNetRemoteHost(client), scope);
     }
 
     public SshCommandIo Start(string service, string path, CancellationToken token)
     {
-        var command = client.CreateCommand($"{service} {Quote(path)}");
+        var command = host.CreateCommand($"{service} {Quote(path)}");
         // From here the link owns the command, even when starting it fails: CloseAsync ends it and joins its cancel work.
         var io = new SshCommandIo(command, token, Disconnect, watchdog, scope);
         lock (commands)
@@ -130,31 +130,50 @@ internal sealed class SshLink
     }
 
     /// <summary>
-    /// Ends every command, then disconnects. The task never faults: a command's failure is recorded in the operation's
-    /// scope for the operation to report, since the reader can't know the exit status before the output ends.
+    /// Ends every command, then disconnects. The task never faults: the reader can't know the exit status before the
+    /// output ends, and the cleanup that awaits this task ignores how it ended, so a command's failure, or a failure to
+    /// tear the link down, is recorded in the operation's scope for the operation to report. A failing step doesn't
+    /// skip the steps after it.
     /// </summary>
     public async Task CloseAsync()
     {
-        try
+        SshCommandIo[] started;
+        lock (commands)
         {
-            SshCommandIo[] started;
-            lock (commands)
-            {
-                started = [.. commands];
-            }
+            started = [.. commands];
+        }
 
-            foreach (var command in started)
+        foreach (var command in started)
+        {
+            try
             {
                 if (await command.EndAsync().ConfigureAwait(false) is { } failure)
                 {
                     scope.Record(failure);
                 }
             }
+            catch (Exception ex)
+            {
+                scope.Record(ex);
+            }
         }
-        finally
+
+        try
         {
             await watchdog.DisposeAsync().ConfigureAwait(false);
-            client.Dispose();
+        }
+        catch (Exception ex)
+        {
+            scope.Record(ex);
+        }
+
+        try
+        {
+            host.Dispose();
+        }
+        catch (Exception ex)
+        {
+            scope.Record(ex);
         }
     }
 

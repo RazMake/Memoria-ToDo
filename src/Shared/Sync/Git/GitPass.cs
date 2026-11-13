@@ -9,6 +9,15 @@ internal sealed class GitPass(ITaskSynchronization tasks, TimeProvider time, str
     private const int MaxPushAttempts = 3;
     private const string FallbackBranch = "main";
 
+    // The remote's tip as this clone last saw it; a push made in this pass doesn't move it.
+    private Commit? knownRemoteTip;
+
+    /// <summary>
+    /// Whether the clone holds work the remote may lack if the pass fails, known once the local checks passed;
+    /// null before that, or when it couldn't be worked out.
+    /// </summary>
+    public bool? PendingIfFailed { get; private set; }
+
     public GitPassResult Run()
     {
         using var repo = OpenRepository();
@@ -17,9 +26,41 @@ internal sealed class GitPass(ITaskSynchronization tasks, TimeProvider time, str
         SafeRepositoryState.Require(repo);
         var remote = Canonical(repo, saved);
 
+        var commit = new ManagedCommit(repo, tasks.Files, time, connection.DeviceName);
+        knownRemoteTip = repo.Branches[$"origin/{repo.Head.FriendlyName}"]?.Tip;
+        try
+        {
+            return RunWithHost(repo, remote, commit);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            RememberPending(repo, commit);
+            throw;
+        }
+    }
+
+    // managedChanges, when the caller already knows it, saves a second scan of the working tree.
+    private void RememberPending(Repository repo, ManagedCommit commit, bool? managedChanges = null)
+    {
+        PendingIfFailed = null;
+        try
+        {
+            var head = repo.Head.Tip;
+            var ahead = head is not null
+                && (knownRemoteTip is null || (head.Id != knownRemoteTip.Id
+                    && repo.ObjectDatabase.CalculateHistoryDivergence(head, knownRemoteTip).AheadBy > 0));
+            PendingIfFailed = ahead || (managedChanges ?? commit.HasManagedChanges());
+        }
+        catch (Exception ex) when (ex is LibGit2SharpException or IOException or UnauthorizedAccessException)
+        {
+            // No pending value is better than a guessed one; the pass fails for its own reason.
+        }
+    }
+
+    private GitPassResult RunWithHost(Repository repo, Remote remote, ManagedCommit commit)
+    {
         var branch = ResolveBranch(repo, remote, out var remoteHasBranch);
         PrepareFiles();
-        var commit = new ManagedCommit(repo, tasks.Files, time, connection.DeviceName);
         var merge = new DomainMerge(repo, tasks.Files, time, connection.DeviceName);
         tasks.UpdateRepository(folder, () => commit.Run());
 
@@ -31,6 +72,7 @@ internal sealed class GitPass(ITaskSynchronization tasks, TimeProvider time, str
             {
                 Fetch(repo, branch);
                 tip = repo.Branches[$"origin/{branch}"]?.Tip;
+                knownRemoteTip = tip;
                 tasks.UpdateRepository(folder, () =>
                 {
                     commit.Run();
@@ -51,7 +93,10 @@ internal sealed class GitPass(ITaskSynchronization tasks, TimeProvider time, str
             string? reason = null;
             if (head is null || head.Id == tip?.Id || Push(repo, remote, branch, out reason))
             {
-                return new GitPassResult(commit.HasManagedChanges()) { Skipped = merge.Skipped };
+                // A failure while the transport closes can still end this pass, so the value is kept before returning.
+                var managedChanges = commit.HasManagedChanges();
+                RememberPending(repo, commit, managedChanges);
+                return new GitPassResult(managedChanges) { Skipped = merge.Skipped };
             }
 
             remoteHasBranch = true;

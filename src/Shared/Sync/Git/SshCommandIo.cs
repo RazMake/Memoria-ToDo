@@ -1,5 +1,3 @@
-using Renci.SshNet;
-
 namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>One running remote command: blocking reads and writes for libgit2's synchronous callbacks, and an async end.</summary>
@@ -18,7 +16,7 @@ internal sealed class SshCommandIo
         "does not have write access",
     ];
 
-    private readonly SshCommand command;
+    private readonly IRemoteCommand command;
     private readonly OperationScope scope;
     private readonly TimeProvider time;
     private readonly InactivityWatchdog watchdog;
@@ -34,7 +32,7 @@ internal sealed class SshCommandIo
     /// Nothing else is started: call <see cref="Begin"/>, then <see cref="EndAsync"/> whether or not it succeeded.
     /// </summary>
     /// <param name="disconnect">Drops the connection to end a blocked read; it must not throw.</param>
-    public SshCommandIo(SshCommand command, CancellationToken token, Action disconnect, InactivityWatchdog watchdog, OperationScope scope)
+    public SshCommandIo(IRemoteCommand command, CancellationToken token, Action disconnect, InactivityWatchdog watchdog, OperationScope scope)
     {
         this.command = command;
         this.scope = scope;
@@ -60,8 +58,17 @@ internal sealed class SshCommandIo
     /// <summary>Opens the channel and starts the command. Blocks until the host answers, or a cancel disconnects.</summary>
     public void Begin()
     {
-        execution = command.ExecuteAsync(CancellationToken.None);
-        input = command.CreateInputStream();
+        execution = command.ExecuteAsync();
+        try
+        {
+            input = command.CreateInputStream();
+        }
+        catch (InvalidOperationException)
+        {
+            // The host already ended the command, maybe after writing its refusal. Input goes nowhere, as on any closed
+            // channel, and EndAsync judges the exit report as when the command ends later.
+        }
+
         started = true;
     }
 
@@ -182,8 +189,9 @@ internal sealed class SshCommandIo
 
     /// <summary>
     /// Sends EOF, waits for the server to end the command, then releases it. The command gets five seconds to exit
-    /// after its input ended, and the wait also ends after the network timeout of no activity. When the wait is cut
-    /// short, or a caller cancels, disposing the SSH.NET command
+    /// after its input ended, and the wait also ends after the network timeout of no activity. A fault while sending EOF
+    /// doesn't skip the wait: the exit report decides, so a host's refusal is never reported as a connection loss.
+    /// When the wait is cut short, or a caller cancels, disposing the SSH.NET command
     /// completes its execution task, and this method awaits that task before it returns, so no work outlives it.
     /// Returns why the command failed, or null when it ended well or was cancelled.
     /// </summary>
@@ -197,11 +205,18 @@ internal sealed class SshCommandIo
         GitFailureException? failure = null;
         var cutShort = false;
         var graceful = false;
-        var plainFault = false;
         using var graceTimer = new CancellationTokenSource();
         try
         {
-            SendEof();
+            try
+            {
+                SendEof();
+            }
+            catch (Exception) when (!Token.IsCancellationRequested && !watchdog.Expired)
+            {
+                // A host that refused the command may close the channel before EOF; its exit report, awaited below, says why.
+            }
+
             watchdog.Begin();
             var grace = Task.Delay(GracefulExit, time, graceTimer.Token);
             var ended = await Task.WhenAny(execution, watchdog.ExpiredTask, cancelled.Task, grace).ConfigureAwait(false);
@@ -212,7 +227,6 @@ internal sealed class SshCommandIo
         {
             failure = FailureOf(ex);
             cutShort = true;
-            plainFault = failure is not null && ex is not GitFailureException && !watchdog.Expired;
         }
         finally
         {
@@ -222,14 +236,7 @@ internal sealed class SshCommandIo
 
         if (cutShort)
         {
-            // A generic fault, such as sending EOF on a channel the host already closed, mustn't hide a host that did finish with a failing status.
-            var judged = plainFault && execution.IsCompletedSuccessfully && command.ExitStatus is not null ? ExitFailure() : null;
             command.Dispose();
-            if (judged is not null)
-            {
-                failure = judged;
-            }
-
             failure ??= graceful && !Token.IsCancellationRequested ? NotExited()
                 : watchdog.Expired && !Token.IsCancellationRequested ? TimedOut() : null;
         }

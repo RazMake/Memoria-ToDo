@@ -91,6 +91,7 @@ public sealed class CloneAndMergeIntegrationTests
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes/0.txt"] = "0" }));
         var a = world.AddDevice("a");
         await a.ConnectAsync(ct);
+        var setupCommands = world.Server.Commands.Count();
         var rejections = 0;
         world.Server.BeforeCommand = (verb, _) =>
         {
@@ -103,8 +104,7 @@ public sealed class CloneAndMergeIntegrationTests
         var status = await a.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
 
         Assert.Equal(SyncState.Idle, status.State);
-        var commands = world.Server.Commands.ToArray();
-        Assert.True(commands.Count(c => c == "receive-pack") == 3, $"receive-pack commands: {string.Join(", ", commands)}; failure {status.Failure}.");
+        Assert.True(ReceivePacksSince(world, setupCommands) == 3, $"receive-pack commands: {string.Join(", ", world.Server.Commands)}; failure {status.Failure}.");
         Assert.NotNull(world.Origin.ReadOnMain($"tasks/{task.Id}.json"));
     }
 
@@ -115,6 +115,7 @@ public sealed class CloneAndMergeIntegrationTests
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes/0.txt"] = "0" }));
         var a = world.AddDevice("a");
         await a.ConnectAsync(ct);
+        var setupCommands = world.Server.Commands.Count();
         var rejections = 0;
         world.Server.BeforeCommand = (verb, _) =>
         {
@@ -127,8 +128,8 @@ public sealed class CloneAndMergeIntegrationTests
         var status = await a.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
 
         Assert.Equal(SyncFailure.PushRejected, status.Failure);
-        var commands = world.Server.Commands.ToArray();
-        Assert.True(commands.Count(c => c == "receive-pack") == 3, $"receive-pack commands: {string.Join(", ", commands)}.");
+        Assert.True(status.HasPendingChanges);
+        Assert.True(ReceivePacksSince(world, setupCommands) == 3, $"receive-pack commands: {string.Join(", ", world.Server.Commands)}.");
     }
 
     [Fact]
@@ -138,6 +139,7 @@ public sealed class CloneAndMergeIntegrationTests
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes/0.txt"] = "0" }));
         var a = world.AddDevice("a");
         await a.ConnectAsync(ct);
+        var setupCommands = world.Server.Commands.Count();
 
         // A real pre-receive hook on the origin declines every push, as a host's branch policy would.
         var hooks = Directory.CreateDirectory(Path.Combine(world.Origin.Path, "hooks")).FullName;
@@ -147,9 +149,12 @@ public sealed class CloneAndMergeIntegrationTests
         var status = await a.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
 
         Assert.Equal(SyncFailure.PushRejected, status.Failure);
-        var commands = world.Server.Commands.ToArray();
-        Assert.True(commands.Count(c => c == "receive-pack") == 3, $"receive-pack commands: {string.Join(", ", commands)}.");
+        Assert.True(ReceivePacksSince(world, setupCommands) == 3, $"receive-pack commands: {string.Join(", ", world.Server.Commands)}.");
         Assert.Contains("pre-receive hook declined", status.Details, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(world.Origin.FilesOnMain("tasks"));
     }
+
+    // The clone's write-access check, made during setup, is a receive-pack that isn't a push: only the target pass's commands count.
+    private static int ReceivePacksSince(SyncWorld world, int setupCommands) =>
+        world.Server.Commands.Skip(setupCommands).Count(c => c == "receive-pack");
 }

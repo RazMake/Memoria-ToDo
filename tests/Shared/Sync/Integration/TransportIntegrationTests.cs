@@ -247,7 +247,7 @@ public sealed class TransportIntegrationTests
             Assert.Contains(inner.Flatten().InnerExceptions, e => e is IOException);
             Assert.Equal(SyncState.Error, a.Sync.Status.State);
             Assert.Equal(SyncFailure.LocalStorage, a.Sync.Status.Failure);
-            Assert.Contains("partial", a.Sync.Status.Details, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("may remain", a.Sync.Status.Details, StringComparison.OrdinalIgnoreCase);
             Assert.False(a.Sync.Setup.State.IsConfigured);
         }
         finally

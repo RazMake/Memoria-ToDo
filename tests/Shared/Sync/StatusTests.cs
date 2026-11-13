@@ -166,6 +166,151 @@ public sealed class StatusTests
         Assert.Equal(synced, sync.Status.LastSuccessfulSync);
     }
 
+    private async Task<ISyncService> SyncedWithPendingAsync(bool pending)
+    {
+        f.Ready();
+        f.Git.DefaultResult = new GitPassResult(pending);
+        var sync = f.Create();
+        await sync.SyncNowAsync(CancellationToken.None);
+        Assert.Equal(pending, sync.Status.HasPendingChanges);
+        return sync;
+    }
+
+    private async Task FailNextPassAsync(ISyncService sync, Exception failure, Action? beforeFailing = null)
+    {
+        var held = f.Git.ScriptPass();
+        var running = sync.SyncNowAsync(CancellationToken.None);
+        await held.HasStarted;
+        beforeFailing?.Invoke();
+        held.Fail(failure);
+        await Record.ExceptionAsync(() => running);
+    }
+
+    [Fact]
+    public async Task Shows_the_pending_changes_a_pass_found_when_it_then_fails_to_connect()
+    {
+        await using var sync = await SyncedWithPendingAsync(false);
+
+        await FailNextPassAsync(sync, new PassFailedException(new GitFailureException(SyncFailure.Connection, "Offline."), hasPendingChanges: true));
+
+        Assert.Equal(SyncState.Offline, sync.Status.State);
+        Assert.Equal(SyncFailure.Connection, sync.Status.Failure);
+        Assert.True(sync.Status.HasPendingChanges);
+    }
+
+    [Fact]
+    public async Task Shows_no_pending_changes_when_a_failed_pass_found_none_even_if_the_previous_status_had_some()
+    {
+        await using var sync = await SyncedWithPendingAsync(true);
+
+        await FailNextPassAsync(sync, new PassFailedException(new GitFailureException(SyncFailure.Connection, "Offline."), hasPendingChanges: false));
+
+        Assert.Equal(SyncFailure.Connection, sync.Status.Failure);
+        Assert.False(sync.Status.HasPendingChanges);
+    }
+
+    [Fact]
+    public async Task Reports_the_failure_a_failed_pass_wrapped_not_the_wrapper()
+    {
+        await using var sync = await SyncedWithPendingAsync(false);
+
+        await FailNextPassAsync(sync, new PassFailedException(new GitFailureException(SyncFailure.Authentication, "The host refused the key."), hasPendingChanges: true));
+
+        Assert.Equal(SyncState.Error, sync.Status.State);
+        Assert.Equal(SyncFailure.Authentication, sync.Status.Failure);
+        Assert.Equal("The host refused the key.", sync.Status.Details);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Keeps_the_pending_changes_shown_before_when_a_pass_fails_a_local_check_without_knowing_them(bool before)
+    {
+        await using var sync = await SyncedWithPendingAsync(before);
+
+        await FailNextPassAsync(sync, new GitFailureException(SyncFailure.Repository, "detached HEAD"));
+
+        Assert.Equal(SyncFailure.Repository, sync.Status.Failure);
+        Assert.Equal(before, sync.Status.HasPendingChanges);
+    }
+
+    [Fact]
+    public async Task Shows_pending_changes_and_a_local_storage_error_when_the_receipt_cannot_be_written_after_a_pass_that_found_changes()
+    {
+        f.Ready();
+        var held = f.Git.ScriptPass();
+        await using var sync = f.Create();
+        var running = sync.SyncNowAsync(CancellationToken.None);
+        await held.HasStarted;
+        f.Git.NextWriteReceiptFailure = new IOException("The disk is full.");
+
+        held.Complete(hasPendingChanges: true);
+        await Record.ExceptionAsync(() => running);
+
+        Assert.Equal(SyncFailure.LocalStorage, sync.Status.Failure);
+        Assert.True(sync.Status.HasPendingChanges);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Shows_the_pending_changes_a_finished_pass_found_when_closing_the_key_afterwards_fails(bool found)
+    {
+        await using var sync = await SyncedWithPendingAsync(!found);
+        f.Git.DefaultResult = new GitPassResult(found);
+        f.Keys.OnHandleDisposed = () => throw new IOException("The key handle could not be closed.");
+
+        await Record.ExceptionAsync(() => sync.SyncNowAsync(CancellationToken.None));
+
+        Assert.Equal(SyncState.Error, sync.Status.State);
+        Assert.NotNull(sync.Status.Failure);
+        Assert.Equal(found, sync.Status.HasPendingChanges);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Shows_the_pending_changes_a_failed_pass_found_when_closing_the_key_afterwards_also_fails(bool found)
+    {
+        await using var sync = await SyncedWithPendingAsync(!found);
+
+        await FailNextPassAsync(
+            sync,
+            new PassFailedException(new GitFailureException(SyncFailure.Connection, "Offline."), hasPendingChanges: found),
+            () => f.Keys.OnHandleDisposed = () => throw new IOException("The key handle could not be closed."));
+
+        Assert.Equal(SyncState.Error, sync.Status.State);
+        Assert.NotNull(sync.Status.Failure);
+        Assert.Equal(found, sync.Status.HasPendingChanges);
+    }
+
+    [Fact]
+    public async Task Keeps_the_pending_changes_of_a_failed_pass_when_the_setup_refresh_after_it_also_fails()
+    {
+        await using var sync = await SyncedWithPendingAsync(false);
+
+        await FailNextPassAsync(
+            sync,
+            new PassFailedException(new GitFailureException(SyncFailure.Connection, "Offline."), hasPendingChanges: true),
+            () => f.Git.OriginReadFailure = new IOException("Unreadable clone."));
+
+        Assert.Equal(SyncFailure.Connection, sync.Status.Failure);
+        Assert.True(sync.Status.HasPendingChanges);
+    }
+
+    [Fact]
+    public async Task Shows_no_pending_changes_after_a_successful_pass_that_follows_a_failed_pass_with_pending_changes()
+    {
+        await using var sync = await SyncedWithPendingAsync(false);
+        await FailNextPassAsync(sync, new PassFailedException(new GitFailureException(SyncFailure.Connection, "Offline."), hasPendingChanges: true));
+        f.Git.DefaultResult = new GitPassResult(false);
+
+        await sync.SyncNowAsync(CancellationToken.None);
+
+        Assert.Null(sync.Status.Failure);
+        Assert.False(sync.Status.HasPendingChanges);
+    }
+
     [Fact]
     public async Task Reports_skipped_files_as_an_invalid_file_error()
     {
