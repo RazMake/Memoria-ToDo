@@ -36,6 +36,8 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)tests\Testing\Kinds\Memoria.ToDo.Testing.Kinds.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)tests\Testing\Analyzers\Memoria.ToDo.Testing.Analyzers.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <!-- A skipped test fails every run; the one copy of the setting. -->
+    <Content Include="$(MSBuildThisFileDirectory)tests\xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Every project under src/ lists its public interface in two files. -->
