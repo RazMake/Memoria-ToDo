@@ -14,7 +14,7 @@ using Memoria.ToDo.Desktop.FormattedView;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Drives a showing View Tasks window the way a user does, through what the screen shows. Shared test setup.
+/// Drives a showing Task View window the way a user does, through what the screen shows. Shared test setup.
 /// The screen is found by ordinary accessible labels, so tests depend on no private element:
 /// <list type="bullet">
 /// <item>A row on the left side has automation id "Row" and as its name the task's plain title. It holds the checkbox and the title, and nothing else. A task in two groups has a row in each. The selected task's rows have automation item status "Selected".</item>
@@ -365,7 +365,7 @@ internal sealed partial class TaskListScreen : IDisposable
     }
 
     /// <summary>
-    /// Presses the keys, the last of which closes View Tasks. Nothing is laid out afterwards, since no window is left.
+    /// Presses the keys, the last of which closes Task View. Nothing is laid out afterwards, since no window is left.
     /// </summary>
     public void PressToClose(params Key[] keys)
     {

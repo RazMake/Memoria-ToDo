@@ -126,6 +126,10 @@ jobs:
           $version = node .agents/version-tag.mjs --check $env:GITHUB_REF_NAME
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "VERSION=$version" >> $env:GITHUB_ENV
+      - name: Write the version's release notes from the changelog, or fail when it has none
+        run: |
+          node .agents/version-tag.mjs --notes $env:GITHUB_REF_NAME > release-notes.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Fail unless the tag's commit is on the default branch
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
@@ -158,7 +162,7 @@ jobs:
         run: >
           dotnet vpk pack --packId $env:INSTALLER_ID --packVersion $env:VERSION --packDir publish
           --mainExe $env:APP_EXE --packTitle $env:APP_NAME --icon $env:APP_ICON
-          --runtime win-x64 --shortcuts StartMenuRoot --noPortable
+          --runtime win-x64 --shortcuts StartMenuRoot --noPortable --releaseNotes release-notes.md
       - name: Publish the release
         run: >
           dotnet vpk upload github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --token $env:GITHUB_TOKEN

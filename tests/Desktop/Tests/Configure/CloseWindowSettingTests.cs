@@ -275,13 +275,13 @@ public class CloseWindowSettingTests
     }
 
     [Fact]
-    public void A_pick_equal_to_the_Manage_tasks_shortcut_names_that_row()
+    public void A_pick_equal_to_the_Task_View_shortcut_names_that_row()
     {
         row.Create();
 
         Pick(Win | Alt, Key.V);
 
-        Assert.Equal("Manage tasks already uses Win+Alt+V. Press a different shortcut.", row.Setting.Message);
+        Assert.Equal("Task View already uses Win+Alt+V. Press a different shortcut.", row.Setting.Message);
     }
 
     [Fact]

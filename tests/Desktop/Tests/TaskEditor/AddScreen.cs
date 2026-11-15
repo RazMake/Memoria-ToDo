@@ -207,5 +207,56 @@ internal sealed class AddScreen : IDisposable
         }
     }
 
+    /// <summary>The update status bar along the window's bottom edge, or null when the window has none.</summary>
+    public Updates.UpdateStatusBar? UpdateBar => OpenWindows.Descendants(Window).OfType<Updates.UpdateStatusBar>().SingleOrDefault();
+
+    /// <summary>Whether the update status bar shows.</summary>
+    public bool ShowsUpdateBar => UpdateBar is { IsVisible: true };
+
+    /// <summary>The state changes while the window is open, as when a check ends. Then the window lays out.</summary>
+    public void PublishUpdate(Updates.UpdateStage stage, string? newVersion)
+    {
+        Services.Updates.Publish(new Updates.UpdateState(stage, "2.1.0", newVersion, null));
+        Settle();
+    }
+
+    /// <summary>The window's height once its layout has settled, which includes its resize to its content.</summary>
+    public double WindowHeight
+    {
+        get
+        {
+            Settle();
+            return Window.ActualHeight;
+        }
+    }
+
+    /// <summary>The update text button in the status bar, such as "Update available: 2.2.0".</summary>
+    public System.Windows.Controls.Button UpdateTextButton =>
+        OpenWindows.Descendants(UpdateBar!).OfType<System.Windows.Controls.Button>().Single();
+
+    /// <summary>The texts the update status bar shows.</summary>
+    public IReadOnlyList<string> UpdateBarTexts =>
+        [.. OpenWindows.Descendants(UpdateBar!).OfType<System.Windows.Controls.TextBlock>().Select(OpenWindows.TextOf).Where(t => t.Length > 0)];
+
+    /// <summary>Where the status bar and the Save button are in the window, and how tall the window's content area is.</summary>
+    public (Rect Bar, Rect Save, double ContentHeight) BarPlace
+    {
+        get
+        {
+            Settle();
+            var content = (FrameworkElement)Window.Content;
+            return (RectIn(UpdateBar!), RectIn(SaveButton), content.ActualHeight);
+        }
+    }
+
+    private Rect RectIn(FrameworkElement element) =>
+        new(element.TranslatePoint(new Point(0, 0), (FrameworkElement)Window.Content), new Size(element.ActualWidth, element.ActualHeight));
+
+    private void Settle()
+    {
+        Window.UpdateLayout();
+        Window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+    }
+
     public void Dispose() => windows.Dispose();
 }

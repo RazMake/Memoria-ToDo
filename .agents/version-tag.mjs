@@ -4,12 +4,14 @@
 // Usage: node .agents/version-tag.mjs [major|minor|patch] [--dry-run | --expect <tag> --commit <id>]
 //        node .agents/version-tag.mjs --clear [<tag>] [--dry-run | --here <id> --origin <id>]
 //        node .agents/version-tag.mjs --check <tag>
+//        node .agents/version-tag.mjs --notes <tag>
 import { execFile } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'usage: node .agents/version-tag.mjs [major|minor|patch] [--dry-run | --expect <tag> --commit <id>] | --clear [<tag>] [--dry-run | --here <id> --origin <id>] | --check <tag>';
+const usage = 'usage: node .agents/version-tag.mjs [major|minor|patch] [--dry-run | --expect <tag> --commit <id>] | --clear [<tag>] [--dry-run | --here <id> --origin <id>] | --check <tag> | --notes <tag>';
 const parts = ['major', 'minor', 'patch'];
 const versionTag = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const commitId = /^([0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -29,6 +31,10 @@ const flagOptions = ['--clear', '--dry-run'];
 const valueOptions = { '--expect': versionTag, '--commit': commitId, '--here': commitId, '--origin': commitId };
 
 function parseArguments(args) {
+  if (args.includes('--notes')) {
+    if (args.length !== 2 || args[0] !== '--notes') refuse(`--notes takes exactly one tag; ${usage}`);
+    return { command: 'notes', tag: args[1] };
+  }
   if (args.includes('--check')) {
     if (args.length !== 2 || args[0] !== '--check') refuse(`--check takes exactly one tag; ${usage}`);
     return { command: 'check', tag: args[1] };
@@ -75,6 +81,33 @@ function check(tag) {
   return `${version.join('.')}\n`;
 }
 
+/**
+ * Finds the notes of `version`, such as '1.3.0', in the text of CHANGELOG.md (or undefined for none), as docs/contributing/changelog.md shapes it.
+ * Returns the text of its one `## <version>` section, trimmed of blank lines at both ends, and whether `## Unreleased` still has entries.
+ * Refuses, naming the version and the fix, when there is no such section, it is empty, or it appears twice.
+ */
+function notesOf(changelog, version) {
+  const sections = [];
+  const unreleased = [];
+  let current;
+  for (const line of (changelog ?? '').split(/\r?\n/)) {
+    const heading = /^## (.+?)\s*$/.exec(line)?.[1];
+    if (heading === undefined) current?.push(line);
+    else if (heading === 'Unreleased') current = unreleased;
+    else current = heading === version ? sections[sections.push([]) - 1] : undefined;
+  }
+  const hasUnreleased = unreleased.some((line) => line.trim());
+  const where = 'then commit and push';
+  if (!sections.length) {
+    refuse(hasUnreleased
+      ? `CHANGELOG.md has no "## ${version}" section; rename "## Unreleased" to "## ${version}", ${where}`
+      : `CHANGELOG.md has no "## ${version}" section; add it with what changed for users, or one line saying nothing users notice changed, ${where}`);
+  }
+  const notes = sections[0].join('\n').replace(/^(?:[ \t]*\n)+/, '').trimEnd();
+  if (sections.length > 1 || !notes) refuse(`CHANGELOG.md's "## ${version}" section is empty or appears twice; write its entries in one "## ${version}" section, ${where}`);
+  return { notes, hasUnreleased };
+}
+
 const versionTagsOf = (...maps) => [...new Set(maps.flatMap((map) => [...map.keys()]))].filter((tag) => versionTag.test(tag));
 const latestOf = (tags) => tags.reduce((best, tag) => (!best || compare(versionOf(tag), versionOf(best)) > 0 ? tag : best), undefined);
 
@@ -115,6 +148,9 @@ async function make(git, { part, dryRun, expect, commit: approvedCommit }) {
   if (expect !== undefined && (tag !== expect || commit !== approvedCommit)) {
     refuse(`${part} would now make ${tag} on ${commit}, not the approved ${expect} on ${approvedCommit}; nothing was changed, preview again`);
   }
+  const version = tag.slice(1);
+  const { hasUnreleased } = notesOf(await git.changelogAt(commit), version);
+  if (hasUnreleased) refuse(`CHANGELOG.md still has entries under "## Unreleased" besides "## ${version}"; move them under "## ${version}", then commit and push`);
 
   if (dryRun) {
     const { shortId, subject } = await git.commitInfo(commit);
@@ -197,11 +233,14 @@ async function clear(git, { tag: named, dryRun, here, origin }) {
   return done;
 }
 
-/** Runs one command line against `git` (see createGit for its operations) and returns what to print and the exit code. */
-export async function run(args, git) {
+/** Runs one command line against `git` and `files` (see createGit and createFiles for their operations) and returns what to print and the exit code. */
+export async function run(args, git, files) {
   try {
     const parsed = parseArguments(args);
-    const stdout = parsed.command === 'check' ? check(parsed.tag) : await (parsed.command === 'clear' ? clear : make)(git, parsed);
+    let stdout;
+    if (parsed.command === 'check') stdout = check(parsed.tag);
+    else if (parsed.command === 'notes') stdout = `${notesOf(await files.readChangelog(), check(parsed.tag).trim()).notes}\n`;
+    else stdout = await (parsed.command === 'clear' ? clear : make)(git, parsed);
     return { code: 0, stdout, stderr: '' };
   } catch (error) {
     const message = String(error.message).trim().replace(/\s*\n\s*/g, ' ');
@@ -257,6 +296,11 @@ export function createGit(cwd) {
       }
       return tags;
     },
+    // ls-tree tells a missing file from a failed git: it prints nothing for the first and rejects for the second, whatever git's language.
+    async changelogAt(commit) {
+      if (!(await git('ls-tree', '--name-only', commit, '--', 'CHANGELOG.md')).trim()) return undefined;
+      return git('show', `${commit}:CHANGELOG.md`);
+    },
     async commitInfo(id) {
       try {
         await git('cat-file', '-e', `${id}^{commit}`);
@@ -282,8 +326,23 @@ export function createGit(cwd) {
   };
 }
 
+/** The real files run() reads, in the repository at `root`. A failed read rejects, except a missing file, which is undefined. */
+export function createFiles(root) {
+  return {
+    async readChangelog() {
+      try {
+        return await readFile(join(root, 'CHANGELOG.md'), 'utf8');
+      } catch (error) {
+        if (error.code === 'ENOENT') return undefined;
+        throw error;
+      }
+    },
+  };
+}
+
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
-  const { code, stdout, stderr } = await run(process.argv.slice(2), createGit(join(dirname(script), '..')));
+  const root = join(dirname(script), '..');
+  const { code, stdout, stderr } = await run(process.argv.slice(2), createGit(root), createFiles(root));
   process.stdout.write(stdout);
   process.stderr.write(stderr);
   process.exitCode = code;

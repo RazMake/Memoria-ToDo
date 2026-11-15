@@ -152,7 +152,7 @@ public class TaskListTagEscTests
     }
 
     [WpfFact]
-    public void A_second_Esc_after_the_menu_closed_closes_View_Tasks()
+    public void A_second_Esc_after_the_menu_closed_closes_Task_View()
     {
         using var screen = ExpandedWithMenu(new ListServices());
         screen.Press(Key.Escape);

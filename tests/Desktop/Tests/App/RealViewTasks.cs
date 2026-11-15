@@ -16,7 +16,7 @@ using Microsoft.Web.WebView2.Wpf;
 namespace Memoria.ToDo.Desktop.App.Tests;
 
 /// <summary>
-/// The real <c>WpfDescriptionWebView</c> in the real View Tasks window, over fake tasks, files, theme and browser, with
+/// The real <c>WpfDescriptionWebView</c> in the real Task View window, over fake tasks, files, theme and browser, with
 /// its own temporary folders. Shared test setup: the app, its tray and its global shortcuts are not started. Rows are
 /// found by their accessible names. Disposing it closes what it opened, stops the browser, and deletes the folders.
 /// </summary>
@@ -40,26 +40,27 @@ internal sealed class RealViewTasks : IDisposable
         Tasks.UseRepositoryFolder(clone);
         View = ViewTasksWindow.Create(
             Tasks, new FakeTagColors(), Palette.Colors, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(),
-            files, () => MakeWebView(clone), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys());
+            files, () => MakeWebView(clone), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
+            new FakeUpdateStatus());
     }
 
     public ITasks Tasks { get; }
 
     public IViewTasksWindow View { get; }
 
-    /// <summary>Every web view View Tasks made.</summary>
+    /// <summary>Every web view Task View made.</summary>
     public IReadOnlyList<WpfDescriptionWebView> WebViews => _made;
 
     /// <summary>The browser process; set once <see cref="ShowAsync"/> returned.</summary>
-    public Process Browser => _browser ?? throw new InvalidOperationException("View Tasks isn't shown yet.");
+    public Process Browser => _browser ?? throw new InvalidOperationException("Task View isn't shown yet.");
 
-    /// <summary>The showing View Tasks window.</summary>
+    /// <summary>The showing Task View window.</summary>
     public Window Window => _windows.Visible().Single();
 
     public void Add(string title, string description) =>
         Tasks.Add(Tasks.StartDraft() with { Title = title, Description = description });
 
-    /// <summary>Shows View Tasks and waits until its browser has started, with no sleeps.</summary>
+    /// <summary>Shows Task View and waits until its browser has started, with no sleeps.</summary>
     public async Task<CoreWebView2> ShowAsync()
     {
         View.Show();

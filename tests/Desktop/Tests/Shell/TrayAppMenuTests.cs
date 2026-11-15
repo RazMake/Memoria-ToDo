@@ -29,7 +29,7 @@ public class TrayAppMenuTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Manage_tasks_and_a_left_click_each_show_only_View_Tasks(bool leftClick)
+    public void Task_View_and_a_left_click_each_show_only_Task_View(bool leftClick)
     {
         var app = Started();
 
@@ -39,7 +39,7 @@ public class TrayAppMenuTests
         }
         else
         {
-            app.TrayIcon.ChooseMenuItem("Manage tasks");
+            app.TrayIcon.ChooseMenuItem("Task View");
         }
 
         Assert.Equal(0, app.Add.ShowCount);
@@ -79,7 +79,7 @@ public class TrayAppMenuTests
     {
         var app = Started();
 
-        app.TrayIcon.ChooseMenuItem("Manage tasks");
+        app.TrayIcon.ChooseMenuItem("Task View");
         app.TrayIcon.LeftClick();
 
         Assert.Equal(2, app.ViewTasks.ShowCount);

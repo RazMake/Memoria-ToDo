@@ -282,7 +282,8 @@ public class ConfigureWindowTests
         var content = (FrameworkElement)screen.Window.Content;
         var last = screen.Title("Sync settings");
         var bottom = last.TranslatePoint(new Point(0, last.ActualHeight), content).Y;
-        Assert.InRange(content.ActualHeight - bottom, 0, 30);
+        const double WindowMargin = 24;
+        Assert.InRange(content.ActualHeight - bottom, 0, WindowMargin + 30);
     }
 
     [WpfFact]

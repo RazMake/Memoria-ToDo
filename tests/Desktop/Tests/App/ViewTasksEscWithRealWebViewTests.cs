@@ -5,7 +5,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.App.Tests;
 
 /// <summary>
-/// Esc reaches View Tasks from the real description web view. The web view passes keys to the window as accelerator keys,
+/// Esc reaches Task View from the real description web view. The web view passes keys to the window as accelerator keys,
 /// and no run has confirmed that Esc gets through, so the test sends a real Esc key press to Windows while the web view
 /// holds the keyboard focus. Needs the WebView2 Runtime and the desktop's input, like the hot key tests.
 /// </summary>
@@ -14,7 +14,7 @@ namespace Memoria.ToDo.Desktop.App.Tests;
 public class ViewTasksEscWithRealWebViewTests
 {
     [WpfFact]
-    public async Task Esc_with_the_focus_in_the_description_closes_View_Tasks()
+    public async Task Esc_with_the_focus_in_the_description_closes_Task_View()
     {
         using var view = new RealViewTasks();
         view.Add("First", "alphadescription");
@@ -27,7 +27,7 @@ public class ViewTasksEscWithRealWebViewTests
         var web = (WebView2CompositionControl)view.WebViews.Single().Element;
         var focused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         web.GotFocus += (_, _) => focused.TrySetResult();
-        window.Activate();
+        KeyboardInput.BringToFront(new System.Windows.Interop.WindowInteropHelper(window).Handle);
         web.Focus();
         await focused.Task.WaitAsync(RealViewTasks.Limit);
 

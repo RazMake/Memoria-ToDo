@@ -18,7 +18,7 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 /// field as key-down and key-up events, so a field must work out the modifiers from those events: a test can't set
 /// the keyboard's real state. Shared test setup, not a fake of a port. Dispose it to close the window.
 /// </summary>
-internal sealed class ConfigureScreen : IDisposable
+internal sealed partial class ConfigureScreen : IDisposable
 {
     private readonly OpenWindows windows = new();
     private readonly IConfigureWindow configure;
@@ -26,7 +26,7 @@ internal sealed class ConfigureScreen : IDisposable
 
     /// <param name="startWithWindows">The port the window gets; a new fake, off, when null.</param>
     /// <param name="addNewTask">The Add new task action; a new fake that accepts every shortcut when null.</param>
-    /// <param name="manageTasks">The Manage tasks action; a new fake that accepts every shortcut when null.</param>
+    /// <param name="manageTasks">The Task View action; a new fake that accepts every shortcut when null.</param>
     public ConfigureScreen(
         FakeStartWithWindows? startWithWindows = null,
         FakeShortcutAction? addNewTask = null,
@@ -85,7 +85,7 @@ internal sealed class ConfigureScreen : IDisposable
     /// <summary>The Add new task action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction AddNewTask { get; }
 
-    /// <summary>The Manage tasks action. Its calls are those since the connection, which registered the default.</summary>
+    /// <summary>The Task View action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction ManageTasks { get; }
 
     /// <summary>What connecting the shortcuts answered.</summary>
@@ -110,7 +110,7 @@ internal sealed class ConfigureScreen : IDisposable
     /// <summary>The Add new task row's shortcut box, the first of the three.</summary>
     public TextBox AddField => ShortcutFields[0];
 
-    /// <summary>The Manage tasks row's shortcut box, the second of the three.</summary>
+    /// <summary>The Task View row's shortcut box, the second of the three.</summary>
     public TextBox ManageField => ShortcutFields[1];
 
     /// <summary>The Close window row's shortcut box, the third of the three.</summary>
@@ -119,12 +119,13 @@ internal sealed class ConfigureScreen : IDisposable
     /// <summary>The Close window keys the window was given.</summary>
     public CloseWindowKeys CloseWindowKeys => services.CloseWindowKeys;
 
-    public CheckBox StartWithWindowsBox => OpenWindows.Descendants(Window).OfType<CheckBox>().Single();
+    public CheckBox StartWithWindowsBox =>
+        OpenWindows.Descendants(Window).OfType<CheckBox>().Single(box => box.Content as string == "Start with Windows");
 
     /// <summary>The message under the Add new task row's box; empty when none.</summary>
     public string AddMessage => MessageUnder(AddField);
 
-    /// <summary>The message under the Manage tasks row's box; empty when none.</summary>
+    /// <summary>The message under the Task View row's box; empty when none.</summary>
     public string ManageMessage => MessageUnder(ManageField);
 
     /// <summary>The message under the Close window row's box; empty when none.</summary>

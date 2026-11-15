@@ -1,0 +1,79 @@
+#nullable enable
+Memoria.ToDo.Desktop.Updates.AppUpdates
+Memoria.ToDo.Desktop.Updates.IAppExit
+Memoria.ToDo.Desktop.Updates.IAppExit.AnyWindowOpen.get -> bool
+Memoria.ToDo.Desktop.Updates.IAppExit.CloseWindows() -> bool
+Memoria.ToDo.Desktop.Updates.IAppExit.End() -> void
+Memoria.ToDo.Desktop.Updates.IAppInstall
+Memoria.ToDo.Desktop.Updates.IAppInstall.ApplyAfterExit(Memoria.ToDo.Desktop.Updates.NewerVersion! version, bool quiet) -> void
+Memoria.ToDo.Desktop.Updates.IAppInstall.CheckAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Memoria.ToDo.Desktop.Updates.NewerVersion?>!
+Memoria.ToDo.Desktop.Updates.IAppInstall.DownloadAsync(Memoria.ToDo.Desktop.Updates.NewerVersion! version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Desktop.Updates.IAppInstall.IsInstalled.get -> bool
+Memoria.ToDo.Desktop.Updates.IAppInstall.Version.get -> string!
+Memoria.ToDo.Desktop.Updates.IAppUpdates
+Memoria.ToDo.Desktop.Updates.IUpdateLifetime
+Memoria.ToDo.Desktop.Updates.IUpdateLifetime.Start(Memoria.ToDo.Desktop.Updates.IAppExit! exit) -> void
+Memoria.ToDo.Desktop.Updates.IUpdateLifetime.StopAsync() -> System.Threading.Tasks.Task!
+Memoria.ToDo.Desktop.Updates.IUpdateStatus
+Memoria.ToDo.Desktop.Updates.IUpdateStatus.AutoUpdate.get -> bool
+Memoria.ToDo.Desktop.Updates.IUpdateStatus.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.Updates.IUpdateStatus.SetAutoUpdate(bool on) -> void
+Memoria.ToDo.Desktop.Updates.IUpdateStatus.ShowWhatIsNew(System.Windows.Window! owner) -> void
+Memoria.ToDo.Desktop.Updates.IUpdateStatus.State.get -> Memoria.ToDo.Desktop.Updates.UpdateState!
+Memoria.ToDo.Desktop.Updates.IUpdateStatus.UpdateNow() -> void
+Memoria.ToDo.Desktop.Updates.NewerVersion
+Memoria.ToDo.Desktop.Updates.NewerVersion.<Clone>$() -> Memoria.ToDo.Desktop.Updates.NewerVersion!
+Memoria.ToDo.Desktop.Updates.NewerVersion.Deconstruct(out string! Version, out System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Updates.ReleaseNotes!>! Notes, out System.Uri? OlderNotesPage) -> void
+Memoria.ToDo.Desktop.Updates.NewerVersion.Equals(Memoria.ToDo.Desktop.Updates.NewerVersion? other) -> bool
+Memoria.ToDo.Desktop.Updates.NewerVersion.NewerVersion(string! Version, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Updates.ReleaseNotes!>! Notes, System.Uri? OlderNotesPage = null) -> void
+Memoria.ToDo.Desktop.Updates.NewerVersion.Notes.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Updates.ReleaseNotes!>!
+Memoria.ToDo.Desktop.Updates.NewerVersion.Notes.init -> void
+Memoria.ToDo.Desktop.Updates.NewerVersion.OlderNotesPage.get -> System.Uri?
+Memoria.ToDo.Desktop.Updates.NewerVersion.OlderNotesPage.init -> void
+Memoria.ToDo.Desktop.Updates.NewerVersion.Version.get -> string!
+Memoria.ToDo.Desktop.Updates.NewerVersion.Version.init -> void
+Memoria.ToDo.Desktop.Updates.ReleaseNotes
+Memoria.ToDo.Desktop.Updates.ReleaseNotes.<Clone>$() -> Memoria.ToDo.Desktop.Updates.ReleaseNotes!
+Memoria.ToDo.Desktop.Updates.ReleaseNotes.Deconstruct(out string! Version, out string? Markdown) -> void
+Memoria.ToDo.Desktop.Updates.ReleaseNotes.Equals(Memoria.ToDo.Desktop.Updates.ReleaseNotes? other) -> bool
+Memoria.ToDo.Desktop.Updates.ReleaseNotes.Markdown.get -> string?
+Memoria.ToDo.Desktop.Updates.ReleaseNotes.Markdown.init -> void
+Memoria.ToDo.Desktop.Updates.ReleaseNotes.ReleaseNotes(string! Version, string? Markdown) -> void
+Memoria.ToDo.Desktop.Updates.ReleaseNotes.Version.get -> string!
+Memoria.ToDo.Desktop.Updates.ReleaseNotes.Version.init -> void
+Memoria.ToDo.Desktop.Updates.UpdateStage
+Memoria.ToDo.Desktop.Updates.UpdateStage.Available = 2 -> Memoria.ToDo.Desktop.Updates.UpdateStage
+Memoria.ToDo.Desktop.Updates.UpdateStage.NotInstalled = 0 -> Memoria.ToDo.Desktop.Updates.UpdateStage
+Memoria.ToDo.Desktop.Updates.UpdateStage.NoUpdate = 1 -> Memoria.ToDo.Desktop.Updates.UpdateStage
+Memoria.ToDo.Desktop.Updates.UpdateStage.Updating = 3 -> Memoria.ToDo.Desktop.Updates.UpdateStage
+Memoria.ToDo.Desktop.Updates.UpdateState
+Memoria.ToDo.Desktop.Updates.UpdateState.<Clone>$() -> Memoria.ToDo.Desktop.Updates.UpdateState!
+Memoria.ToDo.Desktop.Updates.UpdateState.CurrentVersion.get -> string!
+Memoria.ToDo.Desktop.Updates.UpdateState.CurrentVersion.init -> void
+Memoria.ToDo.Desktop.Updates.UpdateState.Deconstruct(out Memoria.ToDo.Desktop.Updates.UpdateStage Stage, out string! CurrentVersion, out string? NewVersion, out string? Failure) -> void
+Memoria.ToDo.Desktop.Updates.UpdateState.Equals(Memoria.ToDo.Desktop.Updates.UpdateState? other) -> bool
+Memoria.ToDo.Desktop.Updates.UpdateState.Failure.get -> string?
+Memoria.ToDo.Desktop.Updates.UpdateState.Failure.init -> void
+Memoria.ToDo.Desktop.Updates.UpdateState.NewVersion.get -> string?
+Memoria.ToDo.Desktop.Updates.UpdateState.NewVersion.init -> void
+Memoria.ToDo.Desktop.Updates.UpdateState.Stage.get -> Memoria.ToDo.Desktop.Updates.UpdateStage
+Memoria.ToDo.Desktop.Updates.UpdateState.Stage.init -> void
+Memoria.ToDo.Desktop.Updates.UpdateState.UpdateState(Memoria.ToDo.Desktop.Updates.UpdateStage Stage, string! CurrentVersion, string? NewVersion, string? Failure) -> void
+Memoria.ToDo.Desktop.Updates.UpdateStatusBar
+Memoria.ToDo.Desktop.Updates.UpdateStatusBar.UpdateStatusBar(Memoria.ToDo.Desktop.Updates.IUpdateStatus! updates, System.Windows.UIElement? start) -> void
+override Memoria.ToDo.Desktop.Updates.NewerVersion.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Updates.NewerVersion.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Updates.NewerVersion.ToString() -> string!
+override Memoria.ToDo.Desktop.Updates.ReleaseNotes.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Updates.ReleaseNotes.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Updates.ReleaseNotes.ToString() -> string!
+override Memoria.ToDo.Desktop.Updates.UpdateState.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Updates.UpdateState.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Updates.UpdateState.ToString() -> string!
+static Memoria.ToDo.Desktop.Updates.AppUpdates.Create(Memoria.ToDo.Desktop.Updates.IAppInstall! install, Memoria.ToDo.Shared.Platform.IFileSystem! files, string! deviceFolder, System.TimeProvider! time, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.Func<Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView!>! createWebView, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys) -> Memoria.ToDo.Desktop.Updates.IAppUpdates!
+static Memoria.ToDo.Desktop.Updates.NewerVersion.operator !=(Memoria.ToDo.Desktop.Updates.NewerVersion? left, Memoria.ToDo.Desktop.Updates.NewerVersion? right) -> bool
+static Memoria.ToDo.Desktop.Updates.NewerVersion.operator ==(Memoria.ToDo.Desktop.Updates.NewerVersion? left, Memoria.ToDo.Desktop.Updates.NewerVersion? right) -> bool
+static Memoria.ToDo.Desktop.Updates.ReleaseNotes.operator !=(Memoria.ToDo.Desktop.Updates.ReleaseNotes? left, Memoria.ToDo.Desktop.Updates.ReleaseNotes? right) -> bool
+static Memoria.ToDo.Desktop.Updates.ReleaseNotes.operator ==(Memoria.ToDo.Desktop.Updates.ReleaseNotes? left, Memoria.ToDo.Desktop.Updates.ReleaseNotes? right) -> bool
+static Memoria.ToDo.Desktop.Updates.UpdateState.operator !=(Memoria.ToDo.Desktop.Updates.UpdateState? left, Memoria.ToDo.Desktop.Updates.UpdateState? right) -> bool
+static Memoria.ToDo.Desktop.Updates.UpdateState.operator ==(Memoria.ToDo.Desktop.Updates.UpdateState? left, Memoria.ToDo.Desktop.Updates.UpdateState? right) -> bool

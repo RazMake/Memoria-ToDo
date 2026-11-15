@@ -60,8 +60,8 @@ The table lists what starts a sync on the desktop; the Android [Shell](android/s
 | When | What happens |
 | --- | --- |
 | A change is saved | A sync starts about 5 seconds later, so a burst of edits makes one commit |
-| The app starts, View Tasks opens, or 30 minutes pass | A sync starts |
-| The user presses Sync in View Tasks, or Sync now in Configure | A sync starts at once; the user asked for the button, to sync faster |
+| The app starts, Task View opens, or 30 minutes pass | A sync starts |
+| The user presses Sync in Task View, or Sync now in Configure | A sync starts at once; the user asked for the button, to sync faster |
 | A sync failed | It retries, waiting longer each time, up to 15 minutes |
 
 Proposed, each a decision to confirm:
@@ -592,7 +592,7 @@ The options below were considered and rejected, grouped by decision. The git and
 - Desktop timing:
   - **Every 5 minutes**: the user chose 30.
   - **Every minute**: about 1,400 contacts with the host a day.
-  - **Only at start and when View Tasks opens**: the tags and task references in Add would go stale.
+  - **Only at start and when Task View opens**: the tags and task references in Add would go stale.
 - Local work in the two discard cases above:
   - **Stop sync and preserve the local bytes and index**: the user chose to allow the remote result instead,
     accepting possible loss rather than blocking the pass for manual repair.

@@ -16,12 +16,12 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 public class ConfigureCloseWindowTests
 {
     [WpfFact]
-    public void Shows_three_shortcut_rows_Add_new_task_Manage_tasks_and_Close_window_in_order()
+    public void Shows_three_shortcut_rows_Add_new_task_Task_View_and_Close_window_in_order()
     {
         using var screen = new ConfigureScreen();
         screen.Open();
 
-        string[] labels = ["Add new task", "Manage tasks", "Close window"];
+        string[] labels = ["Add new task", "Task View", "Close window"];
 
         Assert.Equal(labels, screen.Texts.Where(text => labels.Contains(text)));
         Assert.Equal("Shift+Escape", screen.CloseField.Text);
@@ -34,7 +34,7 @@ public class ConfigureCloseWindowTests
         screen.Open();
 
         Assert.Equal("Opens the Add window from any app.", OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.AddField)));
-        Assert.Equal("Opens View Tasks from any app.", OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.ManageField)));
+        Assert.Equal("Opens Task View from any app.", OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.ManageField)));
         Assert.Equal(
             "Closes the app's window you're in, whatever has the focus.",
             OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.CloseField)));

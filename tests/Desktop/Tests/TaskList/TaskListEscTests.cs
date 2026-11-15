@@ -5,9 +5,9 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Esc in View Tasks goes back one step, then closes the window: it closes an open list, then leaves an edit, then closes
-/// View Tasks. The rule for which edits show the Undo bar is unit-tested in EditCleanupTests, and Esc on a changed edit with
-/// its Undo is in TaskListEditTests. View Tasks has the editor's snippet list, the tag control's + menu and its Custom box,
+/// Esc in Task View goes back one step, then closes the window: it closes an open list, then leaves an edit, then closes
+/// Task View. The rule for which edits show the Undo bar is unit-tested in EditCleanupTests, and Esc on a changed edit with
+/// its Undo is in TaskListEditTests. Task View has the editor's snippet list, the tag control's + menu and its Custom box,
 /// and the filter's all-tags list; Esc with the menu or Custom open is in TaskListTagEscTests. Esc from the real
 /// description web view is an integration test, ViewTasksEscWithRealWebViewTests.
 /// </summary>
@@ -48,7 +48,7 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void Esc_after_the_list_closed_closes_View_Tasks()
+    public void Esc_after_the_list_closed_closes_Task_View()
     {
         var services = new ListServices();
         TaskListFilterTests.AddTasksWithTagsOnlyInAllTagsList(services);
@@ -97,7 +97,7 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void A_second_Esc_after_leaving_a_changed_edit_from_Search_closes_View_Tasks()
+    public void A_second_Esc_after_leaving_a_changed_edit_from_Search_closes_Task_View()
     {
         var services = new ListServices();
         services.Add("Buy milk");
@@ -113,7 +113,7 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void A_second_Esc_after_leaving_a_changed_edit_from_a_header_button_closes_View_Tasks()
+    public void A_second_Esc_after_leaving_a_changed_edit_from_a_header_button_closes_Task_View()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
@@ -184,7 +184,7 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void Esc_with_nothing_open_closes_View_Tasks()
+    public void Esc_with_nothing_open_closes_Task_View()
     {
         var services = new ListServices();
         services.Add("Buy milk");
@@ -196,7 +196,7 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void Esc_closes_View_Tasks_so_a_pending_delete_finishes()
+    public void Esc_closes_Task_View_so_a_pending_delete_finishes()
     {
         var services = new ListServices();
         services.Add("Buy milk");
@@ -211,7 +211,7 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void Esc_in_the_search_box_closes_View_Tasks_instead_of_clearing_the_search()
+    public void Esc_in_the_search_box_closes_Task_View_instead_of_clearing_the_search()
     {
         var services = new ListServices();
         services.Add("Buy milk");
@@ -226,7 +226,7 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void Esc_with_a_task_only_selected_closes_View_Tasks_and_does_not_clear_the_selection_first()
+    public void Esc_with_a_task_only_selected_closes_Task_View_and_does_not_clear_the_selection_first()
     {
         var services = new ListServices();
         services.Add("Buy milk", "Oat milk");

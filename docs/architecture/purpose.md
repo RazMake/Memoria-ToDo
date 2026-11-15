@@ -13,7 +13,7 @@ Two principles shape everything below: adding a task is as fast as it can be, an
 The main goal is that the user gets from deciding to add a task to typing in the editor as close to instantly as possible.
 
 - **Title and description are markdown.** The user formats text and inserts common snippets with shortcuts.
-- **Tags can be added while adding the task**, or later in View Tasks.
+- **Tags can be added while adding the task**, or later in Task View.
 - **Anything else that makes adding a task faster is in scope.**
 
 ### Every device shows the same task list
@@ -26,14 +26,14 @@ One person uses Memoria-ToDo, and only they write to it, from their own Windows 
 - **The operating system protects the private key.** On Windows, only the user's account can unlock it; on Android, the [Android Keystore](https://developer.android.com/privacy-and-security/keystore) protects it. [Sync through git](sync.md#the-windows-key-file-is-encrypted-and-only-the-users-account-unlocks-it) decides the Windows mechanism, and the Android [Configure](android/configure.md#the-key-is-made-inside-the-android-keystore-and-never-leaves-it) the Android one.
 - **Only a private repository protects the tasks.** Files aren't encrypted, so anyone who can read the repository, including the git host, can read every task. The apps don't remind the user to keep it private.
 
-### Both apps offer Add new Task, View Tasks, and Configure
+### Both apps offer Add new Task, Task View, and Configure
 
 The two apps differ in how they run and where they open:
 
 | App | How it runs | Where it opens |
 | --- | --- | --- |
 | Windows desktop app | Starts with Windows and lives in the notification area (the tray). | Clicking the tray icon offers the three functions. |
-| Android app | Isn't meant to always run: it runs while the user has it open, and [syncs in the background](android/shell.md#sync-runs-while-the-app-is-open-and-every-few-hours-in-the-background) every few hours. | View Tasks if the app is configured, otherwise Configure. A floating button in View Tasks adds a task. |
+| Android app | Isn't meant to always run: it runs while the user has it open, and [syncs in the background](android/shell.md#sync-runs-while-the-app-is-open-and-every-few-hours-in-the-background) every few hours. | Task View if the app is configured, otherwise Configure. A floating button in Task View adds a task. |
 
 The desktop app must be built with Windows Presentation Foundation (WPF). Both apps are for personal use: the desktop app installs with a simple installer, and the Android app is sideloaded from an Android package (APK) file.
 

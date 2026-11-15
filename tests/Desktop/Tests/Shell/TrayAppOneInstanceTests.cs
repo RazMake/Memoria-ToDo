@@ -6,8 +6,6 @@ namespace Memoria.ToDo.Desktop.Shell.Tests;
 [Unit]
 public class TrayAppOneInstanceTests
 {
-    private static readonly TimeSpan Day = TimeSpan.FromHours(24);
-
     private static ShellHarness LaterInstance(bool startedAtSignIn = false)
     {
         var app = new ShellHarness(startedAtSignIn);
@@ -46,12 +44,11 @@ public class TrayAppOneInstanceTests
     }
 
     [Fact]
-    public void A_later_instance_starts_no_update_checks()
+    public void A_later_instance_does_not_start_Updates()
     {
         var app = LaterInstance();
-        app.Time.Advance(Day * 3);
 
-        Assert.Equal(0, app.Updates.CallCount);
+        Assert.Equal(0, app.Updates.StartCount);
     }
 
     [Fact]
@@ -77,7 +74,7 @@ public class TrayAppOneInstanceTests
     }
 
     [Fact]
-    public void Each_later_start_shows_View_Tasks_in_the_running_instance()
+    public void Each_later_start_shows_Task_View_in_the_running_instance()
     {
         var app = new ShellHarness();
         app.Start();

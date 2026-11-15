@@ -2,7 +2,7 @@
 
 Status: Decided
 
-The Task editor is the desktop app's Add window, built so one key press puts the cursor in a new task's title with no wait. View Tasks edits a task with the same editor, on its right side.
+The Task editor is the desktop app's Add window, built so one key press puts the cursor in a new task's title with no wait. Task View edits a task with the same editor, on its right side.
 
 ## Behavior
 
@@ -34,6 +34,7 @@ Proposed, each a decision to confirm:
 - Save isn't the window's default button, so Enter keeps its meaning in each field.
 - The keyboard reaches both buttons with Tab, in the order they show.
 - Both buttons belong to the Add window, not to the editor the Task list reuses, so the [public interface](#public-interface) doesn't change.
+- **While a new version is available or updating, Add shows [Updates' status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) along its bottom edge**, below Save, and grows taller by the bar's height, as it grows with what it holds. Otherwise the bar is hidden. A click on the bar's update text starts the update, which closes Add and keeps its draft.
 
 ### Keys save, close, and move between fields
 
@@ -59,7 +60,7 @@ Proposed, each a decision to confirm:
 - Ctrl+V runs the image route only when the clipboard holds an image, and pastes as usual otherwise. Ctrl+V, Ctrl+Shift+I, and file drops work in the Description only; the Title ignores them.
 - A chosen or dropped file's alt text is its name without the extension, and `image` when that is empty, as is an image from the clipboard's. A drop inserts at the cursor, in place of the selection, and uses only the first dropped file. A dropped file that isn't an image shows an error. Drops that carry no file, such as dragged text, keep their usual meaning in the editor.
 - The snippet list's Image entry does what Ctrl+Shift+I does, in place of the "/" and what was typed after it. When the dialog is cancelled, the typed text stays.
-- An image that can't be read, isn't an image, can't be shrunk to 1 MB, or can't be kept shows an error on the [editor's message line](#add-and-view-tasks-save-the-same-way-through-the-editor). The error mentions the image, nothing is inserted, and the text, cursor, and focus stay as they were. The next image that is added clears the message.
+- An image that can't be read, isn't an image, can't be shrunk to 1 MB, or can't be kept shows an error on the [editor's message line](#add-and-task-view-save-the-same-way-through-the-editor). The error mentions the image, nothing is inserted, and the text, cursor, and focus stay as they were. The next image that is added clears the message.
 - Opening the file dialog doesn't hide Add, though the dialog takes the focus.
 
 ### Every formatting command and snippet has a key
@@ -105,7 +106,7 @@ The reference to another task opens a list, as above. It lists open tasks only, 
 
 ### Closing without saving keeps a draft on this device
 
-Closing Add without saving, with Esc or by clicking elsewhere, keeps its text as a draft. The next Add opens with the draft, and the Clear button clears it. Drafts stay on this device and never sync. Add never asks before it closes, since the draft keeps the text; View Tasks [asks](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) only before it drops a changed edit, which has no draft.
+Closing Add without saving, with Esc or by clicking elsewhere, keeps its text as a draft. The next Add opens with the draft, and the Clear button clears it. Drafts stay on this device and never sync. Add never asks before it closes, since the draft keeps the text; Task View [asks](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) only before it drops a changed edit, which has no draft.
 
 [Tasks keeps the draft](../tasks.md#a-draft-waits-on-this-device-until-its-saved), with its images, in `%LocalAppData%\Memoria-ToDo\draft\`, a folder the composition root gives it. Add keeps the draft when it hides and when the app exits, and saving the task clears it. Clicking Add's own buttons, its lists, or its file dialog isn't clicking elsewhere.
 
@@ -156,9 +157,9 @@ Proposed, each a decision to confirm:
 
 ### A new task goes to the top
 
-A saved new task goes to the top of the order, where the user sees it first in View Tasks. Tasks computes its rank, as [the desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists.
+A saved new task goes to the top of the order, where the user sees it first in Task View. Tasks computes its rank, as [the desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists.
 
-### Add and View Tasks save the same way, through the editor
+### Add and Task View save the same way, through the editor
 
 The editor runs every save itself, so Add and the Task list's [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) save the same way. Its user passes the function that saves: Add passes [Tasks'](../tasks.md#public-interface) add, and the Task list passes Tasks' save of an edit. Each save takes three steps:
 
@@ -177,9 +178,9 @@ Tasks keeps tasks in [Configure's repository folder](configure.md#the-sync-setti
 The composition root, Shell, and the Task list use these parts:
 
 - **Create the Add window**: the composition root creates it when the app starts, as [above](#add-opens-at-once-with-the-cursor-in-the-title), and gives it to Shell.
-- **Show Add**: shows the Add window, with the draft if there is one. Shell calls it from the [Add new task shortcut](shell.md#a-shortcut-switches-between-add-and-view-tasks), the tray icon, and the tray menu.
-- **Close Add**: hides the Add window and keeps the draft, as Esc does, and does nothing while it's hidden. Shell calls it when the Manage tasks shortcut [switches to View Tasks](shell.md#a-shortcut-switches-between-add-and-view-tasks).
-- **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-view-tasks-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. The Task list uses it to edit a task on View Tasks' right side. The user decided that the editor tells what changed, so the Task list shows its [Undo bar](task-list.md#edit-description-turns-the-right-side-into-the-editor) only for an edit with changes, and never loses tag text typed and not yet added.
+- **Show Add**: shows the Add window, with the draft if there is one. Shell calls it from the [Add new task shortcut](shell.md#a-shortcut-switches-between-add-and-task-view), the tray icon, and the tray menu.
+- **Close Add**: hides the Add window and keeps the draft, as Esc does, and does nothing while it's hidden. Shell calls it when the Task View shortcut [switches to Task View](shell.md#a-shortcut-switches-between-add-and-task-view).
+- **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-task-view-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. The Task list uses it to edit a task on Task View's right side. The user decided that the editor tells what changed, so the Task list shows its [Undo bar](task-list.md#edit-description-turns-the-right-side-into-the-editor) only for an edit with changes, and never loses tag text typed and not yet added.
 - **The tag control**: a task's tags as badges with remove buttons, then the + and its menu, as [above](#tags-show-as-colored-badges-and-the-plus-button-adds-one). It reports each tag the user adds or removes, and keeps a picked color through Tasks, but never saves the task. The editor holds one, and the Task list shows one under the selected task's description.
 - **Tag badges**: tags as read-only badges in their colors. The Task list shows one as each tag group's heading.
 - **The top tags**: the seven most-used tags as badges in their colors, reporting the one clicked. The Task list uses them in its tag filter. The + menu shows the same seven, less the task's own tags, so the count has one home.
@@ -203,6 +204,8 @@ public static class AddWindow
 ```
 
 `AddWindow.Create` also takes the platform's [Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) as a new last argument, `CloseWindowKeys closeWindowKeys`, and attaches the Add window to them.
+
+The user decided that the Task editor may use [Updates](updates.md), for Add's [status bar](#add-opens-at-once-with-the-cursor-in-the-title). Proposed: `AddWindow.Create` also takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, as its new last argument, after `closeWindowKeys`, and shows the status bar from it. This is a decision to confirm.
 
 ```csharp
 /// The Add window, as Shell uses it.
@@ -240,7 +243,7 @@ public sealed class TaskEditorControl : UserControl
     /// Puts the cursor in the Title.
     public void FocusTitle();
 
-    /// Puts the cursor at the end of the Description, for View Tasks' Edit Description.
+    /// Puts the cursor at the end of the Description, for Task View's Edit Description.
     public void FocusDescription();
 
     public event EventHandler? SaveRequested;          // Ctrl+Enter
@@ -337,7 +340,7 @@ The options below were considered and rejected, grouped by decision.
   - **Publishing the tag text typed and not yet added**: the Task list would decide what counts as a change in the editor, splitting that rule across two modules.
   - **Counting typed tag text in `Value`**: Add's draft would then keep it as a tag, which the [draft rule](#closing-without-saving-keeps-a-draft-on-this-device) excludes.
 - Closing without saving:
-  - **Esc discards the text, after a confirmation**: a draft keeps the text without asking. View Tasks' [prompt](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) is a separate case: an edit in place has no draft.
+  - **Esc discards the text, after a confirmation**: a draft keeps the text without asking. Task View's [prompt](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) is a separate case: an edit in place has no draft.
   - **Closing saves the task automatically**: an accidental close would create a half-written task on every device.
 - Tags:
   - **Inline #tags in the Title, plus a Tags line**, or **inline #tags only**: tags would mix into the title's text.

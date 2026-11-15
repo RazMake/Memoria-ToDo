@@ -2,7 +2,7 @@
 
 Status: Decided
 
-The Task editor is the Android app's Add screen: full screen, with the keyboard up and the cursor in the Title, so typing starts at once. View Tasks edits a task with the same screen.
+The Task editor is the Android app's Add screen: full screen, with the keyboard up and the cursor in the Title, so typing starts at once. Task View edits a task with the same screen.
 
 ## Behavior
 
@@ -61,11 +61,11 @@ Deferred: the desktop now shows tags as [colored badges with a + menu](../deskto
 
 Proposed: drafts work as on the [desktop](../desktop/task-editor.md#closing-without-saving-keeps-a-draft-on-this-device). Back, or leaving the app, keeps Add's text as a draft, the next Add opens with it, and a Clear button in the top app bar clears it. The draft is saved in the app's private storage, outside the clone, and never syncs. This is a decision to confirm.
 
-### Edit opens the same screen for a task in View Tasks
+### Edit opens the same screen for a task in Task View
 
-An expanded task's Edit button in [View Tasks](task-list.md#swipes-resolve-and-delete-and-a-long-press-moves-a-task) opens this screen with the task. Saving works as in Add.
+An expanded task's Edit button in [Task View](task-list.md#swipes-resolve-and-delete-and-a-long-press-moves-a-task) opens this screen with the task. Saving works as in Add.
 
-Proposed: Back discards the change, and View Tasks shows an Undo bar, as Esc does on the [desktop](../desktop/task-list.md#edit-description-turns-the-right-side-into-the-editor). This is a decision to confirm.
+Proposed: Back discards the change, and Task View shows an Undo bar, as Esc does on the [desktop](../desktop/task-list.md#edit-description-turns-the-right-side-into-the-editor). This is a decision to confirm.
 
 ### The editor styles Markdown in place, with no preview
 

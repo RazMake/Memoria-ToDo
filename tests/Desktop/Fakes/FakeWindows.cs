@@ -36,8 +36,8 @@ public sealed class FakeAddWindow(List<string>? shownLog = null) : IAddWindow
 }
 
 /// <summary>
-/// The shared fake of <see cref="IViewTasksWindow"/>: counts Show and Close calls, and logs "View Tasks" and
-/// "Close View Tasks" like <see cref="FakeAddWindow"/>. Close answers <see cref="CloseAnswer"/>.
+/// The shared fake of <see cref="IViewTasksWindow"/>: counts Show and Close calls, and logs "Task View" and
+/// "Close Task View" like <see cref="FakeAddWindow"/>. Close answers <see cref="CloseAnswer"/>.
 /// </summary>
 public sealed class FakeViewTasksWindow(List<string>? shownLog = null) : IViewTasksWindow
 {
@@ -57,7 +57,7 @@ public sealed class FakeViewTasksWindow(List<string>? shownLog = null) : IViewTa
     public bool Close()
     {
         CloseCount++;
-        shownLog?.Add("Close View Tasks");
+        shownLog?.Add("Close Task View");
         if (CloseAnswer)
         {
             IsOpen = false;
@@ -74,7 +74,7 @@ public sealed class FakeViewTasksWindow(List<string>? shownLog = null) : IViewTa
     {
         ShowCount++;
         ShownOnThreads.Add(Environment.CurrentManagedThreadId);
-        shownLog?.Add("View Tasks");
+        shownLog?.Add("Task View");
     }
 }
 
@@ -108,7 +108,7 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     /// <exception cref="InvalidOperationException">Shell hasn't connected the shortcuts.</exception>
     public IShortcutAction AddNewTask => addNewTask ?? throw NotConnected();
 
-    /// <summary>The Manage tasks action Shell connected.</summary>
+    /// <summary>The Task View action Shell connected.</summary>
     /// <exception cref="InvalidOperationException">Shell hasn't connected the shortcuts.</exception>
     public IShortcutAction ManageTasks => manageTasks ?? throw NotConnected();
 

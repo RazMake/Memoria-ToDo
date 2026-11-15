@@ -5,8 +5,8 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.App.Tests;
 
 /// <summary>
-/// The wiring View Tasks needs from the app: the real <c>WpfDescriptionWebView</c> in the real View Tasks window,
-/// over fake tasks, files, theme and browser (see <see cref="RealViewTasks"/>). The UX tests of View Tasks use a fake web
+/// The wiring Task View needs from the app: the real <c>WpfDescriptionWebView</c> in the real Task View window,
+/// over fake tasks, files, theme and browser (see <see cref="RealViewTasks"/>). The UX tests of Task View use a fake web
 /// view, and the adapter's own tests host it in a plain panel, so neither shows whether the window really starts the
 /// browser and keeps it. The window is driven by routed key events on its rows, and no input goes to Windows.
 /// </summary>

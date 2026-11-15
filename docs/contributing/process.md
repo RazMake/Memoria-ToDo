@@ -58,7 +58,7 @@ Design files describe the current design only. Git history records how it change
 
 1. **List the behaviors.** In the full lane, the architect lists each rule the change must satisfy, from the owner design file. One architect call covers the whole request: every module, behavior, and open question. After you decide, the main session records your decisions, as [Changing the design](#changing-the-design) says. In the trivial and small lanes, the owner design file already lists the behaviors, so there is no architect call. A rule that needs a missing decision goes through [Changing the design](#changing-the-design) first, or is decided, recorded, and flagged as [contributions](../../AGENTS.md#contributions) principle 3 allows.
 2. **Red.** The tester follows the [test policy](../../AGENTS.md#tests), delivering failing tests of every kind, each proven able to fail when it's added. In the trivial lane, the coder writes the failing test instead.
-3. **Green.** The coder changes the code until the selected unit tests pass, without editing them. A test that turns out wrong goes back to the tester. The coder handles production refactors needed for testability under the [test policy](../../AGENTS.md#tests).
+3. **Green.** The coder changes the code until the selected unit tests pass, without editing them. A test that turns out wrong goes back to the tester. The coder handles production refactors needed for testability under the [test policy](../../AGENTS.md#tests). It also adds the change's [changelog entry](changelog.md) when users would notice the change.
 4. **Review**, in the small and full lanes, once all the session's changes are green. Follow [Independent review](#independent-review) to launch the reviewer and resolve every finding. The reviewer checks the change against the design file and the [module rules](../architecture/modules.md). Each finding is one of two kinds:
    - **Code defect**: the code, tests, or docs miss the design. Fix it test first, from step 2, running only the tests that cover the fix.
    - **Design gap**: the design is missing, unclear, or wrong. It goes to you as a decision; code doesn't settle it.
@@ -87,6 +87,7 @@ The report tells you exactly what to review, and nothing else:
 
 - **Needs your review**: each changed file in the [review surface](../../AGENTS.md#contributions), with one line on what changed.
 - **Decisions to confirm**: each decision taken without asking you, with the option taken and its alternatives.
+- **Changelog**: the entry the change added to [`CHANGELOG.md`](../../CHANGELOG.md), or that it added none because users won't notice it.
 - **Spec coverage**: each listed behavior with the tests that prove it, or "deferred" with the reason and its backlog row.
 - **Evidence**: build results; unit, UX, and integration results reported separately, each with its passed, failed, and skipped counts, which must show zero failed and zero skipped; and each review's [independence evidence and finding resolutions](#independent-review).
 - **Left open**: unresolved findings, risks, and anything not verified.

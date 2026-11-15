@@ -74,6 +74,7 @@ The user decides and reviews architecture; AI writes and reviews the implementat
    - **Ask first** when a different answer would waste much of the work, or is hard to undo once released. Examples: security, public interfaces, stored data formats, new dependencies, and module boundaries.
    - **Otherwise decide, record, and flag**: take the option you'd recommend and write it into the owner design file, as the [template](docs/architecture/template.md) says. List it under decisions to confirm in the delivery report.
 4. **Deliver through the [process](docs/contributing/process.md)**, in the lightest lane that fits the change: design, tests first, code, independent review, and a delivery report.
+5. **Log what users notice.** A change users would notice adds its entry to [`CHANGELOG.md`](CHANGELOG.md) in the same change, written for users who don't know the code, as the [changelog guide](docs/contributing/changelog.md) says. Internal work gets no entry.
 
 ## AI instructions and agents
 

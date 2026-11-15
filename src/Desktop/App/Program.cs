@@ -1,8 +1,10 @@
 using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Shell;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
@@ -25,6 +27,7 @@ internal static class Program
         // Velopack's install, update, and uninstall steps must run before anything else.
         // Each hook builds its steps when it runs, so the starter's path is read once Velopack has found its install.
         VelopackApp.Build()
+            .SetAutoApplyOnStartup(false) // Updates applies an update when the user or the night run says so, never at a start.
             .OnAfterInstallFastCallback(_ => HookSteps().Install())
             .OnBeforeUninstallFastCallback(_ => HookSteps().Uninstall())
             .Run();
@@ -40,6 +43,10 @@ internal static class Program
             var deviceFolder = DeviceFolder();
             var repositories = new RepositorySelection(files, tasks.UseRepositoryFolder, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
             var closeWindowKeys = new CloseWindowKeys();
+            // Each open of a description web view serves the folder the repository is in then.
+            Func<IDescriptionWebView> createWebView = () => new WpfDescriptionWebView(tasks.Synchronization.RepositoryFolder, BrowserDataFolder());
+            var updates = AppUpdates.Create(
+                new VelopackUpdates(RepositoryUrl), files, deviceFolder, TimeProvider.System, theme, createWebView, browser, closeWindowKeys);
             var sync = SyncService.Create(
                 tasks.Synchronization,
                 files,
@@ -56,11 +63,11 @@ internal static class Program
                 clipboard,
                 imageFiles,
                 files,
-                // Each open of View Tasks serves the folder the repository is in then.
-                () => new WpfDescriptionWebView(tasks.Synchronization.RepositoryFolder, BrowserDataFolder()),
+                createWebView,
                 browser,
                 sync,
-                closeWindowKeys);
+                closeWindowKeys,
+                updates);
             return TrayApp.Create(
                 new TrayIcon(),
                 add,
@@ -71,14 +78,14 @@ internal static class Program
                     sync,
                     new WindowsSetupActions(browser),
                     closeWindowKeys,
-                    theme),
-                new VelopackUpdates(RepositoryUrl),
+                    theme,
+                    updates),
+                updates,
                 new HotKeyShortcut(),
                 // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
                 // every copy must count as the same app.
                 new NamedSignalOneInstance($"{AppName.Value}.OneInstance"),
                 StartArguments.IsStartAtSignIn(args),
-                TimeProvider.System,
                 sync);
         });
     }

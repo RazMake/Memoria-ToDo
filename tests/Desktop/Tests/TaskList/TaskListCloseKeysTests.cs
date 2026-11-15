@@ -7,7 +7,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// The platform's Close window keys in View Tasks, on the common path: pressed from any control, they close the window
+/// The platform's Close window keys in Task View, on the common path: pressed from any control, they close the window
 /// as its close button does, so an open edit is cleaned up the same way. The keys here are Shift+F9, which no list key
 /// uses. How the keys are matched is tested with the platform's CloseWindowKeys.
 /// </summary>

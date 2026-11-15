@@ -1,52 +1,48 @@
-using Memoria.ToDo.Desktop.Shell;
-
 namespace Memoria.ToDo.Desktop.Fakes;
 
 /// <summary>
-/// The shared fake of <see cref="IAppUpdates"/>. Each call succeeds, fails, or is held until the test releases it
-/// or the call is cancelled. Tests wait on the signals, never on delays. A "completed" signal fires when the call's
-/// task completes, which can be just before the caller reacts to it.
+/// One kind of call a fake port answers: each call succeeds with the result, fails, or is held until the test
+/// releases it or the call is cancelled. Shared by the fakes whose calls a test must control. A "completed" signal fires
+/// when the call's task completes, which can be just before the caller reacts to it.
 /// </summary>
-public sealed class FakeAppUpdates : IAppUpdates
+internal sealed class FakeOperation<T>
 {
     private enum Mode { Succeed, Fail, Hold }
 
     private readonly object gate = new();
-    private readonly List<TaskCompletionSource> held = [];
+    private readonly List<TaskCompletionSource<T>> held = [];
     private readonly CountSignal started = new();
     private readonly CountSignal completed = new();
     private readonly CountSignal cancelled = new();
     private Mode mode = Mode.Succeed;
-    private Exception failure = new InvalidOperationException("The update check failed.");
+    private Exception failure = new InvalidOperationException("The call failed.");
 
-    /// <summary>How many calls began.</summary>
-    public int CallCount => started.Count;
+    /// <summary>What a successful call returns.</summary>
+    public T? Result { get; set; }
 
-    /// <summary>How many calls ended, whether they succeeded, failed, or were cancelled.</summary>
-    public int CompletedCallCount => completed.Count;
+    public int Count => started.Count;
 
-    /// <summary>From now on, calls succeed at once. This is the starting behavior.</summary>
+    public int CompletedCount => completed.Count;
+
     public void Succeed()
     {
         lock (gate) { mode = Mode.Succeed; }
     }
 
-    /// <summary>From now on, calls fail with this exception.</summary>
     public void Fail(Exception exception)
     {
         lock (gate) { mode = Mode.Fail; failure = exception; }
     }
 
-    /// <summary>From now on, calls wait until <see cref="Release"/> or until their token is cancelled.</summary>
     public void Hold()
     {
         lock (gate) { mode = Mode.Hold; }
     }
 
-    /// <summary>Completes every held call successfully. Later calls still wait while held.</summary>
+    /// <summary>Completes every held call successfully with the current <see cref="Result"/>. Later calls still wait while held.</summary>
     public void Release()
     {
-        TaskCompletionSource[] toRelease;
+        TaskCompletionSource<T>[] toRelease;
         lock (gate)
         {
             toRelease = [.. held];
@@ -55,36 +51,53 @@ public sealed class FakeAppUpdates : IAppUpdates
 
         foreach (var call in toRelease)
         {
-            if (call.TrySetResult())
+            if (call.TrySetResult(Result!))
             {
                 completed.Increment();
             }
         }
     }
 
-    /// <summary>Completes when at least this many calls have begun.</summary>
+    /// <summary>Completes every held call with the failure.</summary>
+    public void ReleaseWithFailure(Exception exception)
+    {
+        TaskCompletionSource<T>[] toRelease;
+        lock (gate)
+        {
+            toRelease = [.. held];
+            held.Clear();
+        }
+
+        foreach (var call in toRelease)
+        {
+            if (call.TrySetException(exception))
+            {
+                completed.Increment();
+            }
+        }
+    }
+
     public Task WaitForCallsAsync(int count) => started.WaitForAsync(count);
 
-    /// <summary>Completes when at least this many calls have ended.</summary>
-    public Task WaitForCompletedCallsAsync(int count) => completed.WaitForAsync(count);
+    public Task WaitForCompletedAsync(int count) => completed.WaitForAsync(count);
 
-    /// <summary>Completes when a call has seen its token cancelled.</summary>
     public Task WaitForCancellationAsync() => cancelled.WaitForAsync(1);
 
-    /// <inheritdoc />
-    public Task DownloadNewerVersionAsync(CancellationToken cancellationToken)
+    public Task<T> Call(CancellationToken cancellationToken)
     {
         Mode current;
         Exception currentFailure;
-        TaskCompletionSource? call = null;
+        T? result;
+        TaskCompletionSource<T>? call = null;
         lock (gate)
         {
             current = mode;
             currentFailure = failure;
+            result = Result;
             started.Increment();
             if (current == Mode.Hold && !cancellationToken.IsCancellationRequested)
             {
-                call = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                call = new TaskCompletionSource<T>();
                 held.Add(call);
             }
         }
@@ -93,7 +106,7 @@ public sealed class FakeAppUpdates : IAppUpdates
         {
             cancelled.Increment();
             completed.Increment();
-            return Task.FromCanceled(cancellationToken);
+            return Task.FromCanceled<T>(cancellationToken);
         }
 
         if (call is not null)
@@ -111,6 +124,6 @@ public sealed class FakeAppUpdates : IAppUpdates
         }
 
         completed.Increment();
-        return current == Mode.Fail ? Task.FromException(currentFailure) : Task.CompletedTask;
+        return current == Mode.Fail ? Task.FromException<T>(currentFailure) : Task.FromResult(result!);
     }
 }

@@ -120,11 +120,11 @@ public class ShortcutSettingPickTests
     // A pick the other row uses, or the row's own shortcut.
 
     [Fact]
-    public void A_pick_equal_to_the_Manage_tasks_shortcut_is_refused_without_calling_an_action()
+    public void A_pick_equal_to_the_Task_View_shortcut_is_refused_without_calling_an_action()
     {
         PickOnAdd(Win | Alt, Key.V);
 
-        Assert.Equal("Manage tasks already uses Win+Alt+V. Press a different shortcut.", add.Setting.Message);
+        Assert.Equal("Task View already uses Win+Alt+V. Press a different shortcut.", add.Setting.Message);
         Assert.Empty(add.Action.Calls);
         Assert.Empty(add.Saved);
         Assert.Equal(TestShortcut.AddNewTaskDefault, add.Setting.Active);
@@ -146,7 +146,7 @@ public class ShortcutSettingPickTests
 
         PickOnAdd(Ctrl | Shift, Key.K);
 
-        Assert.Equal("Manage tasks already uses Ctrl+Shift+K. Press a different shortcut.", add.Setting.Message);
+        Assert.Equal("Task View already uses Ctrl+Shift+K. Press a different shortcut.", add.Setting.Message);
         Assert.Empty(add.Action.Calls);
     }
 

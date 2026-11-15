@@ -5,7 +5,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.Shell.Tests;
 
 /// <summary>
-/// How Shell wires the two shortcut actions Configure gets (Add new task and Manage tasks) to the windows. The rules
+/// How Shell wires the two shortcut actions Configure gets (Add new task and Task View) to the windows. The rules
 /// of one action are in <c>ActiveShortcutTests</c>.
 /// </summary>
 [Unit]

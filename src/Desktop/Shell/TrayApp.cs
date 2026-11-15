@@ -2,6 +2,7 @@ using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
 
 namespace Memoria.ToDo.Desktop.Shell;
@@ -11,14 +12,14 @@ public static class TrayApp
 {
     /// <summary>
     /// Creates the app's lifetime. Start first claims the sign-in session; when another instance runs, it ends the app
-    /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Manage tasks, Configure,
-    /// Exit; a left click shows View Tasks), connects Configure's two shortcuts (a press shows Add or View Tasks, and does
-    /// nothing while any of the app's windows is open), begins the
-    /// update checks and the shared sync service. Startup and later actions open Configure until setup is complete;
-    /// otherwise startup shows View Tasks when <paramref name="startedAtSignIn"/> is false.
-    /// Configure also opens when an initial shortcut could not be registered, after View Tasks on a configured
+    /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Task View, Configure,
+    /// Exit; a left click shows Task View), connects Configure's two shortcuts (a press shows Add or Task View, and does
+    /// nothing while any of the app's windows is open), begins Updates with the app's exit, and starts the shared sync
+    /// service. Startup and later actions open Configure until setup is complete;
+    /// otherwise startup shows Task View when <paramref name="startedAtSignIn"/> is false.
+    /// Configure also opens when an initial shortcut could not be registered, after Task View on a configured
     /// start by hand. These startup windows wait for local initialization.
-    /// StopAsync joins sync and update cleanup without blocking the UI, unregisters both shortcuts,
+    /// StopAsync joins sync, then Updates' stop, without blocking the UI, unregisters both shortcuts,
     /// removes the icon, and releases the claim. Cleanup still completes when one step fails.
     /// </summary>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
@@ -27,24 +28,22 @@ public static class TrayApp
         IAddWindow add,
         IViewTasksWindow viewTasks,
         IConfigureWindow configure,
-        IAppUpdates updates,
+        IUpdateLifetime updates,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
-        TimeProvider time,
         ISyncService sync) =>
-        Create(trayIcon, add, viewTasks, configure, updates, shortcut, oneInstance, startedAtSignIn, time, sync, () => new WpfUiThread());
+        Create(trayIcon, add, viewTasks, configure, updates, shortcut, oneInstance, startedAtSignIn, sync, () => new WpfUiThread());
 
     internal static IAppLifetime Create(
         ITrayIcon trayIcon,
         IAddWindow add,
         IViewTasksWindow viewTasks,
         IConfigureWindow configure,
-        IAppUpdates updates,
+        IUpdateLifetime updates,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
-        TimeProvider time,
         ISyncService sync,
         Func<IUiThread> uiThread)
     {
@@ -55,7 +54,6 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(shortcut);
         ArgumentNullException.ThrowIfNull(oneInstance);
-        ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(sync);
         ArgumentNullException.ThrowIfNull(uiThread);
 
@@ -84,7 +82,8 @@ public static class TrayApp
             new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, AddOpen, ViewTasksOpen, viewTasks.Close, addByUser).Press),
             new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, AddOpen, CloseAdd, viewTasksByUser).Press),
             startup,
-            new UpdateSchedule(updates, time),
+            updates,
+            endApp => new ShellExit(add, viewTasks, configure, endApp),
             sync);
     }
 }

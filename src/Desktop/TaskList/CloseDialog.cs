@@ -6,7 +6,7 @@ using Memoria.ToDo.Desktop.Platform;
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
-/// The modal "Unsaved changes" prompt, owned by and centered on View Tasks. It takes the application's theme as every
+/// The modal "Unsaved changes" prompt, owned by and centered on Task View. It takes the application's theme as every
 /// window does. Save is the default button; Esc and the close button answer Cancel.
 /// </summary>
 internal sealed class CloseDialog(Window owner) : IClosePrompt

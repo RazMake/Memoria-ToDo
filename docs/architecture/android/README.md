@@ -9,8 +9,8 @@ Each module is a project of its own, separate from the desktop module of the sam
 | Module | What its design file decides |
 | --- | --- |
 | [Shell](shell.md) | Where each way into the app leads: the app icon, the app shortcut, and the home-screen widget. Also background sync, updates, and the theme. |
-| [Task editor](task-editor.md) | The full-screen Add screen: its fields, toolbar, tag chips, and draft. View Tasks edits a task with the same screen. |
-| [Task list](task-list.md) | View Tasks: the list in rank order, expanding in place, swipes, reordering, the tag filter, search, resolved tasks, and the floating Add button |
+| [Task editor](task-editor.md) | The full-screen Add screen: its fields, toolbar, tag chips, and draft. Task View edits a task with the same screen. |
+| [Task list](task-list.md) | Task View: the list in rank order, expanding in place, swipes, reordering, the tag filter, search, resolved tasks, and the floating Add button |
 | [Configure](configure.md) | The settings screen: the phone's key, the shared deletion delay, the swipe direction, and sync setup and status |
 
 The shared modules serve the phone as they serve the desktop: [Editing](../editing.md) holds the formatting and snippet commands, [Rendering](../rendering.md) turns Markdown into HTML and styled text, [Tasks](../tasks.md) holds the task files, and [Sync through git](../sync.md) keeps devices the same. Where an Android screen works like its desktop counterpart, its design file links the [desktop design](../desktop/README.md) instead of repeating it.

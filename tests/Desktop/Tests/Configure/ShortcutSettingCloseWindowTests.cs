@@ -34,7 +34,7 @@ public class ShortcutSettingCloseWindowTests
     }
 
     [Fact]
-    public void Manage_tasks_is_refused_the_Close_window_keys_too()
+    public void Task_View_is_refused_the_Close_window_keys_too()
     {
         manage.Setting.Pick(Ctrl | Shift, Key.K, add.Setting, close.Setting);
 
@@ -48,7 +48,7 @@ public class ShortcutSettingCloseWindowTests
         add.Setting.Pick(TestShortcut.ManageTasksDefault.Modifiers, TestShortcut.ManageTasksDefault.Key,
             manage.Setting, close.Setting);
 
-        Assert.Equal("Manage tasks already uses Win+Alt+V. Press a different shortcut.", add.Setting.Message);
+        Assert.Equal("Task View already uses Win+Alt+V. Press a different shortcut.", add.Setting.Message);
     }
 
     [Fact]

@@ -13,7 +13,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.App.Tests;
 
 /// <summary>
-/// The composition root gives Add and View Tasks the store's own tag colors, so both paint a tag in the color kept in the
+/// The composition root gives Add and Task View the store's own tag colors, so both paint a tag in the color kept in the
 /// store and not in a default. The wiring that picks the windows' parts is <c>TaskWindows.Create</c>, which Program calls;
 /// it needs no tray, shortcut or real browser. The real parts of the windows are in use: only the file system, theme,
 /// clipboard, file chooser, browser and sync are fakes.
@@ -34,12 +34,13 @@ public class TaskWindowsWiringTests : IDisposable
 
     private (IAddWindow Add, IViewTasksWindow ViewTasks) Wire() => TaskWindows.Create(
         _tasks, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(), _files,
-        () => new FakeDescriptionWebView(), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys());
+        () => new FakeDescriptionWebView(), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
+        new FakeUpdateStatus());
 
     public void Dispose() => _windows.Dispose();
 
     [WpfFact]
-    public void View_Tasks_paints_a_tag_in_the_color_the_store_keeps()
+    public void Task_View_paints_a_tag_in_the_color_the_store_keeps()
     {
         _tasks.Add(_tasks.StartDraft() with { Title = "Buy milk", Tags = ["home"] });
         _tasks.TagColors.SetColor("home", "teal-3");

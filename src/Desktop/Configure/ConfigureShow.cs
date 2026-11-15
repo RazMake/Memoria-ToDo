@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -17,13 +18,14 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly CloseWindowSetting _closeWindow;
     private readonly CloseWindowKeys _closeWindowKeys;
     private readonly ITheme _theme;
+    private readonly IUpdateStatus _updates;
     private Window? _open;
     private Action? _refreshOpen;
     private bool _disposed;
 
     public ConfigureShow(
         IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions,
-        CloseWindowKeys closeWindowKeys, ITheme theme)
+        CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
         ArgumentNullException.ThrowIfNull(settings);
@@ -31,13 +33,15 @@ internal sealed class ConfigureShow : IConfigureWindow
         ArgumentNullException.ThrowIfNull(setupActions);
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(theme);
+        ArgumentNullException.ThrowIfNull(updates);
+        _updates = updates;
         _theme = theme;
         _settings = settings;
         _closeWindowKeys = closeWindowKeys;
         _closeWindow = new CloseWindowSetting(() => settings.CloseWindowShortcut, settings.SetCloseWindowShortcut, closeWindowKeys.Set);
         _addNewTask = new("Add new task", Shortcut.AddNewTaskDefault,
             () => settings.AddNewTaskShortcut, settings.SetAddNewTaskShortcut);
-        _manageTasks = new("Manage tasks", Shortcut.ManageTasksDefault,
+        _manageTasks = new("Task View", Shortcut.ManageTasksDefault,
             () => settings.ManageTasksShortcut, settings.SetManageTasksShortcut);
         _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions));
         settings.Changed += OnSettingsChanged;
@@ -92,7 +96,12 @@ internal sealed class ConfigureShow : IConfigureWindow
             ("Shortcuts", shortcuts),
             ("Startup", new StartWithWindowsRow(startWithWindows)),
             ("Sync settings", syncSettings))
-        { Margin = new Thickness(24) };
+        { Margin = new Thickness(24, 12, 24, 24) };
+        var layout = new DockPanel();
+        var card = new UpdateCard(_updates) { Margin = new Thickness(24, 24, 24, 0) };
+        DockPanel.SetDock(card, Dock.Top);
+        layout.Children.Add(card);
+        layout.Children.Add(sections);
         var window = new Window
         {
             Title = "Configure",
@@ -100,7 +109,7 @@ internal sealed class ConfigureShow : IConfigureWindow
             Height = Math.Min(850, SystemParameters.MaximumWindowTrackHeight),
             SizeToContent = SizeToContent.Manual,
             ResizeMode = ResizeMode.NoResize,
-            Content = sections,
+            Content = layout,
         };
         _closeWindowKeys.Attach(window);
         EscCloses.Attach(window);

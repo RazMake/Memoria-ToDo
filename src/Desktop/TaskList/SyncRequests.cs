@@ -3,7 +3,7 @@ using Memoria.ToDo.Shared.Sync;
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
-/// One View Tasks window's requests for sync passes. It asks the shared service for a pass and waits for it, knows that
+/// One Task View window's requests for sync passes. It asks the shared service for a pass and waits for it, knows that
 /// one is running, and keeps why a pass it requested failed. It never stops the shared pass: disposing cancels only this
 /// window's wait. The service raises its status on any thread, so changes are told through <c>post</c>.
 /// </summary>

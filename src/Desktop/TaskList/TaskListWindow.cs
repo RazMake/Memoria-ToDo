@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -11,7 +12,7 @@ using Memoria.ToDo.Shared.Tasks;
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
-/// The View Tasks window: the open tasks grouped by tag on the left, the selected task's description and tags on the right,
+/// The Task View window: the open tasks grouped by tag on the left, the selected task's description and tags on the right,
 /// and above them the search, the tag filter, and the resolved tasks. It works on the tasks through <see cref="ITasks"/> and
 /// shows what they say.
 /// </summary>
@@ -30,6 +31,7 @@ internal sealed class TaskListWindow : Window
     private readonly ListFilter _filter = new();
     private readonly ListHeader _header;
     private readonly ListSync _sync;
+    private readonly UpdateStatusBar _statusBar;
     private readonly PendingUndo _pending;
     private readonly ListContent _content;
     private readonly ListLinks _links;
@@ -51,9 +53,10 @@ internal sealed class TaskListWindow : Window
 
     public TaskListWindow(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
-        IDefaultBrowser browser, ListSync sync, string? message, Action<string> carry)
+        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, string? message, Action<string> carry)
     {
         _sync = sync;
+        _statusBar = new UpdateStatusBar(updates, sync);
         _tagColors = tagColors;
         _decision = new CloseDecision(new CloseDialog(this));
         _tasks = tasks;
@@ -70,7 +73,7 @@ internal sealed class TaskListWindow : Window
             [RowAction.MoveDown] = row => Nudge(row, 1),
         };
 
-        Title = "View Tasks";
+        Title = "Task View";
         Width = 1100;
         Height = 720;
         MinWidth = 680;
@@ -182,9 +185,9 @@ internal sealed class TaskListWindow : Window
         sides.Children.Add(_details);
 
         var layout = new DockPanel();
-        DockPanel.SetDock(_sync, Dock.Top);
+        DockPanel.SetDock(_statusBar, Dock.Bottom);
         DockPanel.SetDock(_header, Dock.Top);
-        layout.Children.Add(_sync);
+        layout.Children.Add(_statusBar);
         layout.Children.Add(_header);
         layout.Children.Add(sides);
         return layout;

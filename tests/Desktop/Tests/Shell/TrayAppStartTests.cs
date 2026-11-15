@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -13,18 +14,47 @@ public class TrayAppStartTests
         var app = new ShellHarness();
 
         Assert.False(app.TrayIcon.IsShown);
-        Assert.Equal(0, app.Updates.CallCount);
+        Assert.Equal(0, app.Updates.StartCount);
     }
 
     [Fact]
-    public void Start_offers_Add_new_task_Manage_tasks_Configure_and_Exit_in_that_order_under_the_apps_name()
+    public void Start_begins_Updates_once_after_the_tray_icon_is_shown_and_the_shortcuts_are_connected()
+    {
+        var app = new ShellHarness();
+        bool? iconShown = null;
+        int? connectCount = null;
+        app.Updates.OnStart = _ =>
+        {
+            iconShown = app.TrayIcon.IsShown;
+            connectCount = app.Configure.ConnectCount;
+        };
+
+        app.Start();
+
+        Assert.Equal(1, app.Updates.StartCount);
+        Assert.True(iconShown);
+        Assert.Equal(1, connectCount);
+    }
+
+    [Fact]
+    public void Start_begins_Updates_with_the_apps_exit()
+    {
+        var app = new ShellHarness();
+
+        app.Start();
+
+        Assert.IsAssignableFrom<IAppExit>(app.Updates.Exit);
+    }
+
+    [Fact]
+    public void Start_offers_Add_new_task_Task_View_Configure_and_Exit_in_that_order_under_the_apps_name()
     {
         var app = new ShellHarness();
 
         app.Start();
 
         Assert.Equal("Memoria-ToDo", app.TrayIcon.ToolTip);
-        Assert.Equal(["Add new task", "Manage tasks", "Configure", "Exit"], app.TrayIcon.MenuTexts);
+        Assert.Equal(["Add new task", "Task View", "Configure", "Exit"], app.TrayIcon.MenuTexts);
     }
 
     [Fact]
@@ -76,7 +106,7 @@ public class TrayAppStartTests
     }
 
     [Fact]
-    public void A_later_start_of_the_running_app_shows_View_Tasks_and_never_Configure()
+    public void A_later_start_of_the_running_app_shows_Task_View_and_never_Configure()
     {
         var app = new ShellHarness();
         app.Configure.ConnectAnswer = false;
@@ -86,11 +116,11 @@ public class TrayAppStartTests
         app.OneInstance.StartLaterInstance();
 
         Assert.Equal(configureShows, app.Configure.ShowCount);
-        Assert.Equal(["Configure", "View Tasks"], app.Shown);
+        Assert.Equal(["Configure", "Task View"], app.Shown);
     }
 
     [Fact]
-    public void A_start_by_hand_shows_only_View_Tasks()
+    public void A_start_by_hand_shows_only_Task_View()
     {
         var app = new ShellHarness(startedAtSignIn: false);
 
@@ -125,14 +155,13 @@ public class TrayAppStartTests
     }
 
     [Fact]
-    public void Start_fails_before_beginning_the_update_checks_when_Windows_cannot_add_the_icon()
+    public void Start_fails_before_beginning_Updates_when_Windows_cannot_add_the_icon()
     {
         var app = new ShellHarness();
         app.TrayIcon.ShowFailure = new InvalidOperationException("No taskbar.");
 
         Assert.Throws<InvalidOperationException>(app.Start);
-        app.Time.Advance(TimeSpan.FromHours(72));
 
-        Assert.Equal(0, app.Updates.CallCount);
+        Assert.Equal(0, app.Updates.StartCount);
     }
 }

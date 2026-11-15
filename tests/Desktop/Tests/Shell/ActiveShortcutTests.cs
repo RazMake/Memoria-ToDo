@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Memoria.ToDo.Desktop.Shell.Tests;
 
-/// <summary>The rules for one shortcut action (Add new task or Manage tasks), checked on their own against the fake port.</summary>
+/// <summary>The rules for one shortcut action (Add new task or Task View), checked on their own against the fake port.</summary>
 [Unit]
 public class ActiveShortcutTests
 {

@@ -1,12 +1,13 @@
 using System.Runtime.ExceptionServices;
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
 
 namespace Memoria.ToDo.Desktop.Shell;
 
 /// <summary>
-/// The tray app's lifetime: the one-instance claim, the tray icon with its menu, the shortcuts, the update checks, and
+/// The tray app's lifetime: the one-instance claim, the tray icon with its menu, the shortcuts, Updates, and
 /// the shared sync service. Only the instance that wins the claim starts and stops sync.
 /// </summary>
 internal sealed class ShellLifetime(
@@ -18,7 +19,8 @@ internal sealed class ShellLifetime(
     ActiveShortcut addShortcut,
     ActiveShortcut manageShortcut,
     StartupNavigation startup,
-    UpdateSchedule updateSchedule,
+    IUpdateLifetime updates,
+    Func<Action, IAppExit> createExit,
     ISyncService sync) : IAppLifetime
 {
     private readonly SyncTray syncTray = new SyncTray(sync, trayIcon, startup.ByUser(configure.Show));
@@ -42,7 +44,7 @@ internal sealed class ShellLifetime(
             AppName.Value,
             [
                 new("Add new task", addByUser),
-                new("Manage tasks", viewTasksByUser),
+                new("Task View", viewTasksByUser),
                 new("Configure", startup.ByUser(configure.Show)),
                 new("Exit", endApp),
             ],
@@ -50,7 +52,7 @@ internal sealed class ShellLifetime(
         syncTray.Attach();
         bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut);
 
-        updateSchedule.Start();
+        updates.Start(createExit(endApp));
         startup.Begin(!shortcutsReady);
         sync.Start();
     }
@@ -77,12 +79,14 @@ internal sealed class ShellLifetime(
         Attempt(manageShortcut.Unregister, failures);
         Attempt(trayIcon.Remove, failures);
 
-        await Attempt(updateSchedule.StopAsync, failures);
         if (claimed)
         {
             await Attempt(() => sync.StopAsync(CancellationToken.None), failures);
             await Attempt(() => sync.DisposeAsync().AsTask(), failures);
         }
+
+        // After Sync, since this starts Velopack's updater when an update ended the app, which waits only 60 seconds for it.
+        await Attempt(updates.StopAsync, failures);
 
         Attempt(oneInstance.Release, failures);
 

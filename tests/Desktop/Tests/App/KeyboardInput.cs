@@ -26,6 +26,22 @@ internal static class KeyboardInput
         }
     }
 
+    /// <summary>
+    /// Makes the window the one that gets the key presses. Windows lets a process take the foreground only when it got the last
+    /// input, so a key no app uses is pressed first; a window that still isn't in front fails at once, before any key goes elsewhere.
+    /// </summary>
+    public static void BringToFront(nint window)
+    {
+        Chord(Unassigned);
+        if (!SetForegroundWindow(window) || GetForegroundWindow() != window)
+        {
+            throw new InvalidOperationException("Windows kept another window in front, so the key presses wouldn't reach the window.");
+        }
+    }
+
+    // F24: no keyboard has it, and no app reacts to it.
+    private const ushort Unassigned = 0x87;
+
     private static Input Key(ushort virtualKey, bool up) => new()
     {
         Type = InputKeyboard,
@@ -52,4 +68,10 @@ internal static class KeyboardInput
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint count, Input[] inputs, int size);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(nint window);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
 }

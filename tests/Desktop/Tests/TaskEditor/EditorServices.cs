@@ -29,6 +29,8 @@ internal sealed class EditorServices
 
     public FakeClipboard Clipboard { get; } = new();
 
+    public FakeUpdateStatus Updates { get; } = new();
+
     public FakeImageFileChooser ImageFiles { get; } = new();
 
     public string Clone { get; } = Path.Combine(Root, "clone");
@@ -89,7 +91,7 @@ internal sealed class EditorServices
     /// <summary>The Close window keys the Add window is attached to; a test sets them as Configure does.</summary>
     public CloseWindowKeys CloseWindowKeys { get; } = new();
 
-    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys);
+    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates);
 
     public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
 

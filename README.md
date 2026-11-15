@@ -8,6 +8,7 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
 | See the design and the decisions still to confirm | [Architecture](docs/architecture/README.md) |
 | Follow a change from request to review | [Process](docs/contributing/process.md) |
 | Write or change documentation | [Writing docs](docs/contributing/writing-docs.md) |
+| See what changed in each version, or add an entry | [Changelog](CHANGELOG.md), and [how to write it](docs/contributing/changelog.md) |
 | Run the desktop app with F5 | [What you need](#what-you-need) |
 | Publish a new version, or clear a version tag | [How a version tag is made and cleared](docs/architecture/version-tags.md) |
 

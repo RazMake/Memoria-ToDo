@@ -4,7 +4,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// What closing View Tasks does with an edit in place: whether it asks, and what each answer means. The window asks
+/// What closing Task View does with an edit in place: whether it asks, and what each answer means. The window asks
 /// <see cref="CloseDecision"/> before it closes; the decision uses the prompt through <see cref="IClosePrompt"/> and the
 /// edit through <see cref="IClosingEdit"/>, both fakes here. How the prompt looks and how the editor shows a failed
 /// save are in the UX tests. The class and its two ports are a proposal the tests pin down, for the coder to confirm:

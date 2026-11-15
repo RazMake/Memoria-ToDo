@@ -8,7 +8,7 @@ using Memoria.ToDo.Desktop.Fakes;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Drives the prompt that asks what to do with a changed edit when View Tasks closes, the way a user does. The prompt is
+/// Drives the prompt that asks what to do with a changed edit when Task View closes, the way a user does. The prompt is
 /// modal, so a call that closes the window doesn't return until the prompt is answered: <see cref="Run{T}"/> queues the
 /// answer first, to run once the prompt shows, then makes the call. The prompt is found as the showing window titled
 /// "Unsaved changes", and its buttons by their text: Save, Discard, Cancel. Shared test setup.

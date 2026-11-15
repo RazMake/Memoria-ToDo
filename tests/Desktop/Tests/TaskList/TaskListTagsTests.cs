@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
-/// <summary>Tags in View Tasks: the group headings, the selected task's tag control, the Undo bar, and changes from Sync.</summary>
+/// <summary>Tags in Task View: the group headings, the selected task's tag control, the Undo bar, and changes from Sync.</summary>
 [UX]
 [Collection(ScreenTests.Collection)]
 public class TaskListTagsTests

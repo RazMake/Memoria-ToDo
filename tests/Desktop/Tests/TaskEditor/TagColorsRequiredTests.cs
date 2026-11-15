@@ -16,7 +16,7 @@ public class TagColorsRequiredTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             _services.Tasks, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
-            _services.ImageFiles, _services.Files, _services.CloseWindowKeys));
+            _services.ImageFiles, _services.Files, _services.CloseWindowKeys, _services.Updates));
 
         Assert.Equal("tagColors", failure.ParamName);
     }

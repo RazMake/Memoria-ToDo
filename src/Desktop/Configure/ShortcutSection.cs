@@ -4,7 +4,7 @@ using System.Windows.Controls;
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// The Shortcuts section's content: how to change a shortcut, and a row for Add new task, Manage tasks, and Close
+/// The Shortcuts section's content: how to change a shortcut, and a row for Add new task, Task View, and Close
 /// window. A focused field of any row releases the two global shortcuts; Close window has none to release.
 /// </summary>
 internal sealed class ShortcutSection : StackPanel
@@ -17,7 +17,7 @@ internal sealed class ShortcutSection : StackPanel
         _rows =
         [
             new ShortcutRow(addNewTask, "Opens the Add window from any app.", [manageTasks, closeWindow], addNewTask.KeySwallowed),
-            new ShortcutRow(manageTasks, "Opens View Tasks from any app.", [addNewTask, closeWindow], manageTasks.KeySwallowed),
+            new ShortcutRow(manageTasks, "Opens Task View from any app.", [addNewTask, closeWindow], manageTasks.KeySwallowed),
             new ShortcutRow(closeWindow, "Closes the app's window you're in, whatever has the focus.", [addNewTask, manageTasks], _ => { }),
         ];
         var grid = new Grid

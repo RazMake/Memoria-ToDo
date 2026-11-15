@@ -16,15 +16,16 @@ import { dirname, join } from 'node:path';
 import { describe, test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { run } from './version-tag.mjs';
-import { commitA, commitB, commitC, createFakeGit } from './version-tag.fake-git.mjs';
+import { changelogWith, commitA, commitB, commitC, createFakeFiles, createFakeGit, validChangelog } from './version-tag.fake-git.mjs';
 
 const script = join(dirname(fileURLToPath(import.meta.url)), 'version-tag.mjs');
 
 // ---------- unit helpers ----------
 
+// `workingChangelog` in the options is the CHANGELOG.md as checked out, which --notes reads; the fake git holds the committed one.
 async function runWith(args, options) {
   const git = createFakeGit(options);
-  const result = await run(args, git);
+  const result = await run(args, git, createFakeFiles({ changelog: options?.workingChangelog }));
   return { git, result };
 }
 
@@ -368,30 +369,31 @@ describe('a preview with --dry-run (unit)', () => {
 
 describe('version parts of any size (unit)', () => {
   const big = '9007199254740993'; // 2^53 + 1, which a floating-point number can't hold
-  const tagsAt = async (args, tag) => {
-    const { git, result } = await runWith(args, onBoth({ [tag]: 'c1' }));
+  // The committed changelog has the section of the one tag expected to be made.
+  const tagsAt = async (args, tag, made) => {
+    const { git, result } = await runWith(args, { ...onBoth({ [tag]: 'c1' }), changelog: changelogWith(made.slice(1)) });
     assert.equal(result.code, 0, result.stderr);
     return Object.keys(git.snapshot().remote).filter((name) => name !== tag);
   };
 
   test('raises the minor part of a major part above 2^53 without rounding it', async () => {
-    assert.deepEqual(await tagsAt(['minor'], `v${big}.0.0`), [`v${big}.1.0`]);
+    assert.deepEqual(await tagsAt(['minor'], `v${big}.0.0`, `v${big}.1.0`), [`v${big}.1.0`]);
   });
 
   test('raises the patch part above 2^53 by exactly one', async () => {
-    assert.deepEqual(await tagsAt(['patch'], `v1.2.${big}`), [`v1.2.9007199254740994`]);
+    assert.deepEqual(await tagsAt(['patch'], `v1.2.${big}`, 'v1.2.9007199254740994'), [`v1.2.9007199254740994`]);
   });
 
   test('raises the major part above 2^53 by exactly one', async () => {
-    assert.deepEqual(await tagsAt(['major'], `v${big}.0.0`), ['v9007199254740994.0.0']);
+    assert.deepEqual(await tagsAt(['major'], `v${big}.0.0`, 'v9007199254740994.0.0'), ['v9007199254740994.0.0']);
   });
 
   test('raises a part of more than 20 digits', async () => {
-    assert.deepEqual(await tagsAt(['patch'], 'v1.0.123456789012345678901234567890'), ['v1.0.123456789012345678901234567891']);
+    assert.deepEqual(await tagsAt(['patch'], 'v1.0.123456789012345678901234567890', 'v1.0.123456789012345678901234567891'), ['v1.0.123456789012345678901234567891']);
   });
 
   test('tells apart two versions that differ only beyond 2^53', async () => {
-    const { git } = await runWith(['patch'], onBoth({ 'v9007199254740992.0.0': 'c1', [`v${big}.0.0`]: 'c1' }));
+    const { git } = await runWith(['patch'], { ...onBoth({ 'v9007199254740992.0.0': 'c1', [`v${big}.0.0`]: 'c1' }), changelog: changelogWith(`${big}.0.1`) });
     assert.ok(Object.hasOwn(git.snapshot().remote, `v${big}.0.1`));
   });
 
@@ -828,6 +830,193 @@ describe('approval options in the command line (unit)', () => {
   }
 });
 
+// ---------- changelog: unit ----------
+
+// The committed changelog of each case the design lists for making v1.3.0 after v1.2.0.
+const withEntries = '# Changelog\n\nWhat changed.\n\n## Unreleased\n\n- You can now pick a color.\n\n## 1.2.0\n\n- Older notes.\n';
+const withoutEntries = '# Changelog\n\nWhat changed.\n\n## Unreleased\n\n## 1.2.0\n\n- Older notes.\n';
+const ready = '# Changelog\n\nWhat changed.\n\n## Unreleased\n\n## 1.3.0\n\n- You can now pick a color.\n\n## 1.2.0\n\n- Older notes.\n';
+const notReady = [
+  ['has entries under Unreleased and no section for the version', withEntries, /rename/i],
+  ['has no section and no entries under Unreleased', withoutEntries, /\badd\b/i],
+  ['has no CHANGELOG.md', undefined, /\badd\b/i],
+  ['has only the section of a version that merely starts the same, 11.3.0', withoutEntries.replace('## 1.2.0', '## 11.3.0'), /\badd\b/i],
+  ['has an empty section for the version', ready.replace('- You can now pick a color.\n\n## 1.2.0', '## 1.2.0'), /write/i],
+  ['has an empty section for the version at the end of the file', '## Unreleased\n\n## 1.3.0\n', /write/i],
+  ['has the version\'s section twice', `${ready}\n## 1.3.0\n\n- Again.\n`, /write/i],
+];
+// Entries beside a version's section matter to making its tag, not to reading its notes.
+const stillInUnreleased = ['has the version\'s section and entries still under Unreleased', ready.replace('## Unreleased\n', '## Unreleased\n\n- Still here.\n'), /move/i];
+const after120 = onBoth({ 'v1.2.0': 'c1' });
+
+describe('the changelog check when making a tag (unit)', () => {
+  for (const mode of [[], ['--dry-run']]) {
+    const how = mode.length ? 'a preview' : 'a real run';
+
+    for (const [what, changelog, fix] of [...notReady, stillInUnreleased]) {
+      test(`${how} refuses when the committed changelog ${what}, naming the version and the fix, and changes no tag`, async () => {
+        const git = createFakeGit({ ...after120, changelog });
+        const before = git.snapshot();
+        const result = await run(mode, git);
+        assertRefusal(result, /1\.3\.0/);
+        assert.match(result.stderr, fix);
+        assert.match(result.stderr, /commit/);
+        assert.match(result.stderr, /push/);
+        assert.deepEqual(git.snapshot(), before);
+      });
+    }
+
+    test(`${how} tells to rename Unreleased by that name`, async () => {
+      const { result } = await runWith(mode, { ...after120, changelog: withEntries });
+      assert.match(result.stderr, /Unreleased/);
+    });
+
+    test(`${how} names the version of the part it was given`, async () => {
+      const { result } = await runWith(['major', ...mode], { ...after120, changelog: withEntries });
+      assertRefusal(result, /2\.0\.0/);
+    });
+
+    test(`${how} reads the changelog on the commit it would tag`, async () => {
+      const { result } = await runWith(mode, { ...after120, originHead: 'c2', commits: secondCommit, changelog: ready, changelogs: { c2: withEntries } });
+      assertRefusal(result, /1\.3\.0/);
+    });
+
+    test(`${how} accepts the changelog of the commit it would tag, whatever another commit has`, async () => {
+      const { result } = await runWith(mode, { ...after120, originHead: 'c2', commits: secondCommit, changelog: withEntries, changelogs: { c2: ready } });
+      assert.equal(result.code, 0, result.stderr);
+    });
+
+    test(`${how} reports a wrong branch before a changelog problem`, async () => {
+      const { result } = await runWith(mode, { ...after120, branch: 'feature', changelog: withEntries });
+      assertRefusal(result, /main/);
+    });
+
+    test(`${how} reports uncommitted changes before a changelog problem`, async () => {
+      const { result } = await runWith(mode, { ...after120, clean: false, changelog: withEntries });
+      assertRefusal(result, /uncommitted/i);
+    });
+
+    test(`${how} reports being behind origin before a changelog problem`, async () => {
+      const { result } = await runWith(mode, { ...after120, behind: 1, changelog: withEntries });
+      assertRefusal(result, /behind/);
+    });
+  }
+
+  test('makes and pushes the tag when the version\'s section has entries and Unreleased has none', async () => {
+    const { git, result } = await runWith([], { ...after120, changelog: ready });
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(git.snapshot().remote['v1.3.0'], 'c1');
+  });
+
+  test('previews the tag when the version\'s section has entries and Unreleased has none', async () => {
+    const { result } = await runWith(['--dry-run'], { ...after120, changelog: ready });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /v1\.3\.0/);
+  });
+
+  test('treats blank lines under Unreleased as no entries', async () => {
+    const { result } = await runWith([], { ...after120, changelog: ready.replace('## Unreleased\n', '## Unreleased\n\n   \n\n') });
+    assert.equal(result.code, 0, result.stderr);
+  });
+
+  test('makes the tag from the committed changelog, whatever the working tree has', async () => {
+    const { result } = await runWith([], { ...after120, changelog: ready, workingChangelog: withEntries });
+    assert.equal(result.code, 0, result.stderr);
+  });
+
+  for (const args of [['--clear'], ['--clear', 'v1.2.0'], ['--clear', '--dry-run']]) {
+    test(`${args.join(' ')} ignores the changelog, even a missing one`, async () => {
+      const { git, result } = await runWith(args, { ...after120, changelog: undefined });
+      assert.equal(result.code, 0, result.stderr);
+      if (!args.includes('--dry-run')) assert.deepEqual(git.snapshot(), { local: {}, remote: {} });
+    });
+  }
+});
+
+describe('--notes prints a version\'s notes from the checked-out changelog (unit)', () => {
+  const notes = (workingChangelog, tag = 'v1.3.0') => runWith(['--notes', tag], { workingChangelog });
+
+  test('prints the text under the version\'s heading without the heading, and succeeds', async () => {
+    const { result } = await notes(ready);
+    assert.deepEqual(result, { code: 0, stdout: '- You can now pick a color.\n', stderr: '' });
+  });
+
+  test('stops at the next heading and leaves out other versions and Unreleased', async () => {
+    const { result } = await notes('## Unreleased\n\n## 1.4.0\n\n- Newer.\n\n## 1.3.0\n\n- This.\n- And this.\n\n## 1.2.0\n\n- Older.\n');
+    assert.equal(result.stdout, '- This.\n- And this.\n');
+  });
+
+  test('prints the last section of the file', async () => {
+    const { result } = await notes('## Unreleased\n\n## 1.3.0\n\n- Only this.\n');
+    assert.equal(result.stdout, '- Only this.\n');
+  });
+
+  test('trims blank lines at the start and end', async () => {
+    const { result } = await notes('## Unreleased\n\n## 1.3.0\n\n\n\n- Padded.\n\n\n\n## 1.2.0\n\n- Older.\n');
+    assert.equal(result.stdout, '- Padded.\n');
+  });
+
+  test('keeps blank lines and indentation inside the notes', async () => {
+    const { result } = await notes('## Unreleased\n\n## 1.3.0\n\n- First.\n  - Nested.\n\n- Second, with **bold** text.\n\n## 1.2.0\n\n- Older.\n');
+    assert.equal(result.stdout, '- First.\n  - Nested.\n\n- Second, with **bold** text.\n');
+  });
+
+  test('does not take the section of a version that merely starts the same', async () => {
+    const { result } = await notes('## Unreleased\n\n## 11.3.0\n\n- Not this.\n\n## 1.3.01\n\n- Nor this.\n');
+    assertRefusal(result, /1\.3\.0/);
+  });
+
+  test('runs no git, so the checked-out file is what it reads, not the committed one', async () => {
+    const { git, result } = await runWith(['--notes', 'v1.3.0'], { workingChangelog: ready, changelog: undefined });
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(git.calls, []);
+  });
+
+  for (const tag of ['v1.2', 'proof-1', 'v01.2.3', '1.3.0', 'v1.3.0-rc1']) {
+    test(`fails with one error line naming "${tag}" and the form v<major>.<minor>.<patch>, since it is not a version tag`, async () => {
+      const { git, result } = await notes(ready, tag);
+      assertRefusal(result);
+      assert.ok(result.stderr.includes(tag));
+      assert.match(result.stderr, /v<major>\.<minor>\.<patch>/);
+      assert.deepEqual(git.calls, []);
+    });
+  }
+
+  for (const [what, changelog, fix] of notReady) {
+    test(`fails with one error line naming the version and the fix when the changelog ${what}`, async () => {
+      const { git, result } = await notes(changelog);
+      assertRefusal(result, /1\.3\.0/);
+      assert.match(result.stderr, fix);
+      assert.deepEqual(git.calls, []);
+    });
+  }
+});
+
+describe('--notes arguments (unit)', () => {
+  const wrong = [
+    ['no tag', ['--notes']],
+    ['two tags', ['--notes', 'v1.0.0', 'v1.0.1']],
+    ['a part', ['--notes', 'v1.0.0', 'major']],
+    ['--clear', ['--notes', 'v1.0.0', '--clear']],
+    ['--clear first', ['--clear', '--notes', 'v1.0.0']],
+    ['--dry-run', ['--notes', 'v1.0.0', '--dry-run']],
+    ['--dry-run first', ['--dry-run', '--notes', 'v1.0.0']],
+    ['--check', ['--notes', 'v1.0.0', '--check']],
+    ['--check first', ['--check', 'v1.0.0', '--notes']],
+    ['--notes twice', ['--notes', 'v1.0.0', '--notes']],
+    ['a part first', ['major', '--notes', 'v1.0.0']],
+    ['an approval option', ['--notes', 'v1.0.0', '--expect', 'v1.0.0', '--commit', commitA]],
+  ];
+  for (const [what, args] of wrong) {
+    test(`fails before any git operation, as --notes takes exactly one tag, when given ${what}`, async () => {
+      const { git, result } = await runWith(args, { workingChangelog: ready.replaceAll('1.3.0', '1.0.0') });
+      assertRefusal(result, /--notes/);
+      assert.doesNotMatch(result.stderr, /unknown option/);
+      assert.deepEqual(git.calls, []);
+    });
+  }
+});
+
 // ---------- integration ----------
 
 const gitEnv = {
@@ -850,8 +1039,9 @@ function git(cwd, ...args) {
   return result.stdout.trim();
 }
 
-// A work repository with the script committed in its .agents folder, and a bare repository as its origin.
-function repositories(t) {
+// A work repository with the script and a CHANGELOG.md committed, and a bare repository as its origin.
+// The changelog is valid for every version the tests make, unless a test gives its own text.
+function repositories(t, { changelog = validChangelog } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'memoria-version-tag-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const origin = join(root, 'origin.git');
@@ -863,6 +1053,7 @@ function repositories(t) {
   git(work, 'config', 'commit.gpgsign', 'false');
   git(work, 'remote', 'add', 'origin', origin);
   copyFileSync(script, join(work, '.agents', 'version-tag.mjs'));
+  writeFileSync(join(work, 'CHANGELOG.md'), changelog);
   git(work, 'add', '.');
   git(work, 'commit', '-m', 'Add the script');
   git(work, 'push', '--set-upstream', 'origin', 'main');
@@ -1014,6 +1205,60 @@ describe('version-tag.mjs on real git (integration)', () => {
     const result = runScript(root, '--check', 'v9007199254740993.0.18446744073709551617');
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stdout, '9007199254740993.0.18446744073709551617\n');
+  });
+});
+
+describe('version-tag.mjs changelog on real git (integration)', () => {
+  test('--notes prints the version\'s notes, from the script\'s repository whatever folder it runs from, and exits 0', (t) => {
+    const { root, runScript } = repositories(t, { changelog: ready });
+    const result = runScript(root, '--notes', 'v1.3.0');
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, '- You can now pick a color.\n');
+    assert.equal(result.stderr, '');
+  });
+
+  test('--notes reads the file as checked out, including a change not committed yet', (t) => {
+    const { work, runScript } = repositories(t, { changelog: ready });
+    writeFileSync(join(work, 'CHANGELOG.md'), ready.replace('pick a color', 'pick two colors'));
+    const result = runScript(work, '--notes', 'v1.3.0');
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, '- You can now pick two colors.\n');
+  });
+
+  test('--notes prints one error line and exits 1 when the version has no notes', (t) => {
+    const { work, runScript } = repositories(t, { changelog: ready });
+    const result = runScript(work, '--notes', 'v1.4.0');
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.equal(lines(result.stderr).length, 1);
+    assert.ok(result.stderr.includes('1.4.0'));
+  });
+
+  test('--notes prints one error line and exits 1 for a tag that is not a version tag', (t) => {
+    const { work, runScript } = repositories(t, { changelog: ready });
+    const result = runScript(work, '--notes', 'proof-1');
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.equal(lines(result.stderr).length, 1);
+    assert.ok(result.stderr.includes('proof-1'));
+  });
+
+  test('makes and pushes the tag when the committed changelog has the version\'s notes', (t) => {
+    const { work, origin, runScript } = repositories(t, { changelog: changelogWith('0.1.0') });
+    const result = runScript(work);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(git(origin, 'tag', '--list'), 'v0.1.0');
+  });
+
+  test('refuses with one line naming the version, and makes no tag, when the committed changelog lacks its notes', (t) => {
+    const { work, origin, tags, runScript } = repositories(t, { changelog: withEntries });
+    const result = runScript(work);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.equal(lines(result.stderr).length, 1);
+    assert.ok(result.stderr.includes('0.1.0'));
+    assert.deepEqual(tags(work), []);
+    assert.deepEqual(tags(origin), []);
   });
 });
 

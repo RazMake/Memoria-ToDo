@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
@@ -18,7 +19,7 @@ internal sealed class AddWindowView : Window, IAddWindow
     private readonly TaskEditorControl _editor;
     private readonly AddDraft _draft;
 
-    public AddWindowView(ITasks tasks, TaskEditorControl editor)
+    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates)
     {
         _editor = editor;
         _draft = new AddDraft(tasks, editor);
@@ -53,6 +54,7 @@ internal sealed class AddWindowView : Window, IAddWindow
         panel.Children.Add(clear);
         panel.Children.Add(editor);
         panel.Children.Add(save);
+        panel.Children.Add(new UpdateStatusBar(updates, null));
         Content = panel;
 
         editor.SaveRequested += (_, _) => Save(keepOpen: false);

@@ -2,13 +2,13 @@
 
 Status: Drafting
 
-The Formatted view is the desktop module that shows a task's title and description formatted, with no Markdown characters, and opens their web links in the default browser. View Tasks uses it now, and Add's preview will use it later.
+The Formatted view is the desktop module that shows a task's title and description formatted, with no Markdown characters, and opens their web links in the default browser. Task View uses it now, and Add's preview will use it later.
 
 ## Behavior
 
 ### It shows what Rendering decides, never Markdown
 
-The user decided that View Tasks shows titles and descriptions formatted, as a reader sees them, and that this part is common, so Add can later show a preview with it. [Rendering](../rendering.md) stays the one home of the formatting rules; the Formatted view only shows its output in WPF:
+The user decided that Task View shows titles and descriptions formatted, as a reader sees them, and that this part is common, so Add can later show a preview with it. [Rendering](../rendering.md) stays the one home of the formatting rules; the Formatted view only shows its output in WPF:
 
 - **A title shows as native WPF text**, from Rendering's [styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) without the spans marked as markers. Bold, italic, code, strikethrough, links, and colors show. Proposed: each stretch's color comes from Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) for the current theme, which gives a palette color, a link, code, or italic text its color. This is a decision to confirm. A title needs no web view.
 - **A description shows in a web view**, as Rendering's [description page](../rendering.md#public-interface). The web view runs no scripts and loads only images from the clone, as [Rendering](../rendering.md#the-web-view-runs-no-scripts-and-loads-only-images-from-the-clone) requires.
@@ -19,7 +19,7 @@ The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-pre
 Proposed, each a decision to confirm:
 
 - Code in a title shows as the text look's code does: in its font and color, on its faded background.
-- A shown title and description stop following the theme while they're off screen, so a closed View Tasks holds no subscription. They follow it through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), which the Task editor and Configure use too.
+- A shown title and description stop following the theme while they're off screen, so a closed Task View holds no subscription. They follow it through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), which the Task editor and Configure use too.
 
 ### A title's name is the text it shows
 
@@ -33,11 +33,11 @@ Clicking a link in a title or a description applies Rendering's [browser check](
 
 The Formatted view knows no task formats: it doesn't tell a task link from other links; its user asks [Tasks](../tasks.md#a-time-ordered-id-names-each-task-its-file-and-links-to-it).
 
-Proposed: links in titles follow the same rule as links in descriptions, and clicking one doesn't also select the row around it, as [View Tasks](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) does on a click on the title. This is a decision to confirm.
+Proposed: links in titles follow the same rule as links in descriptions, and clicking one doesn't also select the row around it, as [Task View](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) does on a click on the title. This is a decision to confirm.
 
 ### One web view serves a window, and releases its browser
 
-A web view costs memory and start-up time, so each window that shows descriptions uses one, and releases it, with its browser, when the window closes. The Formatted view's description takes a web view when it's made and releases it when it's released. The [Task list](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) makes one when View Tasks opens.
+A web view costs memory and start-up time, so each window that shows descriptions uses one, and releases it, with its browser, when the window closes. The Formatted view's description takes a web view when it's made and releases it when it's released. The [Task list](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) makes one when Task View opens.
 
 A description shown before the browser has started waits, and shows once it has.
 
@@ -62,8 +62,8 @@ Proposed, each a decision to confirm:
 
 - The clone's address is `https://clone.memoria-todo.example/`. The `.example` name can never be a real site ([RFC 2606](https://www.rfc-editor.org/rfc/rfc2606.html)).
 - WebView2 keeps its browser data in `%LocalAppData%\Memoria-ToDo\WebView2\`, outside the folder the installer replaces on update.
-- A web view serves the clone folder set when it was made. After Configure picks another folder, images load from it once View Tasks opens again.
-- When WebView2 refuses the shown page, such as a page over the 2 MB that [NavigateToString](https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.navigatetostring) takes, or the shown page doesn't finish loading or can't be measured, the web view fails, as when its browser can't start: every description shows as Markdown source until View Tasks opens again. For a page that didn't load, the reason is "The page did not load: " followed by WebView2's error status. The web view doesn't check a page's size first, since WebView2 sets the limit. Showing only that one description as source would need the Formatted view to recover page by page, for a failure that's rare.
+- A web view serves the clone folder set when it was made. After Configure picks another folder, images load from it once Task View opens again.
+- When WebView2 refuses the shown page, such as a page over the 2 MB that [NavigateToString](https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.navigatetostring) takes, or the shown page doesn't finish loading or can't be measured, the web view fails, as when its browser can't start: every description shows as Markdown source until Task View opens again. For a page that didn't load, the reason is "The page did not load: " followed by WebView2's error status. The web view doesn't check a page's size first, since WebView2 sets the limit. Showing only that one description as source would need the Formatted view to recover page by page, for a failure that's rare.
 
 ## Public interface
 

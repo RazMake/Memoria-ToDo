@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
 
-/// <summary>EscCloses on a plain test window with one control inside, as View Tasks and Configure use it.</summary>
+/// <summary>EscCloses on a plain test window with one control inside, as Task View and Configure use it.</summary>
 [UX]
 [Collection(ScreenTests.Collection)]
 public class EscClosesWindowTests

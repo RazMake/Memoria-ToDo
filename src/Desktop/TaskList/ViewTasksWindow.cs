@@ -2,6 +2,7 @@ using System.Windows;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
@@ -9,18 +10,18 @@ using Memoria.ToDo.Shared.Sync;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
-/// <summary>Creates the View Tasks window.</summary>
+/// <summary>Creates the Task View window.</summary>
 public static class ViewTasksWindow
 {
     /// <summary>
-    /// Creates View Tasks. The window, and its description web view, are made only on <see cref="IViewTasksWindow.Show"/>;
+    /// Creates Task View. The window, and its description web view, are made only on <see cref="IViewTasksWindow.Show"/>;
     /// the web view is released when the window closes.
     /// </summary>
     public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys)
+        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates)
     {
-        ArgumentNullException.ThrowIfNull(tasks);
+                ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(tagColors);
         ArgumentNullException.ThrowIfNull(palette);
         ArgumentNullException.ThrowIfNull(theme);
@@ -32,7 +33,8 @@ public static class ViewTasksWindow
         ArgumentNullException.ThrowIfNull(browser);
         ArgumentNullException.ThrowIfNull(sync);
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
-        return new Opener(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys);
+        ArgumentNullException.ThrowIfNull(updates);
+        return new Opener(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates);
     }
 
     // Holds a failure from a delete finished while the window closed, so the next window shows it, and the sync
@@ -46,7 +48,7 @@ public static class ViewTasksWindow
 
         public Opener(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
             IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-            Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys)
+            Func<IDescriptionWebView> createWebView,             IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates)
         {
             _window = new SingleWindow(() =>
             {
@@ -56,7 +58,7 @@ public static class ViewTasksWindow
                 try
                 {
                     var window = new TaskListWindow(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, webView,
-                        browser, listSync, message, failure => _carried = failure);
+                        browser, listSync, updates, message, failure => _carried = failure);
                     _carried = null;
                     closeWindowKeys.Attach(window);
                     _current = window;
@@ -81,7 +83,7 @@ public static class ViewTasksWindow
     }
 }
 
-/// <summary>The View Tasks window, as Shell uses it.</summary>
+/// <summary>The Task View window, as Shell uses it.</summary>
 public interface IViewTasksWindow
 {
     /// <summary>Opens the window, or brings it forward.</summary>

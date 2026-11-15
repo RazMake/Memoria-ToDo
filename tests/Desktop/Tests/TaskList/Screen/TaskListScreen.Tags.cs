@@ -8,7 +8,7 @@ using Memoria.ToDo.Shared.Rendering;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// How a View Tasks test reaches the tag parts, through the ids the Task editor's tests already use (see <see cref="TagControls"/>).
+/// How a Task View test reaches the tag parts, through the ids the Task editor's tests already use (see <see cref="TagControls"/>).
 /// The selected task's tag control, and the editor's own during an edit, show on the right side: badges with id "Badge {tag}",
 /// remove buttons ("Remove {tag}"), and the + button ("AddTag"). A group heading shows its tag as one badge. Rows show no badges.
 /// Each helper that names a task's title needs that task to be the selected one. Shared test setup.

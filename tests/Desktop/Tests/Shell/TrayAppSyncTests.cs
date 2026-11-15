@@ -21,7 +21,7 @@ public class TrayAppSyncTests
 
         Assert.Empty(app.Shown);
         app.Sync.SetupControl.Publish(new FakeSyncSetupState { IsConfigured = true });
-        Assert.Equal(["View Tasks"], app.Shown);
+        Assert.Equal(["Task View"], app.Shown);
         await app.Lifetime.StopAsync(CancellationToken.None);
     }
 
@@ -75,7 +75,7 @@ public class TrayAppSyncTests
     }
 
     [Theory]
-    [InlineData(true, new[] { "View Tasks", "Configure" })]
+    [InlineData(true, new[] { "Task View", "Configure" })]
     [InlineData(false, new[] { "Configure" })]
     public async Task A_failed_shortcut_registration_makes_one_startup_choice_after_local_setup_loads(
         bool setupConfigured, string[] expected)
@@ -135,10 +135,10 @@ public class TrayAppSyncTests
         app.Configure.ConnectAnswer = false;
         app.Start();
 
-        app.TrayIcon.ChooseMenuItem("Manage tasks");
+        app.TrayIcon.ChooseMenuItem("Task View");
         app.Sync.SetupControl.Publish(new FakeSyncSetupState { IsConfigured = true });
 
-        Assert.Equal(["View Tasks"], app.Shown);
+        Assert.Equal(["Task View"], app.Shown);
         await app.Lifetime.StopAsync(CancellationToken.None);
     }
 
@@ -209,7 +209,7 @@ public class TrayAppSyncTests
 
         app.Start();
         app.TrayIcon.LeftClick();
-        app.TrayIcon.ChooseMenuItem("Manage tasks");
+        app.TrayIcon.ChooseMenuItem("Task View");
 
         Assert.Equal(0, app.Add.ShowCount);
         Assert.Equal(0, app.ViewTasks.ShowCount);

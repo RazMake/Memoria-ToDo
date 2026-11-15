@@ -13,6 +13,7 @@ public sealed class FakeTimeProvider : TimeProvider
     private readonly DateTimeOffset start;
     private DateTimeOffset now;
     private TimeSpan slept;
+    private TimeZoneInfo? localTimeZone;
 
     /// <summary>Starts the clock at <paramref name="start"/>, or at 2026-01-01 UTC.</summary>
     public FakeTimeProvider(DateTimeOffset? start = null)
@@ -32,6 +33,12 @@ public sealed class FakeTimeProvider : TimeProvider
     {
         lock (gate) { return now; }
     }
+
+    /// <summary>The local time zone code under test sees: the one <see cref="UseLocalTimeZone"/> set, otherwise the PC's.</summary>
+    public override TimeZoneInfo LocalTimeZone => Volatile.Read(ref localTimeZone) ?? base.LocalTimeZone;
+
+    /// <summary>From now on, <see cref="LocalTimeZone"/> is <paramref name="zone"/>, so a test can check 3:00 local time and daylight saving changes on any PC.</summary>
+    public void UseLocalTimeZone(TimeZoneInfo zone) => Volatile.Write(ref localTimeZone, zone ?? throw new ArgumentNullException(nameof(zone)));
 
     /// <inheritdoc />
     public override long TimestampFrequency => TimeSpan.TicksPerSecond;

@@ -29,7 +29,7 @@ public class ShortcutSettingConnectTests
     }
 
     [Fact]
-    public void Registers_the_Manage_tasks_default_on_its_own_action()
+    public void Registers_the_Task_View_default_on_its_own_action()
     {
         var row = TestShortcutSetting.ManageTasks();
 

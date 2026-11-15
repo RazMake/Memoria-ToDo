@@ -103,28 +103,29 @@ The shared library has four modules:
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, the text look of headings, links, code, and italic text, and which links may open in the browser | [Rendering](rendering.md) | None |
 
-The desktop app has five modules of its own:
+The desktop app has six modules of its own:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Shell | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Configure, Sync |
-| Task editor | The Add window, and the editor, tag control, tag badges, and top tags View Tasks uses | [Task editor](desktop/task-editor.md) | Tasks, Editing, Rendering |
-| Task list | View Tasks: open tasks grouped by tag beside the selected task's description, edited there, with colored tags that change without Edit, the tag filter, search, resolving, deleting, resolved tasks, and the Sync button | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Formatted view, Sync |
-| Configure | The two global shortcuts and the deletion delay, which every device shares; the Close window shortcut; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync |
+| Shell | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Configure, Sync, Updates |
+| Task editor | The Add window, and the editor, tag control, tag badges, and top tags Task View uses | [Task editor](desktop/task-editor.md) | Tasks, Editing, Rendering, Updates |
+| Task list | Task View: open tasks grouped by tag beside the selected task's description, edited there, with colored tags that change without Edit, the tag filter, search, resolving, deleting, resolved tasks, and the Sync button | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Formatted view, Sync, Updates |
+| Configure | The two global shortcuts and the deletion delay, which every device shares; the Close window shortcut; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
+| Updates | Checking for a new version, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
 
 Proposed, each a decision to confirm:
 
 - Shell may use Sync, so the tray shows sync status without going through Configure.
-- The Task list may use Sync, for its Sync button and the sync when View Tasks opens.
+- The Task list may use Sync, for its Sync button and the sync when Task View opens.
 
 The Android app has four modules with the same names as the desktop app's first four, separate from them:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
 | Shell | Where the app icon, the app shortcut, and the home-screen widget lead; sync when the app opens and in the background; updates; and the theme | [Shell](android/shell.md) | Task editor, Task list, Configure, Sync |
-| Task editor | The full-screen Add screen with its toolbar and tag chips, which also edits a task from View Tasks | [Task editor](android/task-editor.md) | Tasks, Editing, Rendering |
-| Task list | View Tasks: open tasks in rank order, expanded in place, with swipes, reordering, the tag filter, search, resolved tasks, the floating Add button, and the top tasks the widget shows | [Task list](android/task-list.md) | Tasks, Rendering, Task editor, Sync |
+| Task editor | The full-screen Add screen with its toolbar and tag chips, which also edits a task from Task View | [Task editor](android/task-editor.md) | Tasks, Editing, Rendering |
+| Task list | Task View: open tasks in rank order, expanded in place, with swipes, reordering, the tag filter, search, resolved tasks, the floating Add button, and the top tasks the widget shows | [Task list](android/task-list.md) | Tasks, Rendering, Task editor, Sync |
 | Configure | The phone's key and repository, the shared deletion delay, the swipe direction, and Sync's status | [Configure](android/configure.md) | Tasks, Sync |
 
 Proposed, each a decision to confirm:

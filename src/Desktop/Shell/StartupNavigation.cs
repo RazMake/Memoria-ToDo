@@ -4,7 +4,7 @@ namespace Memoria.ToDo.Desktop.Shell;
 
 /// <summary>
 /// Chooses the window an automatic start opens, once, when Sync publishes that local initialization finished,
-/// whether it succeeded or failed: Configure when the device isn't configured; otherwise View Tasks unless the app
+/// whether it succeeded or failed: Configure when the device isn't configured; otherwise Task View unless the app
 /// started at sign-in, then Configure when a shortcut didn't register. A manual navigation before that
 /// publication, or shutdown, cancels it.
 /// </summary>

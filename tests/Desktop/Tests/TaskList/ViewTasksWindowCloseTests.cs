@@ -4,7 +4,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Closing View Tasks when it isn't open. It builds no window, since the window is made only by Show, so these run
+/// Closing Task View when it isn't open. It builds no window, since the window is made only by Show, so these run
 /// with no screen. Closing while it is open is in the UX tests.
 /// </summary>
 [Unit]

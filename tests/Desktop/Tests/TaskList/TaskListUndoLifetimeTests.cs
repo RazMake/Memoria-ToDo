@@ -61,7 +61,7 @@ public class TaskListUndoLifetimeTests
 }
 
 /// <summary>
-/// An edit's images that can't be removed as the window closes: the web view is still released, and the user is told the next time View Tasks opens.
+/// An edit's images that can't be removed as the window closes: the web view is still released, and the user is told the next time Task View opens.
 /// </summary>
 [UX]
 [Collection(ScreenTests.Collection)]

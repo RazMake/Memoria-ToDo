@@ -13,6 +13,6 @@
     <ProjectReference Include="..\..\..\src\Desktop\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\TaskList\Memoria.ToDo.Desktop.TaskList.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
-  </ItemGroup>
+        <ProjectReference Include="..\..\..\src\Desktop\Updates\Memoria.ToDo.Desktop.Updates.csproj" />  </ItemGroup>
 
 </Project>

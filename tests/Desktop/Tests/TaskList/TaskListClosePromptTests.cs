@@ -7,7 +7,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Closing View Tasks with <c>IViewTasksWindow.Close</c>, the close button, and Alt+F4. An edit with no changes closes
+/// Closing Task View with <c>IViewTasksWindow.Close</c>, the close button, and Alt+F4. An edit with no changes closes
 /// at once; a changed edit asks Save, Discard, or Cancel in a modal prompt (driven by <see cref="ClosePrompt"/>, which
 /// answers it while the close call waits). What each answer means is unit-tested in CloseDecisionTests; these tests check
 /// the real prompt and what the user sees. Every test that could show the prompt answers it, so a missing prompt
@@ -92,7 +92,7 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
-    public void Save_saves_the_edit_closes_View_Tasks_and_returns_true()
+    public void Save_saves_the_edit_closes_Task_View_and_returns_true()
     {
         var services = new ListServices();
         using var screen = ChangedEdit(services);
@@ -117,7 +117,7 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
-    public void Save_with_an_empty_Title_saves_nothing_marks_the_Title_and_keeps_View_Tasks_open()
+    public void Save_with_an_empty_Title_saves_nothing_marks_the_Title_and_keeps_Task_View_open()
     {
         var services = new ListServices();
         using var screen = ChangedEdit(services);
@@ -133,7 +133,7 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
-    public void Save_that_cannot_write_keeps_View_Tasks_open_with_the_text_and_the_editors_message()
+    public void Save_that_cannot_write_keeps_Task_View_open_with_the_text_and_the_editors_message()
     {
         var services = new ListServices();
         using var screen = ChangedEdit(services);
@@ -167,7 +167,7 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
-    public void Cancel_keeps_View_Tasks_open_with_the_edit_as_it_was_and_the_cursor_in_the_editor()
+    public void Cancel_keeps_Task_View_open_with_the_edit_as_it_was_and_the_cursor_in_the_editor()
     {
         var services = new ListServices();
         using var screen = ChangedEdit(services);
@@ -209,7 +209,7 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
-    public void The_close_button_and_Alt_F4_ask_the_same_prompt_and_Cancel_keeps_View_Tasks_open()
+    public void The_close_button_and_Alt_F4_ask_the_same_prompt_and_Cancel_keeps_Task_View_open()
     {
         var services = new ListServices();
         using var screen = ChangedEdit(services);
@@ -270,7 +270,7 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
-    public void A_plain_WM_CLOSE_while_the_prompt_shows_closes_the_prompt_as_Cancel_then_closes_View_Tasks_and_discards_the_edit()
+    public void A_plain_WM_CLOSE_while_the_prompt_shows_closes_the_prompt_as_Cancel_then_closes_Task_View_and_discards_the_edit()
     {
         var services = new ListServices();
         using var screen = ChangedEdit(services);
@@ -288,7 +288,7 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
-    public void Discard_from_the_close_button_closes_View_Tasks_without_saving()
+    public void Discard_from_the_close_button_closes_Task_View_without_saving()
     {
         var services = new ListServices();
         using var screen = ChangedEdit(services);

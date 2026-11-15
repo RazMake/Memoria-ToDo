@@ -22,7 +22,7 @@ public sealed record Shortcut
     /// <summary>Win+Alt+N, the shortcut Add new task starts with.</summary>
     internal static Shortcut AddNewTaskDefault { get; } = new(ModifierKeys.Windows | ModifierKeys.Alt, Key.N);
 
-    /// <summary>Win+Alt+V, the shortcut Manage tasks starts with.</summary>
+    /// <summary>Win+Alt+V, the shortcut Task View starts with.</summary>
     internal static Shortcut ManageTasksDefault { get; } = new(ModifierKeys.Windows | ModifierKeys.Alt, Key.V);
 
     /// <summary>Shift+Esc, the shortcut Close window starts with.</summary>

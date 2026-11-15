@@ -2,7 +2,7 @@
 
 Status: Drafting
 
-Configure is the desktop app's settings window. It changes the two global shortcuts, the shortcut that closes the app's windows, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns.
+Configure is the desktop app's settings window. It changes the two global shortcuts, the shortcut that closes the app's windows, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns. At its top, a card shows the app's version and updates, which [Updates](updates.md) owns.
 
 ## Behavior
 
@@ -12,11 +12,12 @@ The table lists every setting in Configure, the module that owns it, where it's 
 
 | Setting | Owner | Kept | Default |
 | --- | --- | --- | --- |
-| Global shortcuts for Add new task and Manage tasks | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device | As [Shell](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
+| Global shortcuts for Add new task and Task View | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device | As [Shell](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
 | The Close window shortcut, which closes the app's windows, as [below](#esc-and-the-close-window-shortcut-close-the-window) | Tasks stores the value; Configure checks it | In the repository's `settings.json`, shared by every device, like the global shortcuts | **Shift+Esc** |
 | Start with Windows | Configure | In the current user's `Run` registry key, on this device, as [below](#start-with-windows-is-the-run-key-itself) | On |
 | Days before a resolved task is deleted | Tasks | In the repository, shared by every device | One week, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides |
 | The repository's SSH address, the device name, the device's SSH key, and the accepted host keys | Sync | On this device | The device name starts as the machine's name; the rest is set up as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says |
+| Auto update, on the [update card](#an-update-card-sits-above-the-sections) | Updates | In a file on this device, as [Updates](updates.md#auto-update-updates-each-night-once-no-window-is-open) proposes | Off, proposed |
 
 **Every device uses the same shortcuts.** Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-settings-and-tag-colors) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
 
@@ -30,7 +31,7 @@ Proposed: the deletion delay shows in days. This is a decision to confirm.
 
 ### The window shows its settings in labeled sections
 
-The window shows each shortcut with the name of what it does, Add new task, Manage tasks, and Close window, and it's wide enough to read at a glance.
+The window shows each shortcut with the name of what it does, Add new task, Task View, and Close window, and it's wide enough to read at a glance.
 
 The user decided the rules on sections below: only a click on another section's title closes the open one, sections have rounded corners and no expand or collapse arrow, an open section's content starts at its top rather than centered in the window's height, titles look like heading 1, and titles show the hand pointer. The rest are proposed, each a decision to confirm:
 
@@ -40,8 +41,8 @@ The user decided the rules on sections below: only a click on another section's 
 - **Everything in a section starts at its top.** The open section's content starts right under its title, and space the content doesn't need stays at the section's bottom. Inside a section or a card, each label lines up with the top of the control beside it, not with its middle, and nothing is centered in the height around it.
 - **Section titles look like a description's heading 1**: in heading 1's color for the theme, bold, at heading 1's size, all from Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme). They follow the theme when Windows switches between light and dark.
 - **Section titles are buttons, so they show the hand pointer**, as [every button in the app](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does.
-- **Shortcuts starts with a line saying how to change one**, in the window's normal text size and color and ending with a colon: "Click a box, then press the new shortcut. Esc keeps the current one:". Then each shortcut has a row, Add new task first, then Manage tasks, then Close window: its name on the left and its field on the right. Under the field, a short description says what the shortcut does, in the help style and in italics, then the row's message. The names share one column, so the fields line up.
-- **The descriptions are**: Add new task, "Opens the Add window from any app."; Manage tasks, "Opens View Tasks from any app."; Close window, "Closes the app's window you're in, whatever has the focus."
+- **Shortcuts starts with a line saying how to change one**, in the window's normal text size and color and ending with a colon: "Click a box, then press the new shortcut. Esc keeps the current one:". Then each shortcut has a row, Add new task first, then Task View, then Close window: its name on the left and its field on the right. Under the field, a short description says what the shortcut does, in the help style and in italics, then the row's message. The names share one column, so the fields line up.
+- **The descriptions are**: Add new task, "Opens the Add window from any app."; Task View, "Opens Task View from any app."; Close window, "Closes the app's window you're in, whatever has the focus."
 - **Startup holds the Start with Windows check box**, a line of help under it, and its message.
 - **Sync settings shows its settings on three cards**: Repository, Git Access, and Auto, as [below](#the-sync-settings-section-sets-the-devices-clone) says.
 - **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: card titles small and bold, messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
@@ -49,21 +50,37 @@ The user decided the rules on sections below: only a click on another section's 
 - **The window opens with no field focused**, so the shortcuts keep working until the user clicks a field, as [below](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) explains.
 - **Esc and the Close window shortcut close the window**, as [below](#esc-and-the-close-window-shortcut-close-the-window) says.
 
+### An update card sits above the sections
+
+A card at the window's top shows the app's version and whether a newer one is available, and holds the update controls. [Updates](updates.md#updates-tells-you-about-a-new-version-and-installs-it-only-when-you-agree) owns the state the card shows and what each control does; Configure only shows them. Proposed, each a decision to confirm:
+
+- **The card is always there, above the three sections**, and the window keeps its size: the open section gives up the card's height and scrolls when it needs to.
+- **It looks like the other cards**: a box with rounded corners and a 1-pixel edge in the theme's card edge color.
+- **While a version is available, the card has a highlighted background**, the theme's caution background, which goes with the status bar's [caution color](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar). Otherwise it has no background, only its edge, so it draws the eye only when there's something to do.
+- **It shows, in order**:
+  - "Current version: 2.1.0".
+  - While a version is available, "Available new version: **2.2.0**"; while updating, "Updating to: **2.2.0**" instead. With no update, there's no second line.
+  - While a version is available or updating, What is new, which opens [the notes](updates.md#what-is-new-shows-each-newer-releases-notes), and Update Now, which starts the [update](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it). Update Now is hidden while Auto update is on, and turned off while updating.
+  - The Auto update check box, with the help line "Checks for a new version each night around 3 AM, and installs it." It's turned off while updating.
+  - A message in the error color, when an update or Auto update failed, as [Updates](updates.md#failure-modes) words it.
+- **A copy run from a build folder** shows its version, the help line "Updates work only in an installed copy.", and Auto update off and turned off, as [Updates](updates.md#a-copy-run-from-a-build-folder-shows-its-version-and-doesnt-update) proposes.
+- **The card follows the state as it changes**, while the window is open.
+
 ### Esc and the Close window shortcut close the window
 
 Esc closes Configure, and the Close window shortcut closes any of the app's windows, Configure included. Both close a window exactly as its close button does, so nothing is saved or lost that the close button wouldn't save or lose.
 
 - **Esc closes Configure unless a control uses it first.** An open menu, such as the Configure button's, closes first. In a shortcut field, Esc keeps the current shortcut and moves the focus out of the fields, so the shortcuts register again; a second Esc closes the window. Add [closes an open list first](task-editor.md#keys-save-close-and-move-between-fields) the same way.
-- **Esc closes through the platform's [Esc part](README.md#window-modules-read-keys-through-the-platform)**, as View Tasks does. Anything typed and not yet applied, such as a repository address, is dropped, and a running sync goes on, as [below](#configure-shows-how-sync-is-doing) says.
+- **Esc closes through the platform's [Esc part](README.md#window-modules-read-keys-through-the-platform)**, as Task View does. Anything typed and not yet applied, such as a repository address, is dropped, and a running sync goes on, as [below](#configure-shows-how-sync-is-doing) says.
 - **The Close window shortcut closes the window whatever has the focus in it**: a shortcut field, a text box, or an open menu. It acts before any control sees the keys, so it also wins over a key a window uses for something else.
 - **It never registers with Windows.** It works only while one of the app's windows has the focus, so it takes no keys from other apps.
-- **It closes Add, View Tasks, and Configure**, through one [platform part](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows), so the key handling has one home.
+- **It closes Add, Task View, and Configure**, through one [platform part](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows), so the key handling has one home.
 
 Not confirmed by a run: that the shortcut reaches the window while the Configure button's menu is open, since a WPF menu takes the keys in a window of its own.
 
 ### A new shortcut is checked at once
 
-The user clicks a shortcut's field and presses the new keys. The field shows them, and Configure checks them at once; Esc leaves the shortcut as it was. Configure accepts a global shortcut, Add new task's or Manage tasks', only if it follows all three rules:
+The user clicks a shortcut's field and presses the new keys. The field shows them, and Configure checks them at once; Esc leaves the shortcut as it was. Configure accepts a global shortcut, Add new task's or Task View's, only if it follows all three rules:
 
 - **Two or more of Ctrl, Alt, Shift, and Win, plus one other key.** A shortcut with one modifier key can take a common key from every app: Ctrl+C would stop copying everywhere.
 - **Never F12**, since Windows keeps it for debuggers ([RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey)).
@@ -121,12 +138,12 @@ Not confirmed by a run:
 
 The setting is the current user's `Run` registry key ([Run keys](https://learn.microsoft.com/en-us/windows/win32/setupapi/run-and-runonce-registry-keys)): Start with Windows is on while the key holds the app's entry. No file keeps a copy.
 
-- **The entry starts the app through Velopack's starter**, the program Velopack keeps in the install folder, whose path survives updates ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). It adds the argument that marks a [start at sign-in](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-view-tasks).
+- **The entry starts the app through Velopack's starter**, the program Velopack keeps in the install folder, whose path survives updates ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). It adds the argument that marks a [start at sign-in](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view).
 - **Installing turns it on, and uninstalling removes it.** Velopack runs the app during install and uninstall for such steps, which must be fast and show no window ([hooks](https://docs.velopack.io/integrating/hooks)). The install step writes the entry once, and updates leave it alone, so no start turns back on what the user turned off. A step that can't write or remove the entry goes on quietly, since a step can't stop the install or uninstall: after a failed install step Configure shows the setting off, and after a failed uninstall step the entry stays. Proposed: the step writes its error to [Velopack's log](https://docs.velopack.io/troubleshooting/debugging), since a step shows no window. This is a decision to confirm.
 - **Configure shows and switches it through a port Configure publishes.** The check box shows whether the entry is there when the window opens, and a switch writes or removes the entry at once. The composition root implements the port, and its Velopack install and uninstall steps use the same code.
 - **Only an installed copy can switch it.** A copy run from a build folder shows the setting, but switching it fails, since the entry must name the installed starter.
 
-The entry is named with the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), and its value is the starter's quoted path followed by the [sign-in argument](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-view-tasks). Changing the app's name or the argument after the first release would leave existing entries out of date.
+The entry is named with the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), and its value is the starter's quoted path followed by the [sign-in argument](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view). Changing the app's name or the argument after the first release would leave existing entries out of date.
 
 Not confirmed by a run: Windows' [Startup apps page](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows) seems to keep its own on and off list beside the key, so Configure could show on while Windows keeps the app off.
 
@@ -196,9 +213,11 @@ The composition root and Shell use these parts:
       IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync,
       ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme);
   ```
+
+  The user decided that Configure may use [Updates](updates.md), for the [update card](#an-update-card-sits-above-the-sections). Proposed: `Create` also takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, as its new last argument. This is a decision to confirm.
 - **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) meanwhile.
 - **Setup and status** come directly from Sync; Configure publishes no parallel clone, Git identity, or repository-settings port. The desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show) still governs opening and closing.
-- **Connect the shortcuts**: Shell calls it once, when it starts, with one [shortcut action](#public-interface) for Add new task and one for Manage tasks. Configure registers each row's stored shortcut, or its default, at once through its action, then each valid pick on that row, and releases and registers both as [a field's focus](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) comes and goes, always on the UI thread. It returns whether both shortcuts registered, so Shell can show Configure when one didn't. When an action fails, Configure treats it as a setting that [can't be applied](#failure-modes), and that shortcut counts as not registered.
+- **Connect the shortcuts**: Shell calls it once, when it starts, with one [shortcut action](#public-interface) for Add new task and one for Task View. Configure registers each row's stored shortcut, or its default, at once through its action, then each valid pick on that row, and releases and registers both as [a field's focus](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) comes and goes, always on the UI thread. It returns whether both shortcuts registered, so Shell can show Configure when one didn't. When an action fails, Configure treats it as a setting that [can't be applied](#failure-modes), and that shortcut counts as not registered.
 - **A shortcut action**: an interface Configure publishes and Shell implements, one for each shortcut, as [Shell](shell.md#public-interface) says. It has two parts:
   - Register takes a shortcut and registers it in place of the action's previous one. It returns false, keeping the previous one, when Windows or another app holds the shortcut, and true at once when the shortcut is already the action's.
   - Unregister releases the action's shortcut, so its keys reach the focused window, and does nothing when there's none.
@@ -270,7 +289,7 @@ The options below were considered and rejected, grouped by decision.
   - **Fixed at Shift+Esc, shown read-only**: no storage or rules, but the user couldn't move it off a key another tool uses.
   - **Kept in a file on each device, through a new Configure port**: no shared format change, but it breaks the rule that every device uses the same shortcuts, and adds a port, an adapter, and an integration test.
   - **One or more modifier keys plus any key**: one wrong pick, such as Shift+A, would break typing in every window.
-  - **Only Configure closes with it**: Add and View Tasks wouldn't get it.
+  - **Only Configure closes with it**: Add and Task View wouldn't get it.
   - **Shell passes the keys to each window's module**: three modules would each detect the keys, duplicating the handling.
 - Esc in a shortcut field:
   - **Esc always closes the window**: a user who clicked a box and changed their mind would lose the window.

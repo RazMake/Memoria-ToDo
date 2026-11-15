@@ -1,6 +1,6 @@
 namespace Memoria.ToDo.Desktop.TaskList;
 
-/// <summary>What the user chose in the prompt shown when View Tasks closes with a changed edit.</summary>
+/// <summary>What the user chose in the prompt shown when Task View closes with a changed edit.</summary>
 internal enum CloseAnswer
 {
     Save,
@@ -15,7 +15,7 @@ internal interface IClosePrompt
     CloseAnswer Ask();
 }
 
-/// <summary>The edit in place that View Tasks is closing over.</summary>
+/// <summary>The edit in place that Task View is closing over.</summary>
 internal interface IClosingEdit
 {
     bool HasChanges { get; }
@@ -31,7 +31,7 @@ internal interface IClosingEdit
 }
 
 /// <summary>
-/// Whether View Tasks may close. An edit with no changes, or no edit, closes without asking; a changed one asks
+/// Whether Task View may close. An edit with no changes, or no edit, closes without asking; a changed one asks
 /// through <see cref="IClosePrompt"/> and acts on the answer.
 /// </summary>
 internal sealed class CloseDecision(IClosePrompt prompt)

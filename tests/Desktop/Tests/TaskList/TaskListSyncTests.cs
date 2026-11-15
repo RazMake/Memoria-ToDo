@@ -13,7 +13,7 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 public class TaskListSyncTests
 {
     [WpfFact]
-    public void Opening_View_Tasks_starts_sync_and_its_button_and_F5_start_later_passes()
+    public void Opening_Task_View_starts_sync_and_its_button_and_F5_start_later_passes()
     {
         var services = new ListServices();
         using var screen = new TaskListScreen(services);

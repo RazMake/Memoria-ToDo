@@ -22,6 +22,14 @@ public class ViewTasksWindowTests
     }
 
     [WpfFact]
+    public void Is_titled_Task_View()
+    {
+        using var screen = new TaskListScreen(new ListServices());
+
+        Assert.Equal("Task View", screen.Window.Title);
+    }
+
+    [WpfFact]
     public void Makes_one_web_view_when_it_opens_and_none_more_while_tasks_are_selected()
     {
         var services = new ListServices();
@@ -76,5 +84,5 @@ public class ViewTasksWindowTests
 
     private static IViewTasksWindow CreateWindow(ListServices services, ISyncService sync, Func<IDescriptionWebView> createWebView) =>
         ViewTasksWindow.Create(services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard,
-            new FakeImageFileChooser(), services.Files, createWebView, services.Browser, sync, services.CloseWindowKeys);
+            new FakeImageFileChooser(), services.Files, createWebView, services.Browser, sync, services.CloseWindowKeys, services.Updates);
 }

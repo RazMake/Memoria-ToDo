@@ -44,7 +44,7 @@ public class TrayAppStartupDispatcherIntegrationTests
         var run = await done.Task.WaitAsync(Limit, TestContext.Current.CancellationToken);
         try
         {
-            Assert.Equal(["View Tasks"], run.App.Shown);
+            Assert.Equal(["Task View"], run.App.Shown);
             Assert.Equal([run.UiThread], run.App.ViewTasks.ShownOnThreads);
         }
         finally

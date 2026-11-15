@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -14,10 +15,11 @@ public static class ConfigureWindow
     /// <param name="setupActions">The app's clipboard and add-key-page actions.</param>
     /// <param name="closeWindowKeys">The platform's Close window keys; Configure sets them and attaches its window.</param>
     /// <param name="theme">The app's theme; the section titles show in heading 1's color for it and follow its switches.</param>
+    /// <param name="updates">The update status; the card above the sections shows it and calls it for each control.</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static IConfigureWindow Create(IStartWithWindows startWithWindows, ISharedTaskSettings settings,
-        ISyncService sync, ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme) =>
-        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys, theme);
+        ISyncService sync, ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates) =>
+        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys, theme, updates);
 }
 
 /// <summary>The Configure window, as Shell uses it.</summary>

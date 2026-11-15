@@ -2,7 +2,7 @@
 
 Status: Decided
 
-A script, `.agents/version-tag.mjs`, makes the next version tag and pushes it to GitHub, which starts the [release workflow](technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag); it also clears a version tag, and checks a tag for the release job. The `version-tag` skill runs it from Codex, Claude Code, or GitHub Copilot, after you approve its preview.
+A script, `.agents/version-tag.mjs`, makes the next version tag and pushes it to GitHub, which starts the [release workflow](technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag); it also clears a version tag, and gives the release job a tag's version and its notes from the [changelog](../contributing/changelog.md). The `version-tag` skill runs it from Codex, Claude Code, or GitHub Copilot, after you approve its preview.
 
 ## Behavior
 
@@ -53,6 +53,28 @@ Proposed, each a decision to confirm:
 - **The tag is annotated**, as [`git tag`](https://git-scm.com/docs/git-tag) recommends for releases.
 - **When the push fails, the script deletes the tag it just made**, so a rerun starts clean.
 - **The script pushes and rolls back the exact tag it made**, by the ID git gave the new tag, so a tag moved here in the meantime is never pushed or deleted.
+
+### A version is tagged only when the changelog has its notes
+
+Every release carries notes for the people who use the app, taken from the version's section of `CHANGELOG.md`, which the [changelog guide](../contributing/changelog.md) shapes. The user decided that the changelog is the notes' one home.
+
+Proposed, each a decision to confirm:
+
+- **The script holds the rule for finding a version's notes**, and the release job asks it, as it does for the version. So the rule has one home.
+- **Making a tag runs one more check, after the three above**: the changelog. It reads `CHANGELOG.md` as committed on the commit it would tag, not your working tree, since that commit is what the release builds.
+- **The check fails when the new version's notes aren't ready**, and names the version and the fix. For a new version `1.3.0`:
+
+  | Fails when, on the commit to tag | The message tells you to |
+  | --- | --- |
+  | `## Unreleased` has entries, and there's no `## 1.3.0` | Rename `## Unreleased` to `## 1.3.0`, commit, and push |
+  | There's no `## 1.3.0` and nothing under `## Unreleased`, or no `CHANGELOG.md` | Add `## 1.3.0` with what changed for users, or one line saying nothing users notice changed, then commit and push |
+  | `## 1.3.0` has no text, or appears twice | Write its entries in one `## 1.3.0`, then commit and push |
+  | `## 1.3.0` is there, and `## Unreleased` still has entries | Move those entries under `## 1.3.0`, since the tagged commit includes their changes, then commit and push |
+
+- **A preview runs the check too**, so `--dry-run` shows the version to write before you change anything.
+- **`--notes <tag>` prints the tag's version's notes**, the text of its section without the heading, for the release job. It reads `CHANGELOG.md` in the repository the script sits in, as checked out, and runs no git. It fails as the check above does, except that entries under `## Unreleased` don't fail it, since work after a release mustn't break the notes of a version already tagged.
+- **The release job runs `--notes` right after `--check`, before building**, writes what it prints to a file, and passes that file to `vpk pack --releaseNotes` ([release notes](https://docs.velopack.io/integrating/release-notes)). So a tag made without the script, such as with `git tag`, still fails before anything is published.
+- **Clearing a tag checks nothing in the changelog**, and changes nothing there. A version cleared and made again keeps its section.
 
 ### Clearing deletes one version tag, here and on origin
 
@@ -106,11 +128,12 @@ The release job's [decided use](#the-script-holds-the-version-tag-rule-and-the-r
 | `node .agents/version-tag.mjs --clear v1.2.3` | Deletes `v1.2.3` here and on origin |
 | `node .agents/version-tag.mjs --clear v1.2.3 --here <ID> --origin <ID>` | Deletes `v1.2.3` here and on origin, or refuses unless it's in exactly those places, on those commits |
 | `node .agents/version-tag.mjs --check v1.2.3` | Prints `1.2.3`, and fails for a tag that isn't a version tag |
+| `node .agents/version-tag.mjs --notes v1.2.3` | Prints the notes of `1.2.3` from `CHANGELOG.md`, and fails when they [aren't ready](#a-version-is-tagged-only-when-the-changelog-has-its-notes) |
 
 - **The script works on the repository it sits in**, whatever the current folder, so it can't tag another repository by mistake.
 - **Exit code 0 means it did the work, or printed a preview.** It prints each thing it did.
 - **Exit code 1 means it refused or failed.** It prints one line to the error output, naming the problem and the fix. A refusal changes no tag; [Failure modes](#failure-modes) say what a failed push or deletion leaves.
-- **Wrong arguments fail before the script runs git**: an unknown, repeated, or conflicting one, or a missing or malformed value. Examples are two parts, a part with `--clear`, `--check` with anything but one tag, `--expect` without `--commit`, `--here` without a tag to clear, `--dry-run` with an approval option, and a short commit ID.
+- **Wrong arguments fail before the script runs git**: an unknown, repeated, or conflicting one, or a missing or malformed value. Examples are two parts, a part with `--clear`, `--check` or `--notes` with anything but one tag, `--expect` without `--commit`, `--here` without a tag to clear, `--dry-run` with an approval option, and a short commit ID.
 
 ### The skill previews, asks you, then runs the script
 
@@ -119,7 +142,7 @@ The `version-tag` skill sits in `.agents/skills/version-tag/SKILL.md`, as [AGENT
 1. It picks the command from your request: the part you name, `minor` when you name none, or `--clear` with the tag you name.
 2. It runs that command with `--dry-run` and shows you the plan.
 3. After you say yes, it runs the command on the preview's last line, exactly as printed, with no argument added, dropped, or changed. Anything but yes stops it.
-4. When a check fails, or the approved run refuses because something changed, it shows the script's message and stops. It never commits, pulls, stashes, or switches branches to get past a check. To try again, ask again; it starts with a new preview.
+4. When a check fails, or the approved run refuses because something changed, it shows the script's message and stops. It never commits, pulls, stashes, or switches branches to get past a check. To try again, ask again; it starts with a new preview. Proposed, a decision to confirm: when the [changelog check](#a-version-is-tagged-only-when-the-changelog-has-its-notes) asks you to rename `## Unreleased`, the skill first offers to make that rename in your working tree, and makes it only after you say yes.
 
 The user decided steps 2 and 3, which [AGENTS.md](../../AGENTS.md#contributions) names as the one exception to "AI never pushes". Proposed, each a decision to confirm: the skill's name, steps 1 and 4, and a file with only the two fields the [Agent Skills standard](https://agentskills.io/specification) requires, `name` and `description`, so every AI tool reads it the same way. No settings file approves the script, unlike `repo-map.mjs`, so your AI tool also asks before it runs, unless you've turned its approvals off.
 
@@ -127,9 +150,9 @@ The user decided steps 2 and 3, which [AGENTS.md](../../AGENTS.md#contributions)
 
 Proposed, each a decision to confirm:
 
-- **The script reaches git only through a few operations of its own**, so tests can replace git.
-- **Unit tests check every rule, `--check` included, against an in-memory fake of those operations**, with no real git, files, or network.
-- **A few integration tests run the script on real git.** Each uses its own temporary repository, with a local bare repository as origin, so no test touches this repository or GitHub. They check what the fake can't: a tag made and pushed, a tag cleared in both places, a fetch that finds a new commit, ignored files in a clean tree, and what `--check` prints and its exit code. They also check that a preview's last line, run unchanged, does what the preview showed; that git settings which fetch, prune, or push other tags change nothing; and that a tag whose commit only origin has can be previewed and cleared. And they check that the guarded delete on origin removes an annotated tag for the ID origin lists for it, and refuses, deleting nothing, for any other ID, such as the tag's commit.
+- **The script reaches git, and reads `CHANGELOG.md`, only through a few operations of its own**, so tests can replace them.
+- **Unit tests check every rule, `--check`, `--notes`, and the changelog check included, against an in-memory fake of those operations**, with no real git, files, or network.
+- **A few integration tests run the script on real git.** Each uses its own temporary repository, with a local bare repository as origin, so no test touches this repository or GitHub. They check what the fake can't: a tag made and pushed, a tag cleared in both places, a fetch that finds a new commit, ignored files in a clean tree, and what `--check` and `--notes` print and their exit codes. They also check that a preview's last line, run unchanged, does what the preview showed; that git settings which fetch, prune, or push other tags change nothing; and that a tag whose commit only origin has can be previewed and cleared. And they check that the guarded delete on origin removes an annotated tag for the ID origin lists for it, and refuses, deleting nothing, for any other ID, such as the tag's commit.
 - **The tests sit in `.agents/version-tag.test.mjs` and run as [AGENTS.md](../../AGENTS.md#checking-the-agents-scripts) says.** The workflow doesn't run them.
 
 ## Public interface
@@ -141,9 +164,18 @@ None for modules; no module uses the script. The skill, the [README](../../READM
 | A version tag, such as `v1.2.3` | The version alone on one line: `1.2.3` | Nothing | 0 |
 | Any other tag | Nothing | One line naming the tag and the form it needs | 1 |
 
+The release job also reads what `--notes` prints. Proposed, a decision to confirm:
+
+| Tag | Standard output | Error output | Exit code |
+| --- | --- | --- | --- |
+| A version tag whose notes are ready | The text under its `## <version>` heading, without the heading, trimmed of blank lines at its start and end | Nothing | 0 |
+| A version tag whose notes [aren't ready](#a-version-is-tagged-only-when-the-changelog-has-its-notes) | Nothing | One line naming the problem and the fix | 1 |
+| Any other tag | Nothing | One line naming the tag and the form it needs | 1 |
+
 ## Failure modes
 
-- **A check fails**, such as uncommitted changes: the script names the problem and changes no tag. Fix it, then run it again.
+- **A check fails**, such as uncommitted changes or a version with no notes in the changelog: the script names the problem and changes no tag. Fix it, then run it again.
+- **A tag made without the script has no notes for its version**: the release job's `--notes` step fails before building, and nothing is published. [Clear](#clearing-deletes-one-version-tag-here-and-on-origin) the tag, write the notes, and make it with the script.
 - **Something changed between a preview and your yes**, such as a new version tag or a new commit on origin: the approved run names what changed and changes no tag. Preview again.
 - **The tag on origin changed between the run's check and its delete**, such as one pushed again or deleted from another clone: git refuses the [guarded delete](#clearing-deletes-one-version-tag-here-and-on-origin), and the script says so and changes no tag. Preview again.
 - **Origin refuses the push, or can't be reached**: the script shows git's message and, as proposed, deletes the tag it made here.
@@ -181,3 +213,12 @@ None for modules; no module uses the script. The skill, the [README](../../READM
 - **Two copies of the version tag rule, the job's and the script's, or one pattern file both read**: you chose the script as the rule's one home.
 - **Installing another Node.js in the release job**: a step every release runs, when the script can use the runner image's own.
 - **Only integration tests, as the generator's agent files have**: [AGENTS.md](../../AGENTS.md#test-design) asks unit tests to cover every rule.
+
+### Checking the changelog
+
+- **Only the release job checks the notes**: a missing section would show only after the tag is pushed, and you'd clear it and tag again.
+- **The script renames `## Unreleased` itself when it makes the tag**: the rename would need a commit, and only you commit.
+- **Reading the notes from the working tree when making a tag**: notes you haven't committed wouldn't reach the release.
+- **Refusing a version with no changes users notice**: a release that only fixes the build couldn't ship. One line saying nothing users notice changed is enough.
+- **Allowing an empty section**: What is new would show "No notes for this version.", which tells users nothing.
+- **Extending `--check` to print the notes too**: its output is decided as the version alone, and the job needs the two separately.

@@ -15,8 +15,20 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, null!));
+            services.Files, null!, services.Updates));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_a_missing_update_status()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
+            services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
+            services.Files, services.CloseWindowKeys, null!));
+
+        Assert.Equal("updates", failure.ParamName);
     }
 }

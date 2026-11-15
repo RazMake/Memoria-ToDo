@@ -20,6 +20,13 @@
 //                                    "is at <id> but expected <id>" refusal and deletes nothing
 //   deleteRemoteTag(name, id)     -> deletes the tag on origin only if its own id is still `id`; otherwise rejects with
 //                                    git's "(stale info)" refusal and deletes nothing
+//   changelogAt(commit)           -> the text of CHANGELOG.md as committed on that commit, or undefined when it has no such file
+//
+// The fake files, which run(args, git, files) reads for --notes without running git (createFakeFiles below):
+//   readChangelog()               -> the text of CHANGELOG.md as checked out, or undefined when there is none
+//
+// Changelog options: `changelog` is the committed text on every commit, a valid one for every version this fake's tests make
+// unless given (passing `changelog: undefined` means no file); `changelogs` maps a commit id to the text on that commit alone.
 //
 // Tag options (`local`, `remote`) map a tag name to a commit id, which makes an annotated tag whose own id is derived
 // from it, or to { commit, id } (id: commit makes a lightweight tag). Tests change origin behind the script's back with
@@ -31,6 +38,18 @@ import { createHash } from 'node:crypto';
 export const commitA = 'a1'.repeat(20);
 export const commitB = 'b2'.repeat(20);
 export const commitC = 'c3'.repeat(32);
+
+/** A changelog with an empty `## Unreleased` and one section with one entry for each given version, such as '1.3.0'. */
+export const changelogWith = (...versions) => [
+  '# Changelog', '', 'What changed for users in each version.', '', '## Unreleased', '',
+  ...versions.flatMap((version) => [`## ${version}`, '', '- You can now do something new.', '']),
+].join('\n');
+
+/** Valid for any next version a test makes from tags with parts up to 10, so tests that don't care about the changelog needn't write one. */
+export const validChangelog = changelogWith(...[...Array(11).keys()].flatMap((major) => [...Array(11).keys()].flatMap((minor) => [...Array(11).keys()].map((patch) => `${major}.${minor}.${patch}`))));
+
+/** Stands in for the files run() reads: the checked-out CHANGELOG.md, as `changelog` or none. */
+export const createFakeFiles = ({ changelog } = {}) => ({ readChangelog: async () => changelog });
 
 const tagObjectId = (name, commit) => createHash('sha1').update(`${name}:${commit}`).digest('hex');
 const remoteEntry = (name, value) => (typeof value === 'string' ? { commit: value, id: tagObjectId(name, value) } : { id: tagObjectId(name, value.commit), ...value });
@@ -53,6 +72,8 @@ export function createFakeGit(options = {}) {
     refusePush: undefined,
     refuseRemoteDelete: undefined,
     refuseLocalDelete: undefined,
+    changelog: validChangelog,
+    changelogs: {},
     ...options,
     commits: {
       c1: { shortId: 'abc1234', subject: 'Add release notes' },
@@ -109,6 +130,7 @@ export function createFakeGit(options = {}) {
       const info = state.commits[id];
       return info ? { ...info } : undefined;
     }),
+    changelogAt: track('changelogAt', async (commit) => (Object.hasOwn(state.changelogs, commit) ? state.changelogs[commit] : state.changelog)),
     createTag: track('createTag', async (name, commit, message) => {
       if (local.has(name)) throw new Error(`fatal: tag '${name}' already exists`);
       if (!message) throw new Error('an annotated tag needs a message');

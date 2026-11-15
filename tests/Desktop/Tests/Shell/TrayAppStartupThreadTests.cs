@@ -22,7 +22,7 @@ public class TrayAppStartupThreadTests
     }
 
     [Theory]
-    [InlineData(true, "View Tasks")]
+    [InlineData(true, "Task View")]
     [InlineData(false, "Configure")]
     public void The_automatic_window_opens_only_once_the_UI_thread_runs_the_work_posted_by_another_thread(
         bool configured, string window)
@@ -39,12 +39,12 @@ public class TrayAppStartupThreadTests
     public void A_manual_route_taken_before_the_posted_automatic_window_runs_still_wins()
     {
         var app = StartedWithSetupPublishedByAnotherThread(configured: true);
-        app.TrayIcon.ChooseMenuItem("Manage tasks");
+        app.TrayIcon.ChooseMenuItem("Task View");
         app.ViewTasks.IsOpen = false;
 
         app.UiThread.RunQueued();
 
-        Assert.Equal(["View Tasks"], app.Shown);
+        Assert.Equal(["Task View"], app.Shown);
     }
 
     [Fact]

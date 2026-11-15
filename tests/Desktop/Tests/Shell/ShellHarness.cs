@@ -6,7 +6,7 @@ using Memoria.ToDo.Shared.Fakes;
 
 namespace Memoria.ToDo.Desktop.Shell.Tests;
 
-/// <summary>The two global shortcuts: the one that opens Add and the one that opens View Tasks.</summary>
+/// <summary>The two global shortcuts: the one that opens Add and the one that opens Task View.</summary>
 public enum ShortcutKind
 {
     AddNewTask,
@@ -31,15 +31,14 @@ internal sealed class ShellHarness
     public FakeAddWindow Add { get; }
     public FakeViewTasksWindow ViewTasks { get; }
     public FakeConfigureWindow Configure { get; }
-    public FakeAppUpdates Updates { get; } = new();
+    public FakeUpdateLifetime Updates { get; } = new();
     public FakeGlobalShortcut GlobalShortcut { get; } = new();
     public FakeOneInstance OneInstance { get; } = new();
-    public FakeTimeProvider Time { get; } = new();
     public FakeSyncService Sync { get; } = new();
     public int EndAppCalls { get; private set; }
     public IAppLifetime Lifetime { get; }
 
-    /// <summary>The window calls, in order: "Add", "View Tasks", and "Configure" for a Show, "Close Add" and "Close View Tasks" for a Close.</summary>
+    /// <summary>The window calls, in order: "Add", "Task View", and "Configure" for a Show, "Close Add" and "Close Task View" for a Close.</summary>
     public List<string> Shown { get; } = [];
 
     /// <summary>The UI thread Shell was given: a fake the test drives, unless the test passed a real one.</summary>
@@ -55,7 +54,7 @@ internal sealed class ShellHarness
         ViewTasks = new FakeViewTasksWindow(Shown);
         Configure = new FakeConfigureWindow(Shown);
         Lifetime = TrayApp.Create(
-            TrayIcon, Add, ViewTasks, Configure, Updates, GlobalShortcut, OneInstance, startedAtSignIn, Time, Sync,
+            TrayIcon, Add, ViewTasks, Configure, Updates, GlobalShortcut, OneInstance, startedAtSignIn, Sync,
             realUiThread ?? (() => UiThread));
     }
 

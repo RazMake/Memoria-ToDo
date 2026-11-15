@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -11,11 +12,12 @@ public static class AddWindow
     /// <summary>Creates the Add window. It opens only on <see cref="IAddWindow.Show"/>.</summary>
     public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        CloseWindowKeys closeWindowKeys)
+        CloseWindowKeys closeWindowKeys, IUpdateStatus updates)
     {
         ArgumentNullException.ThrowIfNull(tagColors);
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
-        var window = new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files));
+        ArgumentNullException.ThrowIfNull(updates);
+        var window = new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files), updates);
         closeWindowKeys.Attach(window);
         return window;
     }

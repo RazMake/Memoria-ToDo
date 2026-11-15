@@ -5,7 +5,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// The two sides of View Tasks: the groups of rows on the left and the selected task on the right, how a row's checkbox and
+/// The two sides of Task View: the groups of rows on the left and the selected task on the right, how a row's checkbox and
 /// title line up, and what a click, a right-click and a checkbox click do. Unit tests cover the grouping and ordering rules.
 /// </summary>
 [UX]

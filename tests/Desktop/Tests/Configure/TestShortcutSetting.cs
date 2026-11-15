@@ -32,7 +32,7 @@ internal sealed class TestShortcutSetting
 
     public static TestShortcutSetting AddNewTask() => new("Add new task", TestShortcut.AddNewTaskDefault);
 
-    public static TestShortcutSetting ManageTasks() => new("Manage tasks", TestShortcut.ManageTasksDefault);
+    public static TestShortcutSetting ManageTasks() => new("Task View", TestShortcut.ManageTasksDefault);
 
     /// <summary>Connects the action, then forgets the registration the connection made.</summary>
     public TestShortcutSetting Connected()

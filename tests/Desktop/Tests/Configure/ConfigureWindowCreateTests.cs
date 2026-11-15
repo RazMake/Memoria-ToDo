@@ -15,7 +15,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            null!, new FakeTheme()));
+            null!, new FakeTheme(), new FakeUpdateStatus()));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
     }
@@ -25,8 +25,18 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), null!));
+            new CloseWindowKeys(), null!, new FakeUpdateStatus()));
 
         Assert.Equal("theme", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_a_missing_update_status()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
+            new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
+            new CloseWindowKeys(), new FakeTheme(), null!));
+
+        Assert.Equal("updates", failure.ParamName);
     }
 }
