@@ -24,13 +24,23 @@ internal sealed class WindowsDeviceKeyStore : IDeviceKeyStore
     private readonly IUserProtection _protection;
     private readonly string _path;
 
+    private readonly Func<int, RSA> _createKey;
+
     public WindowsDeviceKeyStore(IFileSystem files, IUserProtection protection, string deviceFolder)
+        : this(files, protection, deviceFolder, RSA.Create)
+    {
+    }
+
+    /// <param name="createKey">Makes a new RSA key of the requested size; tests pass a smaller, faster one.</param>
+    internal WindowsDeviceKeyStore(IFileSystem files, IUserProtection protection, string deviceFolder, Func<int, RSA> createKey)
     {
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(protection);
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceFolder);
+        ArgumentNullException.ThrowIfNull(createKey);
         _files = files;
         _protection = protection;
+        _createKey = createKey;
         _path = Path.Combine(deviceFolder, "device-key.json");
     }
 
@@ -44,7 +54,7 @@ internal sealed class WindowsDeviceKeyStore : IDeviceKeyStore
         }
 
         var passphrase = RandomNumberGenerator.GetBytes(PassphraseBytes);
-        var rsa = RSA.Create(KeyBits);
+        var rsa = _createKey(KeyBits);
         try
         {
             var encrypted = rsa.ExportEncryptedPkcs8PrivateKey(

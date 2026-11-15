@@ -28,14 +28,22 @@ internal sealed class SetupModel(ITaskSynchronization tasks, IGitOperations git,
 
     /// <summary>
     /// Announces the setup after a failed refresh: the last name read, which is empty when the saved name was unreadable
-    /// rather than the default, with the public key line that carries it.
+    /// rather than the default, with the public key line that carries it, and the key the host currently offers, as held
+    /// in memory, so a trust that couldn't be loaded still shows the key it refused.
     /// </summary>
-    public void PublishFailed() =>
-        Snapshot.Update(s => lastNameRead is not { } read ? s : s with
+    public void PublishFailed()
+    {
+        var offered = trust.Offered;
+        Snapshot.Update(s =>
         {
-            DeviceName = read,
-            PublicKey = publicKey is not null && read.Length > 0 ? DeviceMetadata.PublicKeyLine(publicKey, read) : s.PublicKey,
+            var withKey = s with { HostKey = offered };
+            return lastNameRead is not { } read ? withKey : withKey with
+            {
+                DeviceName = read,
+                PublicKey = publicKey is not null && read.Length > 0 ? DeviceMetadata.PublicKeyLine(publicKey, read) : s.PublicKey,
+            };
         });
+    }
 
     private SetupSnapshot Build()
     {

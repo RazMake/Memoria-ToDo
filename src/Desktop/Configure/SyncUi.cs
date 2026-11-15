@@ -9,15 +9,16 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// </summary>
 internal sealed class SyncUi : IDisposable
 {
-    private readonly UiNotices _notices;
+    private readonly Action<Action> _post;
     private readonly CancellationTokenSource _cancel = new();
     private bool _disposed;
 
-    public SyncUi(ISyncService sync, ISetupActions actions, UiNotices notices)
+    /// <param name="post">Runs an action on the UI thread; it may be called from any thread.</param>
+    public SyncUi(ISyncService sync, ISetupActions actions, Action<Action> post)
     {
         Sync = sync;
         Actions = actions;
-        _notices = notices;
+        _post = post;
         sync.StatusChanged += OnChanged;
         sync.Setup.Changed += OnChanged;
     }
@@ -54,6 +55,19 @@ internal sealed class SyncUi : IDisposable
         RaiseChanged();
     }
 
+    /// <summary>
+    /// Runs one sync pass and passes the details of a failed pass (Error or Offline) to <paramref name="showFailure"/>.
+    /// Meant to run inside <see cref="RunAsync"/>, which shows a thrown failure.
+    /// </summary>
+    public async Task SyncNowAsync(Action<string?> showFailure, CancellationToken token)
+    {
+        var status = await Sync.SyncNowAsync(token);
+        if (SyncText.IsFailure(status))
+        {
+            showFailure(status.Details);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -68,7 +82,7 @@ internal sealed class SyncUi : IDisposable
         _cancel.Dispose();
     }
 
-    private void OnChanged(object? sender, EventArgs e) => _notices.Post(RaiseChanged);
+    private void OnChanged(object? sender, EventArgs e) => _post(RaiseChanged);
 
     private void RaiseChanged()
     {

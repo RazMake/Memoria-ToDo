@@ -12,18 +12,13 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// </summary>
 internal sealed class ShortcutField : TextBox
 {
-    private readonly Action<ModifierKeys, Key> _picked;
-    private readonly Action<ModifierKeys> _swallowed;
-    private readonly HeldModifierKeys _held = new();
+    private readonly ShortcutKeyInput _input;
 
     /// <param name="picked">Called with the held modifiers and the key that completed a pick.</param>
     /// <param name="swallowed">Called with the modifiers of a chord released with no other key.</param>
     public ShortcutField(Action<ModifierKeys, Key> picked, Action<ModifierKeys> swallowed)
     {
-        ArgumentNullException.ThrowIfNull(picked);
-        ArgumentNullException.ThrowIfNull(swallowed);
-        _picked = picked;
-        _swallowed = swallowed;
+        _input = new ShortcutKeyInput(picked, swallowed);
         IsReadOnly = true;
         IsUndoEnabled = false;
         Width = 240;
@@ -41,40 +36,21 @@ internal sealed class ShortcutField : TextBox
             return;
         }
 
-        if (ModifierKey.Of(key) != ModifierKeys.None)
+        if (_input.KeyDown(key, e.IsRepeat))
         {
-            _held.Pressed(key);
             e.Handled = true;
-            return;
-        }
-
-        _held.OtherKeyReached();
-        if (key == Key.Tab && !_held.AnyHeld)
-        {
-            base.OnPreviewKeyDown(e); // Plain Tab still moves on, so the field doesn't trap the keyboard.
         }
         else
         {
-            e.Handled = true;
-            if (key != Key.Escape && !e.IsRepeat)
-            {
-                _picked(_held.Modifiers, key);
-            }
+            base.OnPreviewKeyDown(e); // Plain Tab still moves on, so the field doesn't trap the keyboard.
         }
     }
 
     protected override void OnPreviewKeyUp(KeyEventArgs e)
     {
-        var key = KeyOf(e);
-        var swallowed = _held.Released(key);
-        if (ModifierKey.Of(key) != ModifierKeys.None)
+        if (_input.KeyUp(KeyOf(e)))
         {
             e.Handled = true;
-        }
-
-        if (swallowed != ModifierKeys.None)
-        {
-            _swallowed(swallowed);
         }
 
         base.OnPreviewKeyUp(e);
@@ -82,7 +58,7 @@ internal sealed class ShortcutField : TextBox
 
     protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
     {
-        _held.Clear();
+        _input.FocusLost();
         base.OnLostKeyboardFocus(e);
     }
 

@@ -9,8 +9,8 @@ using Memoria.ToDo.Shared.Tasks;
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
-/// The top of the list: the search box, the tag filter, the message line, and the Undo bar. It holds the search text and
-/// the chosen tag, and says when the user changes either.
+/// The top of the list: the search box, the tag filter, the message line, and the Undo bar. It shows the
+/// <see cref="ListFilter"/> and puts what the user types or chooses into it.
 /// </summary>
 internal sealed class ListHeader : StackPanel
 {
@@ -20,26 +20,28 @@ internal sealed class ListHeader : StackPanel
     private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
     private readonly TextBlock _undoLabel = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
     private readonly Border _undoBar = new() { Visibility = Visibility.Collapsed, Padding = new Thickness(8) };
-    private string? _tag;
+    private readonly ListFilter _filter;
     private bool _syncing;
     private string? _reChosen;
 
-    public ListHeader(ITasks tasks)
+    public ListHeader(ITasks tasks, ListFilter filter)
     {
         ArgumentNullException.ThrowIfNull(tasks);
+        ArgumentNullException.ThrowIfNull(filter);
+        _filter = filter;
         _message.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
         _undoBar.SetResourceReference(Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
         AutomationProperties.SetName(_search, "Search");
         AutomationProperties.SetName(_allTags, "All tags");
         var chips = new TagChips(tasks);
         AutomationProperties.SetName(chips, "Tag filter");
-        chips.TagChosen += (_, chosen) => Toggle(chosen);
+        chips.TagChosen += (_, chosen) => _filter.ToggleTag(chosen);
         _allTags.SelectionChanged += (_, _) =>
         {
             if (!_syncing && _allTags.SelectedItem is string chosen)
             {
                 _reChosen = null; // The selection changed, so this commit is handled here, once.
-                Toggle(chosen);
+                _filter.ToggleTag(chosen);
             }
         };
         // Choosing the tag that is already chosen changes no selection, so no SelectionChanged says so. Note the choice when the
@@ -67,11 +69,12 @@ internal sealed class ListHeader : StackPanel
             if (_reChosen is { } tag)
             {
                 _reChosen = null;
-                Toggle(tag);
+                _filter.ToggleTag(tag);
             }
         };
-        _clearTag.Click += (_, _) => Choose(null);
-        _search.TextChanged += (_, _) => FilterChanged?.Invoke(this, EventArgs.Empty);
+        _clearTag.Click += (_, _) => _filter.ClearTag();
+        _search.TextChanged += (_, _) => _filter.SearchText = _search.Text;
+        _filter.Changed += (_, _) => ShowFilter();
 
         var filters = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
         filters.Children.Add(_search);
@@ -93,31 +96,7 @@ internal sealed class ListHeader : StackPanel
         Children.Add(_undoBar);
     }
 
-    /// <summary>Raised when the user changes the search text or the tag.</summary>
-    public event EventHandler? FilterChanged;
-
     public event EventHandler? UndoClicked;
-
-    /// <summary>The words searched for. Setting it raises <see cref="FilterChanged"/>.</summary>
-    public string SearchText
-    {
-        get => _search.Text;
-        set => _search.Text = value;
-    }
-
-    /// <summary>The tag the list is narrowed to, or null. Setting it raises nothing.</summary>
-    public string? TagFilter
-    {
-        get => _tag;
-        set
-        {
-            _tag = value;
-            _clearTag.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible;
-            _syncing = true;
-            _allTags.SelectedItem = value;
-            _syncing = false;
-        }
-    }
 
     public void FocusSearch()
     {
@@ -130,7 +109,7 @@ internal sealed class ListHeader : StackPanel
     {
         _syncing = true;
         _allTags.ItemsSource = tags;
-        _allTags.SelectedItem = _tag;
+        _allTags.SelectedItem = _filter.TagFilter;
         _syncing = false;
     }
 
@@ -161,16 +140,20 @@ internal sealed class ListHeader : StackPanel
         };
     }
 
-    private bool IsChosen(string tag) => string.Equals(tag, _tag, StringComparison.OrdinalIgnoreCase);
+    private void NoteIfAlreadyChosen(object? item) => _reChosen = item is string tag && _filter.IsChosen(tag) ? tag : null;
 
-    private void NoteIfAlreadyChosen(object? item) => _reChosen = item is string tag && IsChosen(tag) ? tag : null;
-
-    /// <summary>Chooses the tag, or clears the filter when it is the tag already chosen.</summary>
-    private void Toggle(string tag) => Choose(IsChosen(tag) ? null : tag);
-
-    private void Choose(string? tag)
+    // Shows the filter as it now is, whoever changed it: the user here, or a followed link.
+    private void ShowFilter()
     {
-        TagFilter = tag;
-        FilterChanged?.Invoke(this, EventArgs.Empty);
+        if (_search.Text != _filter.SearchText)
+        {
+            _search.Text = _filter.SearchText;
+        }
+
+        var tag = _filter.TagFilter;
+        _clearTag.Visibility = tag is null ? Visibility.Collapsed : Visibility.Visible;
+        _syncing = true;
+        _allTags.SelectedItem = tag;
+        _syncing = false;
     }
 }

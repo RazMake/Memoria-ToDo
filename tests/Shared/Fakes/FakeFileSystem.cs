@@ -7,7 +7,7 @@ public sealed class FakeFileSystem : IFileSystem
 {
     private readonly Dictionary<string, byte[]> files = new(StringComparer.Ordinal);
     private readonly List<string> failingFolders = [];
-    private readonly List<string> failingReadFolders = [];
+    private readonly List<(string Folder, Exception? Failure)> failingReadFolders = [];
     private readonly List<string> failingDeleteFolders = [];
     private readonly Dictionary<string, string> aliases = new(StringComparer.Ordinal);
     private int physicalChecks;
@@ -17,8 +17,9 @@ public sealed class FakeFileSystem : IFileSystem
     /// <summary>From now on, writes and moves into <paramref name="folder"/> or below it fail with an <see cref="IOException"/>, and leave what's there whole.</summary>
     public void FailWritesUnder(string folder) => failingFolders.Add(System.IO.Path.GetFullPath(folder));
 
-    /// <summary>From now on, reading a file in <paramref name="folder"/> or below it fails with an <see cref="IOException"/>, though the file still exists.</summary>
-    public void FailReadsUnder(string folder) => failingReadFolders.Add(System.IO.Path.GetFullPath(folder));
+    /// <summary>From now on, reading a file in <paramref name="folder"/> or below it fails with an <see cref="IOException"/>, or with <paramref name="failure"/> when given, though the file still exists.</summary>
+    public void FailReadsUnder(string folder, Exception? failure = null) =>
+        failingReadFolders.Add((System.IO.Path.GetFullPath(folder), failure));
 
     /// <summary>From now on, deleting a file or folder in <paramref name="folder"/> or below it (or the folder itself) fails with an <see cref="IOException"/>, and leaves what's there whole.</summary>
     public void FailDeletesUnder(string folder) => failingDeleteFolders.Add(System.IO.Path.GetFullPath(folder));
@@ -44,12 +45,16 @@ public sealed class FakeFileSystem : IFileSystem
     /// <summary>How many times <see cref="IsSameOrDescendantDirectory"/> was asked.</summary>
     public int PhysicalChecks => Volatile.Read(ref physicalChecks);
 
+    /// <summary>Runs at the start of each <see cref="IsSameOrDescendantDirectory"/>, on the calling thread, so a test can hold the check until it chooses to let it go on.</summary>
+    public Action? OnPhysicalCheck { get; set; }
+
     /// <summary>Whether <paramref name="directory"/> is, after resolving aliases, the same folder as <paramref name="ancestor"/> or inside it. It creates nothing.</summary>
     public bool IsSameOrDescendantDirectory(string directory, string ancestor)
     {
         RequireFullyQualified(directory, nameof(directory));
         RequireFullyQualified(ancestor, nameof(ancestor));
         Interlocked.Increment(ref physicalChecks);
+        OnPhysicalCheck?.Invoke();
         if (physicalChecksFail)
             throw physicalFailure!;
         var inner = Resolve(directory);
@@ -91,8 +96,8 @@ public sealed class FakeFileSystem : IFileSystem
     public byte[] ReadFile(string path)
     {
         var full = System.IO.Path.GetFullPath(path);
-        if (files.TryGetValue(full, out var content) && failingReadFolders.Any(folder => IsUnder(full, folder)))
-            throw new IOException($"Reading is not allowed here: {full}");
+        if (files.TryGetValue(full, out var content) && failingReadFolders.FirstOrDefault(entry => IsUnder(full, entry.Folder)) is { Folder: not null } failing)
+            throw failing.Failure ?? new IOException($"Reading is not allowed here: {full}");
         return content?.ToArray() ?? throw new FileNotFoundException("No such file.", path);
     }
 

@@ -33,7 +33,7 @@
 
   <ItemGroup>
     <!-- The tests of the App's internal adapters. -->
-    <InternalsVisibleTo Include="Memoria.ToDo.Desktop.App.Tests" />
+    <InternalsVisibleTo Include="Memoria.ToDo.Desktop.Tests" />
   </ItemGroup>
 
 </Project>

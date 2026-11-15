@@ -32,7 +32,21 @@ public static class TrayApp
         IOneInstance oneInstance,
         bool startedAtSignIn,
         TimeProvider time,
-        ISyncService sync)
+        ISyncService sync) =>
+        Create(trayIcon, add, viewTasks, configure, updates, shortcut, oneInstance, startedAtSignIn, time, sync, () => new WpfUiThread());
+
+    internal static IAppLifetime Create(
+        ITrayIcon trayIcon,
+        IAddWindow add,
+        IViewTasksWindow viewTasks,
+        IConfigureWindow configure,
+        IAppUpdates updates,
+        IGlobalShortcut shortcut,
+        IOneInstance oneInstance,
+        bool startedAtSignIn,
+        TimeProvider time,
+        ISyncService sync,
+        Func<IUiThread> uiThread)
     {
         ArgumentNullException.ThrowIfNull(trayIcon);
         ArgumentNullException.ThrowIfNull(add);
@@ -43,13 +57,14 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(oneInstance);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(sync);
+        ArgumentNullException.ThrowIfNull(uiThread);
 
         bool AnyWindowOpen() => add.IsOpen || viewTasks.IsOpen || configure.IsOpen;
 
         var redirect = new SetupRedirect(sync, configure);
         var showAdd = redirect.Through(add.Show);
         var showViewTasks = redirect.Through(viewTasks.Show);
-        var startup = new StartupNavigation(sync.Setup, configure.Show, showViewTasks, startedAtSignIn);
+        var startup = new StartupNavigation(sync.Setup, configure.Show, showViewTasks, startedAtSignIn, uiThread);
         var addByUser = startup.ByUser(showAdd);
         var viewTasksByUser = startup.ByUser(showViewTasks);
 

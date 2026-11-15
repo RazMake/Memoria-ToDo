@@ -14,26 +14,14 @@
     <Project Path="src/Shared/Rendering/Memoria.ToDo.Shared.Rendering.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Architecture/Memoria.ToDo.Architecture.Tests.csproj" />
     <Project Path="tests/Testing/Kinds/Memoria.ToDo.Testing.Kinds.csproj" />
     <Project Path="tests/Testing/Analyzers/Memoria.ToDo.Testing.Analyzers.csproj" />
-    <Project Path="tests/Testing/Analyzers.Tests/Memoria.ToDo.Testing.Analyzers.Tests.csproj" />
     <Project Path="tests/Testing/UnitRunTiming/Memoria.ToDo.Testing.UnitRunTiming.csproj" />
-    <Project Path="tests/Testing/UnitRunTiming.Tests/Memoria.ToDo.Testing.UnitRunTiming.Tests.csproj" />
-    <Project Path="tests/Shared/Editing/Memoria.ToDo.Shared.Editing.Tests.csproj" />
+    <Project Path="tests/Testing/Tests/Memoria.ToDo.Testing.Tests.csproj" />
     <Project Path="tests/Shared/Fakes/Memoria.ToDo.Shared.Fakes.csproj" />
-    <Project Path="tests/Shared/Platform/Memoria.ToDo.Shared.Platform.Tests.csproj" />
-    <Project Path="tests/Shared/Tasks/Memoria.ToDo.Shared.Tasks.Tests.csproj" />
-    <Project Path="tests/Shared/Sync/Memoria.ToDo.Shared.Sync.Tests.csproj" />
+    <Project Path="tests/Shared/Tests/Memoria.ToDo.Shared.Tests.csproj" />
     <Project Path="tests/Desktop/Fakes/Memoria.ToDo.Desktop.Fakes.csproj" />
     <Project Path="tests/Desktop/PlatformTestHost/Memoria.ToDo.Desktop.PlatformTestHost.csproj" />
-    <Project Path="tests/Desktop/Platform/Memoria.ToDo.Desktop.Platform.Tests.csproj" />
-    <Project Path="tests/Desktop/Shell/Memoria.ToDo.Desktop.Shell.Tests.csproj" />
-    <Project Path="tests/Desktop/TaskEditor/Memoria.ToDo.Desktop.TaskEditor.Tests.csproj" />
-    <Project Path="tests/Desktop/FormattedView/Memoria.ToDo.Desktop.FormattedView.Tests.csproj" />
-    <Project Path="tests/Desktop/TaskList/Memoria.ToDo.Desktop.TaskList.Tests.csproj" />
-    <Project Path="tests/Desktop/Configure/Memoria.ToDo.Desktop.Configure.Tests.csproj" />
-    <Project Path="tests/Desktop/App/Memoria.ToDo.Desktop.App.Tests.csproj" />
-    <Project Path="tests/Shared/Rendering/Memoria.ToDo.Shared.Rendering.Tests.csproj" />
+    <Project Path="tests/Desktop/Tests/Memoria.ToDo.Desktop.Tests.csproj" />
   </Folder>
 </Solution>

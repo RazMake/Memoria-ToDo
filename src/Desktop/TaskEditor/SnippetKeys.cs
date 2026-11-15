@@ -24,7 +24,7 @@ internal static class SnippetKeys
     ];
 
     /// <summary>Registers the snippet keys that work in the field. The Title gets only the snippets that work in a Title.</summary>
-    public static void AddTo(KeyMap keys, StyledTextEditor field, bool isTitle, SnippetInserter inserter)
+    public static void AddTo(KeyMap keys, ITextField field, bool isTitle, SnippetInserter inserter)
     {
         foreach (var (modifiers, key, snippet) in Chords)
         {

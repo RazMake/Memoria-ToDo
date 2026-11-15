@@ -22,9 +22,22 @@ internal sealed class DeviceKeySource : IPrivateKeySource
 
     private sealed class RsaSha2(string name, IDeviceSigningKey key, RsaSignatureAlgorithm hash) : HostAlgorithm(name)
     {
-        public override byte[] Data => key.PublicKeyBlob.ToArray();
+        public override byte[] Data => Classified(() => key.PublicKeyBlob.ToArray());
 
-        public override byte[] Sign(byte[] data) => SshWire.SignatureBlob(Name, key.Sign(data, hash));
+        public override byte[] Sign(byte[] data) => Classified(() => SshWire.SignatureBlob(Name, key.Sign(data, hash)));
+
+        private static byte[] Classified(Func<byte[]> useKey)
+        {
+            try
+            {
+                return useKey();
+            }
+            catch (Exception ex)
+            {
+                // A key that can't sign or give its public key is a fault of this device or of the code; SSH.NET must not mistake it for the network.
+                throw FailureReport.ToLocalFailure(ex);
+            }
+        }
 
         public override bool VerifySignature(byte[] data, byte[] signature) =>
             throw new NotSupportedException("The device key only signs.");

@@ -230,6 +230,51 @@ abandon the connection attempt. Once connected, owned cancellation is registered
 synchronous channel-opening work must also be interruptible. The outer cleanup joins every started command and
 interruption task, including those from a startup or constructor that fails.
 
+### Sync reads only its clone's own git settings
+
+**Decided by the user:** Sync ignores the git configuration levels outside its clone: the system, global, and XDG
+(`~/.config/git`) levels, and on Windows the ProgramData level. What Sync does then depends only on the clone itself:
+its own `.git/config`, with any files that config includes or names, and the repository's files.
+
+libgit2 reads those outer files as installed git does. On one PC, the system file set `core.autocrlf=true` with
+`core.safecrlf=true`. libgit2 then refused to stage files with the `\n` line breaks
+[Tasks writes](tasks.md#each-task-file-holds-nine-fields), with "LF would be replaced by CRLF", so every sync failed.
+Other outer settings can change Sync too: `url.<base>.insteadOf` can send the origin's address to a transport Sync
+doesn't own, and a global ignore file can hide `tasks/`.
+
+The table lists what Sync could take from the outer files, and where it comes from now.
+
+| Setting | Where Sync gets it now |
+| --- | --- |
+| Commit author: `user.name` and `user.email` | Sync names the device on each commit it makes ([ManagedCommit](../../src/Shared/Sync/Git/ManagedCommit.cs), [DomainMerge](../../src/Shared/Sync/Git/DomainMerge.cs)). The log lines libgit2 adds on its own under `.git/logs` name `unknown`; nothing reads them. |
+| First branch: `init.defaultBranch` | Sync takes the remote's default branch, or `main` on an empty remote ([GitPass](../../src/Shared/Sync/Git/GitPass.cs)). |
+| Line endings, attributes, and ignore rules | Only the clone's own `.git/config` and any attribute or ignore file it names (`core.attributesfile`, `core.excludesfile`), the `.gitattributes` and `.gitignore` files in the clone, committed or not, and the clone's own `.git/info` files. Sync writes none of these settings, so without them files travel byte for byte. |
+| Trusted folders: `safe.directory` | Nowhere. libgit2's [own ownership rules](https://github.com/libgit2/libgit2/blob/5853918c4c6a7b12f8becf4bd11ff4362ebb9020/src/libgit2/repository.c#L645-L650) then decide which clone owners it accepts: mainly the current user; see [Failure modes](#failure-modes). |
+| The receipt and the origin | Unchanged: they already live in the clone's own `.git/config`. |
+
+Settings libgit2 never uses, such as proxies, `core.sshCommand`, hooks, and commit signing, change nothing either
+way: Sync uses [its own SSH transport](overview.md#both-apps-reach-git-through-libgit2sharp-and-one-ssh-transport),
+and libgit2 runs no hooks and signs nothing.
+
+Proposed, each a decision to confirm:
+
+- **Sync empties the four levels' search paths right before each git operation**, on the owned worker: reading or
+  writing the receipt, reading the origin, using an existing clone, cloning, and each sync pass. The setting is
+  shared by the whole process ([GlobalSettings](https://github.com/libgit2/libgit2sharp/blob/0.32.0/LibGit2Sharp/GlobalSettings.cs#L334-L338)),
+  so Sync sets it every time rather than trusting that nothing changed it since. That costs four native calls.
+  Creation still runs no git code.
+- **An empty search path means "no file at this level"**, not a path to an empty folder. libgit2 then finds no file
+  there ([sysdir.c](https://github.com/libgit2/libgit2/blob/5853918c4c6a7b12f8becf4bd11ff4362ebb9020/src/libgit2/sysdir.c#L548-L560)),
+  including the attribute and ignore files it looks for in the same places
+  ([common.h](https://github.com/libgit2/libgit2/blob/5853918c4c6a7b12f8becf4bd11ff4362ebb9020/include/git2/common.h#L277-L280)).
+- **Sync keeps libgit2's ownership check on**, with no list of trusted folders of its own.
+- **Sync still follows the files the clone's own `.git/config` includes or names**, such as `include.path`,
+  `core.excludesfile`, and `core.attributesfile`, even outside the clone. Sync never writes these settings; only
+  someone editing the clone by hand adds them, and that is their choice.
+
+If emptying a level fails, the operation fails with that error; Sync never runs git with only some levels ignored.
+The Android app runs the same code with the same libgit2, so it needs nothing more.
+
 ### Device metadata has one owner and never travels in task commits
 
 The app remains the only owner of the selected path. Sync receives a small
@@ -260,12 +305,20 @@ Other implementation choices remain subject to confirmation.
 - `known-hosts.json` in the device folder is an object with `version: 1` and `hosts`, an array of objects with
   `host`, `port`, and `fingerprint`. Custom trust is scoped to the normalized host and port. Unknown versions,
   malformed entries, or read failures stop trust loading rather than silently trusting or replacing anything.
-  A custom-host trust-load failure is a LocalStorage error retaining its cause; the observed key cannot be
-  accepted while that load fails. This adds no recovery UI or replacement of the trust file.
+  A failure to load custom-host trust keeps its cause, and the [rule for naming failures](#failure-modes) gives
+  its kind. This adds no recovery UI or replacement of the trust file.
+  **Decided by the user:** while that load fails, setup still shows the key the host offered, with its host, port,
+  algorithm, and fingerprint, and never allows accepting it. It looks like a changed key, and the user can compare
+  the fingerprint with the host's.
   Acceptance writes only the exact pending unknown custom-host key. A changed trusted key must first be forgotten;
   built-in pins can neither be forgotten nor accepted through setup.
   Decision to confirm: using Forget for a built-in host refuses the request with an explanation through the
   existing setup action, rather than silently succeeding. No new eligibility API is needed.
+  **Decided by the user:** Forget for a custom host and port with no saved trust succeeds and changes nothing,
+  so pressing it twice, or before Accept, is harmless. Afterwards nothing is trusted for that host and port,
+  which is what Forget promises.
+  Decision to confirm: Forget with a missing or blank host, or a port outside 1 to 65535, is an invalid argument.
+  It fails before any work, like the other setup actions' invalid arguments, and shows no error status.
 
 The reviewed [built-in pin data](sync-host-keys.json) is embedded directly by Sync's project, not copied into
 another source file. Each host's official source and verification date live beside its fingerprints. DNS names
@@ -364,9 +417,11 @@ Keep its two address forms, RSA SHA-2 behavior, and EOF-before-close finding. Do
 global credential state, incomplete host pins, or proof-only key envelope.
 
 [`Directory.Packages.props`](../../Directory.Packages.props) is the sole version home. Sync references LibGit2Sharp
-and SSH.NET; only its test project references the in-process SSH server package. The project inherits the existing
-target framework, analyzers, and test-kind policy. Its internal Git port stays internal; the test assembly can
-exercise internal pure policies and the worker without exposing those internals to App or another module.
+and SSH.NET; only the [shared test project](technology-stack.md#each-part-keeps-its-tests-in-one-test-project)
+references the in-process SSH server package. The project inherits the existing target framework, analyzers, and
+test-kind policy. Its internal Git port stays internal; Sync's tests can exercise internal pure policies and the
+worker, as [Modules](modules.md#a-module-is-one-capability-behind-a-small-interface) allows, without exposing those
+internals to App or another module.
 The shared fake assembly can implement that port and the public device adapters, so a fake still has only one home.
 
 The Sync tester starts with unit scenarios for address rejection, immutable status, scheduling/coalescing,
@@ -374,6 +429,29 @@ caller cancellation, stop/dispose ownership, trust changes, and key-handle lifet
 not sleeps. Real Git/SSH, writable-key checks, branch safety, complete merge/push round trips, and interruption
 of stalled transport are integration scenarios, written upfront but run only at session-end validation.
 Keep shared port fakes in the [existing fake project](technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test).
+
+Integration tests check that Sync [ignores the git configuration levels outside its clone](#sync-reads-only-its-clones-own-git-settings),
+since only real libgit2 shows it. Each test brings its own bad outer settings, so it checks the same thing on a
+machine with clean settings as on a PC whose own settings break Sync:
+
+1. Connect a device first. Sync has then already run git, so isolation applied only once would miss what follows.
+2. Write the test's settings into a temporary folder, as `gitconfig`, `.gitconfig`, and `config`, the file names
+   libgit2 looks for at the four outer levels. Point all four levels at that folder.
+3. Run the step under test. Then, even when the test fails, reset the four levels to libgit2's defaults and delete the folder.
+
+The table lists each test.
+
+| Step under test | Outer settings | Passes when | Without the isolation |
+| --- | --- | --- | --- |
+| A sync pass | `core.autocrlf=true` and `core.safecrlf=true` | It pushes a new task, and `settings.json` on an empty origin, with their `\n` line breaks unchanged | The pass fails with "LF would be replaced by CRLF" |
+| A second device's clone | The same pair | Its files match the origin's byte for byte | Its files have `\r\n` line breaks |
+| A setup refresh, then a pass | `url.<base>.insteadOf`, rewriting the origin's address to one Sync rejects | Setup shows the saved address, and the pass succeeds | Setup shows the rewritten address, and the pass fails |
+
+These tests change libgit2's process-wide settings, so they share one xUnit collection with parallelization turned
+off. xUnit runs such collections after the others, one at a time, with no other test running
+([xUnit maintainer](https://github.com/xunit/xunit/discussions/3206)). Sync's other tests only ever set empty paths,
+so they still run side by side. To prove these tests can fail, at final validation remove the call that empties the
+levels, and see the last column's failures.
 
 Desktop tests reuse one fake `ISyncService`/setup implementation in `tests/Shared/Fakes`, rather than one per window.
 It supplies immutable controllable snapshots, any-thread notices, and completion signals for sync/setup/stop,
@@ -383,7 +461,9 @@ extends its tray fake for badges/notifications, and adapts lifetime fakes to asy
 to the new required arguments; no old constructor or sync-less overload remains just to keep a fixture compiling.
 
 Focused build: `dotnet build src\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj`.
-After the tester adds unit cases: `dotnet test --project tests\Shared\Sync\Memoria.ToDo.Shared.Sync.Tests.csproj`.
+After the tester adds unit cases, run Sync's unit tests as a
+[focused batch](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test):
+`dotnet test --project tests\Shared\Tests\Memoria.ToDo.Shared.Tests.csproj --filter-namespace "Memoria.ToDo.Shared.Sync.Tests*"`.
 At main-session final validation only, run the full commands from the
 [test workflow](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test),
 including the architecture integration checks and the agent-file generator checks required by `AGENTS.md`.
@@ -397,7 +477,8 @@ including the architecture integration checks and the agent-file generator check
 
 ## Failure modes
 
-The table lists each failure, whether it shows as offline or as an error, and what the user sees. Proposed: this split, and what the user sees. This is a decision to confirm.
+The table lists each failure, whether it shows as offline or as an error, and what the user sees. Only some rows
+are decided; the list after the table says which.
 
 | Failure | Shown as | What the user sees |
 | --- | --- | --- |
@@ -408,8 +489,44 @@ The table lists each failure, whether it shows as offline or as an error, and wh
 | The push is rejected 3 times in a row | Error | Sync retries later |
 | A task file can't be read, or has a newer `version` | Error; the rest of the sync completes | The status names the file, as [Tasks](tasks.md#failure-modes) says |
 | The clone can't be written, such as on a full disk | Error | The error's details; sync retries |
+| The clone's folder belongs to an account libgit2's ownership check doesn't accept | Error | The details say the current user doesn't own the folder. Clone again in Configure, or make the current user the folder's owner |
+| A failure Sync doesn't recognize, such as a dependency disposed while the service isn't stopping | Error | The error's details; sync retries with the [existing backoff](#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) |
 
 On the desktop, being offline and errors show as [Shell](desktop/shell.md#sync-stays-quiet-unless-something-is-wrong) decides.
+
+Which rows are decided:
+
+- **Decided by the user:** the last row, with the rule below for naming failures.
+- **Decided in the designs the rows link to:** a changed host key stops sync with an error, as
+  [host keys](#the-app-checks-each-host-key-against-its-own-list) say. A task file that can't be read, or has a
+  newer `version`, is skipped and named in the status, as [Tasks](tasks.md#failure-modes) says.
+- **Proposed, each a decision to confirm:** only an unreachable host shows as offline, and every other failure as
+  an error. Also what the user sees when the host rejects the key, the repository isn't found, the push is rejected
+  3 times in a row, the clone can't be written, or libgit2's ownership check doesn't accept the clone's owner.
+
+**Decided by the user:** Sync names each failure by its cause, the same way in a sync pass, at startup, in a setup
+action, and in the setup refresh that follows any of them. So one broken file shows one kind wherever it's found,
+and the tray notifies once for it. The table's last row shows how an `Unexpected` failure appears.
+
+- A Git or host failure keeps the kind Sync's git code gave it, as
+  [the owned worker's section](#one-owned-worker-keeps-synchronous-git-and-ssh-off-the-ui-thread) describes.
+- A file, access, or encryption failure on this device, the clone included, is `LocalStorage`. So is saved data on
+  this device that can't be used, such as a corrupt device name, key, or trust file, or a malformed saved selection.
+- Anything else is `Unexpected`, including a dependency disposed while the service isn't stopping. It's a fault in
+  the app, and the app keeps running, as the [Task list](desktop/task-list.md#ruled-out) decided.
+
+Decision to confirm: once the service has begun stopping, through `StopAsync` or disposal, a pass failure of any
+kind is part of the stop. The service publishes no failure status for it and schedules no retry, so the
+[naming rule](#failure-modes) above doesn't apply. The caller waiting on that pass sees the same end as a call made
+after the service stopped. During shutdown, a dependency can be disposed under a running pass, and the host-key
+check or the signing step wraps that in a failure of another kind. Recommended: this, so the user sees no false
+error as the app closes. Alternative: count only a cancellation or a disposed dependency as part of the stop; a
+wrapped failure hides that cause, so the false error would still show.
+
+Decision to confirm: if stopping begins in the instant between a pass's stop check and its failure being published,
+that failure can show briefly. The pass still ends as a stop and the status from before it comes back. Recommended:
+accept this, because closing the gap needs one lock shared by stopping and every status change. Alternative: add
+that lock, so no failure can show once stopping begins.
 
 **Decided by the user:** a failed sync still shows the local changes it found that haven't reached the remote.
 When a sync fails at or after its first contact with the host, for example offline, at the stalled-network timeout,
@@ -429,9 +546,9 @@ scan of the clone. Alternative: scan the clone after every failure; it reads a c
 the scan can fail too.
 
 A setup-snapshot refresh failure never replaces a pass's primary failure kind or details: append the refresh
-details while retaining that outcome. If the pass otherwise succeeded, report the refresh failure instead of a
-success-shaped fallback. Unsafe repository state is a Repository failure detected before setup changes origin
-or selection and before a pass changes managed files or commits.
+details while retaining that outcome. If the pass otherwise succeeded, report the refresh failure, with its cause's
+kind, instead of a success-shaped fallback. Unsafe repository state is a Repository failure detected before setup
+changes origin or selection and before a pass changes managed files or commits.
 
 Decision to confirm: when a Git merge and the subsequent Tasks reload report the same managed path, show the
 path once and retain the merge-specific reason rather than replace it with the reload reason. Reports for other
@@ -463,6 +580,10 @@ The options below were considered and rejected, grouped by decision. The git and
   - **Silently succeeding when Forget targets a built-in host**: it looks as though trust was removed when it was not.
   - **Adding an eligibility capability only to hide that action**: it grows the public interface for a request the
     existing action can refuse with an explanation.
+  - **Hiding the offered key when the trust file can't be loaded**: the user would lose the fingerprint the host
+    offered.
+  - **Refusing Forget for a host and port with nothing saved**: pressing it twice, or before Accept, would show an
+    error for a harmless request.
 - Desktop timing:
   - **Every 5 minutes**: the user chose 30.
   - **Every minute**: about 1,400 contacts with the host a day.
@@ -482,3 +603,20 @@ The options below were considered and rejected, grouped by decision. The git and
 - Pending changes after a failed sync:
   - **Keep the previous value on every failure**: a sync that found new local work and then failed would say
     nothing is waiting to be sent.
+- Git settings outside the clone:
+  - **Setting `core.autocrlf=false` in each clone Sync manages**: the user rejected it, since it fixes only that
+    setting. Others, such as `core.safecrlf`, `core.eol`, `url.<base>.insteadOf`, or a global ignore file, could
+    still change what Sync does.
+  - **Ignoring them once, when Sync's code loads**: that runs on the UI thread when the app creates Sync, and a
+    failure there breaks the whole app, not one sync. .NET also warns against module initializers in libraries
+    ([CA2255](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2255)).
+  - **Ignoring them once per process, at the first git operation**: a later change to the shared setting, by the app
+    or a test, would go unnoticed.
+  - **Pointing each level at an empty folder**: it costs disk access, and someone could put a file there.
+  - **Turning off libgit2's ownership check, so `safe.directory` isn't missed**: it reopens the attack the check
+    blocks ([CVE-2022-24765](https://nvd.nist.gov/vuln/detail/CVE-2022-24765)).
+- Failure kinds:
+  - **A sync pass naming some local failures `Unexpected`, while startup and setup call them `LocalStorage`**: one
+    broken file would show two kinds, and the tray would notify twice.
+  - **Naming only a failed setup refresh after a successful pass by its cause**: a corrupt device name or key file
+    would still show two kinds.

@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="..\UnitRunTiming\Memoria.ToDo.Testing.UnitRunTiming.csproj" />
-  </ItemGroup>
-
-</Project>

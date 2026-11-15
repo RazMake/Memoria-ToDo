@@ -3,12 +3,12 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// <summary>The popup lists of one editor, of which at most one is open. Down and Enter act on the open one.</summary>
 internal sealed class PopupLists
 {
-    private readonly IReadOnlyList<PopupList> _all;
+    private readonly IReadOnlyList<ChoiceList> _all;
 
-    public PopupLists(params PopupList[] lists) => _all = lists;
+    public PopupLists(params ChoiceList[] lists) => _all = lists;
 
     /// <summary>Shows the items in the list, closing whichever list was open.</summary>
-    public void Show(PopupList list, IReadOnlyList<string> items)
+    public void Show(ChoiceList list, IReadOnlyList<string> items)
     {
         CloseOpen();
         list.Show(items);
@@ -53,5 +53,5 @@ internal sealed class PopupLists
         return false;
     }
 
-    private PopupList? Open() => _all.FirstOrDefault(list => list.IsOpen);
+    private ChoiceList? Open() => _all.FirstOrDefault(list => list.IsOpen);
 }

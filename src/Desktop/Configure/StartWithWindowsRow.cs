@@ -6,16 +6,15 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// <summary>The Start with Windows setting as the window shows it: a check box that switches it at once, and its error.</summary>
 internal sealed class StartWithWindowsRow : StackPanel
 {
-    private readonly IStartWithWindows _startWithWindows;
+    private readonly StartWithWindowsSetting _setting;
     private readonly CheckBox _box = new() { Content = "Start with Windows" };
     private readonly TextBlock _problem = ThemedText.Message();
     private bool _reverting;
 
     public StartWithWindowsRow(IStartWithWindows startWithWindows)
     {
-        ArgumentNullException.ThrowIfNull(startWithWindows);
-        _startWithWindows = startWithWindows;
-        _box.IsChecked = startWithWindows.IsOn();
+        _setting = new StartWithWindowsSetting(startWithWindows);
+        _box.IsChecked = _setting.IsOn;
         _box.Checked += (_, _) => Switch(true);
         _box.Unchecked += (_, _) => Switch(false);
 
@@ -32,16 +31,12 @@ internal sealed class StartWithWindowsRow : StackPanel
             return;
         }
 
-        try
+        _setting.Set(on);
+        ThemedText.ShowMessage(_problem, _setting.Problem);
+        if (_setting.IsOn != on)
         {
-            _startWithWindows.Set(on);
-            ThemedText.ShowMessage(_problem, null);
-        }
-        catch (Exception error)
-        {
-            ThemedText.ShowMessage(_problem, error.Message);
             _reverting = true;
-            _box.IsChecked = !on;
+            _box.IsChecked = _setting.IsOn;
             _reverting = false;
         }
     }

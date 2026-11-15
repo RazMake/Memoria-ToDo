@@ -1,12 +1,11 @@
-using System.Windows.Threading;
-
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// The one thing the Undo bar can undo at a time. It is finished for good when its time is up, when another one
-/// replaces it, or when <see cref="Commit"/> is called, for example as the window closes.
+/// replaces it, or when <see cref="Commit"/> is called, for example as the window closes. The timer fires on any
+/// thread, so it finishes the pending one through <paramref name="post"/>, which runs the action on the window's thread.
 /// </summary>
-internal sealed class PendingUndo(TimeProvider time, Dispatcher dispatcher, Action changed) : IDisposable
+internal sealed class PendingUndo(TimeProvider time, Action<Action> post, Action changed) : IDisposable
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(10);
 
@@ -35,7 +34,7 @@ internal sealed class PendingUndo(TimeProvider time, Dispatcher dispatcher, Acti
         _undo = undo;
         var generation = ++_generation;
         _timer = time.CreateTimer(
-            _ => dispatcher.BeginInvoke(() =>
+            _ => post(() =>
             {
                 if (generation == _generation)
                 {

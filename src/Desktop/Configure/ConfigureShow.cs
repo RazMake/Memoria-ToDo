@@ -75,7 +75,7 @@ internal sealed class ConfigureShow : IConfigureWindow
     {
         var shortcuts = new ShortcutSection(_addNewTask, _manageTasks);
         var delay = new DeletionDelayRow(_settings);
-        var ui = new SyncUi(sync, setupActions, _notices);
+        var ui = new SyncUi(sync, setupActions, _notices.Post);
         var syncSettings = new SyncSettingsSection(ui);
         syncSettings.Children.Insert(0, delay);
         var sections = new Accordion { Margin = new Thickness(24) };

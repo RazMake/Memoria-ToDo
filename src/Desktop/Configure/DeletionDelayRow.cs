@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -9,15 +8,13 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// <summary>The deletion delay, in days, kept in the shared settings and saved when the box loses the focus.</summary>
 internal sealed class DeletionDelayRow : StackPanel
 {
-    private readonly ISharedTaskSettings _settings;
+    private readonly DeletionDelaySetting _setting;
     private readonly TextBox _days = new() { Width = 80, HorizontalAlignment = HorizontalAlignment.Left };
     private readonly TextBlock _message = ThemedText.Message();
-    private string _shown = "";
-    private bool _readFailed;
 
     public DeletionDelayRow(ISharedTaskSettings settings)
     {
-        _settings = settings;
+        _setting = new DeletionDelaySetting(settings);
         AutomationProperties.SetName(_days, "Deletion delay (days)");
         _days.LostFocus += (_, _) => Commit();
         Children.Add(new TextBlock { Text = "Deletion delay (days)", Margin = new Thickness(0, 12, 0, 4) });
@@ -37,53 +34,18 @@ internal sealed class DeletionDelayRow : StackPanel
             return;
         }
 
-        try
-        {
-            _shown = _settings.DeletionDelayDays.ToString(CultureInfo.InvariantCulture);
-            if (_readFailed)
-            {
-                _readFailed = false;
-                ThemedText.ShowMessage(_message, null);
-            }
-        }
-        catch (Exception error)
-        {
-            _readFailed = true;
-            ThemedText.ShowMessage(_message, $"The deletion delay couldn't be read: {error.Message}");
-        }
-
-        _days.Text = _shown;
+        _setting.Refresh();
+        _days.Text = _setting.Shown;
+        ThemedText.ShowMessage(_message, _setting.Message);
     }
 
     private void Commit()
     {
-        var text = _days.Text.Trim();
-        string? problem = null;
-        try
+        _setting.Commit(_days.Text);
+        ThemedText.ShowMessage(_message, _setting.Message);
+        if (_setting.Message is not null)
         {
-            if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var days))
-            {
-                problem = $"The deletion delay wasn't changed: \"{text}\" isn't a whole number of days.";
-            }
-            else
-            {
-                _settings.SetDeletionDelayDays(days);
-                _shown = days.ToString(CultureInfo.InvariantCulture);
-            }
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            problem = $"The deletion delay wasn't changed: {text} is outside the allowed range.";
-        }
-        catch (Exception error)
-        {
-            problem = $"The deletion delay wasn't saved: {error.Message}";
-        }
-
-        ThemedText.ShowMessage(_message, problem);
-        if (problem is not null)
-        {
-            _days.Text = _shown;
+            _days.Text = _setting.Shown;
         }
     }
 }

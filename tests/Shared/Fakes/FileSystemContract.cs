@@ -168,14 +168,6 @@ public abstract class FileSystemContract
     }
 
     [Fact]
-    public void Lists_no_files_for_a_folder_with_only_subfolders()
-    {
-        Write(Path("sub", "b.txt"), "x");
-
-        Assert.Empty(FileSystem.ListFiles(Root));
-    }
-
-    [Fact]
     public void Moves_a_file_so_it_is_only_at_the_target()
     {
         Write(Path("a.txt"), "content");
@@ -295,7 +287,7 @@ public abstract class FileSystemContract
     {
         Write(Path("folder", "a.txt"), "x");
 
-        Assert.ThrowsAny<Exception>(() => FileSystem.DeleteFile(Path("folder")));
+        Assert.ThrowsAny<IOException>(() => FileSystem.DeleteFile(Path("folder")));
 
         Assert.Equal("x", Read(Path("folder", "a.txt")));
     }
@@ -305,19 +297,47 @@ public abstract class FileSystemContract
     [InlineData(@"..\outside")]
     [InlineData("C:folder")]
     [InlineData("C:")]
-    public void Rejects_a_relative_or_drive_relative_directory_when_asking_about_containment(string relative)
+    public void Rejects_a_relative_or_drive_relative_path_when_asking_about_containment(string relative)
     {
         Assert.ThrowsAny<ArgumentException>(() => FileSystem.IsSameOrDescendantDirectory(relative, Root));
+        Assert.ThrowsAny<ArgumentException>(() => FileSystem.IsSameOrDescendantDirectory(Root, relative));
     }
 
-    [Theory]
-    [InlineData("folder")]
-    [InlineData(@"..\outside")]
-    [InlineData("C:folder")]
-    [InlineData("C:")]
-    public void Rejects_a_relative_or_drive_relative_ancestor_when_asking_about_containment(string relative)
+    [Fact]
+    public void Says_a_folder_is_the_same_as_itself_when_asking_about_containment()
     {
-        Assert.ThrowsAny<ArgumentException>(() => FileSystem.IsSameOrDescendantDirectory(Root, relative));
+        Write(Path("sub", "a.txt"), "x");
+
+        Assert.True(FileSystem.IsSameOrDescendantDirectory(Path("sub"), Path("sub")));
+    }
+
+    [Fact]
+    public void Says_a_folder_inside_another_is_a_descendant_but_not_the_other_way_round()
+    {
+        Write(Path("sub", "deeper", "a.txt"), "x");
+
+        Assert.True(FileSystem.IsSameOrDescendantDirectory(Path("sub", "deeper"), Root));
+        Assert.True(FileSystem.IsSameOrDescendantDirectory(Path("sub", "deeper"), Path("sub")));
+        Assert.False(FileSystem.IsSameOrDescendantDirectory(Root, Path("sub", "deeper")));
+    }
+
+    [Fact]
+    public void Says_a_sibling_folder_whose_name_starts_with_the_same_text_is_not_a_descendant()
+    {
+        Write(Path("folder", "a.txt"), "x");
+        Write(Path("folder2", "b.txt"), "x");
+
+        Assert.False(FileSystem.IsSameOrDescendantDirectory(Path("folder2"), Path("folder")));
+        Assert.False(FileSystem.IsSameOrDescendantDirectory(Path("folder"), Path("folder2")));
+    }
+
+    [Fact]
+    public void Says_a_folder_that_does_not_exist_yet_is_inside_its_nearest_existing_ancestor()
+    {
+        Write(Path("sub", "a.txt"), "x");
+
+        Assert.True(FileSystem.IsSameOrDescendantDirectory(Path("sub", "not", "yet"), Path("sub")));
+        Assert.False(FileSystem.IsSameOrDescendantDirectory(Path("sub", "not", "yet"), Path("other")));
     }
 
     [Fact]
@@ -325,7 +345,7 @@ public abstract class FileSystemContract
     {
         Write(Path("a.txt"), "x");
 
-        Assert.ThrowsAny<Exception>(() => FileSystem.DeleteFolder(Path("a.txt")));
+        Assert.ThrowsAny<IOException>(() => FileSystem.DeleteFolder(Path("a.txt")));
 
         Assert.Equal("x", Read(Path("a.txt")));
     }

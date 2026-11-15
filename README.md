@@ -1,6 +1,6 @@
 # Memoria-ToDo
 
-Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) and design are decided. The desktop app's first steps are built: a tray icon whose windows say what's coming, an installer, and automatic updates. The repository also holds the rules every change follows and the AI agents that design, build, test, and review it.
+Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) and design are decided. The desktop app adds, views, and syncs tasks from its tray icon. Its installer and automatic updates are next, then the Android app. The repository also holds the rules every change follows and the AI agents that design, build, test, and review it.
 
 | If you want to | Read |
 | --- | --- |
@@ -28,6 +28,7 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
   $env:DOTNET_ROOT = "$env:LOCALAPPDATA\Memoria-ToDo\dotnet"; $env:PATH = "$env:DOTNET_ROOT;$env:PATH"
   ```
 
+- **Git on `PATH`**, for [Sync's integration tests](docs/architecture/technology-stack.md#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), which run it behind their own SSH server. Its version isn't pinned.
 - **Visual Studio Code with the [C# extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp)** (`ms-dotnettools.csharp`). F5 builds and runs the desktop app with the debugger, and Ctrl+F5 runs it without. Both use the pinned SDK. Code completion needs Visual Studio Code to find that SDK on `PATH`, so start it from the repository root like this ([why](docs/architecture/technology-stack.md#visual-studio-code-runs-the-desktop-app-with-f5-on-the-pinned-sdk)):
 
   ```powershell

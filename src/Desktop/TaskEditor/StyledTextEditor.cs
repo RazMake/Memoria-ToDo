@@ -13,7 +13,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// A text field that shows its Markdown styled in place. Typed text shows at once; its styling follows on the dispatcher,
 /// once for any number of edits queued before it, and again when the theme changes.
 /// </summary>
-internal sealed class StyledTextEditor : TextEditor
+internal sealed class StyledTextEditor : TextEditor, ITextField
 {
     private const string BorderName = "ContentBorder";
 
@@ -45,13 +45,25 @@ internal sealed class StyledTextEditor : TextEditor
         Options.EnableEmailHyperlinks = false;
         TextArea.TextView.LineTransformers.Add(_styler);
 
-        TextChanged += (_, _) => QueueStyling();
+        TextChanged += (_, _) =>
+        {
+            QueueStyling();
+            Changed?.Invoke();
+        };
+        TextArea.Caret.PositionChanged += (_, _) => Changed?.Invoke();
+        TextArea.TextEntered += (_, e) => TextEntered?.Invoke(e.Text);
         WhileLoaded.Run(this, () =>
         {
             theme.Changed += OnThemeChanged;
             QueueStyling();
         }, () => theme.Changed -= OnThemeChanged);
     }
+
+    public event Action? Changed;
+
+    public event Action<string>? TextEntered;
+
+    public void FocusField() => KeyboardFocus.MoveTo(this);
 
     private void OnThemeChanged(object? sender, EventArgs e) => QueueStyling();
 

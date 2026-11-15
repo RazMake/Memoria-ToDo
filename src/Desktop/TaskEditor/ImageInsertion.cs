@@ -47,7 +47,7 @@ internal sealed class ImageInsertion
     public bool IsChoosingFile { get; private set; }
 
     /// <summary>Inserts the clipboard's image, or else the file the user chooses; nothing when the user cancels. <paramref name="replaceFrom"/> is as for <see cref="SnippetInsertion.Apply"/>.</summary>
-    public void InsertClipboardOrChosen(StyledTextEditor field, ISnippet snippet, int? replaceFrom)
+    public void InsertClipboardOrChosen(ITextField field, ISnippet snippet, int? replaceFrom)
     {
         if (!TryInsertClipboard(field, snippet, replaceFrom))
         {
@@ -56,13 +56,13 @@ internal sealed class ImageInsertion
     }
 
     /// <summary>Inserts the clipboard's image in place of the selection. Returns false, doing nothing, when the clipboard holds none.</summary>
-    public bool PasteClipboardImage(StyledTextEditor field) => TryInsertClipboard(field, Snippets.Image, null);
+    public bool PasteClipboardImage(ITextField field) => TryInsertClipboard(field, Snippets.Image, null);
 
     /// <summary>Inserts the image file in place of the selection.</summary>
-    public void InsertFile(StyledTextEditor field, string path) =>
+    public void InsertFile(ITextField field, string path) =>
         Insert(field, Snippets.Image, null, () => Keep(path));
 
-    private bool TryInsertClipboard(StyledTextEditor field, ISnippet snippet, int? replaceFrom)
+    private bool TryInsertClipboard(ITextField field, ISnippet snippet, int? replaceFrom)
     {
         // A clipboard that fails reports the failure and counts as handled, so no file dialog follows.
         if (!Guarded(field, _clipboard.ImagePng, out var png))
@@ -103,7 +103,7 @@ internal sealed class ImageInsertion
     }
 
     // Leaves the text and the cursor as they were when there is no link, whether the user cancelled or it failed.
-    private void Insert(StyledTextEditor field, ISnippet snippet, int? replaceFrom, Func<string?> keepImage)
+    private void Insert(ITextField field, ISnippet snippet, int? replaceFrom, Func<string?> keepImage)
     {
         if (!Guarded(field, keepImage, out var link))
         {
@@ -112,7 +112,7 @@ internal sealed class ImageInsertion
 
         if (link is null)
         {
-            KeyboardFocus.MoveTo(field);
+            field.FocusField();
             return;
         }
 
@@ -121,7 +121,7 @@ internal sealed class ImageInsertion
     }
 
     // Runs the step that gets or keeps an image. A failure is reported, leaves the text as it was, and returns false.
-    private bool Guarded<T>(StyledTextEditor field, Func<T> step, out T? result)
+    private bool Guarded<T>(ITextField field, Func<T> step, out T? result)
     {
         try
         {
@@ -141,9 +141,9 @@ internal sealed class ImageInsertion
         return false;
     }
 
-    private void Fail(StyledTextEditor field, string message)
+    private void Fail(ITextField field, string message)
     {
         _report(message);
-        KeyboardFocus.MoveTo(field);
+        field.FocusField();
     }
 }

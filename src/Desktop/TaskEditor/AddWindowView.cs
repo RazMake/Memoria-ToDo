@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,16 +15,13 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// </summary>
 internal sealed class AddWindowView : Window, IAddWindow
 {
-    private const string DraftUnreadableMessage = "The kept draft couldn't be loaded, so Add opened empty.";
-
-    private readonly ITasks _tasks;
     private readonly TaskEditorControl _editor;
-    private bool _unreadableDraftOnDisk;
+    private readonly AddDraft _draft;
 
     public AddWindowView(ITasks tasks, TaskEditorControl editor)
     {
-        _tasks = tasks;
         _editor = editor;
+        _draft = new AddDraft(tasks, editor);
         Title = "Add new Task";
         Width = 480;
         MinHeight = 240;
@@ -40,7 +36,7 @@ internal sealed class AddWindowView : Window, IAddWindow
             Padding = new Thickness(8, 2, 8, 2),
             FontSize = 11,
         };
-        clear.Click += (_, _) => Clear();
+        clear.Click += (_, _) => _draft.Clear();
         var save = new Button
         {
             Content = "Save",
@@ -76,7 +72,7 @@ internal sealed class AddWindowView : Window, IAddWindow
     {
         if (!IsVisible)
         {
-            RestoreDraft();
+            _draft.Restore();
         }
 
         WindowPlacement.ShowOnPointerScreen(this);
@@ -114,68 +110,14 @@ internal sealed class AddWindowView : Window, IAddWindow
         }
 
         Hide();
-        var draft = _editor.Value;
-        if (!_unreadableDraftOnDisk || !IsUntouched(draft))
-        {
-            _tasks.KeepDraft(draft);
-            _unreadableDraftOnDisk = false;
-        }
-    }
-
-    private static bool IsUntouched(TaskDraft draft) =>
-        draft.Title.Length == 0 && draft.Description.Length == 0 && draft.Tags.Count == 0;
-
-    private void RestoreDraft()
-    {
-        // The window stays alive while hidden, so Tags text typed and not yet added is still in its line; setting the draft clears it.
-        var typedTags = _editor.TypedTags;
-        try
-        {
-            _editor.Value = _tasks.LoadDraft() ?? _tasks.StartDraft();
-            _unreadableDraftOnDisk = false;
-            ShowMessage("");
-        }
-        catch (InvalidDataException)
-        {
-            _editor.Value = _tasks.StartDraft();
-            _unreadableDraftOnDisk = true;
-            ShowMessage(DraftUnreadableMessage);
-        }
-
-        _editor.TypedTags = typedTags;
-    }
-
-    private void StartNewDraft()
-    {
-        _editor.Value = _tasks.StartDraft();
-        _unreadableDraftOnDisk = false;
-        ShowMessage("");
-    }
-
-    private void Clear()
-    {
-        _tasks.DiscardDraft();
-        StartNewDraft();
-        _editor.FocusTitle();
+        _draft.Keep();
     }
 
     private void Save(bool keepOpen)
     {
-        if (!_editor.Save(draft => _tasks.Add(draft)))
-        {
-            return;
-        }
-
-        StartNewDraft();
-        if (keepOpen)
-        {
-            _editor.FocusTitle();
-        }
-        else
+        if (_draft.Save(keepOpen))
         {
             HideAndKeepDraft();
         }
     }
-
-    private void ShowMessage(string text) => _editor.ShowMessage(text);
 }

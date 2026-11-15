@@ -10,8 +10,7 @@ internal static class TextPaste
     {
         if (e.DataObject.GetData(DataFormats.UnicodeText) is string text)
         {
-            var lines = text.Split(["\r\n", "\n", "\r"], StringSplitOptions.None);
-            e.DataObject = new DataObject(DataFormats.UnicodeText, string.Join(' ', lines.Select(line => line.Trim())).Trim());
+            e.DataObject = new DataObject(DataFormats.UnicodeText, OneLine.Of(text));
         }
     }
 }

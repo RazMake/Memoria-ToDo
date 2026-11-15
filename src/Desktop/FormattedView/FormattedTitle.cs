@@ -76,17 +76,13 @@ public sealed class FormattedTitle : TextBlock
         var brushes = _palette.ToDictionary(
             color => color.Name,
             color => (Brush)Frozen(new SolidColorBrush((Color)ColorConverter.ConvertFromString(dark ? color.Dark : color.Light))));
-        var shownText = new System.Text.StringBuilder();
-        foreach (var span in StyledSpans.Of(_markdown, MarkdownField.Title))
+        var spans = TitleText.ShownSpans(_markdown);
+        foreach (var span in spans)
         {
-            if (!span.Styles.HasFlag(SpanStyle.Marker))
-            {
-                Inlines.Add(InlineOf(span, brushes));
-                shownText.Append(_markdown, span.Start, span.Length);
-            }
+            Inlines.Add(InlineOf(span, brushes));
         }
 
-        AutomationProperties.SetName(this, shownText.ToString());
+        AutomationProperties.SetName(this, TitleText.TextOf(_markdown, spans));
     }
 
     private Inline InlineOf(StyledSpan span, Dictionary<string, Brush> brushes)

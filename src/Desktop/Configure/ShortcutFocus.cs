@@ -1,5 +1,3 @@
-using System.Windows.Input;
-
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
@@ -13,16 +11,36 @@ internal sealed class ShortcutFocus
     private bool _released;
 
     /// <param name="settings">The shortcuts to release and register again.</param>
-    /// <param name="fields">The fields whose focus releases the shortcuts.</param>
     /// <param name="changed">Called after the settings changed, so the window shows them.</param>
-    public ShortcutFocus(IReadOnlyList<ShortcutSetting> settings, IEnumerable<ShortcutField> fields, Action changed)
+    public ShortcutFocus(IReadOnlyList<ShortcutSetting> settings, Action changed)
     {
         _settings = settings;
         _changed = changed;
-        foreach (var field in fields)
+    }
+
+    /// <summary>A shortcut field got the focus: releases the shortcuts, unless they are released already.</summary>
+    public void FieldFocused()
+    {
+        if (_released)
         {
-            field.GotKeyboardFocus += (_, _) => Release();
-            field.LostKeyboardFocus += OnLostKeyboardFocus;
+            return;
+        }
+
+        _released = true;
+        foreach (var setting in _settings)
+        {
+            setting.Release();
+        }
+
+        _changed();
+    }
+
+    /// <summary>A shortcut field lost the focus: registers the shortcuts again unless another field has it now.</summary>
+    public void FocusLeft(bool toAnotherField)
+    {
+        if (!toAnotherField)
+        {
+            Restore();
         }
     }
 
@@ -41,29 +59,5 @@ internal sealed class ShortcutFocus
         }
 
         _changed();
-    }
-
-    private void Release()
-    {
-        if (_released)
-        {
-            return;
-        }
-
-        _released = true;
-        foreach (var setting in _settings)
-        {
-            setting.Release();
-        }
-
-        _changed();
-    }
-
-    private void OnLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        if (e.NewFocus is not ShortcutField)
-        {
-            Restore();
-        }
     }
 }

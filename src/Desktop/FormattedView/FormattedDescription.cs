@@ -9,12 +9,10 @@ namespace Memoria.ToDo.Desktop.FormattedView;
 public sealed class FormattedDescription : ContentControl, IDisposable
 {
     private readonly IDescriptionWebView _webView;
-    private readonly ITheme _theme;
     private readonly LinkOpener _links;
+    private readonly ShownDescription _shown;
     private readonly ThemeFollower _themeFollower;
-    private string? _markdown;
-    private string? _shownMarkdown;
-    private bool _shownDark;
+    private string _markdown = "";
     private TextBox? _source;
     private bool _disposed;
 
@@ -25,7 +23,7 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(browser);
         _webView = webView;
-        _theme = theme;
+        _shown = new ShownDescription(theme, () => webView.CloneAddress, webView.Show);
         _links = new LinkOpener(
             browser,
             address => OtherLinkClicked?.Invoke(this, address),
@@ -33,18 +31,29 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         Content = webView.Element;
         webView.LinkClicked += OnLinkClicked;
         webView.Failed += OnFailed;
-        _themeFollower = new ThemeFollower(this, theme, Show);
+        _themeFollower = new ThemeFollower(this, theme, OnThemeChanged);
     }
 
     /// <summary>The description's Markdown. Setting it shows it formatted.</summary>
     public string Markdown
     {
-        get => _markdown ?? "";
+        get => _markdown;
         set
         {
             ArgumentNullException.ThrowIfNull(value);
             _markdown = value;
-            Show();
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (_source is not null)
+            {
+                _source.Text = value;
+                return;
+            }
+
+            _shown.Set(value);
         }
     }
 
@@ -81,28 +90,12 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         Content = panel;
     }
 
-    // Shows the Markdown in the current theme, unless that is what is already shown.
-    private void Show()
+    // The web view follows the theme; the source shown in its place has no theme.
+    private void OnThemeChanged()
     {
-        if (_markdown is null || _disposed)
+        if (!_disposed && _source is null)
         {
-            return;
+            _shown.ThemeChanged();
         }
-
-        if (_source is not null)
-        {
-            _source.Text = _markdown;
-            return;
-        }
-
-        var dark = _theme.IsDark;
-        if (_shownMarkdown == _markdown && _shownDark == dark)
-        {
-            return;
-        }
-
-        _shownMarkdown = _markdown;
-        _shownDark = dark;
-        _webView.Show(DescriptionPage.Of(_markdown, dark, _webView.CloneAddress));
     }
 }

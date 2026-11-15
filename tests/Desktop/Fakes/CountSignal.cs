@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Fakes;
+
 namespace Memoria.ToDo.Desktop.Fakes;
 
 /// <summary>
@@ -6,8 +8,6 @@ namespace Memoria.ToDo.Desktop.Fakes;
 /// </summary>
 internal sealed class CountSignal
 {
-    private static readonly TimeSpan FailAfter = TimeSpan.FromSeconds(10);
-
     private readonly object gate = new();
     private readonly List<(int Count, TaskCompletionSource Done)> waiters = [];
     private int count;
@@ -54,6 +54,6 @@ internal sealed class CountSignal
             waiters.Add((atLeast, done));
         }
 
-        return done.Task.WaitAsync(FailAfter);
+        return done.Task.WaitAsync(TestWait.ForSignal);
     }
 }

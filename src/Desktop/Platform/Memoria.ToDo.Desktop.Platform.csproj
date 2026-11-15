@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <!-- The tests of the Platform's internal components. -->
-    <InternalsVisibleTo Include="Memoria.ToDo.Desktop.Platform.Tests" />
+    <InternalsVisibleTo Include="Memoria.ToDo.Desktop.Tests" />
   </ItemGroup>
 
 </Project>

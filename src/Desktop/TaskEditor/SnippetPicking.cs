@@ -9,34 +9,34 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// </summary>
 internal sealed class SnippetPicking
 {
-    private readonly StyledTextEditor _field;
-    private readonly PopupList _list;
+    private readonly ITextField _field;
+    private readonly ChoiceList _list;
     private readonly PopupLists _popups;
     private readonly SnippetInserter _inserter;
     private TextAnchor? _slash;
     private IReadOnlyList<ISnippet> _shown = [];
 
-    public SnippetPicking(StyledTextEditor field, PopupList list, PopupLists popups, SnippetInserter inserter)
+    public SnippetPicking(ITextField field, ChoiceList list, PopupLists popups, SnippetInserter inserter)
     {
         _field = field;
         _list = list;
         _popups = popups;
         _inserter = inserter;
-        field.TextArea.TextEntered += (_, e) =>
+        field.TextEntered += text =>
         {
-            if (e.Text == "/")
+            if (text == "/")
             {
                 Open();
             }
         };
-        field.WhenEditedOrMoved(() =>
+        field.Changed += () =>
         {
             if (_list.IsOpen)
             {
                 Update();
             }
-        });
-        list.Chosen += (_, position) => Choose(position);
+        };
+        list.Chosen += Choose;
     }
 
     private void Open()

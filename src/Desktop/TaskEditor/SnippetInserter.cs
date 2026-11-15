@@ -5,7 +5,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// <summary>Inserts a snippet, first getting from the app what the snippet needs, as Editing's <see cref="SnippetNeeds"/> say.</summary>
 internal sealed class SnippetInserter
 {
-    private delegate void Way(StyledTextEditor field, ISnippet snippet, int? replaceFrom);
+    private delegate void Way(ITextField field, ISnippet snippet, int? replaceFrom);
 
     private readonly Dictionary<SnippetNeeds, Way> _byNeed;
 
@@ -13,8 +13,8 @@ internal sealed class SnippetInserter
     /// <param name="clipboard">Gives the text of a link, read when the snippet is inserted.</param>
     /// <param name="askForTask">Lets the user choose a task, then inserts the snippet. It is given where the replaced text starts.</param>
     /// <param name="insertImage">Gets an image, keeps it, then inserts the snippet. It is given where the replaced text starts, if any.</param>
-    public SnippetInserter(TimeProvider time, IClipboard clipboard, Action<StyledTextEditor, ISnippet, int> askForTask,
-        Action<StyledTextEditor, ISnippet, int?> insertImage)
+    public SnippetInserter(TimeProvider time, IClipboard clipboard, Action<ITextField, ISnippet, int> askForTask,
+        Action<ITextField, ISnippet, int?> insertImage)
     {
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(clipboard);
@@ -35,7 +35,7 @@ internal sealed class SnippetInserter
 
     /// <summary>Inserts the snippet. <paramref name="replaceFrom"/> is as for <see cref="SnippetInsertion.Apply"/>.</summary>
     /// <exception cref="NotSupportedException">The snippet needs something the app can't give yet.</exception>
-    public void Insert(StyledTextEditor field, ISnippet snippet, int? replaceFrom)
+    public void Insert(ITextField field, ISnippet snippet, int? replaceFrom)
     {
         if (!_byNeed.TryGetValue(snippet.Needs, out var way))
         {

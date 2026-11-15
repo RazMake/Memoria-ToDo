@@ -1,7 +1,5 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using Memoria.ToDo.Shared.Sync;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -24,41 +22,13 @@ internal sealed class StatusSection : StackPanel
     }
 
     /// <summary>Shows the sync status the service holds now.</summary>
-    public void Refresh()
-    {
-        var status = _ui.Sync.Status;
-        var lines = new List<string>
-        {
-            status.LastSuccessfulSync is { } at
-                ? $"Last successful sync: {at.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)}"
-                : "Not synced yet.",
-        };
-        if (status.HasPendingChanges)
-        {
-            lines.Add("Changes wait to be synced.");
-        }
-
-        if (status.State is SyncState.Error or SyncState.Offline && status.Details is not null)
-        {
-            lines.Add(status.Details);
-        }
-
-        lines.AddRange(status.SkippedFiles.Select(file => $"Skipped {file.RelativePath}: {file.Reason}"));
-        _text.Text = string.Join(Environment.NewLine, lines);
-    }
+    public void Refresh() => _text.Text = SyncText.Status(_ui.Sync.Status);
 
     private async Task SyncNowAsync()
     {
         ThemedText.ShowMessage(_message, null);
         await _ui.RunAsync(
-            async token =>
-            {
-                var status = await _ui.Sync.SyncNowAsync(token);
-                if (status.State is SyncState.Error or SyncState.Offline)
-                {
-                    ThemedText.ShowMessage(_message, status.Details);
-                }
-            },
+            token => _ui.SyncNowAsync(text => ThemedText.ShowMessage(_message, text), token),
             text => ThemedText.ShowMessage(_message, text));
     }
 }

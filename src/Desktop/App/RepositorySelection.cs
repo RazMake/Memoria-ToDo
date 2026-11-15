@@ -12,17 +12,18 @@ namespace Memoria.ToDo.Desktop.App;
 internal sealed class RepositorySelection : IRepositorySelection
 {
     private readonly IFileSystem _files;
-    private readonly ITasks _tasks;
+    private readonly Action<string?> _useRepositoryFolder;
     private readonly string _settingFile;
 
+    /// <param name="useRepositoryFolder">Makes Tasks read this folder; null for none.</param>
     /// <param name="settingFile">The file that keeps the folder's path; created by the first selection.</param>
-    public RepositorySelection(IFileSystem files, ITasks tasks, string settingFile)
+    public RepositorySelection(IFileSystem files, Action<string?> useRepositoryFolder, string settingFile)
     {
         ArgumentNullException.ThrowIfNull(files);
-        ArgumentNullException.ThrowIfNull(tasks);
+        ArgumentNullException.ThrowIfNull(useRepositoryFolder);
         ArgumentException.ThrowIfNullOrWhiteSpace(settingFile);
         _files = files;
-        _tasks = tasks;
+        _useRepositoryFolder = useRepositoryFolder;
         _settingFile = settingFile;
     }
 
@@ -34,7 +35,7 @@ internal sealed class RepositorySelection : IRepositorySelection
             throw new System.IO.InvalidDataException($"The saved repository folder '{saved}' is not a full path.");
         }
 
-        _tasks.UseRepositoryFolder(saved.Length == 0 ? null : saved);
+        _useRepositoryFolder(saved.Length == 0 ? null : saved);
     }
 
     public void Select(string folder)
@@ -45,7 +46,7 @@ internal sealed class RepositorySelection : IRepositorySelection
         _files.WriteFile(_settingFile, Encoding.UTF8.GetBytes(folder));
         try
         {
-            _tasks.UseRepositoryFolder(folder);
+            _useRepositoryFolder(folder);
         }
         catch (Exception adoption)
         {

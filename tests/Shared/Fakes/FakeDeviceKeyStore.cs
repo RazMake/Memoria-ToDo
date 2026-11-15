@@ -4,20 +4,35 @@ using Memoria.ToDo.Shared.Sync;
 namespace Memoria.ToDo.Shared.Fakes;
 
 /// <summary>
-/// The shared fake secure key storage. Every instance uses one immutable RSA key, made once per process, so tests
-/// pay for key generation once and a transport can still sign for real.
+/// The shared fake secure key storage. A store made with <c>new</c> has a constant public key and cannot sign, which
+/// costs nothing. A store made with <see cref="Signing"/> uses one immutable RSA key, made once per process on first
+/// use, so a transport can sign for real.
 /// It counts generated and opened handles and how many are still open, so tests can check handle lifetime.
 /// </summary>
 public sealed class FakeDeviceKeyStore : IDeviceKeyStore
 {
     private readonly object gate = new();
-    // One RSA object is shared by every store, and it isn't safe to export or sign from several threads at once.
+    // One RSA object is shared by every signing store, and it isn't safe to export or sign from several threads at once.
     private static readonly object RsaGate = new();
     private static readonly Lazy<RSA> Shared = new(() => RSA.Create(2048));
+    // A well-formed ssh-rsa public key (exponent 65537) that no private key matches.
+    private static readonly Lazy<byte[]> ConstantBlob = new(() => BlobOf(new byte[] { 1, 0, 1 }, Enumerable.Range(1, 256).Select(i => (byte)(i | 0x81)).ToArray()));
+    private readonly bool signs;
     private bool hasKey;
     private int generateCalls;
     private int openCalls;
     private int openHandles;
+
+    /// <summary>A store whose key really signs, for tests that run a transport against a real SSH server.</summary>
+    public static FakeDeviceKeyStore Signing() => new(signs: true);
+
+    public FakeDeviceKeyStore() : this(signs: false)
+    {
+    }
+
+    private FakeDeviceKeyStore(bool signs) => this.signs = signs;
+
+    private byte[] PublicBlob => signs ? Blob(Shared.Value) : ConstantBlob.Value;
 
     /// <summary>When true, <see cref="Open"/> fails with an <see cref="IOException"/>, as an unusable stored key does.</summary>
     public bool FailOpen { get; set; }
@@ -47,7 +62,7 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
     /// <summary>The stored key's SSH public-key blob; fails when there is no key.</summary>
     public byte[] PublicKeyBlob
     {
-        get { lock (gate) { return hasKey ? Blob(Shared.Value) : throw new InvalidOperationException("No key is stored."); } }
+        get { lock (gate) { return hasKey ? PublicBlob : throw new InvalidOperationException("No key is stored."); } }
     }
 
     /// <summary>The SSH public-key blob, as the SSH wire format writes an RSA key.</summary>
@@ -57,10 +72,15 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
         lock (RsaGate)
             parameters = rsa.ExportParameters(false);
 
+        return BlobOf(parameters.Exponent!, parameters.Modulus!);
+    }
+
+    private static byte[] BlobOf(byte[] exponent, byte[] modulus)
+    {
         using var stream = new MemoryStream();
         WriteString(stream, "ssh-rsa"u8);
-        WriteString(stream, Mpint(parameters.Exponent!));
-        WriteString(stream, Mpint(parameters.Modulus!));
+        WriteString(stream, Mpint(exponent));
+        WriteString(stream, Mpint(modulus));
         return stream.ToArray();
     }
 
@@ -102,7 +122,7 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
     private SigningHandle Handle()
     {
         Interlocked.Increment(ref openHandles);
-        return new SigningHandle(Shared.Value, () =>
+        return new SigningHandle(signs ? Shared.Value : null, PublicBlob, () =>
         {
             Interlocked.Decrement(ref openHandles);
             OnHandleDisposed?.Invoke();
@@ -126,9 +146,8 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
         stream.Write(value);
     }
 
-    private sealed class SigningHandle(RSA rsa, Action released) : IDeviceSigningKey
+    private sealed class SigningHandle(RSA? rsa, byte[] blob, Action released) : IDeviceSigningKey
     {
-        private readonly byte[] blob = Blob(rsa);
         private int disposed;
 
         public ReadOnlyMemory<byte> PublicKeyBlob => blob;
@@ -136,6 +155,8 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
         public byte[] Sign(ReadOnlySpan<byte> data, RsaSignatureAlgorithm algorithm)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+            if (rsa is null)
+                throw new NotSupportedException("Make the store with FakeDeviceKeyStore.Signing() to sign.");
             var hash = algorithm == RsaSignatureAlgorithm.Sha256 ? HashAlgorithmName.SHA256 : HashAlgorithmName.SHA512;
             lock (RsaGate)
                 return rsa.SignData(data, hash, RSASignaturePadding.Pkcs1);

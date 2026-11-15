@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Memoria.ToDo.Testing.UnitRunTiming.Tests" />
+    <InternalsVisibleTo Include="Memoria.ToDo.Testing.Tests" />
   </ItemGroup>
 
 </Project>

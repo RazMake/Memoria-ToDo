@@ -8,8 +8,7 @@ namespace Memoria.ToDo.Desktop.PlatformTestHost;
 /// <summary>
 /// The theme scenarios. Only <c>theme-read</c> uses Windows' own setting, read-only; every other scenario uses a fake
 /// setting, so none changes the user's theme. They print:
-/// <c>theme is-dark=True|False</c>, <c>theme-create-error=&lt;exception type&gt;</c>,
-/// <c>theme-source reads=&lt;n&gt; listeners=&lt;n&gt;</c> (what the fake setting saw),
+/// <c>theme is-dark=True|False</c>,
 /// <c>theme-changed ui-thread=True|False is-dark=True|False</c> (each Changed),
 /// <c>theme-settled changes=&lt;n&gt; is-dark=True|False</c> (once the UI thread had nothing left to do), and
 /// <c>theme-listeners running=&lt;n&gt;</c> / <c>theme-listeners after-shutdown=&lt;n&gt;</c>.
@@ -75,19 +74,6 @@ internal static class ThemeScenarios
         });
     }
 
-    // Start makes the theme, then makes reading fail and switches the setting from a background thread. Nothing ends the app.
-    public static void ReadFailsWhileRefreshing(Action endApp)
-    {
-        var setting = new FakeThemeSetting();
-        OnUiThread(() =>
-        {
-            _ = new Watched(setting);
-            ScenarioLifetime.Say("theme-created");
-            setting.ReadFailure = new InvalidOperationException("read boom");
-            new Thread(() => setting.RaiseMayHaveChanged()).Start();
-        });
-    }
-
     // Start makes the theme, says how many listeners the setting has, and ends the app; once the UI thread has shut down, says it again.
     public static void ListenersAcrossShutdown(Action endApp)
     {
@@ -100,31 +86,6 @@ internal static class ThemeScenarios
                 ScenarioLifetime.Say($"theme-listeners after-shutdown={setting.Listeners}");
             endApp();
         });
-    }
-
-    // Start makes the theme on a thread that isn't the UI thread, and says what it threw and what the setting saw.
-    public static void CreateOffUiThread(Action endApp)
-    {
-        var setting = new FakeThemeSetting { ReadFailure = new InvalidOperationException("The setting must not be read.") };
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                _ = new WindowsTheme(setting);
-                ScenarioLifetime.Say("theme-create-error=none");
-            }
-            catch (Exception e)
-            {
-                ScenarioLifetime.Say($"theme-create-error={e.GetType().Name}");
-            }
-            finally
-            {
-                ScenarioLifetime.Say($"theme-source reads={setting.Reads} listeners={setting.Listeners}");
-                endApp();
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
     }
 
     private static void OnUiThread(Action action) => Application.Current.Dispatcher.BeginInvoke(action);

@@ -38,7 +38,7 @@ internal static class Program
             var imageFiles = new WpfImageFileChooser();
             var browser = new ShellDefaultBrowser();
             var deviceFolder = DeviceFolder();
-            var repositories = new RepositorySelection(files, tasks, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
+            var repositories = new RepositorySelection(files, tasks.UseRepositoryFolder, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
             var sync = SyncService.Create(
                 tasks.Synchronization,
                 files,

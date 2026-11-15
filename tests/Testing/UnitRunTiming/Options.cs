@@ -38,19 +38,12 @@ internal sealed record Options(string ReportsFolder, string TestOutputFile, Time
         string Required(string name) =>
             values.TryGetValue(name, out var value) ? value : throw new ArgumentException($"The argument {name} is missing.");
 
-        var textFile = Required(Text);
-        var textFolder = Path.GetDirectoryName(Path.GetFullPath(textFile));
-        if (textFolder is null || !Directory.Exists(textFolder) || Directory.Exists(textFile))
-        {
-            throw new ArgumentException($"The folder of the text file '{textFile}' doesn't exist.");
-        }
-
         return new Options(
             Required(Reports),
             Required(TestOutput),
             ParseLimit(Required(LimitSeconds)),
             ParseIssueOpen(Required(IssueOpenName)),
-            textFile);
+            Required(Text));
     }
 
     private static TimeSpan ParseLimit(string value)

@@ -86,7 +86,7 @@ internal sealed class FakeGitOperations : IGitOperations
             passWaiters.Add((count, reached));
         }
 
-        return reached.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        return reached.Task.WaitAsync(TestWait.ForSignal);
     }
 
     /// <inheritdoc />
@@ -122,10 +122,17 @@ internal sealed class FakeGitOperations : IGitOperations
     /// <summary>When set, reading a clone's origin throws it.</summary>
     public Exception? OriginReadFailure { get; set; }
 
+    /// <summary>Runs at the start of each origin read, on the calling thread, so a test can hold the read, as a setup refresh, until it chooses to let it go on.</summary>
+    public Action? OnReadOrigin { get; set; }
+
+    /// <summary>When set, a clone awaits it, with the clone's cancellation token, after the host key check and before the clone ends, so a test can hold or end a clone as the transport would.</summary>
+    public Func<CancellationToken, Task>? WhileCloning { get; set; }
+
     /// <inheritdoc />
     public string? ReadOrigin(string folder)
     {
         Interlocked.Increment(ref originReads);
+        OnReadOrigin?.Invoke();
         if (OriginReadFailure is { } failure)
             throw failure;
         lock (gate) { return origins.TryGetValue(folder, out var origin) ? origin.Text : null; }
@@ -151,7 +158,7 @@ internal sealed class FakeGitOperations : IGitOperations
     }
 
     /// <inheritdoc />
-    public Task Clone(GitConnection connection, SshAddress address, string folder, CancellationToken cancellationToken)
+    public async Task Clone(GitConnection connection, SshAddress address, string folder, CancellationToken cancellationToken)
     {
         Exception? failure;
         lock (gate)
@@ -163,19 +170,12 @@ internal sealed class FakeGitOperations : IGitOperations
 
         Interlocked.Increment(ref connectionsOpened);
         LastDeviceName = connection.DeviceName;
-        try
-        {
-            Offer(connection, address);
-        }
-        catch (Exception ex)
-        {
-            return Task.FromException(ex);
-        }
-
+        Offer(connection, address);
+        if (WhileCloning is { } whileCloning)
+            await whileCloning(cancellationToken).ConfigureAwait(false);
         if (failure is not null)
-            return Task.FromException(failure);
+            throw failure;
         lock (gate) { origins[folder] = address; }
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -217,12 +217,14 @@ internal sealed class FakeGitOperations : IGitOperations
     {
         if (OfferedHostKey is not { } key)
             return;
-        var verdict = connection.VerifyHostKey(address.Host, address.Port, key.Algorithm, key.Fingerprint);
-        Verdicts.Add(verdict);
-        if (verdict == HostKeyVerdict.Unknown)
-            throw new GitFailureException(SyncFailure.UnknownHostKey, "The host key is unknown.");
-        if (verdict == HostKeyVerdict.Changed)
-            throw new GitFailureException(SyncFailure.ChangedHostKey, "The host key changed.");
+        var outcome = HostKeyCheck.Run(address.Host, () =>
+        {
+            var verdict = connection.VerifyHostKey(address.Host, address.Port, key.Algorithm, key.Fingerprint);
+            Verdicts.Add(verdict);
+            return verdict;
+        });
+        if (outcome.Failure is { } failure)
+            throw failure;
     }
 
     private void NotePassStarted()
@@ -271,10 +273,10 @@ internal sealed class FakeGitOperations : IGitOperations
         public void FinishCleanup() => Cleanup!.TrySetResult();
 
         /// <summary>Completes once the held pass is running.</summary>
-        public Task HasStarted => Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        public Task HasStarted => Started.Task.WaitAsync(TestWait.ForSignal);
 
         /// <summary>Completes once Sync has asked the held pass to cancel.</summary>
-        public Task WasCancelled => CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        public Task WasCancelled => CancellationObserved.Task.WaitAsync(TestWait.ForSignal);
 
         /// <summary>Ends the held pass with a result.</summary>
         public void Complete(bool hasPendingChanges = false) => Finish.TrySetResult(new GitPassResult(hasPendingChanges));

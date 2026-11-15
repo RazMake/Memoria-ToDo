@@ -69,28 +69,12 @@ internal sealed class SshLink
         GitFailureException? hostKeyFailure = null;
         client.HostKeyReceived += (_, e) =>
         {
-            HostKeyVerdict verdict;
-            try
-            {
-                verdict = connection.VerifyHostKey(address.Host, address.Port, e.HostKeyName, DeviceMetadata.Fingerprint(e.HostKey));
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
-            {
-                // Not reading the saved trust is this device's storage trouble, not the host's; SSH.NET would only wrap it.
-                var (kind, details) = FailureReport.OfLocal(ex);
-                e.CanTrust = false;
-                hostKeyFailure = new GitFailureException(kind, details, ex);
+            var outcome = HostKeyCheck.Run(address.Host, () =>
+                connection.VerifyHostKey(address.Host, address.Port, e.HostKeyName, DeviceMetadata.Fingerprint(e.HostKey)));
+            e.CanTrust = outcome.CanTrust;
+            hostKeyFailure = outcome.Failure;
+            if (hostKeyFailure is { Kind: SyncFailure.LocalStorage })
                 scope.Record(hostKeyFailure);
-                return;
-            }
-
-            e.CanTrust = verdict == HostKeyVerdict.Trusted;
-            hostKeyFailure = verdict switch
-            {
-                HostKeyVerdict.Unknown => new GitFailureException(SyncFailure.UnknownHostKey, $"{address.Host} presented a host key that isn't trusted yet."),
-                HostKeyVerdict.Changed => new GitFailureException(SyncFailure.ChangedHostKey, $"{address.Host} presented a different host key than the one trusted."),
-                _ => null,
-            };
         };
 
         // Connecting is synchronous and each of its stages is bounded by the network timeout, not by the token, so the
@@ -177,11 +161,33 @@ internal sealed class SshLink
         }
     }
 
-    private static GitFailureException Classify(SshAddress address, Exception ex) => ex switch
+    // A failure already classified, such as the device key failing to sign, may be wrapped by SSH.NET: it wins.
+    internal static GitFailureException Classify(SshAddress address, Exception ex)
     {
-        SshAuthenticationException => new GitFailureException(SyncFailure.Authentication, $"{address.Host} refused the device key.", ex),
-        _ => new GitFailureException(SyncFailure.Connection, $"Can't reach {address.Host}:{address.Port}: {ex.Message}", ex),
-    };
+        for (var inner = ex; inner is not null; inner = inner.InnerException)
+        {
+            if (inner is GitFailureException classified)
+                return classified;
+        }
+
+        if (ex is SshAuthenticationException)
+            return new GitFailureException(SyncFailure.Authentication, $"{address.Host} refused the device key.", ex);
+        return IsNetworkFailure(ex)
+            ? new GitFailureException(SyncFailure.Connection, $"Can't reach {address.Host}:{address.Port}: {ex.Message}", ex)
+            : FailureReport.ToLocalFailure(ex);
+    }
+
+    // SSH.NET reports a lost or refused connection, a silent host, and a failing proxy as its own exceptions or as a wrapped socket or timeout.
+    private static bool IsNetworkFailure(Exception ex)
+    {
+        for (var inner = ex; inner is not null; inner = inner.InnerException)
+        {
+            if (inner is SshException or ProxyException or TimeoutException or SocketException)
+                return true;
+        }
+
+        return false;
+    }
 
     // Quotes the path the way git does for the POSIX shell that git hosts run.
     private static string Quote(string path) =>

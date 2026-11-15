@@ -7,6 +7,7 @@ internal static class Program
         try
         {
             var options = Options.Parse(args);
+            RequireTextFolder(options.TextFile);
             var decision = TimingIssue.Decide(ReadReports(options.ReportsFolder), File.ReadAllText(options.TestOutputFile), options.Limit, options.IssueOpen);
             if (decision.Text is not null)
             {
@@ -20,6 +21,15 @@ internal static class Program
         {
             Console.Error.WriteLine(failure.Message.ReplaceLineEndings(" "));
             return 1;
+        }
+    }
+
+    private static void RequireTextFolder(string textFile)
+    {
+        var textFolder = Path.GetDirectoryName(Path.GetFullPath(textFile));
+        if (textFolder is null || !Directory.Exists(textFolder) || Directory.Exists(textFile))
+        {
+            throw new ArgumentException($"The folder of the text file '{textFile}' doesn't exist.");
         }
     }
 

@@ -3,7 +3,6 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
-using Memoria.ToDo.Shared.Sync;
 using Microsoft.Win32;
 
 namespace Memoria.ToDo.Desktop.Configure;
@@ -15,7 +14,7 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// </summary>
 internal sealed class RepositorySection : StackPanel
 {
-    private readonly SyncUi _ui;
+    private readonly RepositoryChange _change;
     private readonly TextBlock _remote = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _folder = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
     private readonly TextBlock _identity = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 8) };
@@ -28,13 +27,11 @@ internal sealed class RepositorySection : StackPanel
 
     public RepositorySection(SyncUi ui)
     {
-        _ui = ui;
+        _change = new RepositoryChange(ui, Show);
         AutomationProperties.SetName(_address, "Repository address");
         AutomationProperties.SetName(_localFolder, "Local folder");
-        _clone.Click += async (_, _) => await ChangeAsync(
-            (address, folder, token) => _ui.Sync.Setup.CloneAsync(address, folder, token));
-        _use.Click += async (_, _) => await ChangeAsync(
-            (address, folder, token) => _ui.Sync.Setup.UseExistingAsync(address, folder, token));
+        _clone.Click += async (_, _) => await _change.ChangeAsync(_address.Text, _localFolder.Text);
+        _use.Click += async (_, _) => await _change.ChangeAsync(_address.Text, _localFolder.Text);
 
         _controls.Children.Add(Label("Repository address"));
         _controls.Children.Add(_address);
@@ -54,35 +51,36 @@ internal sealed class RepositorySection : StackPanel
     }
 
     /// <summary>Shows the repository, folder, and identity the setup holds now.</summary>
-    public void Refresh()
+    public void Refresh() => _change.Refresh();
+
+    // Shows what the change holds: the lines, the controls of the choice, and the message.
+    private void Show()
     {
-        var state = _ui.Sync.Setup.State;
-        Show(_remote, "Repository:", state.RepositoryAddress ?? "None");
-        Show(_folder, "Local Path:", state.RepositoryFolder ?? "None");
-        Show(_identity, "Identity:", state.DeviceName);
+        var lines = _change.Lines;
+        ShowLine(_remote, "Repository:", lines.Address);
+        ShowLine(_folder, "Local Path:", lines.Folder);
+        ShowLine(_identity, "Identity:", lines.Identity);
+        _clone.Visibility = _change.Choice == RepositoryChoice.UseExisting ? Visibility.Collapsed : Visibility.Visible;
+        _use.Visibility = _change.Choice == RepositoryChoice.Clone ? Visibility.Collapsed : Visibility.Visible;
+        _controls.Visibility = _change.ControlsVisible ? Visibility.Visible : Visibility.Collapsed;
+        ThemedText.ShowMessage(_message, _change.Message);
     }
 
     private Button ConfigureButton()
     {
         var button = new Button { Content = "Configure", HorizontalAlignment = HorizontalAlignment.Left };
         var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
-        menu.Items.Add(Choice("Clone a repo", _clone, _use));
-        menu.Items.Add(Choice("Use existing repo clone", _use, _clone));
+        menu.Items.Add(Choice("Clone a repo", RepositoryChoice.Clone));
+        menu.Items.Add(Choice("Use existing repo clone", RepositoryChoice.UseExisting));
         button.ContextMenu = menu;
         button.Click += (_, _) => menu.IsOpen = true;
         return button;
     }
 
-    private MenuItem Choice(string header, Button show, Button hide)
+    private MenuItem Choice(string header, RepositoryChoice choice)
     {
         var item = new MenuItem { Header = header };
-        item.Click += (_, _) =>
-        {
-            show.Visibility = Visibility.Visible;
-            hide.Visibility = Visibility.Collapsed;
-            _controls.Visibility = Visibility.Visible;
-            ThemedText.ShowMessage(_message, null);
-        };
+        item.Click += (_, _) => _change.Choose(choice);
         return item;
     }
 
@@ -110,43 +108,8 @@ internal sealed class RepositorySection : StackPanel
         return row;
     }
 
-    // Hides the controls at once, runs the change and then one sync; on failure shows the controls again with why.
-    private async Task ChangeAsync(Func<string, string, CancellationToken, Task> change)
-    {
-        var address = _address.Text.Trim();
-        var folder = _localFolder.Text.Trim();
-        if (address.Length == 0 || folder.Length == 0)
-        {
-            ThemedText.ShowMessage(_message, "Enter the repository's address and the local folder.");
-            return;
-        }
-
-        _controls.Visibility = Visibility.Collapsed;
-        ThemedText.ShowMessage(_message, null);
-        var failed = false;
-        await _ui.RunAsync(
-            async token =>
-            {
-                await change(address, folder, token);
-                var status = await _ui.Sync.SyncNowAsync(token);
-                if (status.State is SyncState.Error or SyncState.Offline)
-                {
-                    ThemedText.ShowMessage(_message, status.Details);
-                }
-            },
-            error =>
-            {
-                failed = true;
-                ThemedText.ShowMessage(_message, error);
-            });
-        if (failed)
-        {
-            _controls.Visibility = Visibility.Visible;
-        }
-    }
-
     // Shows a read-only line: the field's name in bold, then its value.
-    private static void Show(TextBlock line, string name, string value)
+    private static void ShowLine(TextBlock line, string name, string value)
     {
         line.Inlines.Clear();
         line.Inlines.Add(new Run(name) { FontWeight = FontWeights.Bold });

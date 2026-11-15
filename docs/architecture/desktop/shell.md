@@ -47,7 +47,11 @@ Proposed, each a decision to confirm:
 
 Not confirmed by a run:
 
-- **That Velopack's starter passes the sign-in argument on to the app**, also after an update. Its [source](https://github.com/velopack/velopack/blob/develop/src/bins/src/stub.rs) passes every argument on. A [manual check](../../../tests/Desktop/App/VelopackStarterTests.cs) covers it, since it needs an installed copy.
+- **That Velopack's starter passes the sign-in argument on to the app**, also after an update. Its [source](https://github.com/velopack/velopack/blob/develop/src/bins/src/stub.rs) passes every argument on. No automated test can check it, since it needs an installed copy. To check it by hand:
+  1. Install a release with its `setup.exe`. Start the app by hand once and finish device setup, so the [startup exceptions](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) don't open Configure: Sync is set up and both shortcuts register. Then exit the app from the tray menu.
+  2. Run `%LocalAppData%\MemoriaToDo\Memoria-ToDo.exe --at-sign-in`, the starter the `Run` key names. Only the tray icon shows, with no window.
+  3. Exit the app, then run the starter with no argument. The tray icon and View Tasks show.
+  4. Install a newer release over it, or let the app download one and restart, then repeat step 2. The result is the same.
 - **That a second start hands over after an update was downloaded.** Velopack applies a downloaded update when any instance starts ([SetAutoApplyOnStartup](https://docs.velopack.io/reference/cs/Velopack/VelopackApp)), and its updater ends instances running from the install folder ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). A second start could then end the running instance instead of handing over. If a run shows this, it needs a decision of its own.
 - **That View Tasks comes to the front after a second start.**
 - **How long a later instance takes to end.** It still starts WPF and makes the hidden Add window before Shell ends it.

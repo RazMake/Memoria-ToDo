@@ -44,7 +44,7 @@ internal sealed class HostTrust(HostPins pins, KnownHostsFile saved, Action offe
                 : throw new InvalidOperationException("That host key is not currently offered for acceptance.");
         }
 
-        var hosts = saved.Load();
+        var hosts = LoadSaved();
         hosts.Add((key.Host, key.Port, key.Fingerprint));
         saved.Save(hosts);
         lock (gate)
@@ -64,10 +64,28 @@ internal sealed class HostTrust(HostPins pins, KnownHostsFile saved, Action offe
             throw new InvalidOperationException("A built-in host's key is fixed and cannot be forgotten.");
         }
 
-        var hosts = saved.Load();
+        var hosts = LoadSaved();
         if (hosts.RemoveAll(h => h.Host == host && h.Port == port) > 0)
         {
             saved.Save(hosts);
+        }
+    }
+
+    // The one place the saved trust is loaded. While it can't be, the offered key stays visible but can't be accepted.
+    private List<(string Host, int Port, string Fingerprint)> LoadSaved()
+    {
+        try
+        {
+            return saved.Load();
+        }
+        catch
+        {
+            lock (gate)
+            {
+                offered = offered is { } key ? new SshHostKey(key.Host, key.Port, key.Algorithm, key.Fingerprint, false) : null;
+            }
+
+            throw;
         }
     }
 
@@ -79,7 +97,7 @@ internal sealed class HostTrust(HostPins pins, KnownHostsFile saved, Action offe
             return pins.Matches(host, port, algorithm, fingerprint) ? HostKeyVerdict.Trusted : HostKeyVerdict.Changed;
         }
 
-        var hosts = saved.Load();
+        var hosts = LoadSaved();
         var known = hosts.Where(h => h.Host == host && h.Port == port).ToList();
         if (known.Count == 0)
         {

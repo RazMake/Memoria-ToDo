@@ -95,7 +95,7 @@ public sealed class FakeTimeProvider : TimeProvider
             timerWaiters.Add((1, done));
         }
 
-        return done.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        return done.Task.WaitAsync(TestWait.ForSignal);
     }
 
     private void RunDue(DateTimeOffset target)

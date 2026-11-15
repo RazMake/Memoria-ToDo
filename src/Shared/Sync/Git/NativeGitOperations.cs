@@ -11,6 +11,7 @@ internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvid
 
     public GitReceipt? ReadReceipt(string folder)
     {
+        GitSettingsIsolation.Apply();
         if (!Repository.IsValid(folder))
         {
             return null;
@@ -27,6 +28,7 @@ internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvid
 
     public void WriteReceipt(string folder, GitReceipt receipt)
     {
+        GitSettingsIsolation.Apply();
         using var repo = new Repository(folder);
         repo.Config.Set(SyncedKey, receipt.LastSuccessfulSync.ToString("O", System.Globalization.CultureInfo.InvariantCulture), ConfigurationLevel.Local);
         repo.Config.Set(FingerprintKey, receipt.KeyFingerprint, ConfigurationLevel.Local);
@@ -34,6 +36,7 @@ internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvid
 
     public string? ReadOrigin(string folder)
     {
+        GitSettingsIsolation.Apply();
         if (!Repository.IsValid(folder))
         {
             return null;
@@ -45,6 +48,7 @@ internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvid
 
     public void UseExisting(string folder, SshAddress address)
     {
+        GitSettingsIsolation.Apply();
         if (!Repository.IsValid(folder))
         {
             throw new GitFailureException(SyncFailure.Repository, "The folder is not a Git repository.");
@@ -112,6 +116,7 @@ internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvid
     // worker thread that set it. onFailure undoes the operation's changes once its failure is known.
     private async Task<T> Run<T>(GitConnection connection, CancellationToken token, Func<T> body, Action? onFailure = null)
     {
+        GitSettingsIsolation.Apply();
         SshRegistration.Ensure();
         var scope = OperationScope.Enter(connection, token, time);
         T result = default!;
@@ -168,7 +173,7 @@ internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvid
         GitFailureException or OperationCanceledException => ex,
         _ when scope.Failure is { } failure => failure,
         LibGit2SharpException => new GitFailureException(SyncFailure.Repository, ex.Message, ex),
-        IOException or UnauthorizedAccessException => new GitFailureException(SyncFailure.LocalStorage, ex.Message, ex),
+        _ when FailureReport.IsLocalStorage(ex) => FailureReport.ToLocalFailure(ex),
         _ => ex,
     };
 

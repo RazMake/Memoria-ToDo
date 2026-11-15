@@ -17,7 +17,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// </summary>
 internal sealed class TaskListWindow : Window
 {
-    private const string Gone = "This task no longer exists.";
+    private const string GoneText = "This task no longer exists.";
 
     private readonly ITasks _tasks;
     private readonly IReadOnlyList<PaletteColor> _palette;
@@ -30,21 +30,24 @@ internal sealed class TaskListWindow : Window
     private readonly Action<string> _carry;
     private readonly FormattedDescription _description;
     private readonly Border _park = new() { Height = 0 };
+    private readonly ListFilter _filter = new();
     private readonly ListHeader _header;
     private readonly ListSync _sync;
     private readonly PendingUndo _pending;
+    private readonly ListContent _content;
+    private readonly ListLinks _links;
+    private readonly ListActions _actions;
+    private readonly TaskDeletion _deletion;
+    private readonly EditCleanup _cleanup;
     private readonly StackPanel _panel = new() { Margin = new Thickness(8, 0, 8, 8) };
     private readonly Button _resolvedButton = new() { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 0, 8) };
     private readonly Dictionary<string, TaskRow> _rows = [];
     private readonly HeldModifierKeys _held = new();
-    private readonly Dictionary<(ModifierKeys, Key), Action<TaskRow>> _rowKeys;
-    private List<TaskItem> _open = [];
-    private List<TaskItem> _resolved = [];
+    private readonly Dictionary<RowAction, Action<TaskRow>> _rowActions;
+    private ListSnapshot _snapshot = new([], [], false);
     private TaskRow? _descriptionRow;
     private string? _expandedId;
-    private string? _hiddenId;
     private Edit? _edit;
-    private bool _showResolved;
     private bool _closing;
 
     public TaskListWindow(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
@@ -61,14 +64,14 @@ internal sealed class TaskListWindow : Window
         _files = files;
         _browser = browser;
         _carry = carry;
-        _rowKeys = new()
+        _rowActions = new()
         {
-            [(ModifierKeys.None, Key.Enter)] = ToggleExpanded,
-            [(ModifierKeys.None, Key.F2)] = BeginEditOf,
-            [(ModifierKeys.Control, Key.D)] = row => Resolve(row, row.Task.Resolved is null),
-            [(ModifierKeys.None, Key.Delete)] = Delete,
-            [(ModifierKeys.Alt, Key.Up)] = row => Nudge(row, -1),
-            [(ModifierKeys.Alt, Key.Down)] = row => Nudge(row, 1),
+            [RowAction.Toggle] = ToggleExpanded,
+            [RowAction.Edit] = BeginEditOf,
+            [RowAction.Resolve] = row => Resolve(row, row.Task.Resolved is null),
+            [RowAction.Delete] = Delete,
+            [RowAction.MoveUp] = row => Nudge(row, -1),
+            [RowAction.MoveDown] = row => Nudge(row, 1),
         };
 
         Title = "View Tasks";
@@ -81,14 +84,19 @@ internal sealed class TaskListWindow : Window
         _description.OpenFailed += (_, failure) => Report(failure.Message);
         _park.Child = _description;
 
-        _header = new ListHeader(tasks);
-        _pending = new PendingUndo(time, Dispatcher, () => _header.ShowUndo(_pending!.IsPending ? _pending.Label : null));
+        _header = new ListHeader(tasks, _filter);
+        _content = new ListContent(tasks, _filter);
+        _links = new ListLinks(tasks, _filter, _content);
+        _actions = new ListActions(tasks, Report);
+        _pending = new PendingUndo(time, post => Dispatcher.BeginInvoke(post), () => _header.ShowUndo(_pending!.IsPending ? _pending.Label : null));
+        _deletion = new TaskDeletion(tasks, _content, _pending, Report, Refresh);
+        _cleanup = new EditCleanup(tasks, _pending, Report);
         _header.ShowMessage(message);
-        _header.FilterChanged += (_, _) => Refresh();
+        _filter.Changed += (_, _) => Refresh();
         _header.UndoClicked += (_, _) => _pending.Undo();
         _resolvedButton.Click += (_, _) =>
         {
-            _showResolved = !_showResolved;
+            _content.ShowResolved = !_content.ShowResolved;
             Refresh();
         };
 
@@ -121,7 +129,7 @@ internal sealed class TaskListWindow : Window
             if (_edit is { } edit)
             {
                 _edit = null;
-                CleanEditImages(edit.Started.Id);
+                _cleanup.Close(edit.Started.Id);
             }
         }
         finally
@@ -148,9 +156,6 @@ internal sealed class TaskListWindow : Window
 
     // ---- What shows ----
 
-    private IReadOnlyList<TaskItem> Matching() =>
-        _header.TagFilter is { } tag ? _tasks.Search(_header.SearchText, tag) : _tasks.Search(_header.SearchText);
-
     private void Refresh()
     {
         if (_closing)
@@ -158,25 +163,9 @@ internal sealed class TaskListWindow : Window
             return;
         }
 
-        var editId = _edit?.Started.Id;
-        var open = new List<TaskItem>();
-        var resolved = new List<TaskItem>();
-        var matching = Matching().Where(task => task.Id != _hiddenId).ToList();
-        foreach (var task in matching)
-        {
-            (task.Resolved is null || task.Id == editId ? open : resolved).Add(task);
-        }
-
-        // The task being edited stays, with its text, even when it is gone or no longer matches.
-        if (_edit is { } edit && matching.All(task => task.Id != editId))
-        {
-            var at = _open.FindIndex(task => task.Id == editId);
-            open.Insert(at < 0 ? open.Count : Math.Min(at, open.Count), edit.Row.Task);
-        }
-
-        _open = open;
-        _resolved = resolved;
-        var shown = _showResolved ? open.Concat(resolved).ToList() : open;
+        var snapshot = _content.Build(_edit?.Row.Task, _snapshot);
+        _snapshot = snapshot;
+        var shown = snapshot.Shown;
         if (_expandedId is { } expanded && _edit is null && shown.All(task => task.Id != expanded))
         {
             ClearExpanded();
@@ -193,19 +182,19 @@ internal sealed class TaskListWindow : Window
         {
             _rows[editing.Started.Id] = editing.Row;
         }
-        foreach (var task in open)
+        foreach (var task in snapshot.Open)
         {
             order.Add(RowFor(task));
         }
 
-        _resolvedButton.Content = $"{resolved.Count} resolved";
-        System.Windows.Automation.AutomationProperties.SetName(_resolvedButton, $"{resolved.Count} resolved");
-        if (resolved.Count > 0)
+        _resolvedButton.Content = $"{snapshot.ResolvedCount} resolved";
+        System.Windows.Automation.AutomationProperties.SetName(_resolvedButton, $"{snapshot.ResolvedCount} resolved");
+        if (snapshot.ResolvedCount > 0)
         {
             order.Add(_resolvedButton);
-            if (_showResolved)
+            if (snapshot.ShowResolved)
             {
-                order.AddRange(resolved.Select(RowFor));
+                order.AddRange(snapshot.Resolved.Select(RowFor));
             }
         }
 
@@ -334,14 +323,14 @@ internal sealed class TaskListWindow : Window
     private void BeginEditOf(TaskRow row)
     {
         _header.ShowMessage(null);
-        _pending.CommitIfFor(row.Task.Id);
         if (_edit?.Row == row)
         {
+            _pending.CommitIfFor(row.Task.Id);
             return;
         }
 
         // A fresh edit starts from a clean stage. When that can't be made the edit doesn't open, and nothing else changes.
-        if (CleanEditImages(row.Task.Id))
+        if (_cleanup.BeginFresh(row.Task.Id))
         {
             BeginEdit(row, row.Task, DraftOf(row.Task));
         }
@@ -405,30 +394,7 @@ internal sealed class TaskListWindow : Window
         var edit = _edit!;
         _edit = null;
         edit.Row.SetContent(null);
-        var id = edit.Started.Id;
-        if (edit.Editor.HasChanges)
-        {
-            _pending.Start("Edit discarded", id, () => CleanEditImages(id), () => RestoreEdit(edit));
-        }
-        else
-        {
-            CleanEditImages(id);
-        }
-    }
-
-    // Removes the images an edit of the task left. A known failure is reported and the caller goes on; it is not retried.
-    private bool CleanEditImages(string taskId)
-    {
-        try
-        {
-            _tasks.DiscardEditImages(taskId);
-            return true;
-        }
-        catch (Exception failure) when (ListFailures.MessageOf(failure) is { } reason)
-        {
-            Report("The edit's images couldn't be removed: " + reason);
-            return false;
-        }
+        _cleanup.Leave(edit.Started.Id, edit.Editor.HasChanges, () => RestoreEdit(edit));
     }
 
     // Undo brings the edit back in a row even when a filter now hides the task, so nothing typed is lost.
@@ -459,93 +425,35 @@ internal sealed class TaskListWindow : Window
             ClearExpanded();
         }
 
-        _hiddenId = id;
-        _pending.Start("Task deleted", id, () => CommitDelete(id), () =>
-        {
-            _hiddenId = null;
-            Refresh();
-        });
-        Refresh();
-    }
-
-    private void CommitDelete(string id)
-    {
-        try
-        {
-            _tasks.Delete(id);
-        }
-        catch (TaskNotFoundException)
-        {
-        }
-        catch (Exception failure) when (ListFailures.MessageOf(failure) is { } why)
-        {
-            var removed = _tasks.All.All(task => task.Id != id);
-            Report(removed ? "The task was deleted, but some of its images couldn't be removed: " + why : why);
-        }
-        finally
-        {
-            if (_hiddenId == id)
-            {
-                _hiddenId = null;
-            }
-        }
-
-        Refresh();
+        _deletion.Start(id);
     }
 
     private void Resolve(TaskRow row, bool resolved)
     {
         _header.ShowMessage(null);
-        try
+        if (!_actions.Resolve(row.Task.Id, resolved))
         {
-            _ = resolved ? _tasks.Resolve(row.Task.Id) : _tasks.Reopen(row.Task.Id);
-        }
-        catch (Exception failure) when (ListFailures.MessageOf(failure) is { } why)
-        {
-            Report(why);
             row.Update(row.Task);
         }
     }
 
     // ---- Order ----
 
-    private List<TaskItem> GroupOf(string id) => _open.Any(task => task.Id == id) ? _open : _resolved;
-
     private void Nudge(TaskRow row, int step)
     {
         _header.ShowMessage(null);
-        var group = GroupOf(row.Task.Id);
-        var at = group.FindIndex(task => task.Id == row.Task.Id);
-        var without = group.Where(task => task.Id != row.Task.Id).ToList();
-        var to = at + step;
-        if (at >= 0 && to >= 0 && to <= without.Count)
+        if (ListOrder.Nudge(_snapshot.Open, _snapshot.Resolved, row.Task.Id, step) is { } move)
         {
-            Place(row.Task.Id, without, to);
+            _actions.Move(move);
         }
     }
 
     private void DropOn(TaskRow target, TaskItem dropped, bool lowerHalf)
     {
         _header.ShowMessage(null);
-        var group = GroupOf(target.Task.Id);
-        if (target.Task.Id == dropped.Id || _open.Concat(_resolved).Any(task => task.Id == dropped.Id) && GroupOf(dropped.Id) != group)
+        if (ListOrder.Drop(_snapshot.Open, _snapshot.Resolved, target.Task.Id, dropped.Id, lowerHalf) is { } move)
         {
-            return;
-        }
-
-        var without = group.Where(task => task.Id != dropped.Id).ToList();
-        Place(dropped.Id, without, without.FindIndex(task => task.Id == target.Task.Id) + (lowerHalf ? 1 : 0));
-    }
-
-    private void Place(string id, List<TaskItem> without, int index)
-    {
-        try
-        {
-            _tasks.Move(id, index > 0 ? without[index - 1].Id : null, index < without.Count ? without[index].Id : null);
-        }
-        catch (Exception failure) when (ListFailures.MessageOf(failure) is { } why)
-        {
-            Report(why);
+            _actions.Move(move);
         }
     }
 
@@ -553,33 +461,17 @@ internal sealed class TaskListWindow : Window
 
     private void FollowLink(string address)
     {
-        if (_tasks.TaskIdIn(address) is not { } id)
+        var outcome = _links.Follow(address);
+        if (outcome == LinkOutcome.Ignored)
         {
             return;
         }
 
         _header.ShowMessage(null);
-        var target = _tasks.All.FirstOrDefault(task => task.Id == id);
-        if (target is null || id == _hiddenId)
+        if (outcome.TaskId is not { } id)
         {
-            Report(Gone);
+            Report(GoneText);
             return;
-        }
-
-        // Clear only what hides the task, keeping the rest of the filter.
-        if (_header.SearchText.Length > 0 && _tasks.Search(_header.SearchText).All(task => task.Id != id))
-        {
-            _header.SearchText = "";
-        }
-
-        if (_header.TagFilter is not null && Matching().All(task => task.Id != id))
-        {
-            _header.TagFilter = null;
-        }
-
-        if (target.Resolved is not null)
-        {
-            _showResolved = true;
         }
 
         Refresh();
@@ -619,9 +511,9 @@ internal sealed class TaskListWindow : Window
             _header.FocusSearch();
             e.Handled = true;
         }
-        else if (e.OriginalSource is TaskRow row && _rowKeys.TryGetValue((modifiers, key), out var run))
+        else if (e.OriginalSource is TaskRow row && RowKeys.ActionFor(modifiers, key) is { } action)
         {
-            run(row);
+            _rowActions[action](row);
             e.Handled = true;
         }
     }

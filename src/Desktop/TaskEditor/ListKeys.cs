@@ -10,7 +10,7 @@ internal static class ListKeys
     /// Registers the keys. Tab outside a list item runs <paramref name="leaveForward"/> and Shift+Tab outside one runs
     /// <paramref name="leaveBack"/>; in a list item they only move the item, even when it can't move.
     /// </summary>
-    public static void AddTo(KeyMap keys, StyledTextEditor description, Action leaveForward, Action leaveBack) =>
+    public static void AddTo(KeyMap keys, ITextField description, Action leaveForward, Action leaveBack) =>
         keys
             .Try(ModifierKeys.None, Key.Enter, () => description.Run(Lists.Enter))
             .Try(ModifierKeys.None, Key.Tab, () => description.Run(Lists.Indent) || Left(leaveForward))

@@ -1,4 +1,3 @@
-using ICSharpCode.AvalonEdit;
 using Memoria.ToDo.Shared.Editing;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
@@ -11,9 +10,9 @@ internal static class TextEditorCommands
     /// replaces only the part of the text that changed, as one undo step, and becomes the selection. Returns false,
     /// changing nothing, when the command returns null because it doesn't apply.
     /// </summary>
-    public static bool Run(this TextEditor editor, Func<TextAndSelection, TextAndSelection?> command)
+    public static bool Run(this ITextField editor, Func<TextAndSelection, TextAndSelection?> command)
     {
-        var text = editor.Text;
+        var text = editor.Document.Text;
         var result = command(Current(editor, text));
         if (result is null)
         {
@@ -31,12 +30,12 @@ internal static class TextEditorCommands
     }
 
     /// <summary>The editor's text and selection with "\n" for every line break, as Editing expects.</summary>
-    public static TextAndSelection Current(this TextEditor editor) => Current(editor, editor.Text);
+    public static TextAndSelection Current(this ITextField editor) => Current(editor, editor.Document.Text);
 
-    /// <summary>The position in <see cref="Current(TextEditor)"/>'s text of the editor's character offset.</summary>
-    public static int LfOffset(this TextEditor editor, int offset) => Lf(editor.Text[..offset]).Length;
+    /// <summary>The position in <see cref="Current(ITextField)"/>'s text of the editor's character offset.</summary>
+    public static int LfOffset(this ITextField editor, int offset) => Lf(editor.Document.GetText(0, offset)).Length;
 
-    private static TextAndSelection Current(TextEditor editor, string text) =>
+    private static TextAndSelection Current(ITextField editor, string text) =>
         text.Contains('\r')
             ? new TextAndSelection(
                 Lf(text),

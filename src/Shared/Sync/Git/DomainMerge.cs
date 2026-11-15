@@ -28,67 +28,36 @@ internal sealed class DomainMerge(Repository repo, IRepositoryFileRules rules, T
         var remoteFiles = Flatten(remote.Tree);
         var baseFiles = Flatten(baseCommit?.Tree);
 
+        // Files that are identical on both sides, or that Sync doesn't manage, end as the remote has them: no need to read them.
+        var divergent = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in localFiles.Keys.Concat(remoteFiles.Keys).Concat(baseFiles.Keys))
+        {
+            if (localFiles.GetValueOrDefault(path)?.Id != remoteFiles.GetValueOrDefault(path)?.Id
+                && rules.Classify(path) != RepositoryFileKind.Unmanaged)
+            {
+                divergent.Add(path);
+            }
+        }
+
         var tree = TreeDefinition.From(remote.Tree);
-        var paths = new HashSet<string>(localFiles.Keys);
-        paths.UnionWith(remoteFiles.Keys);
-        paths.UnionWith(baseFiles.Keys);
-
-        // Tasks merge first, so an image can follow its task: a task one side deleted and the other edited comes back,
-        // and takes along the images the editing side still has.
-        var survivorIsLocal = new Dictionary<string, bool>(StringComparer.Ordinal);
-        var images = new List<string>();
-        foreach (var path in paths)
+        var skippedFiles = FileMergePlan.Decide(
+            divergent,
+            path => new FileVersions(Bytes(baseFiles.GetValueOrDefault(path)), Bytes(localFiles.GetValueOrDefault(path)), Bytes(remoteFiles.GetValueOrDefault(path))),
+            rules,
+            (path, action) =>
+            {
+                if (action is Write write)
+                {
+                    tree.Add(path, repo.ObjectDatabase.CreateBlob(new MemoryStream(write.Content)), Mode.NonExecutableFile);
+                }
+                else
+                {
+                    tree.Remove(path);
+                }
+            });
+        foreach (var file in skippedFiles)
         {
-            if (rules.Classify(path) == RepositoryFileKind.Image)
-            {
-                images.Add(path);
-                continue;
-            }
-
-            localFiles.TryGetValue(path, out var l);
-            remoteFiles.TryGetValue(path, out var r);
-            baseFiles.TryGetValue(path, out var b);
-            var merged = l?.Id == r?.Id ? null : Merge(path, b, l, r);
-            if (merged is not null && b is not null && (l is null) != (r is null) && rules.Classify(path) == RepositoryFileKind.Task)
-            {
-                survivorIsLocal[rules.TaskIdInPath(path)!] = l is not null;
-            }
-
-            Apply(path, l, r, merged);
-        }
-
-        foreach (var path in images)
-        {
-            localFiles.TryGetValue(path, out var l);
-            remoteFiles.TryGetValue(path, out var r);
-            baseFiles.TryGetValue(path, out var b);
-            var merged = l?.Id == r?.Id ? null : Merge(path, b, l, r);
-            if (merged is null
-                && rules.TaskIdInPath(path) is { } owner
-                && survivorIsLocal.TryGetValue(owner, out var localSurvives)
-                && (localSurvives ? l : r) is { } kept)
-            {
-                merged = Bytes(kept);
-            }
-
-            Apply(path, l, r, merged);
-        }
-
-        void Apply(string path, Blob? l, Blob? r, byte[]? merged)
-        {
-            if (l?.Id == r?.Id)
-            {
-                return;
-            }
-
-            if (merged is null)
-            {
-                tree.Remove(path);
-            }
-            else if (r is null || !merged.SequenceEqual(Bytes(r)))
-            {
-                tree.Add(path, repo.ObjectDatabase.CreateBlob(new MemoryStream(merged)), Mode.NonExecutableFile);
-            }
+            skipped[file.RelativePath] = file;
         }
 
         var mergedTree = repo.ObjectDatabase.CreateTree(tree);
@@ -97,67 +66,6 @@ internal sealed class DomainMerge(Repository repo, IRepositoryFileRules rules, T
             : CreateMergeCommit(mergedTree, local, remote, branch);
         FailOnLocalWork(Flatten(target.Tree));
         repo.Reset(ResetMode.Hard, target);
-    }
-
-    private byte[]? Merge(string path, Blob? basis, Blob? local, Blob? remote)
-    {
-        var kind = rules.Classify(path);
-        if (kind == RepositoryFileKind.Unmanaged)
-        {
-            return remote is null ? null : Bytes(remote);
-        }
-
-        var (b, l, r) = (basis is null ? null : Bytes(basis), local is null ? null : Bytes(local), remote is null ? null : Bytes(remote));
-        try
-        {
-            return kind switch
-            {
-                RepositoryFileKind.Task => rules.MergeTask(rules.TaskIdInPath(path)!, b, l, r),
-                RepositoryFileKind.Settings => rules.MergeSettings(b, l, r),
-                _ => basis?.Id == local?.Id ? r : basis?.Id == remote?.Id ? l : r,
-            };
-        }
-        catch (InvalidDataException)
-        {
-            // An unreadable file is never deleted or overwritten with the other side's guess: keep the side that changed.
-            if (basis?.Id == remote?.Id)
-            {
-                return l;
-            }
-
-            if (basis?.Id == local?.Id || l is null)
-            {
-                return r;
-            }
-
-            // Both sides changed it. The one accepted loss: a malformed local task yields to the remote deleting it.
-            if (r is null && kind == RepositoryFileKind.Task && !IsReadableTask(path, l))
-            {
-                return null;
-            }
-
-            skipped[path] = new SkippedMergeFile(path, "This device and the remote both changed the file and one copy can't be read, so this device's copy was kept.");
-            return l;
-        }
-    }
-
-    // A task merged with itself is readable exactly when the file is a valid task for this path.
-    private bool IsReadableTask(string path, byte[] file)
-    {
-        try
-        {
-            rules.MergeTask(rules.TaskIdInPath(path)!, null, file, file);
-            return true;
-        }
-        catch (InvalidDataException)
-        {
-            return false;
-        }
-    }
-
-    private sealed record SkippedMergeFile(string RelativePath, string Reason) : ISkippedRepositoryFile
-    {
-        public bool RequiresUpdate => false;
     }
 
     private Commit CreateMergeCommit(Tree tree, Commit local, Commit remote, string branch)
@@ -236,8 +144,13 @@ internal sealed class DomainMerge(Repository repo, IRepositoryFileRules rules, T
         }
     }
 
-    private static byte[] Bytes(Blob blob)
+    private static byte[]? Bytes(Blob? blob)
     {
+        if (blob is null)
+        {
+            return null;
+        }
+
         using var content = blob.GetContentStream();
         using var buffer = new MemoryStream();
         content.CopyTo(buffer);

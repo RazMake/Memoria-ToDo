@@ -82,8 +82,13 @@ internal sealed class SyncSetup(
     public Task AcceptHostKeyAsync(string fingerprint, CancellationToken cancellationToken) =>
         TrustChangeAsync(() => trust.Accept(fingerprint), cancellationToken);
 
-    public Task ForgetHostKeyAsync(string host, int port, CancellationToken cancellationToken) =>
-        TrustChangeAsync(() => trust.Forget(host, port), cancellationToken);
+    public Task ForgetHostKeyAsync(string host, int port, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(host);
+        if (!AddressParser.IsValidPort(port))
+            throw new ArgumentOutOfRangeException(nameof(port), port, "The port must be from 1 to 65535.");
+        return TrustChangeAsync(() => trust.Forget(host, port), cancellationToken);
+    }
 
     private Task TrustChangeAsync(Action change, CancellationToken cancellationToken) =>
         RunSetupAsync(async _ =>

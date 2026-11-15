@@ -1,4 +1,3 @@
-using System.Windows.Threading;
 using Memoria.ToDo.Shared.Sync;
 
 namespace Memoria.ToDo.Desktop.Shell;
@@ -13,10 +12,11 @@ internal sealed class StartupNavigation(
     ISyncSetup setup,
     Action showConfigure,
     Action showViewTasks,
-    bool startedAtSignIn)
+    bool startedAtSignIn,
+    Func<IUiThread> captureUiThread)
 {
     private readonly object gate = new();
-    private Dispatcher? ui;
+    private IUiThread? ui;
     private bool cancelled;
     private bool shortcutFailed;
 
@@ -34,7 +34,7 @@ internal sealed class StartupNavigation(
                 return;
             }
 
-            ui = Dispatcher.CurrentDispatcher;
+            ui = captureUiThread();
         }
 
         setup.Changed += OnChanged;
@@ -69,13 +69,13 @@ internal sealed class StartupNavigation(
         }
 
         setup.Changed -= OnChanged;
-        if (ui!.CheckAccess())
+        if (ui!.IsCurrent)
         {
             Navigate();
         }
         else
         {
-            ui.BeginInvoke(Navigate);
+            ui.Post(Navigate);
         }
     }
 

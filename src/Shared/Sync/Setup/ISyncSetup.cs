@@ -46,6 +46,7 @@ public interface ISyncSetup
     /// <summary>
     /// Removes a custom host's saved trust for this endpoint. Built-in pins cannot be removed.
     /// The next connection must offer its key for explicit acceptance again.
+    /// A missing or blank host and a port outside 1 to 65535 are invalid arguments.
     /// </summary>
     Task ForgetHostKeyAsync(string host, int port, CancellationToken cancellationToken);
 }

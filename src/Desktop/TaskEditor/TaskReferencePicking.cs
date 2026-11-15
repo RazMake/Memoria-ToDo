@@ -12,34 +12,34 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 internal sealed class TaskReferencePicking
 {
     private readonly ITasks _tasks;
-    private readonly PopupList _list;
+    private readonly ChoiceList _list;
     private readonly PopupLists _popups;
-    private StyledTextEditor? _field;
+    private ITextField? _field;
     private ISnippet? _snippet;
     private TextAnchor? _replaceFrom;
     private TextAnchor? _filterFrom;
     private IReadOnlyList<TaskItem> _shown = [];
 
-    public TaskReferencePicking(ITasks tasks, PopupList list, PopupLists popups)
+    public TaskReferencePicking(ITasks tasks, ChoiceList list, PopupLists popups)
     {
         _tasks = tasks;
         _list = list;
         _popups = popups;
-        list.Chosen += (_, position) => Choose(position);
+        list.Chosen += Choose;
     }
 
     /// <summary>Follows the field's edits, so the list narrows as the user types in it.</summary>
-    public void Watch(StyledTextEditor field) =>
-        field.WhenEditedOrMoved(() =>
+    public void Watch(ITextField field) =>
+        field.Changed += () =>
         {
             if (_list.IsOpen && field == _field)
             {
                 Update(field);
             }
-        });
+        };
 
     /// <summary>Opens the list. The snippet replaces the text from the editor offset <paramref name="replaceFrom"/> to the end of the selection.</summary>
-    public void Open(StyledTextEditor field, ISnippet snippet, int replaceFrom)
+    public void Open(ITextField field, ISnippet snippet, int replaceFrom)
     {
         _field = field;
         _snippet = snippet;
@@ -49,7 +49,7 @@ internal sealed class TaskReferencePicking
     }
 
     // Lists the matching open tasks, or closes the list when there are none or the cursor left what the user typed.
-    private void Update(StyledTextEditor field)
+    private void Update(ITextField field)
     {
         if (_filterFrom is not { IsDeleted: false } from || field.CaretOffset < from.Offset)
         {

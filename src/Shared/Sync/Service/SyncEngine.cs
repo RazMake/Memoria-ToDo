@@ -78,9 +78,9 @@ internal sealed class SyncEngine : ISyncService
         scheduler.Start();
     }
 
-    // Stopping ends operations with these. A cancellation nobody requested, or any other disposed dependency, is an ordinary failure.
-    private bool IsStopping(Exception ex, CancellationToken operation) =>
-        (ex is OperationCanceledException && operation.IsCancellationRequested) || (ex is ObjectDisposedException && operations.IsStopped);
+    // Once stopping has begun, whatever kind of failure ends an operation is part of the stop. Before that, a disposed dependency
+    // or a cancellation nobody requested is an ordinary failure.
+    private bool IsStopping(CancellationToken operation) => operations.IsStopped || operation.IsCancellationRequested;
 
     // Loads and publishes the setup, even without a key or clone, before any network pass. A failure is published, not thrown,
     // inside the operation so that Stop, which waits for the operation, also waits for the publication.
@@ -95,7 +95,7 @@ internal sealed class SyncEngine : ISyncService
                     await worker.Run(repositories.Load).ConfigureAwait(false);
                     await setupModel.RefreshAsync().ConfigureAwait(false);
                 }
-                catch (Exception ex) when (!IsStopping(ex, token))
+                catch (Exception ex) when (!IsStopping(token))
                 {
                     var (kind, details) = FailureReport.OfLocal(ex);
                     status.Update(s => s.Failed(kind, details, s.SkippedFiles));
@@ -105,7 +105,7 @@ internal sealed class SyncEngine : ISyncService
                 return 0;
             }, CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception ex) when (IsStopping(ex, default))
+        catch (Exception) when (IsStopping(default))
         {
             // Stopping: nothing to publish.
         }
@@ -141,9 +141,9 @@ internal sealed class SyncEngine : ISyncService
         {
             await StartOrJoin(false).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is InvalidOperationException || IsStopping(ex, default))
+        catch (Exception ex) when (ex is InvalidOperationException and not ObjectDisposedException || IsStopping(default))
         {
-            // Nothing to sync yet, or stopping: a scheduled pass just doesn't happen.
+            // Nothing to sync yet, or stopping: a scheduled pass just doesn't happen. A disposed dependency is a real failure.
         }
     }
 
@@ -185,34 +185,59 @@ internal sealed class SyncEngine : ISyncService
         }
     }
 
+    // The one restore point: whatever ends the pass once stopping began, including its setup refresh, is part of the
+    // stop. The status from before the pass comes back, and Operations ends the caller as a stopped service.
     private async Task<ISyncStatus> PassAsync(CancellationToken token, Action release)
+    {
+        var before = status.Current;
+        try
+        {
+            var result = await RunOnePassAsync(token, release).ConfigureAwait(false);
+            // Stopping can begin between a stop check and publishing a failure; the failure is still part of the stop.
+            if (result.Failure is not null && IsStopping(token))
+                throw new OperationCanceledException(token);
+            return result;
+        }
+        catch (Exception ex) when (IsStopping(token))
+        {
+            status.Update(_ => before);
+            if (ex is OperationCanceledException)
+                throw;
+            throw new OperationCanceledException(token);
+        }
+    }
+
+    private async Task<ISyncStatus> RunOnePassAsync(CancellationToken token, Action release)
     {
         string folder;
         try
         {
             folder = tasks.RepositoryFolder ?? throw new InvalidOperationException("No repository is selected.");
         }
-        catch (ArgumentException ex)
+        catch (ArgumentException ex) when (!IsStopping(token))
         {
             Fail(release, SyncFailure.LocalStorage, "The saved repository folder is not usable: " + FailureReport.Describe(ex));
             return status.Current;
         }
 
-        if (await RejectDeviceFolderAsync(folder, release).ConfigureAwait(false) is { } rejected)
+        if (await RejectDeviceFolderAsync(folder, release, token).ConfigureAwait(false) is { } rejected)
             return rejected;
 
+        bool hasKey;
         try
         {
-            if (!await worker.Run(() => keys.HasKey).ConfigureAwait(false))
-                throw new InvalidOperationException("The device has no key yet.");
+            hasKey = await worker.Run(() => keys.HasKey).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (!IsStopping(token))
         {
-            Fail(release, SyncFailure.LocalStorage, FailureReport.Describe(ex));
+            var (kind, details) = FailureReport.OfLocal(ex);
+            Fail(release, kind, details);
             return status.Current;
         }
 
-        var before = status.Current;
+        if (!hasKey)
+            throw new InvalidOperationException("The device has no key yet.");
+
         scheduler.PassStarting();
         status.Update(s => s.Working());
         Func<StatusSnapshot, StatusSnapshot> outcome;
@@ -225,33 +250,31 @@ internal sealed class SyncEngine : ISyncService
             token.ThrowIfCancellationRequested();
             (outcome, clean) = await RunPassAsync(folder, token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested || operations.IsStopped)
+        catch (Exception ex) when (!IsStopping(token))
         {
-            status.Update(_ => before);
-            throw;
-        }
-        catch (Exception ex) when (!IsStopping(ex, token))
-        {
-            var (kind, details) = FailureReport.Of(ex is PassFailedException { InnerException: { } failure } ? failure : ex);
+            var (kind, details) = FailureReport.OfLocal(ex is PassFailedException { InnerException: { } failure } ? failure : ex);
             var pending = (ex as PassFailedException)?.HasPendingChanges;
             outcome = s => s.Failed(kind, details, []) with { HasPendingChanges = pending ?? s.HasPendingChanges };
         }
 
         // The refresh outcome is folded in first, so the pass publishes exactly one final state.
         var refreshProblem = await TryRefreshAsync(token).ConfigureAwait(false);
-        if (refreshProblem is not null)
+        if (refreshProblem is { } refresh)
         {
             var passOutcome = outcome;
             outcome = s =>
             {
                 var finished = passOutcome(s);
                 return finished.Failure is { } kind
-                    ? finished.Failed(kind, $"{finished.Details} The setup could not be refreshed: {refreshProblem}", finished.SkippedFiles)
-                    : finished.Failed(SyncFailure.Unexpected, refreshProblem, finished.SkippedFiles);
+                    ? finished.Failed(kind, $"{finished.Details} The setup could not be refreshed: {refresh.Details}", finished.SkippedFiles)
+                    : finished.Failed(refresh.Kind, refresh.Details, finished.SkippedFiles);
             };
             clean = false;
         }
 
+        // A failed pass that ends once stopping has begun is part of the stop, so it publishes nothing.
+        if (IsStopping(token) && outcome(status.Current).Failure is not null)
+            throw new OperationCanceledException(token);
         status.Update(outcome);
         if (refreshProblem is not null)
             setupModel.PublishFailed();
@@ -261,27 +284,30 @@ internal sealed class SyncEngine : ISyncService
     }
 
     // The check can fail when the real location is unreadable; that is a returned status and no pass starts.
-    private async Task<ISyncStatus?> RejectDeviceFolderAsync(string folder, Action release)
+    private async Task<ISyncStatus?> RejectDeviceFolderAsync(string folder, Action release, CancellationToken token)
     {
         bool contains;
         try
         {
             contains = await worker.Run(() => boundary.Contains(folder)).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            Fail(release, SyncFailure.Repository, "The selected repository folder can't be checked against the device folder: " + ex.Message);
-            return status.Current;
-        }
-        catch (ArgumentException ex)
+        catch (ArgumentException ex) when (!IsStopping(token))
         {
             // The saved folder, which came from the repository selection, is malformed.
             Fail(release, SyncFailure.LocalStorage, "The saved repository folder is not usable: " + FailureReport.Describe(ex));
             return status.Current;
         }
+        catch (Exception ex) when (!IsStopping(token))
+        {
+            var (kind, details) = FailureReport.OfLocal(ex);
+            Fail(release, kind, details);
+            return status.Current;
+        }
 
         if (!contains)
             return null;
+        if (IsStopping(token))
+            throw new OperationCanceledException(token);
         const string problem = "The selected repository folder contains the device folder.";
         status.Update(s => s.Failed(SyncFailure.Repository, problem, s.SkippedFiles));
         throw new InvalidOperationException(problem);
@@ -317,7 +343,7 @@ internal sealed class SyncEngine : ISyncService
             now = time.GetUtcNow();
             await worker.Run(() => git.WriteReceipt(folder, new GitReceipt(now, fingerprint))).ConfigureAwait(false);
         }
-        catch (Exception ex) when (found is { } pending && ex is not PassFailedException && !IsStopping(ex, token))
+        catch (Exception ex) when (found is { } pending && ex is not PassFailedException && !IsStopping(token))
         {
             throw new PassFailedException(ex, pending);
         }
@@ -333,16 +359,16 @@ internal sealed class SyncEngine : ISyncService
     }
 
     // Returns what went wrong, or null. A stop propagates; any other failure is data for the final status.
-    private async Task<string?> TryRefreshAsync(CancellationToken token)
+    private async Task<(SyncFailure Kind, string Details)?> TryRefreshAsync(CancellationToken token)
     {
         try
         {
             await setupModel.RefreshAsync().ConfigureAwait(false);
             return null;
         }
-        catch (Exception ex) when (!IsStopping(ex, token))
+        catch (Exception ex) when (!IsStopping(token))
         {
-            return FailureReport.Describe(ex);
+            return FailureReport.OfLocal(ex);
         }
     }
 

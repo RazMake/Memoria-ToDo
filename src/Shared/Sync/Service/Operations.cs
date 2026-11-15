@@ -34,6 +34,7 @@ internal sealed class Operations(OwnedWorker worker)
         }
         catch (OperationCanceledException) when (IsStoppedNotCancelledBy(caller))
         {
+            // Work cancelled by stopping is part of the stop; any other failure reaches the caller as it is.
             throw new ObjectDisposedException(nameof(Operations));
         }
         finally

@@ -91,7 +91,7 @@ internal static partial class AddressParser
 
         var port = uri.IsDefaultPort ? 22 : uri.Port;
         var path = Uri.UnescapeDataString(uri.AbsolutePath);
-        if (port is < 1 or > 65535 || path.Trim('/').Length == 0)
+        if (!IsValidPort(port) || path.Trim('/').Length == 0)
         {
             throw new ArgumentException($"'{text}' needs a valid port and a repository path.", nameof(text));
         }
@@ -100,6 +100,8 @@ internal static partial class AddressParser
     }
 
     internal static string NormalizeHost(string host) => host.TrimEnd('.').ToLowerInvariant();
+
+    internal static bool IsValidPort(int port) => port is >= 1 and <= 65535;
 
     private static string RemoveGitSuffix(string name) =>
         name.EndsWith(".git", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
