@@ -186,6 +186,47 @@ public class ConfigureRepositoryTests
         Assert.Equal(1, screen.Sync.SyncCount);
     }
 
+    [WpfFact]
+    public void Sync_settings_shows_the_groups_Repository_Device_Status_and_Tasks_in_order()
+    {
+        using var screen = Opened();
+        string[] groups = ["Repository", "Device", "Status", "Tasks"];
+
+        Assert.Equal(groups, screen.Texts.Where(text => groups.Contains(text)));
+    }
+
+    [WpfFact]
+    public void Add_key_at_host_explains_in_a_tooltip_that_it_opens_the_hosts_page_for_this_devices_SSH_key()
+    {
+        using var screen = Opened();
+        var button = OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == "Add key at host");
+
+        var tip = button.ToolTip is ToolTip { Content: var content } ? content?.ToString() : button.ToolTip?.ToString();
+
+        Assert.NotNull(tip);
+        Assert.Contains("SSH key", tip);
+        Assert.Contains("host", tip, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [WpfFact]
+    public void A_section_taller_than_the_window_scrolls_to_its_last_control()
+    {
+        var sync = new FakeSyncService();
+        sync.Publish(new FakeSyncStatus
+        {
+            SkippedFiles = [.. Enumerable.Range(0, 40).Select(i => new FakeSkippedFile($"tasks/{i}.json", "Newer task format", true))]
+        });
+        using var screen = Opened(sync);
+        var last = screen.Box("Deletion delay (days)");
+
+        last.BringIntoView();
+
+        _ = screen.WindowSize;
+        var content = (FrameworkElement)screen.Window.Content;
+        var top = last.TranslatePoint(new Point(0, 0), content).Y;
+        Assert.InRange(top, 0, content.ActualHeight - last.ActualHeight);
+    }
+
     private static ConfigureScreen Opened(FakeSyncService? sync = null)
     {
         var screen = new ConfigureScreen(sync: sync);
