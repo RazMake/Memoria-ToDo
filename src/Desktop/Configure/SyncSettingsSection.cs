@@ -3,7 +3,10 @@ using System.Windows.Controls;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
-/// <summary>The Sync settings section's content, in the groups Repository, Device, Status, and Tasks, kept current from the sync notices of its window.</summary>
+/// <summary>
+/// The Sync settings section's content: three cards, Repository, Git Access, and Auto, kept current from the sync
+/// notices of its window.
+/// </summary>
 internal sealed class SyncSettingsSection : StackPanel
 {
     private readonly RepositorySection _repository;
@@ -12,20 +15,20 @@ internal sealed class SyncSettingsSection : StackPanel
 
     public SyncSettingsSection(SyncUi ui, DeletionDelayRow delay)
     {
-        _repository = new RepositorySection(ui);
-        _device = new DeviceSection(ui);
         _status = new StatusSection(ui);
-        Group("Repository", _repository);
-        Group("Device", _device);
-        Group("Status", _status);
-        Group("Tasks", delay);
+        _repository = new RepositorySection(ui, _status);
+        _device = new DeviceSection(ui);
+        Card("Repository", _repository);
+        Card("Git Access", _device);
+        Card("Auto", delay);
         ui.Changed += Refresh;
     }
 
-    private void Group(string heading, UIElement content)
+    private void Card(string title, UIElement content)
     {
-        Children.Add(ThemedText.Subheading(heading, new Thickness(0, Children.Count == 0 ? 0 : 16, 0, 6)));
-        Children.Add(content);
+        var card = ThemedBox.Card(title, content);
+        card.Margin = new Thickness(0, Children.Count == 0 ? 0 : 12, 0, 0);
+        Children.Add(card);
     }
 
     private void Refresh()

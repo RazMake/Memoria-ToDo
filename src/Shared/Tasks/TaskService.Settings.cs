@@ -13,6 +13,8 @@ internal sealed partial class TaskService
 
         public string? ManageTasksShortcut => Read(settings => settings.ManageTasksShortcut.Value);
 
+        public string? CloseWindowShortcut => Read(settings => settings.CloseWindowShortcut.Value);
+
         public event EventHandler? Changed
         {
             add
@@ -45,6 +47,11 @@ internal sealed partial class TaskService
             owner.ChangeSettings(settings => settings.ManageTasksShortcut.Value == shortcut
                 ? settings
                 : settings with { ManageTasksShortcut = new Setting<string?>(shortcut, owner.Now()) });
+
+        public void SetCloseWindowShortcut(string? shortcut) =>
+            owner.ChangeSettings(settings => settings.CloseWindowShortcut.Value == shortcut
+                ? settings
+                : settings with { CloseWindowShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
         private T Read<T>(Func<SharedSettings, T> read)
         {

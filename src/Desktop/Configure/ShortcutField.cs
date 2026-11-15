@@ -6,7 +6,7 @@ namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
 /// A box that shows a shortcut and records the keys the user presses in it. It reports a pick on the first key that
-/// isn't a modifier, and Esc cancels a pick. It takes every modifier key's release, Alt's included, so Windows doesn't
+/// isn't a modifier, and plain Esc keeps the current shortcut. It takes every modifier key's release, Alt's included, so Windows doesn't
 /// move the keyboard to the window's hidden system menu. It also reports two or more modifier keys pressed and
 /// released with no other key, which is what a shortcut taken by Windows or another app looks like.
 /// </summary>
@@ -16,9 +16,10 @@ internal sealed class ShortcutField : TextBox
 
     /// <param name="picked">Called with the held modifiers and the key that completed a pick.</param>
     /// <param name="swallowed">Called with the modifiers of a chord released with no other key.</param>
-    public ShortcutField(Action<ModifierKeys, Key> picked, Action<ModifierKeys> swallowed)
+    /// <param name="escaped">Called when Esc is pressed with no modifier key held, which keeps the current shortcut.</param>
+    public ShortcutField(Action<ModifierKeys, Key> picked, Action<ModifierKeys> swallowed, Action escaped)
     {
-        _input = new ShortcutKeyInput(picked, swallowed);
+        _input = new ShortcutKeyInput(picked, swallowed, escaped);
         IsReadOnly = true;
         IsUndoEnabled = false;
         Width = 240;

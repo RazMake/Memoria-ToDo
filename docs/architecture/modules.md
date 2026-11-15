@@ -110,7 +110,7 @@ The desktop app has five modules of its own:
 | Shell | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Configure, Sync |
 | Task editor | The Add window, and the editor and tag chips View Tasks uses | [Task editor](desktop/task-editor.md) | Tasks, Editing, Rendering |
 | Task list | View Tasks: open tasks in rank order, expanded and edited in place, with the tag filter, search, resolving, deleting, resolved tasks, and the Sync button | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Formatted view, Sync |
-| Configure | The two global shortcuts and the deletion delay, which every device shares; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Sync |
+| Configure | The two global shortcuts and the deletion delay, which every device shares; proposed, the Close window shortcut; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Sync |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 
 Proposed, each a decision to confirm:

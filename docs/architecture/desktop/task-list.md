@@ -24,6 +24,7 @@ Proposed, each a decision to confirm:
 - An open description shows at its full height: the list scrolls, not the description.
 - A link to a deleted task shows "This task no longer exists." in the message line. A link to a resolved task shows the resolved tasks and expands it. A link to a hidden task clears the search if the search hides it, and the tag filter if the filter hides it, keeping whichever doesn't, then expands it.
 - When the browser can't open a web link, View Tasks shows the error in its message line, the same line where a failed move, resolve, or delete says why.
+- The [Close window shortcut](configure.md#esc-and-the-close-window-shortcut-close-the-window), Shift+Esc at first, closes View Tasks from any control, even while a task is being edited, exactly as its close button does.
 
 ### Edit turns the open task into the editor, in place
 
@@ -112,6 +113,10 @@ Proposed, each a decision to confirm:
 [`ViewTasksWindow.Create`](../../../src/Desktop/TaskList/ViewTasksWindow.cs) retains its existing arguments and
 adds the shared `ISyncService` as its last argument. Its Show/IsOpen interface does not change. There is no
 sync-less overload, test-only switch, or second service created by this module.
+
+It also takes the platform's
+[Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) as a new last argument, after
+`ISyncService sync`, and attaches each window it makes to them.
 
 ## Failure modes
 

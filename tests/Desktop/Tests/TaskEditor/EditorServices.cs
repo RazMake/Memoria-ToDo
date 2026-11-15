@@ -2,6 +2,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -83,7 +84,10 @@ internal sealed class EditorServices
     /// <summary>Like <see cref="UseTag"/>, but from a worker thread, so Tasks raises Changed there as a background sync does.</summary>
     public Task UseTagOnWorkerThread(string tag, int count = 1) => Task.Run(() => UseTag(tag, count));
 
-    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
+    /// <summary>The Close window keys the Add window is attached to; a test sets them as Configure does.</summary>
+    public CloseWindowKeys CloseWindowKeys { get; } = new();
+
+    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys);
 
     public TaskEditorControl CreateEditor() => new(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
 

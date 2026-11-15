@@ -3,15 +3,23 @@ using System.Windows.Controls;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
-/// <summary>The Shortcuts section's content: how to change a shortcut, and a row for each shortcut.</summary>
+/// <summary>
+/// The Shortcuts section's content: how to change a shortcut, and a row for Add new task, Manage tasks, and Close
+/// window. A focused field of any row releases the two global shortcuts; Close window has none to release.
+/// </summary>
 internal sealed class ShortcutSection : StackPanel
 {
     private readonly ShortcutRow[] _rows;
     private readonly ShortcutFocus _focus;
 
-    public ShortcutSection(ShortcutSetting addNewTask, ShortcutSetting manageTasks)
+    public ShortcutSection(ShortcutSetting addNewTask, ShortcutSetting manageTasks, CloseWindowSetting closeWindow)
     {
-        _rows = [new ShortcutRow(addNewTask, manageTasks), new ShortcutRow(manageTasks, addNewTask)];
+        _rows =
+        [
+            new ShortcutRow(addNewTask, "Opens the Add window from any app.", [manageTasks, closeWindow], addNewTask.KeySwallowed),
+            new ShortcutRow(manageTasks, "Opens View Tasks from any app.", [addNewTask, closeWindow], manageTasks.KeySwallowed),
+            new ShortcutRow(closeWindow, "Closes the app's window you're in, whatever has the focus.", [addNewTask, manageTasks], _ => { }),
+        ];
         var grid = new Grid
         {
             ColumnDefinitions = { new ColumnDefinition { Width = new GridLength(140) }, new ColumnDefinition() },
@@ -22,8 +30,12 @@ internal sealed class ShortcutSection : StackPanel
             _rows[row].AddTo(grid, row);
         }
 
-        Children.Add(ThemedText.Help(
-            "Click a box, then press the new shortcut. Esc keeps the current one.", new Thickness(0, 0, 0, 8)));
+        Children.Add(new TextBlock
+        {
+            Text = "Click a box, then press the new shortcut. Esc keeps the current one:",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
         Children.Add(grid);
 
         _focus = new ShortcutFocus([addNewTask, manageTasks], Refresh);

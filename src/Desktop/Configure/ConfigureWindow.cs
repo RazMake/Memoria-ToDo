@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -11,10 +12,11 @@ public static class ConfigureWindow
     /// <param name="settings">The same store's shared settings, including shortcut text.</param>
     /// <param name="sync">The device's setup operations and cached sync status.</param>
     /// <param name="setupActions">The app's clipboard and add-key-page actions.</param>
+    /// <param name="closeWindowKeys">The platform's Close window keys; Configure sets them and attaches its window.</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static IConfigureWindow Create(IStartWithWindows startWithWindows, ISharedTaskSettings settings,
-        ISyncService sync, ISetupActions setupActions) =>
-        new ConfigureShow(startWithWindows, settings, sync, setupActions);
+        ISyncService sync, ISetupActions setupActions, CloseWindowKeys closeWindowKeys) =>
+        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys);
 }
 
 /// <summary>The Configure window, as Shell uses it.</summary>

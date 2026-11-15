@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
 using Xunit;
@@ -47,20 +48,29 @@ internal sealed class ConfigureScreen : IDisposable
     public FakeSetupActions SetupActions => services.SetupActions;
     public ITaskStore Store => services.Store;
 
-    /// <summary>The window's collapsible sections, in order.</summary>
-    public IReadOnlyList<Expander> Sections => [.. OpenWindows.Descendants(Window).OfType<Expander>()];
+    /// <summary>The headings of Configure's three sections, in order.</summary>
+    public static readonly string[] SectionHeadings = ["Shortcuts", "Startup", "Sync settings"];
 
-    /// <summary>Expands the section with the heading, as a click on its heading does.</summary>
-    public void Expand(string heading) =>
-        Sections.Single(section => ((TextBlock)section.Header).Text == heading).IsExpanded = true;
+    /// <summary>
+    /// The section titles, in order. A title is a content control (such as a button) whose content is the heading's
+    /// text, so a test finds it without knowing which control the window uses.
+    /// </summary>
+    public IReadOnlyList<ContentControl> Titles =>
+        [.. OpenWindows.Descendants(Window).OfType<ContentControl>().Where(IsTitle)];
 
-    /// <summary>Collapses the section with the heading, as a click on the heading of the open section does.</summary>
-    public void Collapse(string heading) =>
-        Sections.Single(section => ((TextBlock)section.Header).Text == heading).IsExpanded = false;
+    /// <summary>The title of the section with the heading.</summary>
+    public ContentControl Title(string heading) => Titles.Single(title => TitleText(title) == heading);
 
-    /// <summary>The headings of the open sections, in order.</summary>
+    /// <summary>Clicks the title of the section with the heading, as the mouse does.</summary>
+    public void ClickTitle(string heading)
+    {
+        Invoke(Title(heading));
+        Settle();
+    }
+
+    /// <summary>The headings of the sections whose content shows, in order.</summary>
     public IReadOnlyList<string> OpenSections =>
-        [.. Sections.Where(section => section.IsExpanded).Select(section => ((TextBlock)section.Header).Text)];
+        [.. SectionHeadings.Where(heading => ContentMarker(heading).IsVisible)];
 
     /// <summary>The Add new task action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction AddNewTask { get; }
@@ -73,11 +83,20 @@ internal sealed class ConfigureScreen : IDisposable
 
     public Window Window => Assert.Single(windows.Visible());
 
-    /// <summary>The Add new task row's shortcut box, the first of the two.</summary>
+    /// <summary>Whether the window is showing.</summary>
+    public bool IsShowing => windows.Visible().Count == 1;
+
+    /// <summary>The Add new task row's shortcut box, the first of the three.</summary>
     public TextBox AddField => ShortcutFields[0];
 
-    /// <summary>The Manage tasks row's shortcut box, the second of the two.</summary>
+    /// <summary>The Manage tasks row's shortcut box, the second of the three.</summary>
     public TextBox ManageField => ShortcutFields[1];
+
+    /// <summary>The Close window row's shortcut box, the third of the three.</summary>
+    public TextBox CloseField => ShortcutFields[2];
+
+    /// <summary>The Close window keys the window was given.</summary>
+    public CloseWindowKeys CloseWindowKeys => services.CloseWindowKeys;
 
     public CheckBox StartWithWindowsBox => OpenWindows.Descendants(Window).OfType<CheckBox>().Single();
 
@@ -86,6 +105,12 @@ internal sealed class ConfigureScreen : IDisposable
 
     /// <summary>The message under the Manage tasks row's box; empty when none.</summary>
     public string ManageMessage => MessageUnder(ManageField);
+
+    /// <summary>The message under the Close window row's box; empty when none.</summary>
+    public string CloseMessage => MessageUnder(CloseField);
+
+    /// <summary>The description under the row's box: the first text block after the box, before the message.</summary>
+    public static TextBlock DescriptionUnder(TextBox field) => ((Panel)field.Parent).Children.OfType<TextBlock>().First();
 
     /// <summary>The texts the window displays beside its controls, not the shortcut boxes'.</summary>
     public IReadOnlyList<string> Texts => OpenWindows.TextsIn(Window);
@@ -100,7 +125,7 @@ internal sealed class ConfigureScreen : IDisposable
         }
     }
 
-    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(2)];
+    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(3)];
 
     /// <summary>Opens the window, as the tray's Configure item does.</summary>
     public void Open() => configure.Show();
@@ -113,6 +138,13 @@ internal sealed class ConfigureScreen : IDisposable
     {
         Reveal(field);
         SimulatedKey.Chord(field, keys);
+    }
+
+    /// <summary>Presses and releases Esc on the element, as the keyboard does.</summary>
+    public void PressEscape(UIElement element)
+    {
+        Reveal(element);
+        SimulatedKey.Chord(element, Key.Escape);
     }
 
     /// <summary>Gives the keyboard focus to the element, as a click or Tab does.</summary>
@@ -164,19 +196,67 @@ internal sealed class ConfigureScreen : IDisposable
         Settle();
     }
 
-    // A row's message is the text block that follows its box in the panel they share.
+    // A row's message is the last text block under its box: the description comes first.
     private static string MessageUnder(TextBox field) =>
-        ((Panel)field.Parent).Children.OfType<TextBlock>().First().Text;
+        ((Panel)field.Parent).Children.OfType<TextBlock>().Last().Text;
 
-    // Expands each section that holds the element, as a user does before using it. Always true, to chain with an action.
+    private static string? TitleText(ContentControl control) => control.Content switch
+    {
+        string text => text,
+        TextBlock block => OpenWindows.TextOf(block),
+        _ => null,
+    };
+
+    private static bool IsTitle(ContentControl control) => SectionHeadings.Contains(TitleText(control));
+
+    // A control that shows only while its section is open.
+    private UIElement ContentMarker(string heading) => heading switch
+    {
+        "Shortcuts" => AddField,
+        "Startup" => StartWithWindowsBox,
+        _ => Box("Device name"),
+    };
+
+    // Clicks the title through its automation peer, whatever kind of control it is.
+    private static void Invoke(ContentControl title)
+    {
+        var peer = UIElementAutomationPeer.CreatePeerForElement(title);
+        if (peer.GetPattern(PatternInterface.Invoke) is IInvokeProvider invoke)
+        {
+            invoke.Invoke();
+        }
+        else if (peer.GetPattern(PatternInterface.SelectionItem) is ISelectionItemProvider item)
+        {
+            item.Select();
+        }
+        else if (peer.GetPattern(PatternInterface.Toggle) is IToggleProvider toggle)
+        {
+            toggle.Toggle();
+        }
+        else
+        {
+            throw new InvalidOperationException("The section title can't be clicked.");
+        }
+
+        title.Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
+    }
+
+    // Opens the section that holds the element, as a user does before using it. Always true, to chain with an action.
     private static bool Reveal(DependencyObject element)
     {
-        for (var parent = LogicalTreeHelper.GetParent(element); parent is not null; parent = LogicalTreeHelper.GetParent(parent))
+        if (element is UIElement { IsVisible: true })
         {
-            if (parent is Expander section)
+            return true;
+        }
+
+        var window = Window.GetWindow(element);
+        foreach (var title in OpenWindows.Descendants(window).OfType<ContentControl>().Where(IsTitle))
+        {
+            Invoke(title);
+            window.UpdateLayout();
+            if (element is UIElement { IsVisible: true })
             {
-                section.IsExpanded = true;
-                section.UpdateLayout();
+                break;
             }
         }
 

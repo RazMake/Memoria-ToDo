@@ -124,7 +124,7 @@ Android preserves it without using it. A null shortcut means Configure's existin
 
 Each setting merges by its own `updated` time; the later time wins, and equal times take the remote value.
 An absent file contributes no settings and never deletes settings from a present file. Three absent files merge to no file.
-A present file must hold all three settings with valid types and times. An unsupported version or unreadable file
+A present file must hold the first three settings with valid types and times; `closeWindowShortcut` may be missing, as below. An unsupported version or unreadable file
 is reported, left untouched, and cannot be replaced by a setter or initialization.
 
 With no file, reads supply the existing deletion default and null shortcuts without writing. `EnsureSettings` creates
@@ -136,6 +136,22 @@ setting another device explicitly changed. A setting changed by the user gets th
 
 An unreadable settings file does not prevent readable tasks from loading. It makes settings reads and writes fail
 with `InvalidDataException`, and prevents automatic deletion, rather than deleting tasks using a guessed delay.
+
+A fourth setting,
+`closeWindowShortcut`, after `manageTasksShortcut`, is kept and merged like the other shortcut texts. It may be missing
+from a present file, which reads as null with the untouched-default time, so files written before it stay readable.
+Every write includes it. Its public parts sit beside the other two shortcuts':
+
+```csharp
+/// <summary>Shortcut text Windows interprets; null means Windows' existing default.</summary>
+string? CloseWindowShortcut { get; }
+
+/// <summary>
+/// Saves text without interpreting it, or null to use Windows' default, and its UTC change time.
+/// Throws NoRepositoryFolderException when no repository is selected. An unchanged value writes nothing.
+/// </summary>
+void SetCloseWindowShortcut(string? shortcut);
+```
 
 ### Sync shares Tasks' local update lock, never a network wait
 

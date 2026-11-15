@@ -10,11 +10,10 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// <c>save</c> writes it.
 /// </summary>
 internal sealed class ShortcutSetting(
-    string label, Shortcut defaultShortcut, Func<string?> readStored, Action<string?> save)
+    string label, Shortcut defaultShortcut, Func<string?> readStored, Action<string?> save) : IShortcutSetting
 {
     private IShortcutAction? _action;
-    private string? _message;
-    private bool _fromStoredText;
+    private readonly RowMessage _message = new();
     private bool _released;
 
     /// <summary>What the shortcut does, such as Add new task.</summary>
@@ -26,12 +25,8 @@ internal sealed class ShortcutSetting(
     /// <summary>What the row says about the last shortcut it couldn't use, or null when there's nothing to say.</summary>
     public string? Message
     {
-        get => _message;
-        private set
-        {
-            _message = value;
-            _fromStoredText = false;
-        }
+        get => _message.Text;
+        private set => _message.Say(value);
     }
 
     /// <summary>
@@ -87,7 +82,7 @@ internal sealed class ShortcutSetting(
     /// Checks a pick and makes it the row's shortcut when it follows the rules, differs from the other row's, and
     /// registers; otherwise sets <see cref="Message"/> and keeps the previous shortcut.
     /// </summary>
-    public void Pick(ModifierKeys modifiers, Key key, ShortcutSetting other)
+    public void Pick(ModifierKeys modifiers, Key key, params IUsedShortcut[] others)
     {
         var broken = Shortcut.Check(modifiers, key, out var shortcut);
         if (broken is not null)
@@ -98,9 +93,9 @@ internal sealed class ShortcutSetting(
         {
             return;
         }
-        else if (shortcut == other.Active)
+        else if (StoredShortcut.UsedBy(shortcut!, others) is { } used)
         {
-            Message = $"{other.Label} already uses {shortcut!.ToDisplayText()}. Press a different shortcut.";
+            Message = used;
         }
         else
         {
@@ -153,41 +148,11 @@ internal sealed class ShortcutSetting(
 
     // Says why the stored text is unusable and remembers that this message is about the stored text. With no problem,
     // it clears only such a message, never one about a pick.
-    private void ShowStoredProblem(string? problem)
-    {
-        if (problem is not null)
-        {
-            _message = problem;
-            _fromStoredText = true;
-        }
-        else if (_fromStoredText)
-        {
-            Message = null;
-        }
-    }
+    private void ShowStoredProblem(string? problem) => _message.SayAboutStoredText(problem);
 
     // The stored shortcut, the default when nothing is stored, or null with the reason when the text is unusable.
-    private Shortcut? Stored(out string? problem)
-    {
-        problem = null;
-        try
-        {
-            var text = readStored();
-            if (text is null)
-            {
-                return defaultShortcut;
-            }
-
-            var shortcut = Shortcut.Parse(text);
-            problem = shortcut is null ? $"The saved {Label} shortcut \"{text}\" isn't a valid shortcut." : null;
-            return shortcut;
-        }
-        catch (Exception error)
-        {
-            problem = $"The saved {Label} shortcut couldn't be read: {error.Message}";
-            return null;
-        }
-    }
+    private Shortcut? Stored(out string? problem) =>
+        StoredShortcut.Read(Label, defaultShortcut, readStored, Shortcut.Parse, out problem);
 
     // Saves a registered pick. When saving fails, the row goes back to its previous shortcut and says what failed,
     // including a failure to register the previous one again.

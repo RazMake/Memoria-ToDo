@@ -18,6 +18,7 @@ internal sealed class DeletionDelayRow : StackPanel
         AutomationProperties.SetName(_days, "Deletion delay (days)");
         _days.LostFocus += (_, _) => Commit();
         var line = new StackPanel { Orientation = Orientation.Horizontal };
+        line.Children.Add(new TextBlock { Text = "•", Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
         line.Children.Add(new TextBlock { Text = "Delete resolved tasks after", VerticalAlignment = VerticalAlignment.Center });
         line.Children.Add(_days);
         line.Children.Add(new TextBlock { Text = "days", VerticalAlignment = VerticalAlignment.Center });

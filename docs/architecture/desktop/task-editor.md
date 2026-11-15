@@ -47,6 +47,7 @@ The table lists the keys that work across the window, and which are still propos
 | Ctrl+Enter | Anywhere | Saves the task, as the Save button does. Proposed: and closes Add. | Decided |
 | Ctrl+Shift+Enter | Anywhere | Saves the task and clears Add for another one | Proposed |
 | Esc | Anywhere | Closes Add and keeps a draft. Proposed: closes an open list, such as the snippet picker, first. | Decided |
+| [Close window shortcut](configure.md#esc-and-the-close-window-shortcut-close-the-window), Shift+Esc at first | Anywhere, even with a list open | Closes Add and keeps a draft, as its close button does | Decided |
 
 Proposed, each a decision to confirm:
 
@@ -184,7 +185,11 @@ public static class AddWindow
     public static IAddWindow Create(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files);
 }
+```
 
+`AddWindow.Create` also takes the platform's [Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) as a new last argument, `CloseWindowKeys closeWindowKeys`, and attaches the Add window to them.
+
+```csharp
 /// The Add window, as Shell uses it.
 public interface IAddWindow
 {

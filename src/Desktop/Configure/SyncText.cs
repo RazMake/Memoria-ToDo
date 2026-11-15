@@ -14,14 +14,21 @@ internal static class SyncText
         new(state.RepositoryAddress ?? "None", state.RepositoryFolder ?? "None", state.DeviceName);
 
     /// <summary>The status: the last success, pending changes, why the sync fails, and the skipped files, one per line.</summary>
-    public static string Status(ISyncStatus status)
+    public static string Status(ISyncStatus status) =>
+        StatusDetails(status) is { } details
+            ? LastSync(status) + Environment.NewLine + details
+            : LastSync(status);
+
+    /// <summary>The first status line: the last successful sync and when, or that it hasn't synced yet.</summary>
+    public static string LastSync(ISyncStatus status) =>
+        status.LastSuccessfulSync is { } at
+            ? $"Last successful sync: {at.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)}"
+            : "Not synced yet.";
+
+    /// <summary>The status lines after <see cref="LastSync"/>, one per line, or null when there are none.</summary>
+    public static string? StatusDetails(ISyncStatus status)
     {
-        var lines = new List<string>
-        {
-            status.LastSuccessfulSync is { } at
-                ? $"Last successful sync: {at.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)}"
-                : "Not synced yet.",
-        };
+        var lines = new List<string>();
         if (status.HasPendingChanges)
         {
             lines.Add("Changes wait to be synced.");
@@ -33,7 +40,7 @@ internal static class SyncText
         }
 
         lines.AddRange(status.SkippedFiles.Select(file => $"Skipped {file.RelativePath}: {file.Reason}"));
-        return string.Join(Environment.NewLine, lines);
+        return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
     }
 
     /// <summary>The host key the device trusts or waits to trust, on one line.</summary>

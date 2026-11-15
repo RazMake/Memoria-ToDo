@@ -71,7 +71,7 @@ public class ViewTasksWithRealWebViewTests
                     webView.Failed += (_, reason) => started.TrySetException(new InvalidOperationException($"The browser did not start: {reason}"));
                     return webView;
                 },
-                new FakeDefaultBrowser(), new FakeSyncService());
+                new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys());
 
             viewTasks.Show();
 

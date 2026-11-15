@@ -14,16 +14,19 @@ internal sealed class ShortcutKeyInput
 {
     private readonly Action<ModifierKeys, Key> _picked;
     private readonly Action<ModifierKeys> _swallowed;
+    private readonly Action? _escaped;
     private readonly HeldModifierKeys _held = new();
 
     /// <param name="picked">Called with the held modifiers and the key that completed a pick.</param>
     /// <param name="swallowed">Called with the modifiers of a chord released with no other key.</param>
-    public ShortcutKeyInput(Action<ModifierKeys, Key> picked, Action<ModifierKeys> swallowed)
+    /// <param name="escaped">Called when Esc is pressed with no modifier key held, which keeps the current shortcut.</param>
+    public ShortcutKeyInput(Action<ModifierKeys, Key> picked, Action<ModifierKeys> swallowed, Action? escaped = null)
     {
         ArgumentNullException.ThrowIfNull(picked);
         ArgumentNullException.ThrowIfNull(swallowed);
         _picked = picked;
         _swallowed = swallowed;
+        _escaped = escaped;
     }
 
     /// <summary>A key went down. Plain Tab isn't handled, so the box doesn't trap the keyboard.</summary>
@@ -46,7 +49,16 @@ internal sealed class ShortcutKeyInput
             return false;
         }
 
-        if (key != Key.Escape && !isRepeat)
+        if (isRepeat)
+        {
+            return true;
+        }
+
+        if (key == Key.Escape && !_held.AnyHeld)
+        {
+            _escaped?.Invoke();
+        }
+        else
         {
             _picked(_held.Modifiers, key);
         }

@@ -46,7 +46,7 @@ internal sealed class ShellLifetime(
                 new("Configure", startup.ByUser(configure.Show)),
                 new("Exit", endApp),
             ],
-            addByUser);
+            viewTasksByUser);
         syncTray.Attach();
         bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut);
 

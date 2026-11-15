@@ -1,68 +1,90 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// Sections of which exactly one is always open: the first one added, then whichever the user expands. The open
-/// section fills the space the collapsed headings leave, and its content scrolls when it is taller.
+/// Sections of which exactly one is always open: the first at first, then whichever the user picks by its title.
+/// Each section is a rounded box. The open one fills the space the other titles leave, starts right under its title,
+/// and scrolls when its content is taller. A title is a button, so Tab reaches it and Enter or Space opens its section.
 /// </summary>
 internal sealed class Accordion : Grid
 {
-    private readonly List<Expander> _sections = [];
-    private Expander? _open;
+    private readonly AccordionState _state;
+    private readonly RowDefinition[] _rows;
+    private readonly ScrollViewer[] _contents;
 
-    /// <summary>Adds a section with the heading and content; the first section added is open.</summary>
-    public void Add(string heading, UIElement content)
+    public Accordion(params (string Heading, UIElement Content)[] sections)
     {
-        var section = new Expander
+        _state = new AccordionState(sections.Length);
+        _rows = new RowDefinition[sections.Length];
+        _contents = new ScrollViewer[sections.Length];
+        for (var i = 0; i < sections.Length; i++)
         {
-            Header = ThemedText.Heading(heading, new Thickness(0)),
-            Content = new ScrollViewer
-            {
-                Content = content,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            },
-            IsExpanded = false,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            Margin = new Thickness(0, _sections.Count == 0 ? 0 : 8, 0, 0),
-        };
-        section.Expanded += (_, e) =>
-        {
-            if (e.OriginalSource == section)
-            {
-                Open(section);
-            }
-        };
-        section.Collapsed += (_, e) =>
-        {
-            if (e.OriginalSource == section && section == _open)
-            {
-                section.IsExpanded = true;
-            }
-        };
-        SetRow(section, _sections.Count);
-        RowDefinitions.Add(new RowDefinition());
-        _sections.Add(section);
-        Children.Add(section);
-        if (_open is null)
-        {
-            section.IsExpanded = true;
+            var section = Section(i, sections[i].Heading, sections[i].Content);
+            section.Margin = new Thickness(0, i == 0 ? 0 : 8, 0, 0);
+            _rows[i] = new RowDefinition();
+            RowDefinitions.Add(_rows[i]);
+            SetRow(section, i);
+            Children.Add(section);
         }
-        else
+
+        Show();
+    }
+
+    private Border Section(int index, string heading, UIElement content)
+    {
+        var title = new Button
         {
-            RowDefinitions[^1].Height = GridLength.Auto;
+            Content = ThemedText.Heading(heading, new Thickness(0)),
+            Cursor = Cursors.Hand,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+        };
+        title.Click += (_, _) => Select(index);
+        title.PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key is Key.Enter or Key.Space)
+            {
+                e.Handled = true;
+                Select(index);
+            }
+        };
+        _contents[index] = new ScrollViewer
+        {
+            Content = content,
+            Margin = new Thickness(0, 8, 0, 0),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        };
+        var inside = new Grid
+        {
+            RowDefinitions = { new RowDefinition { Height = GridLength.Auto }, new RowDefinition() },
+        };
+        SetRow(_contents[index], 1);
+        inside.Children.Add(title);
+        inside.Children.Add(_contents[index]);
+        return ThemedBox.Section(inside);
+    }
+
+    private void Select(int index)
+    {
+        if (_state.Select(index))
+        {
+            Show();
         }
     }
 
-    private void Open(Expander section)
+    private void Show()
     {
-        _open = section;
-        for (var i = 0; i < _sections.Count; i++)
+        for (var i = 0; i < _rows.Length; i++)
         {
-            _sections[i].IsExpanded = _sections[i] == section;
-            RowDefinitions[i].Height = _sections[i] == section ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+            var open = i == _state.Open;
+            _rows[i].Height = open ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+            _contents[i].Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 }

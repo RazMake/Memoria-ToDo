@@ -12,7 +12,7 @@ Each module is a project of its own, and the [module map](../modules.md#module-m
 | [Task editor](task-editor.md) | The Add window: its fields, keys, draft, and tags. View Tasks edits a task with the same editor. |
 | [Task list](task-list.md) | View Tasks: the list in rank order, expanding and editing in place, the tag filter, search, resolving, deleting, and the Sync button |
 | [Formatted view](formatted-view.md) | A task's title and description as a reader sees them, with no Markdown characters, the web view the description shows in, and which links open in the default browser |
-| [Configure](configure.md) | The settings window: the two global shortcuts, starting with Windows, the shared deletion delay, and sync status details |
+| [Configure](configure.md) | The settings window: the two global shortcuts, the Close window shortcut, starting with Windows, the shared deletion delay, and sync status details |
 
 Two shared modules serve the desktop app: [Editing](../editing.md) holds the formatting and snippet commands, and [Rendering](../rendering.md) turns Markdown into HTML and styled text. [How the apps fit together](../overview.md) picks the main libraries, such as AvalonEdit for the editor and WebView2 for rendered descriptions.
 
@@ -24,7 +24,7 @@ Each window module keeps its screens' state and logic in internal [view models](
 
 The desktop platform, `Memoria.ToDo.Desktop.Platform`, holds the app's startup, as [Modules](../modules.md#the-platform-serves-every-module-and-knows-none) decides. The composition root, `Memoria.ToDo.Desktop.App`, builds the app from the modules and hands it to the platform to run.
 
-The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share. The decided parts are:
+The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows). The decided parts are:
 
 - **The app's lifetime**: an interface with two steps, start and stop. Start receives a way to end the app. [Shell](shell.md#public-interface) implements it, so the platform names no module. Proposed: the way to end the app works from any thread. The platform passes the call to the UI thread and returns without waiting, so a module that ends the app from a background task needs no thread rule of its own. This is a decision to confirm.
 - **Run the app**: takes a function that builds the lifetime, and returns the process's exit code. In order, it:
@@ -262,6 +262,36 @@ public static class EventKey
 - **What each key does stays in the design of the module that reads it**: the Task list's [keys](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) and [tag list](task-list.md#tags-and-search-narrow-the-list), the [Task editor's keys](task-editor.md#keys-save-close-and-move-between-fields), and [Configure's shortcut checks](configure.md#configure-explains-every-shortcut-it-cant-use).
 
 Two other homes were ruled out: a method on `ModifierKey`, since its one job is saying which keys are modifiers; and one copy shared inside the Task list only, which would leave the same code in the Task editor and Configure.
+
+### The Close window shortcut closes any of the app's windows
+
+The [Close window shortcut](configure.md#esc-and-the-close-window-shortcut-close-the-window) closes Add, View Tasks, and Configure the same way, so its key handling has one home: a platform part, Close window keys. The composition root makes one for the app and passes it to Configure, the Task editor, and the Task list:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// The keys that close whichever of the app's windows has the focus, whatever control in it has the focus.
+/// The composition root makes one for the app. Use it on the UI thread.
+public sealed class CloseWindowKeys
+{
+    /// No keys yet: no key closes a window until Set is called.
+    public CloseWindowKeys();
+
+    /// From now on, these keys close each attached window. Throws ArgumentException when key is Key.None
+    /// or a modifier key, or modifiers holds anything but Ctrl, Alt, Shift, and Win.
+    public void Set(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key);
+
+    /// From now on, pressing the current keys while window, or any control in it, has the focus calls
+    /// window.Close() before any control sees the keys, and the keys go no further.
+    /// Throws ArgumentNullException when window is null.
+    public void Attach(System.Windows.Window window);
+}
+```
+
+- **Closing calls the window's own close**, so each window does what its close button does: Add hides and keeps its draft, as its [closing](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) already does, and View Tasks and Configure close.
+- **Configure alone decides the keys**: their default, rules, and storage are [Configure's](configure.md#a-new-shortcut-is-checked-at-once). The platform checks only that they're keys at all.
+- **The modules use the class itself, not an interface**, as they use [Single window](#a-closed-window-is-made-again-on-the-next-show): it has one implementation and does no I/O, so tests use the real one.
+- **Its tests are the platform's UX tests**, each with a plain test window holding a text box.
 
 ## Later designs answer what these files leave open
 

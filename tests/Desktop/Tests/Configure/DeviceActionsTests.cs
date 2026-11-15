@@ -54,78 +54,79 @@ public class DeviceActionsTests : IDisposable
         Assert.Equal("Keys can't be stored.", _device.Message);
     }
 
+    private static readonly Uri KeyPage = new("https://example.com/settings/keys");
+
     [Fact]
-    public void Copying_the_public_key_hands_it_to_the_clipboard_action()
+    public void Copying_the_public_key_copies_it_then_opens_the_hosts_add_key_page()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key", AddKeyPage = KeyPage });
+
+        _device.CopyPublicKey();
+
+        Assert.Equal("ssh-rsa test-key", _actions.CopiedPublicKey);
+        Assert.Equal(KeyPage, _actions.OpenedKeyPage);
+        Assert.Equal(["CopyPublicKey", "OpenKeyPage"], _actions.Calls);
+        Assert.Null(_device.Message);
+    }
+
+    [Fact]
+    public void Copying_before_a_key_exists_says_to_generate_one_first_and_opens_nothing()
+    {
+        Setup.Publish(new FakeSyncSetupState { AddKeyPage = KeyPage });
+
+        _device.CopyPublicKey();
+
+        Assert.Empty(_actions.Calls);
+        Assert.Equal("Generate a key first.", _device.Message);
+    }
+
+    [Fact]
+    public void A_clipboard_action_that_fails_shows_why_and_opens_no_page()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key", AddKeyPage = KeyPage });
+        _actions.CopyFailure = new InvalidOperationException("Clipboard is busy.");
+
+        _device.CopyPublicKey();
+
+        Assert.Equal("Clipboard is busy.", _device.Message);
+        Assert.Null(_actions.OpenedKeyPage);
+        Assert.Empty(_actions.Calls);
+    }
+
+    [Fact]
+    public void A_host_with_no_add_key_page_still_gets_the_key_copied_and_the_message_says_where_to_add_it()
     {
         Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
 
         _device.CopyPublicKey();
 
         Assert.Equal("ssh-rsa test-key", _actions.CopiedPublicKey);
-        Assert.Null(_device.Message);
+        Assert.Equal(["CopyPublicKey"], _actions.Calls);
+        Assert.Equal("Copied. Add the key in your repository host's settings.", _device.Message);
     }
 
     [Fact]
-    public void Copying_before_a_key_exists_says_to_generate_one_first()
+    public void A_browser_action_that_fails_shows_why_and_the_key_stays_copied()
     {
-        _device.CopyPublicKey();
-
-        Assert.Null(_actions.CopiedPublicKey);
-        Assert.Equal("Generate a key first.", _device.Message);
-    }
-
-    [Fact]
-    public void A_clipboard_action_that_fails_shows_why()
-    {
-        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
-        _actions.Failure = new InvalidOperationException("Clipboard is busy.");
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key", AddKeyPage = KeyPage });
+        _actions.OpenFailure = new InvalidOperationException("No browser.");
 
         _device.CopyPublicKey();
-
-        Assert.Equal("Clipboard is busy.", _device.Message);
-    }
-
-    [Fact]
-    public void A_successful_copy_clears_an_earlier_message()
-    {
-        _device.CopyPublicKey();
-        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
-
-        _device.CopyPublicKey();
-
-        Assert.Null(_device.Message);
-    }
-
-    [Fact]
-    public void Opening_the_key_page_hands_the_hosts_address_to_the_browser_action()
-    {
-        var page = new Uri("https://example.com/settings/keys");
-        Setup.Publish(new FakeSyncSetupState { AddKeyPage = page });
-
-        _device.OpenKeyPage();
-
-        Assert.Equal(page, _actions.OpenedKeyPage);
-        Assert.Null(_device.Message);
-    }
-
-    [Fact]
-    public void Opening_the_key_page_of_a_host_that_has_none_says_so()
-    {
-        _device.OpenKeyPage();
-
-        Assert.Null(_actions.OpenedKeyPage);
-        Assert.Equal("The repository's host has no page to add a key.", _device.Message);
-    }
-
-    [Fact]
-    public void A_browser_action_that_fails_shows_why()
-    {
-        Setup.Publish(new FakeSyncSetupState { AddKeyPage = new Uri("https://example.com/keys") });
-        _actions.Failure = new InvalidOperationException("No browser.");
-
-        _device.OpenKeyPage();
 
         Assert.Equal("No browser.", _device.Message);
+        Assert.Equal("ssh-rsa test-key", _actions.CopiedPublicKey);
+    }
+
+    [Fact]
+    public void A_later_successful_copy_clears_the_message_about_a_missing_page()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
+        _device.CopyPublicKey();
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key", AddKeyPage = KeyPage });
+
+        _device.CopyPublicKey();
+
+        Assert.Null(_device.Message);
     }
 
     // The device name.

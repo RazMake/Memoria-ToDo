@@ -93,7 +93,7 @@ public class ConfigureRepositoryTests
     }
 
     [WpfFact]
-    public void Key_actions_generate_locally_copy_the_public_key_and_open_the_hosts_page()
+    public void Copy_public_key_copies_the_key_then_opens_the_hosts_add_key_page()
     {
         var sync = new FakeSyncService();
         var page = new Uri("https://example.com/settings/keys");
@@ -102,11 +102,24 @@ public class ConfigureRepositoryTests
 
         screen.Click("Generate key");
         screen.Click("Copy public key");
-        screen.Click("Add key at host");
 
         Assert.Equal(1, sync.SetupControl.GenerateCount);
         Assert.Equal(sync.Setup.State.PublicKey, screen.SetupActions.CopiedPublicKey);
         Assert.Equal(page, screen.SetupActions.OpenedKeyPage);
+        Assert.Equal(["CopyPublicKey", "OpenKeyPage"], screen.SetupActions.Calls);
+    }
+
+    [WpfFact]
+    public void Copy_public_key_with_no_key_yet_says_to_generate_one_and_opens_nothing()
+    {
+        var sync = new FakeSyncService();
+        sync.SetupControl.Publish(new FakeSyncSetupState { AddKeyPage = new Uri("https://example.com/settings/keys") });
+        using var screen = Opened(sync);
+
+        screen.Click("Copy public key");
+
+        Assert.True(screen.ShowsText("Generate a key first."));
+        Assert.Empty(screen.SetupActions.Calls);
     }
 
     [WpfFact]
@@ -177,34 +190,101 @@ public class ConfigureRepositoryTests
     }
 
     [WpfFact]
-    public void Sync_now_requests_a_pass()
+    public void The_Sync_button_requests_a_pass()
     {
         using var screen = Opened();
 
-        screen.Click("Sync now");
+        screen.Click("Sync");
 
         Assert.Equal(1, screen.Sync.SyncCount);
     }
 
     [WpfFact]
-    public void Sync_settings_shows_the_groups_Repository_Device_Status_and_Tasks_in_order()
+    public void Shows_no_Sync_now_button()
     {
         using var screen = Opened();
-        string[] groups = ["Repository", "Device", "Status", "Tasks"];
 
-        Assert.Equal(groups, screen.Texts.Where(text => groups.Contains(text)));
+        Assert.DoesNotContain(
+            OpenWindows.Descendants(screen.Window).OfType<Button>(), button => button.Content as string == "Sync now");
     }
 
     [WpfFact]
-    public void Add_key_at_host_explains_in_a_tooltip_that_it_opens_the_hosts_page_for_this_devices_SSH_key()
+    public void Sync_settings_shows_the_cards_Repository_Git_Access_and_Auto_in_order_and_no_other_titles()
     {
         using var screen = Opened();
-        var button = OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == "Add key at host");
+        string[] cards = ["Repository", "Git Access", "Auto"];
+        string[] oldTitles = ["Device", "Status", "Tasks"];
+
+        Assert.Equal(cards, screen.Texts.Where(text => cards.Contains(text)));
+        Assert.All(oldTitles, title => Assert.DoesNotContain(title, screen.Texts));
+    }
+
+    [WpfFact]
+    public void The_Sync_button_starts_the_first_status_line_beside_the_last_sync_time()
+    {
+        using var screen = Opened();
+        var button = OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == "Sync");
+        var line = OpenWindows.Descendants(screen.Window).OfType<TextBlock>()
+            .First(b => OpenWindows.TextOf(b).StartsWith("Not synced yet.", StringComparison.Ordinal));
+
+        var buttonBox = Bounds(button, screen.Window);
+        var lineBox = Bounds(line, screen.Window);
+
+        Assert.True(buttonBox.Right <= lineBox.Left + 1, "The button comes first, then the text.");
+        Assert.True(buttonBox.Top < lineBox.Bottom && lineBox.Top < buttonBox.Bottom, "They share one line.");
+    }
+
+    [WpfFact]
+    public void The_status_follows_the_three_repository_lines_and_stays_in_the_Repository_card()
+    {
+        using var screen = Opened();
+        var identity = OpenWindows.Descendants(screen.Window).OfType<TextBlock>()
+            .Single(b => OpenWindows.TextOf(b).StartsWith("Identity:", StringComparison.Ordinal));
+        var button = OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == "Sync");
+        var gitAccess = OpenWindows.Descendants(screen.Window).OfType<TextBlock>()
+            .Single(b => OpenWindows.TextOf(b) == "Git Access");
+
+        Assert.True(Bounds(identity, screen.Window).Bottom <= Bounds(button, screen.Window).Top + 1);
+        Assert.True(Bounds(button, screen.Window).Bottom <= Bounds(gitAccess, screen.Window).Top + 1);
+    }
+
+    [WpfFact]
+    public void Auto_shows_the_deletion_delay_as_one_bulleted_sentence()
+    {
+        using var screen = Opened();
+        var window = screen.Window;
+        var texts = OpenWindows.Descendants(window).OfType<TextBlock>().ToList();
+        var bullet = Bounds(texts.Single(b => OpenWindows.TextOf(b) == "•"), window);
+        var label = Bounds(texts.Single(b => OpenWindows.TextOf(b) == "Delete resolved tasks after"), window);
+        var box = Bounds(screen.Box("Deletion delay (days)"), window);
+        var days = Bounds(texts.Single(b => OpenWindows.TextOf(b) == "days"), window);
+
+        Assert.True(bullet.Right <= label.Left + 1);
+        Assert.True(label.Right <= box.Left + 1);
+        Assert.True(box.Right <= days.Left + 1);
+        Assert.True(box.Top < label.Bottom && label.Top < box.Bottom, "The sentence is on one line.");
+    }
+
+    [WpfFact]
+    public void Shows_no_Add_key_at_host_button()
+    {
+        using var screen = Opened();
+
+        Assert.DoesNotContain(
+            OpenWindows.Descendants(screen.Window).OfType<Button>(), button => button.Content as string == "Add key at host");
+    }
+
+    [WpfFact]
+    public void Copy_public_key_explains_in_a_tooltip_that_it_copies_the_key_and_opens_the_hosts_page()
+    {
+        using var screen = Opened();
+        var button = OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == "Copy public key");
 
         var tip = button.ToolTip is ToolTip { Content: var content } ? content?.ToString() : button.ToolTip?.ToString();
 
         Assert.NotNull(tip);
-        Assert.Contains("SSH key", tip);
+        Assert.Contains("copies", tip, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("opens", tip, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("host", tip, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -231,10 +311,13 @@ public class ConfigureRepositoryTests
     {
         var screen = new ConfigureScreen(sync: sync);
         screen.Open();
-        screen.Expand("Sync settings");
+        screen.ClickTitle("Sync settings");
         screen.Window.UpdateLayout();
         return screen;
     }
+
+    private static Rect Bounds(FrameworkElement element, Window window) =>
+        new(element.TranslatePoint(new Point(0, 0), window), new Size(element.ActualWidth, element.ActualHeight));
 
     private static bool VisibleButton(ConfigureScreen screen, string text) =>
         OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == text).IsVisible;

@@ -12,7 +12,7 @@ public static class TrayApp
     /// <summary>
     /// Creates the app's lifetime. Start first claims the sign-in session; when another instance runs, it ends the app
     /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Manage tasks, Configure,
-    /// Exit; a left click shows Add), connects Configure's two shortcuts (a press shows Add or View Tasks, and does
+    /// Exit; a left click shows View Tasks), connects Configure's two shortcuts (a press shows Add or View Tasks, and does
     /// nothing while any of the app's windows is open), begins the
     /// update checks and the shared sync service. Startup and later actions open Configure until setup is complete;
     /// otherwise startup shows View Tasks when <paramref name="startedAtSignIn"/> is false.

@@ -1,22 +1,34 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
-/// <summary>One shortcut setting as the window shows it: its name, its field, and under the field the message about it.</summary>
+/// <summary>
+/// One shortcut setting as the window shows it: its name, its field, and under the field what the shortcut does, then
+/// the message about it. Esc in the field keeps the shortcut and moves the focus out of the fields.
+/// </summary>
 internal sealed class ShortcutRow
 {
-    private readonly ShortcutSetting _setting;
+    private readonly IShortcutSetting _setting;
+    private readonly string _description;
     private readonly TextBlock _message = ThemedText.Message();
 
-    public ShortcutRow(ShortcutSetting setting, ShortcutSetting other)
+    /// <param name="setting">The row's setting.</param>
+    /// <param name="description">What the shortcut does.</param>
+    /// <param name="others">The other rows' shortcuts, which a pick must differ from.</param>
+    /// <param name="swallowed">Called with the modifiers of a chord released with no other key.</param>
+    public ShortcutRow(IShortcutSetting setting, string description, IUsedShortcut[] others, Action<ModifierKeys> swallowed)
     {
         ArgumentNullException.ThrowIfNull(setting);
-        ArgumentNullException.ThrowIfNull(other);
+        ArgumentNullException.ThrowIfNull(others);
+        ArgumentNullException.ThrowIfNull(swallowed);
         _setting = setting;
+        _description = description;
         Field = new ShortcutField(
-            (modifiers, key) => Changed(() => setting.Pick(modifiers, key, other)),
-            modifiers => Changed(() => setting.KeySwallowed(modifiers)))
+            (modifiers, key) => Changed(() => setting.Pick(modifiers, key, others)),
+            modifiers => Changed(() => swallowed(modifiers)),
+            Keyboard.ClearFocus)
         {
             HorizontalAlignment = HorizontalAlignment.Left,
         };
@@ -26,11 +38,17 @@ internal sealed class ShortcutRow
     /// <summary>The row's shortcut field.</summary>
     public ShortcutField Field { get; }
 
-    /// <summary>Puts the row in a two-column grid: the name in the first column, the field and its message in the second.</summary>
+    /// <summary>Puts the row in a two-column grid: the name in the first column, the field, its description, and its message in the second.</summary>
     public void AddTo(Grid grid, int row)
     {
         var name = new TextBlock { Text = _setting.Label, Margin = new Thickness(0, 6, 12, 0) };
-        var fieldAndMessage = new StackPanel { Margin = new Thickness(0, 0, 0, 5), Children = { Field, _message } };
+        var description = ThemedText.Help(_description, new Thickness(0, 2, 0, 0));
+        description.FontStyle = FontStyles.Italic;
+        var fieldAndMessage = new StackPanel
+        {
+            Margin = new Thickness(0, 0, 0, 5),
+            Children = { Field, description, _message },
+        };
         Grid.SetRow(name, row);
         Grid.SetRow(fieldAndMessage, row);
         Grid.SetColumn(fieldAndMessage, 1);

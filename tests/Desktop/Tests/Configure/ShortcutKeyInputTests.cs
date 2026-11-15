@@ -13,11 +13,12 @@ public class ShortcutKeyInputTests
 {
     private readonly List<(ModifierKeys Modifiers, Key Key)> _picks = [];
     private readonly List<ModifierKeys> _swallowed = [];
+    private int _escaped;
     private readonly ShortcutKeyInput _input;
 
     public ShortcutKeyInputTests()
     {
-        _input = new ShortcutKeyInput((modifiers, key) => _picks.Add((modifiers, key)), _swallowed.Add);
+        _input = new ShortcutKeyInput((modifiers, key) => _picks.Add((modifiers, key)), _swallowed.Add, () => _escaped++);
     }
 
     private void Down(params Key[] keys)
@@ -75,14 +76,53 @@ public class ShortcutKeyInputTests
     }
 
     [Fact]
-    public void Esc_is_handled_and_picks_nothing()
+    public void Esc_with_no_modifier_is_handled_picks_nothing_and_tells_the_box_to_keep_the_shortcut()
     {
-        Down(Key.LeftCtrl);
-
         var handled = _input.KeyDown(Key.Escape, isRepeat: false);
 
         Assert.True(handled);
         Assert.Empty(_picks);
+        Assert.Equal(1, _escaped);
+    }
+
+    [Fact]
+    public void Esc_held_down_tells_the_box_once()
+    {
+        _input.KeyDown(Key.Escape, isRepeat: false);
+
+        var handled = _input.KeyDown(Key.Escape, isRepeat: true);
+
+        Assert.True(handled);
+        Assert.Equal(1, _escaped);
+    }
+
+    [Fact]
+    public void Esc_with_a_modifier_held_is_a_pick_so_Close_window_can_use_it()
+    {
+        Down(Key.LeftShift);
+
+        var handled = _input.KeyDown(Key.Escape, isRepeat: false);
+
+        Assert.True(handled);
+        Assert.Equal([(ModifierKeys.Shift, Key.Escape)], _picks);
+        Assert.Equal(0, _escaped);
+    }
+
+    [Fact]
+    public void Keys_other_than_Esc_never_tell_the_box_to_keep_the_shortcut()
+    {
+        Down(Key.LeftCtrl, Key.LeftShift, Key.K);
+        _input.KeyDown(Key.Tab, isRepeat: false);
+
+        Assert.Equal(0, _escaped);
+    }
+
+    [Fact]
+    public void A_box_without_an_escape_action_still_handles_Esc()
+    {
+        var input = new ShortcutKeyInput((_, _) => { }, _ => { });
+
+        Assert.True(input.KeyDown(Key.Escape, isRepeat: false));
     }
 
     [Fact]

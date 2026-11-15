@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Rendering;
 
@@ -20,6 +21,9 @@ internal sealed class ListServices : ListTasks
 
     public FakeSyncService Sync { get; } = new();
 
+    /// <summary>The Close window keys View Tasks is attached to; a test sets them as Configure does.</summary>
+    public CloseWindowKeys CloseWindowKeys { get; } = new();
+
     /// <summary>The web views View Tasks made, oldest first.</summary>
     public IReadOnlyList<FakeDescriptionWebView> WebViews => webViews;
 
@@ -32,5 +36,5 @@ internal sealed class ListServices : ListTasks
             webViews.Add(view);
             return view;
         },
-        Browser, Sync);
+        Browser, Sync, CloseWindowKeys);
 }

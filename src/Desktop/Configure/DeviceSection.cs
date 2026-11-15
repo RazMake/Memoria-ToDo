@@ -6,7 +6,7 @@ using Memoria.ToDo.Shared.Sync;
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// The Sync settings controls for this device: its name, its key (generate, copy, add at the host), and the host key
+/// The Git Access card's controls for this device: its name, its key (generate, copy and add at the host), and the host key
 /// the device trusts or waits to trust (accept, forget).
 /// </summary>
 internal sealed class DeviceSection : StackPanel
@@ -15,8 +15,8 @@ internal sealed class DeviceSection : StackPanel
     private readonly DeviceActions _actions;
     private readonly TextBox _name = new();
     private readonly TextBlock _hostKey = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
-    private readonly Button _accept = new() { Content = "Accept host key", Margin = new Thickness(0, 6, 6, 0) };
-    private readonly Button _forget = new() { Content = "Forget host key", Margin = new Thickness(0, 6, 0, 0) };
+    private readonly Button _accept = ConfigureButton.Make("Accept host key", new Thickness(0, 6, 6, 0));
+    private readonly Button _forget = ConfigureButton.Make("Forget host key", new Thickness(0, 6, 0, 0));
     private readonly TextBlock _message = ThemedText.Message();
 
     public DeviceSection(SyncUi ui)
@@ -28,12 +28,12 @@ internal sealed class DeviceSection : StackPanel
         _accept.Click += async (_, _) => await _actions.AcceptHostKeyAsync();
         _forget.Click += async (_, _) => await _actions.ForgetHostKeyAsync();
 
-        var addKey = Key("Add key at host", _actions.OpenKeyPage);
-        addKey.ToolTip = "Opens the repository host's page where you add this device's SSH key.";
+        var generate = KeyButton("Generate key", () => _ = _actions.GenerateKeyAsync());
+        var copy = KeyButton("Copy public key", _actions.CopyPublicKey);
+        copy.ToolTip = "Copies the public key, then opens the repository host's page where you add this device's SSH key.";
         var keys = new StackPanel { Orientation = Orientation.Horizontal };
-        keys.Children.Add(Key("Generate key", () => _ = _actions.GenerateKeyAsync()));
-        keys.Children.Add(Key("Copy public key", _actions.CopyPublicKey));
-        keys.Children.Add(addKey);
+        keys.Children.Add(generate);
+        keys.Children.Add(copy);
         var hostButtons = new StackPanel { Orientation = Orientation.Horizontal };
         hostButtons.Children.Add(_accept);
         hostButtons.Children.Add(_forget);
@@ -87,9 +87,9 @@ internal sealed class DeviceSection : StackPanel
         return grid;
     }
 
-    private static Button Key(string content, Action click)
+    private static Button KeyButton(string content, Action click)
     {
-        var button = new Button { Content = content, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 6, 0) };
+        var button = ConfigureButton.Make(content, new Thickness(0, 0, 6, 0));
         button.Click += (_, _) => click();
         return button;
     }

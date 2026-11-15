@@ -14,18 +14,24 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly UiNotices _notices = new();
     private readonly ShortcutSetting _addNewTask;
     private readonly ShortcutSetting _manageTasks;
+    private readonly CloseWindowSetting _closeWindow;
+    private readonly CloseWindowKeys _closeWindowKeys;
     private Window? _open;
     private Action? _refreshOpen;
     private bool _disposed;
 
     public ConfigureShow(
-        IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions)
+        IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions,
+        CloseWindowKeys closeWindowKeys)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(sync);
         ArgumentNullException.ThrowIfNull(setupActions);
+        ArgumentNullException.ThrowIfNull(closeWindowKeys);
         _settings = settings;
+        _closeWindowKeys = closeWindowKeys;
+        _closeWindow = new CloseWindowSetting(() => settings.CloseWindowShortcut, settings.SetCloseWindowShortcut, closeWindowKeys.Set);
         _addNewTask = new("Add new task", Shortcut.AddNewTaskDefault,
             () => settings.AddNewTaskShortcut, settings.SetAddNewTaskShortcut);
         _manageTasks = new("Manage tasks", Shortcut.ManageTasksDefault,
@@ -68,7 +74,7 @@ internal sealed class ConfigureShow : IConfigureWindow
     {
         _addNewTask.SettingsChanged();
         _manageTasks.SettingsChanged();
-        _refreshOpen?.Invoke();
+        _closeWindow.SettingsChanged();?.Invoke();
     });
 
     private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)

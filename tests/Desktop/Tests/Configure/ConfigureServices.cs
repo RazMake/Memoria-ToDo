@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -17,7 +18,9 @@ internal sealed class ConfigureServices
     public FakeStartWithWindows StartWithWindows { get; }
     public FakeSyncService Sync { get; }
     public FakeSetupActions SetupActions { get; } = new();
+    public CloseWindowKeys CloseWindowKeys { get; } = new();
     public ITaskStore Store { get; }
 
-    public IConfigureWindow Create() => ConfigureWindow.Create(StartWithWindows, Store.Settings, Sync, SetupActions);
+    public IConfigureWindow Create() =>
+        ConfigureWindow.Create(StartWithWindows, Store.Settings, Sync, SetupActions, CloseWindowKeys);
 }

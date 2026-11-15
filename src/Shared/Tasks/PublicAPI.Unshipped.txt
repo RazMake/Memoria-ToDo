@@ -53,9 +53,11 @@ Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.TasksFolderName.get -> string!
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.AddNewTaskShortcut.get -> string?
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.Changed -> System.EventHandler?
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.CloseWindowShortcut.get -> string?
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.DeletionDelayDays.get -> int
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.ManageTasksShortcut.get -> string?
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetAddNewTaskShortcut(string? shortcut) -> void
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetCloseWindowShortcut(string? shortcut) -> void
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetDeletionDelayDays(int days) -> void
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetManageTasksShortcut(string? shortcut) -> void
 Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile

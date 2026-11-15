@@ -51,21 +51,29 @@ internal sealed class TasksFixture
 
     public string SettingsFile => Path.Combine(Clone, "settings.json");
 
-    /// <summary>Writes settings.json in the clone as literal JSON. Each setting is a value and a UTC time.</summary>
+    /// <summary>
+    /// Writes settings.json in the clone as literal JSON. Each setting is a value and a UTC time.
+    /// <paramref name="withClose"/> false leaves out closeWindowShortcut, as a file written before it existed.
+    /// </summary>
     public void SeedSettings(int days = 7, string? add = null, string? manage = null, int version = 1,
-        string daysTime = "2026-01-01T00:00:00.000Z", string addTime = "2026-01-01T00:00:00.000Z", string manageTime = "2026-01-01T00:00:00.000Z") =>
-        WriteText(SettingsFile, SettingsJson(days, add, manage, version, daysTime, addTime, manageTime));
+        string daysTime = "2026-01-01T00:00:00.000Z", string addTime = "2026-01-01T00:00:00.000Z", string manageTime = "2026-01-01T00:00:00.000Z",
+        string? close = null, string closeTime = "2026-01-01T00:00:00.000Z", bool withClose = true) =>
+        WriteText(SettingsFile, SettingsJson(days, add, manage, version, daysTime, addTime, manageTime, close, closeTime, withClose));
 
     public static string SettingsJson(int days = 7, string? add = null, string? manage = null, int version = 1,
-        string daysTime = "2026-01-01T00:00:00.000Z", string addTime = "2026-01-01T00:00:00.000Z", string manageTime = "2026-01-01T00:00:00.000Z") =>
+        string daysTime = "2026-01-01T00:00:00.000Z", string addTime = "2026-01-01T00:00:00.000Z", string manageTime = "2026-01-01T00:00:00.000Z",
+        string? close = null, string closeTime = "2026-01-01T00:00:00.000Z", bool withClose = true) =>
         $$"""
         {
           "version": {{version}},
           "deletionDelayDays": { "value": {{days}}, "updated": {{Quote(daysTime)}} },
           "addNewTaskShortcut": { "value": {{(add is null ? "null" : Quote(add))}}, "updated": {{Quote(addTime)}} },
-          "manageTasksShortcut": { "value": {{(manage is null ? "null" : Quote(manage))}}, "updated": {{Quote(manageTime)}} }
+          "manageTasksShortcut": { "value": {{(manage is null ? "null" : Quote(manage))}}, "updated": {{Quote(manageTime)}} }{{(withClose ? CloseLine(close, closeTime) : "")}}
         }
         """;
+
+    private static string CloseLine(string? close, string closeTime) =>
+        $",\n  \"closeWindowShortcut\": {{ \"value\": {(close is null ? "null" : Quote(close))}, \"updated\": {Quote(closeTime)} }}";
 
     public void WriteText(string path, string text) => Files.WriteFile(path, Encoding.UTF8.GetBytes(text));
 

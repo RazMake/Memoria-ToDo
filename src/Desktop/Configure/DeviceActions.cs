@@ -22,23 +22,35 @@ internal sealed class DeviceActions
 
     public Task GenerateKeyAsync() => _ui.RunAsync(token => _ui.Sync.Setup.GenerateKeyAsync(token), Report);
 
+    /// <summary>
+    /// Copies the public key, then opens the host's page for adding it. Without a key it opens nothing; a failed copy
+    /// opens no page; a host with no page leaves the key copied and says where to add it.
+    /// </summary>
     public void CopyPublicKey()
     {
-        var key = _ui.Sync.Setup.State.PublicKey;
-        Report(key is null ? "Generate a key first." : null);
-        if (key is not null)
+        var state = _ui.Sync.Setup.State;
+        if (state.PublicKey is not { } key)
         {
-            Try(() => _ui.Actions.CopyPublicKey(key));
+            Report("Generate a key first.");
+            return;
         }
-    }
 
-    public void OpenKeyPage()
-    {
-        var page = _ui.Sync.Setup.State.AddKeyPage;
-        Report(page is null ? "The repository's host has no page to add a key." : null);
-        if (page is not null)
+        try
         {
-            Try(() => _ui.Actions.OpenKeyPage(page));
+            _ui.Actions.CopyPublicKey(key);
+            if (state.AddKeyPage is { } page)
+            {
+                _ui.Actions.OpenKeyPage(page);
+                Report(null);
+            }
+            else
+            {
+                Report("Copied. Add the key in your repository host's settings.");
+            }
+        }
+        catch (Exception error)
+        {
+            Report(error.Message);
         }
     }
 
@@ -70,18 +82,6 @@ internal sealed class DeviceActions
         if (_ui.Sync.Setup.State.HostKey is { } host)
         {
             await _ui.RunAsync(token => _ui.Sync.Setup.ForgetHostKeyAsync(host.Host, host.Port, token), Report);
-        }
-    }
-
-    private void Try(Action action)
-    {
-        try
-        {
-            action();
-        }
-        catch (Exception error)
-        {
-            Report(error.Message);
         }
     }
 

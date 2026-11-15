@@ -18,7 +18,8 @@ public static class ViewTasksWindow
     /// </summary>
     public static IViewTasksWindow Create(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync)
+        Func<IDescriptionWebView> createWebView,         IDefaultBrowser browser, ISyncService sync,
+                CloseWindowKeys closeWindowKeys)
     {
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(palette);

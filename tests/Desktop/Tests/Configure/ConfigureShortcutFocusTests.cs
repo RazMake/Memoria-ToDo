@@ -31,4 +31,21 @@ public class ConfigureShortcutFocusTests
         Assert.Equal(ShortcutCall.Register(TestShortcut.AddNewTaskDefault), screen.AddNewTask.Calls[^1]);
         Assert.Equal(ShortcutCall.Register(TestShortcut.ManageTasksDefault), screen.ManageTasks.Calls[^1]);
     }
+
+    [WpfFact]
+    public void Focus_entering_the_Close_window_box_releases_both_global_shortcuts()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+
+        ConfigureScreen.Focus(screen.CloseField);
+
+        Assert.Equal([ShortcutCall.Unregister()], screen.AddNewTask.Calls);
+        Assert.Equal([ShortcutCall.Unregister()], screen.ManageTasks.Calls);
+
+        screen.FocusStartWithWindowsBox();
+
+        Assert.Equal(ShortcutCall.Register(TestShortcut.AddNewTaskDefault), screen.AddNewTask.Calls[^1]);
+        Assert.Equal(ShortcutCall.Register(TestShortcut.ManageTasksDefault), screen.ManageTasks.Calls[^1]);
+    }
 }

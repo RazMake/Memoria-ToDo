@@ -109,6 +109,68 @@ public class SyncTextTests
     }
 
     [Fact]
+    public void The_last_sync_line_says_not_synced_yet_when_there_was_no_success()
+    {
+        Assert.Equal("Not synced yet.", SyncText.LastSync(new FakeSyncStatus()));
+    }
+
+    [Fact]
+    public void The_last_sync_line_shows_the_last_success_in_local_time()
+    {
+        var at = new DateTimeOffset(2038, 2, 1, 12, 0, 0, TimeSpan.Zero);
+
+        var text = SyncText.LastSync(new FakeSyncStatus { LastSuccessfulSync = at });
+
+        Assert.Equal($"Last successful sync: {at.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)}", text);
+    }
+
+    [Fact]
+    public void The_last_sync_line_is_only_that_line_whatever_else_the_status_says()
+    {
+        var text = SyncText.LastSync(new FakeSyncStatus
+        {
+            HasPendingChanges = true, State = SyncState.Error, Details = "Host unreachable",
+            SkippedFiles = [new FakeSkippedFile("tasks/a.json", "Unreadable.")],
+        });
+
+        Assert.Equal("Not synced yet.", text);
+    }
+
+    [Fact]
+    public void A_status_with_nothing_more_to_say_has_no_details()
+    {
+        Assert.Null(SyncText.StatusDetails(new FakeSyncStatus { LastSuccessfulSync = DateTimeOffset.UnixEpoch }));
+    }
+
+    [Fact]
+    public void The_details_list_pending_changes_the_failure_and_each_skipped_file_one_per_line()
+    {
+        var text = SyncText.StatusDetails(new FakeSyncStatus
+        {
+            HasPendingChanges = true, State = SyncState.Offline, Details = "Host unreachable",
+            SkippedFiles = [new FakeSkippedFile("tasks/a.json", "Unreadable."), new FakeSkippedFile("tasks/b.json", "Newer format.")],
+        });
+
+        Assert.Equal(
+            string.Join(Environment.NewLine,
+                "Changes wait to be synced.", "Host unreachable",
+                "Skipped tasks/a.json: Unreadable.", "Skipped tasks/b.json: Newer format."),
+            text);
+    }
+
+    [Fact]
+    public void Details_of_a_status_that_is_not_failing_are_left_out_of_the_details()
+    {
+        Assert.Null(SyncText.StatusDetails(new FakeSyncStatus { State = SyncState.Idle, Details = "Old news" }));
+    }
+
+    [Fact]
+    public void A_failing_status_without_details_adds_no_detail_line()
+    {
+        Assert.Null(SyncText.StatusDetails(new FakeSyncStatus { State = SyncState.Error, Details = null }));
+    }
+
+    [Fact]
     public void A_host_key_line_names_the_host_port_algorithm_and_fingerprint()
     {
         var text = SyncText.HostKey(new FakeSshHostKey("self.example", 2222, "ssh-ed25519", "SHA256:abc", true));

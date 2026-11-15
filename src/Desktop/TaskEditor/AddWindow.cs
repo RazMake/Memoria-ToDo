@@ -10,7 +10,8 @@ public static class AddWindow
 {
     /// <summary>Creates the Add window. It opens only on <see cref="IAddWindow.Show"/>.</summary>
     public static IAddWindow Create(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files) =>
+        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
+        CloseWindowKeys closeWindowKeys) =>
         new AddWindowView(tasks, new TaskEditorControl(tasks, palette, theme, time, clipboard, imageFiles, files));
 }
 

@@ -76,5 +76,5 @@ public class ViewTasksWindowTests
 
     private static IViewTasksWindow CreateWindow(ListServices services, ISyncService sync, Func<IDescriptionWebView> createWebView) =>
         ViewTasksWindow.Create(services.Tasks, Palette.Colors, services.Theme, services.Time, services.Clipboard,
-            new FakeImageFileChooser(), services.Files, createWebView, services.Browser, sync);
+            new FakeImageFileChooser(), services.Files, createWebView, services.Browser, sync, services.CloseWindowKeys);
 }

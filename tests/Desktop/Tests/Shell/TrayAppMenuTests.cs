@@ -13,10 +13,23 @@ public class TrayAppMenuTests
         return app;
     }
 
+    [Fact]
+    public void Add_new_task_shows_only_Add()
+    {
+        var app = Started();
+
+        app.TrayIcon.ChooseMenuItem("Add new task");
+
+        Assert.Equal(1, app.Add.ShowCount);
+        Assert.Equal(0, app.ViewTasks.ShowCount);
+        Assert.Equal(0, app.Configure.ShowCount);
+        Assert.Equal(0, app.EndAppCalls);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Add_new_task_and_a_left_click_each_show_only_Add(bool leftClick)
+    public void Manage_tasks_and_a_left_click_each_show_only_View_Tasks(bool leftClick)
     {
         var app = Started();
 
@@ -26,21 +39,8 @@ public class TrayAppMenuTests
         }
         else
         {
-            app.TrayIcon.ChooseMenuItem("Add new task");
+            app.TrayIcon.ChooseMenuItem("Manage tasks");
         }
-
-        Assert.Equal(1, app.Add.ShowCount);
-        Assert.Equal(0, app.ViewTasks.ShowCount);
-        Assert.Equal(0, app.Configure.ShowCount);
-        Assert.Equal(0, app.EndAppCalls);
-    }
-
-    [Fact]
-    public void Manage_tasks_shows_only_View_Tasks()
-    {
-        var app = Started();
-
-        app.TrayIcon.ChooseMenuItem("Manage tasks");
 
         Assert.Equal(0, app.Add.ShowCount);
         Assert.Equal(1, app.ViewTasks.ShowCount);
@@ -79,9 +79,9 @@ public class TrayAppMenuTests
     {
         var app = Started();
 
-        app.TrayIcon.ChooseMenuItem("Add new task");
+        app.TrayIcon.ChooseMenuItem("Manage tasks");
         app.TrayIcon.LeftClick();
 
-        Assert.Equal(2, app.Add.ShowCount);
+        Assert.Equal(2, app.ViewTasks.ShowCount);
     }
 }

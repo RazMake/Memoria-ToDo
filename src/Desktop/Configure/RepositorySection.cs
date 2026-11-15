@@ -20,12 +20,14 @@ internal sealed class RepositorySection : StackPanel
     private readonly TextBlock _identity = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 8) };
     private readonly TextBox _address = new() { Margin = new Thickness(0, 0, 0, 5) };
     private readonly TextBox _localFolder = new();
-    private readonly Button _clone = new() { Content = "Clone", HorizontalAlignment = HorizontalAlignment.Left };
-    private readonly Button _use = new() { Content = "Use this clone", HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly Button _clone = ConfigureButton.Make("Clone");
+    private readonly Button _use = ConfigureButton.Make("Use this clone");
     private readonly StackPanel _controls = new() { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 0) };
     private readonly TextBlock _message = ThemedText.Message();
 
-    public RepositorySection(SyncUi ui)
+    /// <param name="ui">The window's sync service and operations.</param>
+    /// <param name="status">The sync status, which shows right after the three lines.</param>
+    public RepositorySection(SyncUi ui, UIElement status)
     {
         _change = new RepositoryChange(ui, Show);
         AutomationProperties.SetName(_address, "Repository address");
@@ -44,7 +46,8 @@ internal sealed class RepositorySection : StackPanel
         Children.Add(_remote);
         Children.Add(_folder);
         Children.Add(_identity);
-        Children.Add(ConfigureButton());
+        Children.Add(status);
+        Children.Add(ConfigureMenuButton());
         Children.Add(_controls);
         Children.Add(_message);
         Refresh();
@@ -66,9 +69,9 @@ internal sealed class RepositorySection : StackPanel
         ThemedText.ShowMessage(_message, _change.Message);
     }
 
-    private Button ConfigureButton()
+    private Button ConfigureMenuButton()
     {
-        var button = new Button { Content = "Configure", HorizontalAlignment = HorizontalAlignment.Left };
+        var button = ConfigureButton.Make("Configure");
         var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
         menu.Items.Add(Choice("Clone a repo", RepositoryChoice.Clone));
         menu.Items.Add(Choice("Use existing repo clone", RepositoryChoice.UseExisting));
@@ -88,7 +91,7 @@ internal sealed class RepositorySection : StackPanel
 
     private static Grid FolderRow(TextBox folder)
     {
-        var browse = new Button { Content = "Browse…", Margin = new Thickness(5, 0, 0, 0) };
+        var browse = ConfigureButton.Make("Browse…", new Thickness(5, 0, 0, 0));
         browse.Click += (_, _) =>
         {
             var dialog = new OpenFolderDialog { Title = "Choose a folder" };

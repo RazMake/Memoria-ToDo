@@ -39,6 +39,7 @@ internal static class Program
             var browser = new ShellDefaultBrowser();
             var deviceFolder = DeviceFolder();
             var repositories = new RepositorySelection(files, tasks.UseRepositoryFolder, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
+            var closeWindowKeys = new CloseWindowKeys();
             var sync = SyncService.Create(
                 tasks.Synchronization,
                 files,
@@ -57,7 +58,8 @@ internal static class Program
                     TimeProvider.System,
                     clipboard,
                     imageFiles,
-                    files),
+                    files,
+                    closeWindowKeys),
                 ViewTasksWindow.Create(
                     tasks,
                     Palette.Colors,
@@ -69,12 +71,14 @@ internal static class Program
                     // Each open of View Tasks serves the folder the repository is in then.
                     () => new WpfDescriptionWebView(tasks.Synchronization.RepositoryFolder, BrowserDataFolder()),
                     browser,
-                    sync),
+                    sync,
+                    closeWindowKeys),
                 ConfigureWindow.Create(
                     StartWithWindows(),
                     tasks.Settings,
                     sync,
-                    new WindowsSetupActions(browser)),
+                    new WindowsSetupActions(browser),
+                    closeWindowKeys),
                 new VelopackUpdates(RepositoryUrl),
                 new HotKeyShortcut(),
                 // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
