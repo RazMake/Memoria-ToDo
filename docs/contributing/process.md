@@ -8,10 +8,10 @@ The session you talk to runs these steps, asks you each decision, and delivers t
 | --- | --- | --- |
 | Find what exists | [explorer](../../.agents/subagents/explorer.md) | Answers with `path:line` evidence |
 | Design | [architect](../../.agents/subagents/architect.md) | Design file, behaviors to build, questions for you |
-| Red | [tester](../../.agents/subagents/tester.md) | Failing unit tests, and written UX and integration tests |
+| Red | [tester](../../.agents/subagents/tester.md) | Failing tests of every kind, each proven able to fail |
 | Green | [coder](../../.agents/subagents/coder.md) | Code that makes unit tests pass, inside one module |
 | Review | [reviewer](../../.agents/subagents/reviewer.md) | Findings, sorted into code defects and design gaps |
-| Final validation | [coder](../../.agents/subagents/coder.md) | [Failure proof and final checks](../../AGENTS.md#tests), once per session |
+| Final validation | [coder](../../.agents/subagents/coder.md) | [One full build and test run](../../AGENTS.md#run-timing), once per session |
 
 ## Spend agents, builds, and test runs sparingly
 
@@ -57,13 +57,13 @@ Design files describe the current design only. Git history records how it change
 ## Changing the code
 
 1. **List the behaviors.** In the full lane, the architect lists each rule the change must satisfy, from the owner design file. One architect call covers the whole request: every module, behavior, and open question. After you decide, the main session records your decisions, as [Changing the design](#changing-the-design) says. In the trivial and small lanes, the owner design file already lists the behaviors, so there is no architect call. A rule that needs a missing decision goes through [Changing the design](#changing-the-design) first, or is decided, recorded, and flagged as [contributions](../../AGENTS.md#contributions) principle 3 allows.
-2. **Red.** The tester follows the [test policy](../../AGENTS.md#tests), delivering failing unit tests, and written UX and integration tests with the break that will prove each can fail. In the trivial lane, the coder writes the failing test instead.
+2. **Red.** The tester follows the [test policy](../../AGENTS.md#tests), delivering failing tests of every kind, each proven able to fail when it's added. In the trivial lane, the coder writes the failing test instead.
 3. **Green.** The coder changes the code until the selected unit tests pass, without editing them. A test that turns out wrong goes back to the tester. The coder handles production refactors needed for testability under the [test policy](../../AGENTS.md#tests).
 4. **Review**, in the small and full lanes, once all the session's changes are green. Follow [Independent review](#independent-review) to launch the reviewer and resolve every finding. The reviewer checks the change against the design file and the [module rules](../architecture/modules.md). Each finding is one of two kinds:
    - **Code defect**: the code, tests, or docs miss the design. Fix it test first, from step 2, running only the tests that cover the fix.
    - **Design gap**: the design is missing, unclear, or wrong. It goes to you as a decision; code doesn't settle it.
 
-5. **Final validation**, only when all the work is done: every change in the session is green, and every finding is fixed or decided by you. The main session calls the coder once for the [full run](../../AGENTS.md#run-timing), with the breaks the tester recorded. It must end with zero failed and zero skipped tests; the coder fixes every failure it shows and reruns until it does.
+5. **Final validation**, only when all the work is done: every change in the session is green, and every finding is fixed or decided by you. The main session calls the coder once for the [full run](../../AGENTS.md#run-timing). It must end with zero failed and zero skipped tests; the coder fixes every failure it shows and reruns until it does.
 6. **Report** in chat, in the format below.
 
 A change that keeps behavior, such as a refactor or a move, uses the same unit tests before and after. UX and integration checks follow the [test policy's final-validation timing](../../AGENTS.md#tests).

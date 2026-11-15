@@ -101,7 +101,7 @@ The shared library has four modules:
 | Tasks | Task files and their format, the in-memory list, every task operation, tags and search, task links, how two versions of a task merge, images and their shrinking, this device's draft of a new task, [shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs), and [each tag's color](tasks.md#each-tags-color-is-kept-in-one-synced-file) | [Tasks](tasks.md) | None |
 | Sync | Commit, fetch, merge, and push in the background through its own git code on LibGit2Sharp and SSH.NET, and the device's repository settings, SSH key, and known host keys | [Sync through git](sync.md) | Tasks |
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's rules | [Editing](editing.md) | None |
-| Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, and which links may open in the browser | [Rendering](rendering.md) | None |
+| Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, the text look of headings, links, code, and italic text, and which links may open in the browser | [Rendering](rendering.md) | None |
 
 The desktop app has five modules of its own:
 
@@ -109,8 +109,8 @@ The desktop app has five modules of its own:
 | --- | --- | --- | --- |
 | Shell | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Configure, Sync |
 | Task editor | The Add window, and the editor, tag control, tag badges, and top tags View Tasks uses | [Task editor](desktop/task-editor.md) | Tasks, Editing, Rendering |
-| Task list | View Tasks: open tasks in rank order, expanded and edited in place, with colored tags that change without Edit, the tag filter, search, resolving, deleting, resolved tasks, and the Sync button | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Formatted view, Sync |
-| Configure | The two global shortcuts and the deletion delay, which every device shares; the Close window shortcut; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Sync |
+| Task list | View Tasks: open tasks grouped by tag beside the selected task's description, edited there, with colored tags that change without Edit, the tag filter, search, resolving, deleting, resolved tasks, and the Sync button | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Formatted view, Sync |
+| Configure | The two global shortcuts and the deletion delay, which every device shares; the Close window shortcut; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 
 Proposed, each a decision to confirm:

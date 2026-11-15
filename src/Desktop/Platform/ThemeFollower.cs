@@ -1,13 +1,12 @@
 using System.Windows;
-using Memoria.ToDo.Desktop.Platform;
 
-namespace Memoria.ToDo.Desktop.FormattedView;
+namespace Memoria.ToDo.Desktop.Platform;
 
 /// <summary>
-/// Calls back when the theme changes, but only while the element is loaded, so a window that is closed holds no subscription.
-/// It also calls back once the element loads, since the theme may have changed while it was away.
+/// Calls themeChanged when the theme switches, while element is loaded, and once each time it loads.
+/// Disposing it stops the calls.
 /// </summary>
-internal sealed class ThemeFollower : IDisposable
+public sealed class ThemeFollower : IDisposable
 {
     private readonly FrameworkElement _element;
     private readonly ITheme _theme;
@@ -15,8 +14,12 @@ internal sealed class ThemeFollower : IDisposable
     private bool _subscribed;
     private bool _disposed;
 
+    /// <summary>Throws <see cref="ArgumentNullException"/> for a null argument.</summary>
     public ThemeFollower(FrameworkElement element, ITheme theme, Action themeChanged)
     {
+        ArgumentNullException.ThrowIfNull(element);
+        ArgumentNullException.ThrowIfNull(theme);
+        ArgumentNullException.ThrowIfNull(themeChanged);
         _element = element;
         _theme = theme;
         _themeChanged = themeChanged;
@@ -25,9 +28,11 @@ internal sealed class ThemeFollower : IDisposable
         if (element.IsLoaded)
         {
             Subscribe();
+            _themeChanged();
         }
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
         _disposed = true;

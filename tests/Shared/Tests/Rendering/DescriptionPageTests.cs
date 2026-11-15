@@ -37,10 +37,112 @@ public class DescriptionPageTests
     }
 
     [Fact]
-    public void Sets_no_background_so_the_window_shows_through()
+    public void Sets_no_background_on_the_page_so_the_window_shows_through()
     {
-        Assert.DoesNotContain("background", Page("a", dark: true), StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("background", Page("a", dark: false), StringComparison.OrdinalIgnoreCase);
+        foreach (var dark in new[] { false, true })
+        {
+            var page = Page("a", dark);
+
+            Assert.DoesNotContain("<body style=\"background", page, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(Rules(page, "html", "body"), body => body.Contains("background", StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    // The text look: one style block with the theme's colors.
+
+    private static IEnumerable<string> Rules(string page, params string[] tags)
+    {
+        var style = Regex.Match(page, "<style[^>]*>(.*?)</style>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        if (!style.Success)
+        {
+            return [];
+        }
+
+        return Regex.Matches(style.Groups[1].Value, "([^{}]+)\\{([^}]*)\\}")
+            .Where(rule => rule.Groups[1].Value.Split(',')
+                .Any(selector => tags.Any(tag => Regex.IsMatch(selector, $"(^|[\\s>]){tag}([\\s:.\\[]|$)"))))
+            .Select(rule => rule.Groups[2].Value);
+    }
+
+    private static void AssertColorOf(string page, string tag, string color)
+    {
+        var bodies = Rules(page, tag).ToList();
+        Assert.True(
+            bodies.Any(b => Regex.IsMatch(b, $"(^|[;\\s])color\\s*:\\s*{color}", RegexOptions.IgnoreCase)),
+            $"No style rule for <{tag}> sets color:{color}.");
+    }
+
+    private const string FadedGray15 = @"rgba\(\s*128\s*,\s*128\s*,\s*128\s*,\s*0?\.15\s*\)|#80808026";
+    private const string FadedGray25 = @"rgba\(\s*128\s*,\s*128\s*,\s*128\s*,\s*0?\.25\s*\)|#80808040";
+
+    [Theory]
+    [InlineData(false, "#0f548c", "#0e7a75", "#6b3fa0")]
+    [InlineData(true, "#6cb8f6", "#4fd1c5", "#c4a7f5")]
+    public void Colors_headings_1_to_3_in_the_themes_heading_colors(bool dark, string h1, string h2, string h3)
+    {
+        var page = Page("# a\n\n## b\n\n### c", dark);
+
+        AssertColorOf(page, "h1", h1);
+        AssertColorOf(page, "h2", h2);
+        AssertColorOf(page, "h3", h3);
+    }
+
+    [Fact]
+    public void Leaves_headings_4_to_6_in_the_text_color()
+    {
+        var page = Page("#### a\n\n##### b\n\n###### c");
+
+        Assert.NotEmpty(Rules(page, "h1", "h2", "h3"));
+        Assert.DoesNotContain(Rules(page, "h4", "h5", "h6"),
+            body => Regex.IsMatch(body, "(^|[;\\s])color\\s*:", RegexOptions.IgnoreCase));
+    }
+
+    [Theory]
+    [InlineData(false, "#0969da")]
+    [InlineData(true, "#4493f8")]
+    public void Colors_links_in_the_themes_link_color(bool dark, string link)
+    {
+        AssertColorOf(Page("[a](https://example.org)", dark), "a", link);
+    }
+
+    [Theory]
+    [InlineData(false, "#4f5b93")]
+    [InlineData(true, "#b4bdf5")]
+    public void Colors_italic_text_in_the_themes_italic_color(bool dark, string italic)
+    {
+        AssertColorOf(Page("_a_", dark), "em", italic);
+    }
+
+    [Theory]
+    [InlineData(false, "#9a3c00", FadedGray15)]
+    [InlineData(true, "#f0a868", FadedGray25)]
+    public void Shows_inline_code_in_the_themes_code_color_on_its_faded_background(bool dark, string code, string faded)
+    {
+        var page = Page("`a`", dark);
+
+        AssertColorOf(page, "code", code);
+        Assert.Contains(Rules(page, "code"), body => Regex.IsMatch(body, $"background[^:;]*:[^;]*({faded})", RegexOptions.IgnoreCase));
+    }
+
+    [Theory]
+    [InlineData(false, "#9a3c00", FadedGray15)]
+    [InlineData(true, "#f0a868", FadedGray25)]
+    public void Shows_a_code_block_in_the_themes_code_color_on_its_faded_background(bool dark, string code, string faded)
+    {
+        var page = Page("```\na\n```", dark);
+
+        Assert.Contains(Rules(page, "pre", "code"), body => Regex.IsMatch(body, $"(^|[;\\s])color\\s*:\\s*{code}", RegexOptions.IgnoreCase));
+        Assert.Contains(Rules(page, "pre"), body => Regex.IsMatch(body, $"background[^:;]*:[^;]*({faded})", RegexOptions.IgnoreCase));
+    }
+
+    [Fact]
+    public void Sets_the_system_interface_font_at_14_pixels()
+    {
+        var page = Page("a");
+
+        Assert.Contains(Rules(page, "html", "body"), body =>
+            Regex.IsMatch(body, "font-family\\s*:[^;]*system-ui", RegexOptions.IgnoreCase)
+            && Regex.IsMatch(body, "font-size\\s*:\\s*14px", RegexOptions.IgnoreCase));
     }
 
     // Markdown shows as what a reader sees: no source markers.
@@ -253,6 +355,81 @@ public class DescriptionPageTests
         var page = Page("`:red[urgent]`");
 
         AssertTag(page, "<code>:red\\[urgent\\]</code>");
+    }
+
+    // The color the page gives the word "zed": the nearest element around it that has a color, from its own style attribute or
+    // from the style block's rule for its tag, else the page's text color. Only tag selectors and style attributes exist on the page.
+    private static string ColorOfZed(string page)
+    {
+        var stack = new List<(string Tag, string? Color)>();
+        string? zedColor = null;
+        var found = false;
+        var body = page[page.IndexOf("<body", StringComparison.OrdinalIgnoreCase)..];
+        foreach (Match token in Regex.Matches(body, "<(/?)([a-z0-9]+)([^>]*?)(/?)>|[^<]+", RegexOptions.IgnoreCase))
+        {
+            if (!token.Groups[2].Success)
+            {
+                if (token.Value.Contains("zed"))
+                {
+                    zedColor = stack.LastOrDefault(e => e.Color is not null).Color;
+                    found = true;
+                }
+
+                continue;
+            }
+
+            var tag = token.Groups[2].Value.ToLowerInvariant();
+            if (token.Groups[1].Value == "/")
+            {
+                var open = stack.FindLastIndex(e => e.Tag == tag);
+                if (open >= 0)
+                {
+                    stack.RemoveRange(open, stack.Count - open);
+                }
+            }
+            else if (token.Groups[4].Value != "/" && tag is not ("br" or "img" or "hr"))
+            {
+                stack.Add((tag, ColorOfElement(page, tag, token.Groups[3].Value)));
+            }
+        }
+
+        Assert.True(found, "The word zed isn't on the page.");
+        return (zedColor ?? ColorDeclared(Rules(page, "body")) ?? throw new InvalidOperationException("The page sets no text color.")).ToLowerInvariant();
+    }
+
+    private static string? ColorOfElement(string page, string tag, string attributes) =>
+        Regex.Match(attributes, "style=\"(?:[^\"]*[;\\s])?color\\s*:\\s*([^;\"\\s]+)", RegexOptions.IgnoreCase) is { Success: true } inline
+            ? inline.Groups[1].Value
+            : ColorDeclared(Rules(page, tag));
+
+    private static string? ColorDeclared(IEnumerable<string> bodies) =>
+        bodies.Select(b => Regex.Matches(b, "(?:^|[;\\s])color\\s*:\\s*([^;\\s]+)", RegexOptions.IgnoreCase))
+            .Where(m => m.Count > 0).Select(m => m[^1].Groups[1].Value).LastOrDefault();
+
+    // What the design says the span of "zed" shows in: Rendering's one precedence, for the same Markdown and theme.
+    private static string DesignedColorOfZed(string markdown, bool dark)
+    {
+        var at = markdown.IndexOf("zed", StringComparison.Ordinal);
+        var span = StyledSpans.Of(markdown, MarkdownField.Description).Single(s => s.Start <= at && at < s.Start + s.Length);
+        return TextLooks.Of(dark).ColorOf(span)!.ToLowerInvariant();
+    }
+
+    [Theory]
+    [InlineData(":red[_zed_]", false)]
+    [InlineData(":red[_zed_]", true)]
+    [InlineData(":red[`zed`]", false)]
+    [InlineData(":red[`zed`]", true)]
+    [InlineData(":red[[zed](https://example.org)]", false)]
+    [InlineData(":red[[zed](https://example.org)]", true)]
+    [InlineData("[_zed_](https://example.org)", false)]
+    [InlineData("[_zed_](https://example.org)", true)]
+    [InlineData("[`zed`](https://example.org)", false)]
+    [InlineData("[`zed`](https://example.org)", true)]
+    public void Gives_text_with_more_than_one_style_the_one_color_that_Rendering_chooses_for_it(string markdown, bool dark)
+    {
+        var expected = DesignedColorOfZed(markdown, dark);
+
+        Assert.Equal(expected, ColorOfZed(Page(markdown, dark)));
     }
 
     [Fact]

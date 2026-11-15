@@ -16,19 +16,22 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly ShortcutSetting _manageTasks;
     private readonly CloseWindowSetting _closeWindow;
     private readonly CloseWindowKeys _closeWindowKeys;
+    private readonly ITheme _theme;
     private Window? _open;
     private Action? _refreshOpen;
     private bool _disposed;
 
     public ConfigureShow(
         IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions,
-        CloseWindowKeys closeWindowKeys)
+        CloseWindowKeys closeWindowKeys, ITheme theme)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(sync);
         ArgumentNullException.ThrowIfNull(setupActions);
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
+        ArgumentNullException.ThrowIfNull(theme);
+        _theme = theme;
         _settings = settings;
         _closeWindowKeys = closeWindowKeys;
         _closeWindow = new CloseWindowSetting(() => settings.CloseWindowShortcut, settings.SetCloseWindowShortcut, closeWindowKeys.Set);
@@ -85,6 +88,7 @@ internal sealed class ConfigureShow : IConfigureWindow
         var ui = new SyncUi(sync, setupActions, _notices.Post);
         var syncSettings = new SyncSettingsSection(ui, delay);
         var sections = new Accordion(
+            _theme,
             ("Shortcuts", shortcuts),
             ("Startup", new StartWithWindowsRow(startWithWindows)),
             ("Sync settings", syncSettings))

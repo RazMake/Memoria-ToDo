@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -74,6 +75,145 @@ public class AddWindowStylingTests
         var plain = await Look(screen, EditorFields.Description, "#mmmmmmmmmm");
 
         Assert.True(heading.InkHeight() > plain.InkHeight());
+    }
+
+    [WpfTheory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    public async Task A_heading_of_level_1_to_3_shows_in_its_color_for_the_theme(bool dark, int level)
+    {
+        using var screen = new AddScreen();
+        screen.Services.Theme.IsDark = dark;
+
+        var look = await Look(screen, EditorFields.Description, new string('#', level) + " mmmmmmmmmmmm");
+
+        Assert.True(look.ShowsColor(TextLooks.Of(dark).HeadingColor(level)!));
+        Assert.False(look.ShowsColor(TextLooks.Of(!dark).HeadingColor(level)!));
+    }
+
+    [WpfTheory]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    public async Task A_heading_of_level_4_to_6_shows_in_none_of_the_heading_colors(int level)
+    {
+        using var screen = new AddScreen();
+
+        var look = await Look(screen, EditorFields.Description, new string('#', level) + " mmmmmmmmmmmm");
+
+        Assert.False(look.ShowsColor(TextLooks.Light.Heading1));
+        Assert.False(look.ShowsColor(TextLooks.Light.Heading2));
+        Assert.False(look.ShowsColor(TextLooks.Light.Heading3));
+    }
+
+    [WpfFact]
+    public async Task A_heading_shows_at_the_size_of_its_level_and_a_level_4_heading_is_taller_than_plain_text()
+    {
+        using var screen = new AddScreen();
+
+        var one = await Look(screen, EditorFields.Description, "# mmmmmmmmmm");
+        var two = await Look(screen, EditorFields.Description, "## mmmmmmmmmm");
+        var four = await Look(screen, EditorFields.Description, "#### mmmmmmmmmm");
+        var plain = await Look(screen, EditorFields.Description, "####mmmmmmmmmm");
+
+        Assert.True(one.InkHeight() > two.InkHeight());
+        Assert.True(two.InkHeight() > four.InkHeight());
+        Assert.True(four.InkHeight() > plain.InkHeight());
+    }
+
+    [WpfTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_link_shows_in_the_link_color_for_the_theme(bool dark)
+    {
+        using var screen = new AddScreen();
+        screen.Services.Theme.IsDark = dark;
+
+        var look = await Look(screen, EditorFields.Description, "[mmmmmmmmmmmm](https://example.com)");
+
+        Assert.True(look.ShowsColor(TextLooks.Of(dark).Link));
+        Assert.False(look.ShowsColor(TextLooks.Of(!dark).Link, exact: true));
+    }
+
+    [WpfTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Code_shows_in_the_code_color_for_the_theme(bool dark)
+    {
+        using var screen = new AddScreen();
+        screen.Services.Theme.IsDark = dark;
+
+        var look = await Look(screen, EditorFields.Description, "`mmmmmmmmmmmm`");
+
+        Assert.True(look.ShowsColor(TextLooks.Of(dark).Code));
+        Assert.False(look.ShowsColor(TextLooks.Of(!dark).Code));
+    }
+
+    [WpfTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Code_shows_on_the_faded_gray_background_of_the_look(bool dark)
+    {
+        using var screen = new AddScreen();
+        screen.Services.Theme.IsDark = dark;
+        var code = TextLooks.Of(dark);
+
+        var look = await Look(screen, EditorFields.Description, "`mmmmmmmmmmmm`");
+        var plain = await Look(screen, EditorFields.Description, "'mmmmmmmmmmmm'");
+
+        Assert.True(look.ShowsBackdrop(code.CodeBackground, code.CodeBackgroundOpacity));
+        Assert.False(plain.ShowsBackdrop(code.CodeBackground, code.CodeBackgroundOpacity));
+    }
+
+    [WpfTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Italic_text_shows_in_the_italic_color_for_the_theme(bool dark)
+    {
+        using var screen = new AddScreen();
+        screen.Services.Theme.IsDark = dark;
+
+        var look = await Look(screen, EditorFields.Description, "_mmmmmmmmmmmm_");
+
+        Assert.True(look.ShowsColor(TextLooks.Of(dark).Italic));
+        Assert.False(look.ShowsColor(TextLooks.Of(!dark).Italic));
+    }
+
+    [WpfFact]
+    public async Task Palette_color_wins_over_the_italic_color_on_the_same_text()
+    {
+        using var screen = new AddScreen();
+
+        var look = await Look(screen, EditorFields.Description, ":red[_mmmmmmmmmmmm_]");
+
+        Assert.True(look.ShowsColor(LightRed));
+        Assert.False(look.ShowsColor(TextLooks.Light.Italic));
+    }
+
+    [WpfFact]
+    public async Task Heading_link_code_and_italic_colors_change_when_the_theme_changes()
+    {
+        using var screen = new AddScreen();
+        var text = "# mmmmmmmm\n[mmmmmmmm](https://example.com)\n`mmmmmmmm`\n_mmmmmmmm_";
+        var light = await Look(screen, EditorFields.Description, text);
+        Assert.True(light.ShowsColor(TextLooks.Light.Heading1));
+
+        screen.Services.Theme.Switch(true);
+        await RenderedField.Settled();
+        var dark = RenderedField.Of(screen.Window, EditorFields.Description);
+
+        Assert.True(dark.ShowsColor(TextLooks.Dark.Heading1));
+        Assert.True(dark.ShowsColor(TextLooks.Dark.Link));
+        Assert.True(dark.ShowsColor(TextLooks.Dark.Code));
+        Assert.True(dark.ShowsColor(TextLooks.Dark.Italic));
+        Assert.False(dark.ShowsColor(TextLooks.Light.Heading1));
+        Assert.False(dark.ShowsColor(TextLooks.Light.Link));
+        Assert.False(dark.ShowsColor(TextLooks.Light.Code));
+        Assert.False(dark.ShowsColor(TextLooks.Light.Italic));
     }
 
     [WpfFact]

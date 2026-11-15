@@ -70,7 +70,8 @@ internal static class Program
                     tasks.Settings,
                     sync,
                     new WindowsSetupActions(browser),
-                    closeWindowKeys),
+                    closeWindowKeys,
+                    theme),
                 new VelopackUpdates(RepositoryUrl),
                 new HotKeyShortcut(),
                 // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:

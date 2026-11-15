@@ -1,6 +1,6 @@
 # How the code is built, tested, and released
 
-Status: Decided
+Status: Drafting
 
 The technology stack is the set of tools that lay out, build, test, and release both apps from this repository. Each choice has its own section under [Behavior](#behavior).
 
@@ -105,7 +105,7 @@ Not confirmed: running xUnit.net v3 on .NET 11's Android runtime, which the [And
 Tests check results with xUnit.net's own assertions, its `Assert` class, and replace each port with a hand-written fake. The ports are the secure key store, the file system, image shrinking, and .NET's TimeProvider as the clock ([patterns](overview.md#each-pattern-serves-one-requirement)), the desktop Formatted view's [web view and default browser](desktop/formatted-view.md#the-app-supplies-the-web-view-and-the-browser), the desktop platform's [theme and theme setting](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), and the desktop [Shell's](desktop/shell.md#public-interface), [Configure's](desktop/configure.md#public-interface), and [Task editor's](desktop/task-editor.md#public-interface) ports. A fake behaves like the real thing, so tests check results, not calls, as [AGENTS.md](../../AGENTS.md#test-design) asks.
 
 - **Each fake lives once, and every test that needs it shares it**, because shared test setup follows the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication). The same holds for the fake services a UX test uses.
-- **A unit test waits for a fake's signal no longer than [`TestWait.ForSignal`](../../tests/Shared/Fakes/TestWait.cs)**, so a lost signal fails one test instead of hanging the run. A fake signals as soon as its in-memory work is done, so a passing test never waits long. Proposed: a UX test that waits on a shared fake's signal uses the same bound, so the bound has one home; a wait on real work, such as a window loading or an integration test's process, sets its own. This is a decision to confirm.
+- **A unit test waits for a fake's signal no longer than [`TestWait.ForSignal`](../../tests/Shared/Fakes/TestWait.cs)**, so a lost signal fails one test instead of hanging the run. A fake signals as soon as its in-memory work is done, so a passing test never waits long. [Every wait in a test has a bound](#every-wait-in-a-test-has-a-bound) says which bound every other wait uses.
 - **Every fake sits in one project per part, `Memoria.ToDo.<Part>.Fakes`, in `tests/<Part>/Fakes/`.** It holds no tests that run, and test projects reference it for the fakes they need, so no test project references another.
 - **A contract test sits beside its fake, as an abstract test class.** xUnit.net doesn't run an abstract class, so each test project that runs the contract derives one class from it and marks that class's kind. The [file system's contract](modules.md#the-file-system-interface-reads-and-writes-whole-files) runs this way on the fake and on the real implementation.
 
@@ -210,6 +210,46 @@ A UX test builds one screen inside the test process, with fake services, and nev
 - **Desktop test classes that use the screen run one at a time.** They are every UX class, plus each integration class that shows a window, starts a process that does, registers a hot key, or sends input. Each one carries `[Collection(ScreenTests.Collection)]`, defined in `tests/Desktop/Tests/ScreenTests.cs`, and xUnit.net runs one collection's classes one after another ([parallelism](https://xunit.net/docs/running-tests-in-parallel)). Side by side in one process, one class's window takes the activation, keyboard focus, or pointer from another's, and the Add window hides when it loses activation: a measured run failed 145 of 1,099 desktop tests. Unit classes stay out of the collection, so the timed unit run keeps its parallelism. This is a decision to confirm.
 - **If no runner can host our Android views, Android screens get no UX tests.** Their view models still get unit tests on the PC, since [each Android module builds for both](#each-android-module-builds-for-both-the-pc-and-android), and emulator tests check the screens as integration tests. The hand-written code that updates Android views from view models ([Model-View-ViewModel](overview.md#each-pattern-serves-one-requirement)) then gets few checks.
 - **In Android UX tests, the Task list's web view is replaced** as the [Android Task list](android/task-list.md#one-web-view-starts-the-first-time-a-task-expands) says.
+
+### Screen tests fail at once when Windows can't give them the desktop
+
+Desktop screen tests need a Windows desktop that's unlocked, connected, and taking input: their windows must get activation, keyboard focus, and the pointer, and some send real key presses. Without one, each test waits out its own bounds, up to a minute each, one test after another, so the run looks hung.
+
+Proposed, each a decision to confirm. This is not implemented, and [Open questions](#open-questions) holds two choices it depends on:
+
+- **A desktop check runs before each test in the [screen collection](#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator), and only there.** Unit tests, and integration tests outside that collection, still run without a desktop. The check opens no window; it asks Windows three things, in this order:
+
+  | Check | Fails when | What it asks Windows |
+  | --- | --- | --- |
+  | The session is connected | The Remote Desktop session is disconnected | The session's connect state, from [`WTSQuerySessionInformation`](https://learn.microsoft.com/en-us/windows/win32/api/wtsapi32/nf-wtsapi32-wtsquerysessioninformationw), is `WTSActive` |
+  | This session's desktop takes the input | The PC is locked, a secure prompt such as an administrator prompt shows, or the process has no interactive desktop | [`OpenInputDesktop`](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-openinputdesktop) opens the desktop that gets input, and it's named `Default` |
+  | Windows gives the pointer's position | The pointer is hidden, as in the 2026-11-14 run in [Failure modes](#failure-modes) | `GetCursorPos` succeeds |
+
+- **A failed check fails the test before the test's own code runs**, with one message that names the first failed check and the fix: unlock the PC, or reconnect the Remote Desktop session and keep its window open, then run the tests again.
+- **A failed check never skips the test.** [A skipped test fails the run](#a-skipped-test-fails-the-run) anyway, and a failure carries the message.
+- **A Windows call that fails in a way the check doesn't expect fails the test too**, with the system's error. The check never calls a desktop it couldn't read usable.
+- **The check's rules get unit tests, with a fake of what Windows reports.** They sit in the desktop test project, outside the screen collection, and read no real Windows state. The code that asks Windows is a thin layer that every screen test runs, so it has no test of its own.
+- **The check works the same on the workflow's runner.** If GitHub's Windows runner has no usable desktop, which [isn't confirmed](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), each screen test of a version tag fails at once with the check's message, and nothing is published.
+- **A minimized Remote Desktop window isn't detected.** Windows then stops drawing the remote desktop, so tests can't use its windows, but the session still counts as connected ([TestComplete's note](https://support.smartbear.com/testcomplete/docs/testing-with/running/via-rdp/in-minimized-window.html)). Keep the window open, or set `RemoteDesktop_SuppressWhenMinimized` to 2 on the PC you connect from, as that note says.
+
+Likely, but not confirmed by a run: a locked PC fails the second check as well as the third. The 2026-11-14 run confirms only the third.
+
+### Every wait in a test has a bound
+
+A wait that never ends stops the whole run, since screen tests run one at a time. So a test gives each wait a bound: the longest it waits before the test fails. A bound only bounds a failure; a passing test never waits it out, as [Synchronize, never sleep](../../AGENTS.md#test-design) asks.
+
+Proposed, each a decision to confirm. This is not implemented, and [Open questions](#open-questions) holds two choices it depends on. The table lists what a test can wait on, and the bound each wait uses:
+
+| What the test waits on | Its bound |
+| --- | --- |
+| A shared fake's signal, or app code that finishes when its fakes do, even on another thread, such as the tray app stopping | [`TestWait.ForSignal`](../../tests/Shared/Fakes/TestWait.cs), as [the fakes' section](#each-port-has-one-hand-written-fake-shared-by-every-test) says |
+| Real work: a window loading, focus, a key press, the WebView2 browser, a process, a Windows hook, or git over SSH | The limit of the test helper that runs that work, such as the WebView2 harness. A wait with no such helper sets its own. |
+| Work that finishes on the test's own thread, such as a pass of its dispatcher | None |
+
+- **A wait that reaches its bound fails the test**, never lets it carry on as if the work finished.
+- **The two helpers that run the real WebView2 browser share one limit**, [`RealViewTasks`](../../tests/Desktop/Tests/App/RealViewTasks.cs) and [`DescriptionWebViewHarness`](../../tests/Desktop/Tests/App/DescriptionWebViewHarness.cs). Both bound the same browser starting and loading pages, but each keeps its own 60 seconds today.
+- **Sync's integration helper, [`SyncWorld`](../../tests/Shared/Tests/Sync/Integration/SyncWorld.cs), owns the bound for git over SSH**, and its start, connect, and clone helpers apply it. Each Sync integration test class keeps its own 60-second copy today; they use the helper's instead.
+- **These bounds change only test code, so no new test checks them.** The reviewer checks each wait against the table.
 
 ### Architecture tests check the module map
 
@@ -391,7 +431,9 @@ None. No module uses the build tools.
 - **The pinned Microsoft.CodeAnalysis.CSharp is newer than a compiler that builds the tests**: that compiler skips our analyzer with warning CS9057, which `Directory.Build.props` [makes an error](#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two), so the build fails.
 - **The constants file's layout changes, so `Directory.Build.props` can't read the two names its filter needs**: the filter matches nothing, and plain `dotnet test` fails with exit code 8, as [the filter's section](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) says.
 - **A desktop test class that uses the screen isn't in the [screen collection](#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator)**: its tests, or another class's, fail now and then at final validation, often with a window that lost focus or hid. Running the desktop tests with `--parallel none` passes them, which points to the missing attribute.
-- **The full run starts with no unlocked, connected Windows desktop**, such as a locked PC or a disconnected Remote Desktop session: dozens of desktop screen tests fail with `Win32Exception: Access is denied` from `PointerScreen.Current`, since Windows hides the pointer then. A run on 2026-11-14 failed 45 that way. The code is right, so nothing gets fixed: the session stops and asks you to unlock the desktop, then runs the full command again.
+- **The full run starts with no unlocked, connected Windows desktop**, such as a locked PC or a disconnected Remote Desktop session: dozens of desktop screen tests fail with `Win32Exception: Access is denied` from `PointerScreen.Current`, since Windows hides the pointer then. A run on 2026-11-14 failed 45 that way. Proposed, a decision to confirm: [the desktop check](#screen-tests-fail-at-once-when-windows-cant-give-them-the-desktop) fails each screen test at once instead, with a message that names the cause. The code is right, so nothing gets fixed: the session stops and asks you to unlock the desktop or reconnect, then runs the full command again.
+- **The Remote Desktop window is minimized during the full run**: screen tests wait out their bounds, then fail with lost focus or missing input, since the check [can't detect it](#screen-tests-fail-at-once-when-windows-cant-give-them-the-desktop). The session asks you to keep the window open, or to set the registry value that section names, then runs the full command again.
+- **A test waits on something that never finishes, despite [its bounds](#every-wait-in-a-test-has-a-bound)**: the run hangs with no output. [Open question 3](#open-questions) proposes a backstop that stops it.
 - **A timed unit run takes longer than the limit**: the push stays green, and the workflow opens [one issue](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue), or adds a note to it when it's already open.
 - **The timing program rejects its input**, such as a missing report: the timing job fails and names the problem, and the issue stays as it was, as [its command line](#the-timing-program-reads-the-runs-files-and-prints-one-word) proposes.
 - **A version tag's tests or build fail, including the Android tests in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) or its emulator**: the [release workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) publishes nothing, and its run on GitHub shows the failure.
@@ -524,3 +566,21 @@ The options below were considered and rejected, grouped by the decision they bel
 - Where the APK signing key is kept:
   - **Only on your PC, with an offline backup**: the release workflow couldn't sign the APK, so releases would move to your PC, which is ruled out above.
   - **A cloud key vault the workflow reads**: it needs a cloud subscription for a personal app.
+
+## Open questions
+
+1. **When does the desktop check run?**
+   - **Before each screen test (recommended)**: an xUnit hook on the test assembly runs it before each test in the screen collection, and does nothing for other tests. It costs a few Windows calls per test, and it also catches a desktop that locks during the run, as happened when one test hung after the session had been idle 26 minutes. Not confirmed: that such a hook can read a test's collection in xUnit v3; if it can't, the hook reads a marker the screen collection's classes carry.
+   - **Once, before the first screen test**: a fixture of the screen collection runs it, and when it fails, xUnit fails every test in the collection with its message. Simplest, and it's the request's wording, but a desktop that locks mid-run goes back to slow failures.
+   - Not an option: a fixture of the whole test assembly, since it would fail unit tests on a PC without a desktop.
+2. **What does a usable desktop mean?**
+   - **The three Windows checks in [the table](#screen-tests-fail-at-once-when-windows-cant-give-them-the-desktop) (recommended)**: fast, and opens no window. A minimized Remote Desktop window goes undetected, and Failure modes says what to do.
+   - **The three checks, plus a test window that must take focus within a short bound**: closer to what the tests need, but slower, it can steal focus from you, and it isn't confirmed to detect a minimized window either.
+3. **What stops a test that hangs despite its bounds?**
+   - **Microsoft's hang dump extension, on the full run only (recommended)**: the package `Microsoft.Testing.Extensions.HangDump`, a new dependency you'd approve, with `--hangdump --hangdump-timeout 10m` added to the [full-run command](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) and the release workflow. When no test finishes for 10 minutes, it saves a memory dump of the test process and stops it, so the run fails instead of hanging ([crash and hang dumps](https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-crash-hang-dumps)). It runs a second, watching process, so unit runs during development don't use it and their timing stays the same. Likely, but not confirmed: its output names the tests still running.
+   - **The test platform's built-in `--timeout`, on the full run**: no new package, but it stops the whole run after a fixed time, which must exceed the slowest normal full run, and it doesn't say which test hung ([command-line options](https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-cli-options)).
+   - **No backstop**: the bounds above are the only guard, and a missed wait still hangs the run.
+   - Not an option: xUnit's per-test `Timeout`. Every test would need it, it fails the test but leaves the stuck code running, and xUnit's analyzer rule [xUnit1069](https://xunit.net/xunit.analyzers/rules/xUnit1069) asks each test to pass its cancellation token on. Nor `longRunningTestSeconds`, which only reports a slow test and stops nothing.
+4. **Which waits get an explicit bound?**
+   - **Every wait in screen tests, integration tests, and their helpers, plus unit-test waits on a fake's signal or on another thread (recommended)**: covers every wait that can block, about 70 edits. Unit tests that await app code running on their own thread over fakes stay as they are, since that code can't wait on anything that doesn't finish.
+   - **Every await in every test**: also covers a unit test's code that hangs by mistake, but hundreds of edits, mostly in Sync's unit tests, for waits that can't block.

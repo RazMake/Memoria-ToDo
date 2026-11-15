@@ -45,7 +45,7 @@ The user decided that pressing the other window's shortcut closes the open windo
 | View Tasks | Closes View Tasks, asking first about a changed edit, then opens Add once it's closed | Nothing, even while View Tasks is behind other windows |
 | Configure | Nothing | Nothing |
 
-Closing View Tasks this way works as its close button does: a pending Undo finishes, as the [Task list](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) says. The user decided that an [edit in place](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) with changes asks first, offering Save, Discard, or Cancel, as the [Task list](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) says. Shell closes each window through its port's close part. It opens Add only when View Tasks' close part says the window closed, so Cancel, or a save that fails, leaves View Tasks open and Add closed. Add's close part hides it with its draft, then Shell opens View Tasks.
+Closing View Tasks this way works as its close button does: a pending Undo finishes, as the [Task list](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) says. The user decided that an [edit](task-list.md#edit-description-turns-the-right-side-into-the-editor) with changes asks first, offering Save, Discard, or Cancel, as the [Task list](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) says. Shell closes each window through its port's close part. It opens Add only when View Tasks' close part says the window closed, so Cancel, or a save that fails, leaves View Tasks open and Add closed. Add's close part hides it with its draft, then Shell opens View Tasks.
 
 Proposed, each a decision to confirm:
 
@@ -237,6 +237,6 @@ The options below were considered and rejected, grouped by decision.
 - The installer's ID:
   - **`Memoria-ToDo`, with the SDK moved to another folder**: every developer PC would move its SDK, and a decided path would change.
   - **`Memoria.ToDo`, like the projects' names**: the dot reads like a file extension.
-- What happens to a changed edit in place when a shortcut closes View Tasks:
+- What happens to a changed edit in View Tasks when a shortcut closes it:
   - **Close anyway, discarding the edit**: one key press could lose a long edit, with no Undo, since the bar closes with the window.
   - **Don't switch while the edit has changes, and say why in View Tasks' message line**: the shortcut would seem to do nothing beyond the message.

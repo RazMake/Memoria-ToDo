@@ -1,6 +1,6 @@
 # Configure: where the desktop app's settings live
 
-Status: Decided
+Status: Drafting
 
 Configure is the desktop app's settings window. It changes the two global shortcuts, the shortcut that closes the app's windows, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns.
 
@@ -30,18 +30,21 @@ Proposed: the deletion delay shows in days. This is a decision to confirm.
 
 ### The window shows its settings in labeled sections
 
-The window shows each shortcut with the name of what it does, Add new task, Manage tasks, and Close window, and it's wide enough to read at a glance. Proposed, each a decision to confirm:
+The window shows each shortcut with the name of what it does, Add new task, Manage tasks, and Close window, and it's wide enough to read at a glance.
+
+The user decided the rules on sections below: only a click on another section's title closes the open one, sections have rounded corners and no expand or collapse arrow, an open section's content starts at its top rather than centered in the window's height, titles look like heading 1, and titles show the hand pointer. The rest are proposed, each a decision to confirm:
 
 - **Three sections, in order: Shortcuts, Startup, and Sync settings, and exactly one is always open.** The window opens with Shortcuts open. Clicking a closed section's title opens it and closes the open one; clicking the open section's title does nothing. No section can be closed on its own, so titles show no expand or collapse arrow.
 - **A title works from the keyboard too**: Tab reaches it, and Enter or Space opens its section.
 - **Each section is a box with rounded corners**, and so is each [card](#the-sync-settings-section-sets-the-devices-clone) inside Sync settings. Their colors and corners come from the theme, and a card stands out from the section around it.
-- **The open section's content starts right under its title.** Space the content doesn't need stays at the section's bottom.
-- **Section titles and every button in the window show the hand pointer** when the mouse is over them, so the user sees what can be clicked. Other windows' buttons keep the default pointer.
+- **Everything in a section starts at its top.** The open section's content starts right under its title, and space the content doesn't need stays at the section's bottom. Inside a section or a card, each label lines up with the top of the control beside it, not with its middle, and nothing is centered in the height around it.
+- **Section titles look like a description's heading 1**: in heading 1's color for the theme, bold, at heading 1's size, all from Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme). They follow the theme when Windows switches between light and dark.
+- **Section titles are buttons, so they show the hand pointer**, as [every button in the app](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does.
 - **Shortcuts starts with a line saying how to change one**, in the window's normal text size and color and ending with a colon: "Click a box, then press the new shortcut. Esc keeps the current one:". Then each shortcut has a row, Add new task first, then Manage tasks, then Close window: its name on the left and its field on the right. Under the field, a short description says what the shortcut does, in the help style and in italics, then the row's message. The names share one column, so the fields line up.
 - **The descriptions are**: Add new task, "Opens the Add window from any app."; Manage tasks, "Opens View Tasks from any app."; Close window, "Closes the app's window you're in, whatever has the focus."
 - **Startup holds the Start with Windows check box**, a line of help under it, and its message.
 - **Sync settings shows its settings on three cards**: Repository, Git Access, and Auto, as [below](#the-sync-settings-section-sets-the-devices-clone) says.
-- **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: section titles in the theme's heading style, card titles small and bold, messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
+- **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: card titles small and bold, messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
 - **The window keeps its size.** It's 800 pixels wide and 850 tall, or as tall as the screen allows on a shorter screen, and neither the user, the open section, nor its messages change that. The titles of the sections below the open one stay at the window's bottom, and the open section fills the space between; it scrolls when its content is taller. Messages take no room while empty.
 - **The window opens with no field focused**, so the shortcuts keep working until the user clicks a field, as [below](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) explains.
 - **Esc and the Close window shortcut close the window**, as [below](#esc-and-the-close-window-shortcut-close-the-window) says.
@@ -186,12 +189,12 @@ Queued UI callbacks do nothing after disposal.
 
 The composition root and Shell use these parts:
 
-- **[Create Configure](../../../src/Desktop/Configure/ConfigureWindow.cs)**: App supplies Start with Windows, typed Tasks settings, the shared Sync service, and the setup-actions port. The window opens only on Show Configure. App also supplies the platform's [Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows). Configure sets them to the stored or default Close window shortcut when it's created and after each change, and attaches its own window to them:
+- **[Create Configure](../../../src/Desktop/Configure/ConfigureWindow.cs)**: App supplies Start with Windows, typed Tasks settings, the shared Sync service, and the setup-actions port. The window opens only on Show Configure. App also supplies the platform's [Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows). Configure sets them to the stored or default Close window shortcut when it's created and after each change, and attaches its own window to them. App also supplies the platform's theme, so section titles take [heading 1's](#the-window-shows-its-settings-in-labeled-sections) color for the theme the windows show; the user decided that Configure may use Rendering for that look:
 
   ```csharp
   public static IConfigureWindow Create(
       IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync,
-      ISetupActions setupActions, CloseWindowKeys closeWindowKeys);
+      ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme);
   ```
 - **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) meanwhile.
 - **Setup and status** come directly from Sync; Configure publishes no parallel clone, Git identity, or repository-settings port. The desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show) still governs opening and closing.
@@ -273,6 +276,9 @@ The options below were considered and rejected, grouped by decision.
   - **Esc always closes the window**: a user who clicked a box and changed their mind would lose the window.
   - **Esc only keeps the shortcut, as before**: the user must click away before Esc closes.
 - Where the hand pointer shows:
-  - **On every button in the app, through one platform style**: it changes Add and View Tasks, which nobody asked for.
+  - **Only on Configure's section titles and buttons**: the user wants it on every button in the app.
+- How section titles get heading 1's look:
+  - **A heading control from the Formatted view**: a module for showing a task would also serve settings titles.
+  - **Brushes in the app's resources, under platform keys**: App would update them on every theme switch, and tests could check only the key.
 
 The other settings Configure shows were chosen elsewhere, with their rejected options: the default shortcuts in [Shell](shell.md#ruled-out), the deletion delay in [purpose and scope](../purpose.md#ruled-out), and the sync settings in [Sync through git](../sync.md#ruled-out).

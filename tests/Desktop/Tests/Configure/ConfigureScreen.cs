@@ -44,6 +44,9 @@ internal sealed class ConfigureScreen : IDisposable
         ManageTasks.ClearCalls();
     }
 
+    /// <summary>The theme the window follows; starts light.</summary>
+    public FakeTheme Theme => services.Theme;
+
     public FakeSyncService Sync => services.Sync;
     public FakeSetupActions SetupActions => services.SetupActions;
     public ITaskStore Store => services.Store;
@@ -69,8 +72,15 @@ internal sealed class ConfigureScreen : IDisposable
     }
 
     /// <summary>The headings of the sections whose content shows, in order.</summary>
-    public IReadOnlyList<string> OpenSections =>
-        [.. SectionHeadings.Where(heading => ContentMarker(heading).IsVisible)];
+    public IReadOnlyList<string> OpenSections
+    {
+        get
+        {
+            // A section opened since the last layout has no visual children yet, so it isn't visible yet.
+            Settle();
+            return [.. SectionHeadings.Where(heading => ContentMarker(heading).IsVisible)];
+        }
+    }
 
     /// <summary>The Add new task action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction AddNewTask { get; }

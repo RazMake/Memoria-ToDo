@@ -62,8 +62,8 @@ public class TaskListFilterTests
         screen.ChooseFromAllTags("rare", input);
 
         Assert.Equal(
-            ["Rare one", "Common 8b", "Common 8a", "Common 7b", "Common 7a", "Common 6b", "Common 6a", "Common 5b", "Common 5a",
-             "Common 4b", "Common 4a", "Common 3b", "Common 3a", "Common 2b", "Common 2a", "Common 1b", "Common 1a"],
+            ["Common 1b", "Common 1a", "Common 2b", "Common 2a", "Common 3b", "Common 3a", "Common 4b", "Common 4a",
+             "Common 5b", "Common 5a", "Common 6b", "Common 6a", "Common 7b", "Common 7a", "Common 8b", "Common 8a", "Rare one"],
             screen.RowTitles);
     }
 

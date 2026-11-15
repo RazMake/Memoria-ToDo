@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Interop;
 using Memoria.ToDo.Desktop.FormattedView;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -42,6 +44,53 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
         _control.CoreWebView2InitializationCompleted += OnInitialized;
         // The control starts its browser by itself only when its Source is set, so start it once it is shown.
         _control.Loaded += OnLoaded;
+        // The control offers no public accelerator-key event, and the browser takes keys before WPF sees them.
+        ComponentDispatcher.ThreadPreprocessMessage += OnThreadMessage;
+        ComponentDispatcher.ThreadFilterMessage += LogFilter; // TEMP
+    }
+
+    // TEMP
+    private void LogFilter(ref MSG msg, ref bool handled)
+    {
+        if (msg.message is 0x100 or 0x101 or 0x104 or 0x102)
+        {
+            System.IO.File.AppendAllText(@"C:\Users\razvanp\esc-probe.log", $"filter {msg.message:X} {msg.wParam} kfw={_control.IsKeyboardFocusWithin}\n");
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool IsChild(IntPtr parent, IntPtr window);
+
+    // Raises Esc on the control while the web view has the keyboard focus, so WPF can handle it like any other
+    // key. The message is handled only when WPF did; every other key stays with the browser.
+    private void OnThreadMessage(ref MSG msg, ref bool handled)
+    {
+        const int WmKeyDown = 0x0100;
+        const int VkEscape = 0x1B;
+        if (msg.message is 0x100 or 0x101 or 0x104 or 0x102) // TEMP
+        {
+            System.IO.File.AppendAllText(@"C:\Users\razvanp\esc-probe.log", $"pre {msg.message:X} {msg.wParam} kfw={_control.IsKeyboardFocusWithin} focused={_control.IsFocused} hwnd={msg.hwnd} src={(PresentationSource.FromVisual(_control) as HwndSource)?.Handle} child={IsChild(((HwndSource)PresentationSource.FromVisual(_control)).Handle, msg.hwnd)} handled={handled}\n");
+        }
+        if (handled || msg.message != WmKeyDown || msg.wParam != VkEscape ||
+            _disposed || !_control.IsKeyboardFocusWithin ||
+            PresentationSource.FromVisual(_control) is not { } source)
+        {
+            return;
+        }
+
+        var timestamp = Environment.TickCount;
+        var preview = new KeyEventArgs(Keyboard.PrimaryDevice, source, timestamp, Key.Escape)
+        {
+            RoutedEvent = Keyboard.PreviewKeyDownEvent,
+        };
+        _control.RaiseEvent(preview);
+        var key = new KeyEventArgs(Keyboard.PrimaryDevice, source, timestamp, Key.Escape)
+        {
+            RoutedEvent = Keyboard.KeyDownEvent,
+        };
+        _control.RaiseEvent(key);
+        handled = preview.Handled || key.Handled;
     }
 
     public FrameworkElement Element => _control;
@@ -109,6 +158,7 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
         }
 
         _disposed = true;
+        ComponentDispatcher.ThreadPreprocessMessage -= OnThreadMessage;
         _pages.Clear();
         if (_resized is not null)
         {

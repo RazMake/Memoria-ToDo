@@ -9,6 +9,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.FormattedView;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
@@ -16,8 +17,11 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 /// Drives a showing View Tasks window the way a user does, through what the screen shows. Shared test setup.
 /// The screen is found by ordinary accessible labels, so tests depend on no private element:
 /// <list type="bullet">
-/// <item>A row has automation id "Row" and as its name the task's plain title. It holds the checkbox, and, while the task is open, the Edit button, the web view's element, or the editor.</item>
-/// <item>Buttons are found by their label: the automation name, or the text of the content: Edit, Delete, Undo, Reopen, "N resolved".</item>
+/// <item>A row on the left side has automation id "Row" and as its name the task's plain title. It holds the checkbox and the title, and nothing else. A task in two groups has a row in each. The selected task's rows have automation item status "Selected".</item>
+/// <item>A group's heading has automation id "GroupHeading" and as its name the tag, or "No tag". A row belongs to the nearest heading above it.</item>
+/// <item>The right side is the element with automation id "Details": it holds the selected task's description, its tag control, the editor, or the placeholder text.</item>
+/// <item>A row's right-click menu is its <c>ContextMenu</c>, with the items Edit Description and Delete, each with its key as the gesture text.</item>
+/// <item>Buttons are found by their label: the automation name, or the text of the content: Undo, "N resolved".</item>
 /// <item>The search box is a text box named "Search". The tag chips are buttons labelled with the tag, inside the element named "Tag filter".</item>
 /// <item>The editor's Title field has automation id "Title".</item>
 /// </list>
@@ -46,13 +50,111 @@ internal sealed partial class TaskListScreen : IDisposable
     /// <summary>The web view the window made; fails unless exactly one was made.</summary>
     public FakeDescriptionWebView Web => services.WebViews.Single();
 
-    /// <summary>The titles of the rows showing, top to bottom.</summary>
+    /// <summary>The titles of the rows showing, top to bottom: a task in two groups shows twice.</summary>
     public IReadOnlyList<string> RowTitles =>
         [.. Rows().OrderBy(PositionFromTop).Select(AutomationProperties.GetName)];
 
-    /// <summary>The titles of the rows that show their description.</summary>
-    public IReadOnlyList<string> ExpandedTitles =>
-        [.. Rows().Where(IsExpanded).OrderBy(PositionFromTop).Select(AutomationProperties.GetName)];
+    /// <summary>The names of the group headings showing, top to bottom: each tag, then "No tag".</summary>
+    public IReadOnlyList<string> GroupNames =>
+        [.. Headings().OrderBy(PositionFromTop).Select(AutomationProperties.GetName)];
+
+    /// <summary>The titles of the rows under the group's heading, top to bottom.</summary>
+    public IReadOnlyList<string> RowTitlesIn(string group)
+    {
+        var heading = Headings().Single(h => AutomationProperties.GetName(h) == group);
+        return [.. RowsOf(heading).OrderBy(PositionFromTop).Select(AutomationProperties.GetName)];
+    }
+
+    /// <summary>The distinct titles of the selected rows, top to bottom.</summary>
+    public IReadOnlyList<string> SelectedTitles =>
+        [.. Rows().Where(IsSelected).OrderBy(PositionFromTop).Select(AutomationProperties.GetName).Distinct()];
+
+    /// <summary>How many rows show as selected: two for a task in two groups.</summary>
+    public int SelectedRowCount => Rows().Count(IsSelected);
+
+    /// <summary>The right side, which holds the description, the tag control, the editor, or the placeholder.</summary>
+    public FrameworkElement Details
+    {
+        get
+        {
+            Refresh();
+            return Visuals(Window).OfType<FrameworkElement>().Single(e => AutomationProperties.GetAutomationId(e) == "Details");
+        }
+    }
+
+    /// <summary>Whether the window has a bar between the two sides that the user can drag.</summary>
+    public bool HasSplitter
+    {
+        get
+        {
+            Refresh();
+            return Visuals(Window).OfType<GridSplitter>().Any(s => s.IsVisible);
+        }
+    }
+
+    /// <summary>The window's x of the bar, the rows, and the right side: the right side starts after the bar, which starts after every row's right edge.</summary>
+    public (double RowsRight, double SplitterLeft, double SplitterRight, double DetailsLeft) SideEdges
+    {
+        get
+        {
+            Refresh();
+            var splitter = Visuals(Window).OfType<GridSplitter>().Single(s => s.IsVisible);
+            var left = splitter.TranslatePoint(new Point(0, 0), Window).X;
+            return (
+                Rows().Max(row => row.TranslatePoint(new Point(row.ActualWidth, 0), Window).X),
+                left,
+                left + splitter.ActualWidth,
+                Details.TranslatePoint(new Point(0, 0), Window).X);
+        }
+    }
+
+    /// <summary>Moves the bar between the sides by the distance, as dragging it does: the drag starts, moves, and completes. Then the window lays out.</summary>
+    public void MoveSplitter(double distance)
+    {
+        Refresh();
+        var splitter = Visuals(Window).OfType<GridSplitter>().Single(s => s.IsVisible);
+        splitter.RaiseEvent(new DragStartedEventArgs(0, 0) { RoutedEvent = Thumb.DragStartedEvent });
+        splitter.RaiseEvent(new DragDeltaEventArgs(distance, 0) { RoutedEvent = Thumb.DragDeltaEvent });
+        splitter.RaiseEvent(new DragCompletedEventArgs(distance, 0, canceled: false) { RoutedEvent = Thumb.DragCompletedEvent });
+        Refresh();
+    }
+
+    /// <summary>The width of the rows' side.</summary>
+    public double RowsSideWidth
+    {
+        get
+        {
+            Refresh();
+            return Rows().First().ActualWidth;
+        }
+    }
+
+    /// <summary>
+    /// How far the checkbox's middle is below the middle of the title's first line, in device-independent pixels, so 0 is
+    /// aligned. Also says how many lines the title shows.
+    /// </summary>
+    public (double Gap, int Lines) CheckBoxGap(string title, string? group = null)
+    {
+        var row = Row(title, group);
+        var text = Visuals(row).OfType<FormattedTitle>().Single();
+        var box = Visuals(row).OfType<CheckBox>().Single();
+        var first = text.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+        var firstMiddle = text.TranslatePoint(new Point(0, first.Top + first.Height / 2), Window).Y;
+        var boxMiddle = box.TranslatePoint(new Point(0, box.ActualHeight / 2), Window).Y;
+        var lines = (int)Math.Round(text.ActualHeight / first.Height);
+        return (boxMiddle - firstMiddle, lines);
+    }
+
+    /// <summary>Makes the text of the window this many points, as the user's text size does, and lets it lay out.</summary>
+    public void SetTextSize(double points)
+    {
+        Window.FontSize = points;
+        Refresh();
+    }
+
+    /// <summary>The cursor over the row's title.</summary>
+    public Cursor? TitleCursor(string title, string? group = null) =>
+        Visuals(Row(title, group)).OfType<FormattedTitle>().Single().Cursor;
 
     public bool ShowsText(string words, DependencyObject? within = null) =>
         TextsWithin(within ?? Window).Any(text => text.Contains(words, StringComparison.OrdinalIgnoreCase));
@@ -75,23 +177,56 @@ internal sealed partial class TaskListScreen : IDisposable
     /// <summary>The tags the chips offer, in order.</summary>
     public IReadOnlyList<string> ChipTags => [.. Buttons(Named("Tag filter")).Select(LabelOf)];
 
-    /// <summary>Gives the row the keyboard focus, as selecting it does.</summary>
-    public void Select(string title)
+    /// <summary>Gives the row the keyboard focus, without selecting its task.</summary>
+    public void Select(string title, string? group = null)
     {
-        var row = Row(title);
+        var row = Row(title, group);
         row.Focus();
         Keyboard.Focus(row);
     }
 
     /// <summary>Whether the row with that title is itself the keyboard target, as it is after <see cref="Select"/>.</summary>
-    public bool RowIsKeyboardTarget(string title) => ReferenceEquals(FocusedElement, Row(title));
+    public bool RowIsKeyboardTarget(string title, string? group = null) => ReferenceEquals(FocusedElement, Row(title, group));
 
-    /// <summary>Clicks the row with the left mouse button.</summary>
-    public void ClickRow(string title)
+    /// <summary>Gives the row the focus and clicks it with the left mouse button, which selects its task.</summary>
+    public void ClickRow(string title, string? group = null)
     {
-        var row = Row(title);
-        Select(title);
-        LeftClick(row);
+        var row = Row(title, group);
+        Select(title, group);
+        MouseClick(row, MouseButton.Left);
+        Refresh();
+    }
+
+    /// <summary>Clicks the row's title with the left mouse button, as a user does to see the task's description.</summary>
+    public void ClickTitle(string title, string? group = null)
+    {
+        var row = Row(title, group);
+        Select(title, group);
+        MouseClick(Visuals(row).OfType<FormattedTitle>().Single(), MouseButton.Left);
+        Refresh();
+    }
+
+    /// <summary>Right-clicks the row, which selects its task and opens its menu.</summary>
+    public void RightClick(string title, string? group = null)
+    {
+        var row = Row(title, group);
+        Select(title, group);
+        MouseClick(row, MouseButton.Right);
+        Refresh();
+    }
+
+    /// <summary>The items of the row's right-click menu, each as its label and the key shown beside it, in order.</summary>
+    public IReadOnlyList<(string Label, string Key)> ContextMenuItems(string title, string? group = null) =>
+        [.. (Row(title, group).ContextMenu?.Items.OfType<MenuItem>()
+            ?? throw new InvalidOperationException($"The row \"{title}\" has no right-click menu."))
+            .Select(item => ((string)item.Header, item.InputGestureText))];
+
+    /// <summary>Chooses the item of the row's right-click menu, as clicking it does.</summary>
+    public void ChooseContextItem(string title, string label, string? group = null)
+    {
+        var item = (Row(title, group).ContextMenu ?? throw new InvalidOperationException($"The row \"{title}\" has no right-click menu."))
+            .Items.OfType<MenuItem>().Single(i => (string)i.Header == label);
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         Refresh();
     }
 
@@ -189,7 +324,9 @@ internal sealed partial class TaskListScreen : IDisposable
         }
     }
 
-    private static void LeftClick(UIElement target)
+    private static void LeftClick(UIElement target) => MouseClick(target, MouseButton.Left);
+
+    private static void MouseClick(UIElement target, MouseButton button)
     {
         foreach (var (tunneling, bubbling) in new[]
         {
@@ -199,7 +336,7 @@ internal sealed partial class TaskListScreen : IDisposable
         {
             foreach (var routed in new[] { tunneling, bubbling })
             {
-                target.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                target.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, button)
                 {
                     RoutedEvent = routed,
                     Source = target,
@@ -208,10 +345,10 @@ internal sealed partial class TaskListScreen : IDisposable
         }
     }
 
-    /// <summary>Selects the row and presses the keys on it, as the keyboard does.</summary>
+    /// <summary>Clicks the row, which selects its task and gives it the keyboard focus, and presses the keys on it.</summary>
     public void PressOn(string title, params Key[] keys)
     {
-        Select(title);
+        ClickRow(title);
         Press(keys);
     }
 
@@ -219,7 +356,12 @@ internal sealed partial class TaskListScreen : IDisposable
     public void Press(params Key[] keys)
     {
         SimulatedKey.Chord(FocusedElement as UIElement ?? Window, keys);
-        Refresh();
+
+        // Keys that close the window leave nothing to lay out.
+        if (windows.Visible().Any())
+        {
+            Refresh();
+        }
     }
 
     /// <summary>
@@ -306,7 +448,10 @@ internal sealed partial class TaskListScreen : IDisposable
     public void ClickChip(string tag) => Activate(Buttons(Named("Tag filter")).Single(b => LabelOf(b) == tag));
 
     /// <summary>Clicks the row's checkbox, as the mouse does.</summary>
-    public void ClickCheckBox(string title) => Activate(Visuals(Row(title)).OfType<CheckBox>().Single());
+    public void ClickCheckBox(string title, string? group = null) => Activate(Visuals(Row(title, group)).OfType<CheckBox>().Single());
+
+    /// <summary>Whether the row's checkbox shows ticked.</summary>
+    public bool CheckBoxIsTicked(string title, string? group = null) => Visuals(Row(title, group)).OfType<CheckBox>().Single().IsChecked == true;
 
     /// <summary>Puts the text into the search box, as typing does. Ctrl+F gives the box the focus.</summary>
     public void Search(string text)
@@ -323,17 +468,29 @@ internal sealed partial class TaskListScreen : IDisposable
     /// <summary>What the search box holds now.</summary>
     public string SearchText => Visuals(Window).OfType<TextBox>().Single(b => AutomationProperties.GetName(b) == "Search").Text;
 
-    /// <summary>The editor's Title field of the row being edited.</summary>
-    public FrameworkElement EditorTitle(string title) => TextFields.Find(Row(title), "Title");
+    /// <summary>The editor's Title field, which shows on the right side while the selected task, named by <paramref name="title"/>, is edited.</summary>
+    public FrameworkElement EditorTitle(string title)
+    {
+        RequireSelected(title);
+        return TextFields.Find(Details, "Title");
+    }
 
-    /// <summary>What the Title field of the row being edited holds.</summary>
+    /// <summary>What the editor's Title field holds.</summary>
     public string EditorTitleText(string title) => TextFields.TextOf(EditorTitle(title));
 
-    /// <summary>Whether the row is being edited, so it shows the editor's Title field.</summary>
-    public bool IsEditing(string title) => TextFields.FindShowing(Row(title), "Title") is not null;
+    /// <summary>Whether the selected task, named by <paramref name="title"/>, is being edited, so the right side shows the editor's Title field.</summary>
+    public bool IsEditing(string title) => SelectedTitles.Contains(title) && TextFields.FindShowing(Details, "Title") is not null;
 
-    /// <summary>Whether any row is being edited.</summary>
+    /// <summary>Whether the right side shows the editor.</summary>
     public bool IsEditingAny => TextFields.FindShowing(Window, "Title") is not null;
+
+    private void RequireSelected(string title)
+    {
+        if (!SelectedTitles.Contains(title))
+        {
+            throw new InvalidOperationException($"\"{title}\" isn't the selected task. Selected: {string.Join(", ", SelectedTitles)}.");
+        }
+    }
 
     /// <summary>Types the text into the editor's Title field and gives it the keyboard focus.</summary>
     public void TypeTitle(string rowTitle, string text)
@@ -353,6 +510,20 @@ internal sealed partial class TaskListScreen : IDisposable
     /// <summary>Whether the keyboard focus is in one of the editor's fields.</summary>
     public bool FocusIsInEditor => TaskEditor.Tests.EditorFields.FocusedFieldName() is not null;
 
+    /// <summary>The name of the editor field that has the keyboard focus, such as "Description", or null.</summary>
+    public string? FocusedEditorField => TaskEditor.Tests.EditorFields.FocusedFieldName();
+
+    /// <summary>Whether the editor's Description has its cursor at the end of its text, with nothing selected.</summary>
+    public bool DescriptionCursorIsAtEnd
+    {
+        get
+        {
+            Refresh();
+            var (start, length) = TaskEditor.Tests.EditorFields.SelectionOf(Window, "Description");
+            return length == 0 && start == EditedDescriptionText.Length;
+        }
+    }
+
     /// <summary>What the Tags field of the row being edited holds: the tag text typed and not yet added.</summary>
     public string EditedTagsText => TextFields.TextOf(EditedField("Tags"));
 
@@ -361,7 +532,12 @@ internal sealed partial class TaskListScreen : IDisposable
     {
         if (!CustomIsOpen)
         {
-            var tagRow = Rows().Single(row => TextFields.FindShowing(row, TaskEditor.Tests.TagControls.AddTag) is not null);
+            var tagRow = Details;
+            if (TextFields.FindShowing(tagRow, TaskEditor.Tests.TagControls.AddTag) is null)
+            {
+                throw new InvalidOperationException("The right side shows no tag control.");
+            }
+
             Activate(TaskEditor.Tests.TagControls.Plus(tagRow));
             ChooseCustom();
         }
@@ -412,14 +588,16 @@ internal sealed partial class TaskListScreen : IDisposable
     }
 
     /// <summary>
-    /// Drops the task on the row as the mouse does: the data is an ordinary <see cref="DataObject"/> holding the
-    /// <c>TaskItem</c>, and the pointer is in the row's upper half, or its lower half when <paramref name="lowerHalf"/>.
+    /// Drops the task on the row as the mouse does: the data is the payload a row drag carries, with the group of the row the
+    /// drag started from (<paramref name="fromGroup"/>, or the first row showing the task), and the pointer is in the row's
+    /// upper half, or its lower half when <paramref name="lowerHalf"/>.
     /// </summary>
     /// <returns>Whether a handler took the drop.</returns>
-    public bool Drop(Shared.Tasks.TaskItem task, string onRowTitle, bool lowerHalf = false)
+    public bool Drop(Shared.Tasks.TaskItem task, string onRowTitle, bool lowerHalf = false, string? onGroup = null, string? fromGroup = null)
     {
-        var row = Row(onRowTitle);
-        var taken = SimulatedDrop.Data(row, new DataObject(task), new Point(1, lowerHalf ? row.ActualHeight - 1 : 1));
+        var row = Row(onRowTitle, onGroup);
+        var source = ((TaskRow)Row(task.Title, fromGroup)).Group;
+        var taken = SimulatedDrop.Data(row, new DraggedTask(task, source).ToData(), new Point(1, lowerHalf ? row.ActualHeight - 1 : 1));
         Refresh();
         return taken;
     }
@@ -457,11 +635,18 @@ internal sealed partial class TaskListScreen : IDisposable
         ];
     }
 
-    /// <summary>The row with the plain title; fails unless exactly one shows.</summary>
-    public FrameworkElement Row(string title)
+    /// <summary>The row with the plain title, in the group when one is named; a task in two groups needs the group, or its first row is taken.</summary>
+    public FrameworkElement Row(string title, string? group = null)
     {
         Refresh();
-        return Rows().Single(row => AutomationProperties.GetName(row) == title);
+        var named = Rows().Where(row => AutomationProperties.GetName(row) == title);
+        if (group is not null)
+        {
+            var heading = Headings().Single(h => AutomationProperties.GetName(h) == group);
+            named = named.Where(row => HeadingOf(row) == heading);
+        }
+
+        return named.OrderBy(PositionFromTop).First();
     }
 
     public void Dispose() => windows.Dispose();
@@ -470,11 +655,17 @@ internal sealed partial class TaskListScreen : IDisposable
         Visuals(Window).OfType<FrameworkElement>()
             .Where(e => e.IsVisible && AutomationProperties.GetAutomationId(e) == "Row");
 
-    // A row shows its description when the one web view sits in it, or, after the web view failed, when it offers Edit.
-    private bool IsExpanded(FrameworkElement row) =>
-        FindButton("Edit", row) is not null
-        || (services.WebViews.Count == 1 && services.WebViews[0].Element.IsVisible && IsInside(services.WebViews[0].Element, row));
+    private IEnumerable<FrameworkElement> Headings() =>
+        Visuals(Window).OfType<FrameworkElement>()
+            .Where(e => e.IsVisible && AutomationProperties.GetAutomationId(e) == "GroupHeading");
 
+    // The heading a row sits under: the nearest one above it.
+    private FrameworkElement? HeadingOf(FrameworkElement row) =>
+        Headings().Where(h => PositionFromTop(h) <= PositionFromTop(row)).OrderByDescending(PositionFromTop).FirstOrDefault();
+
+    private IEnumerable<FrameworkElement> RowsOf(FrameworkElement heading) => Rows().Where(row => HeadingOf(row) == heading);
+
+    private static bool IsSelected(FrameworkElement row) => AutomationProperties.GetItemStatus(row) == "Selected";
     private double PositionFromTop(FrameworkElement row) => row.TranslatePoint(new Point(0, 0), Window).Y;
 
     private FrameworkElement Named(string name) =>

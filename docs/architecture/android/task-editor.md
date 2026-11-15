@@ -65,7 +65,7 @@ Proposed: drafts work as on the [desktop](../desktop/task-editor.md#closing-with
 
 An expanded task's Edit button in [View Tasks](task-list.md#swipes-resolve-and-delete-and-a-long-press-moves-a-task) opens this screen with the task. Saving works as in Add.
 
-Proposed: Back discards the change, and View Tasks shows an Undo bar, as Esc does on the [desktop](../desktop/task-list.md#edit-turns-the-open-task-into-the-editor-in-place). This is a decision to confirm.
+Proposed: Back discards the change, and View Tasks shows an Undo bar, as Esc does on the [desktop](../desktop/task-list.md#edit-description-turns-the-right-side-into-the-editor). This is a decision to confirm.
 
 ### The editor styles Markdown in place, with no preview
 

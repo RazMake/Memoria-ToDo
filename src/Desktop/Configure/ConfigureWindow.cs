@@ -13,10 +13,11 @@ public static class ConfigureWindow
     /// <param name="sync">The device's setup operations and cached sync status.</param>
     /// <param name="setupActions">The app's clipboard and add-key-page actions.</param>
     /// <param name="closeWindowKeys">The platform's Close window keys; Configure sets them and attaches its window.</param>
+    /// <param name="theme">The app's theme; the section titles show in heading 1's color for it and follow its switches.</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static IConfigureWindow Create(IStartWithWindows startWithWindows, ISharedTaskSettings settings,
-        ISyncService sync, ISetupActions setupActions, CloseWindowKeys closeWindowKeys) =>
-        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys);
+        ISyncService sync, ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme) =>
+        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys, theme);
 }
 
 /// <summary>The Configure window, as Shell uses it.</summary>

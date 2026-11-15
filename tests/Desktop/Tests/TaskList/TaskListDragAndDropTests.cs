@@ -6,10 +6,9 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Drag and drop reorders the list. The tests raise the standard WPF drop events on a row, with an ordinary
-/// <see cref="DataObject"/> built from the dragged <see cref="TaskItem"/> (<c>new DataObject(task)</c>, read back by
-/// <c>GetData(typeof(TaskItem))</c>). A drop in a row's upper half puts the task before that row; in its lower half, after it.
-/// The tests check the ranked tasks Tasks keeps, not how the window handles the events.
+/// Drag and drop reorders a group. The tests raise the standard WPF drop events on a row, with an ordinary
+/// <see cref="DataObject"/> built the way a row drag builds it (<see cref="DraggedTask"/>). A drop in a row's upper half puts the task before that row; in its lower half, after it.
+/// The tests check the groups the window shows and the ranked tasks Tasks keeps, not how the window handles the events.
 /// </summary>
 [UX]
 [Collection(ScreenTests.Collection)]
@@ -27,16 +26,31 @@ public class TaskListDragAndDropTests
     }
 
     [WpfFact]
-    public void Dropping_a_task_on_the_lower_half_of_a_row_puts_it_after_that_row()
+    public void Dropping_a_task_on_the_lower_half_of_a_row_of_its_group_puts_it_after_that_row()
     {
         var services = ThreeTasks();
         using var screen = new TaskListScreen(services);
 
-        var taken = screen.Drop(Task(services, "A"), "C", lowerHalf: true);
+        var taken = screen.Drop(Task(services, "A"), "C", lowerHalf: true, onGroup: "work");
 
         Assert.True(taken);
-        Assert.Equal(["B", "C", "A"], screen.RowTitles);
+        Assert.Equal(["C", "A"], screen.RowTitlesIn("work"));
+        Assert.Equal(["B"], screen.RowTitlesIn("home"));
         Assert.Equal(["B", "C", "A"], services.OpenTitlesInRankOrder());
+    }
+
+    [WpfFact]
+    public void Dropping_a_task_on_a_row_of_another_group_moves_nothing_and_adds_no_tag()
+    {
+        var services = ThreeTasks();
+        using var screen = new TaskListScreen(services);
+
+        screen.Drop(Task(services, "A"), "B", lowerHalf: true, onGroup: "home");
+
+        Assert.Equal(["A", "C"], screen.RowTitlesIn("work"));
+        Assert.Equal(["B"], screen.RowTitlesIn("home"));
+        Assert.Equal(["A", "B", "C"], services.OpenTitlesInRankOrder());
+        Assert.Equal(["work"], Task(services, "A").Tags);
     }
 
 }

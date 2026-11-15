@@ -47,7 +47,7 @@ public class TaskListResolveTests
     }
 
     [WpfFact]
-    public void Reopen_returns_a_resolved_task_to_the_open_list_and_hides_the_count_at_zero()
+    public void Unticking_a_resolved_tasks_checkbox_returns_it_to_the_open_list_and_hides_the_count_at_zero()
     {
         var services = new ListServices();
         services.Add("Open one");
@@ -55,7 +55,7 @@ public class TaskListResolveTests
         using var screen = new TaskListScreen(services);
         screen.Click("1 resolved");
 
-        screen.Click("Reopen", "Done one");
+        screen.ClickCheckBox("Done one");
 
         Assert.Null(services.Tasks.All.Single(task => task.Title == "Done one").Resolved);
         Assert.Contains("Done one", screen.RowTitles);
@@ -72,14 +72,13 @@ public class TaskListDeleteTests
     private static readonly TimeSpan PastTheBar = TimeSpan.FromSeconds(15);
 
     [WpfFact]
-    public void The_Delete_button_deletes_the_open_task_the_same_way()
+    public void Delete_in_the_right_click_menu_deletes_the_task_the_same_way()
     {
         var services = new ListServices();
         services.Add("Buy milk");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
 
-        screen.Click("Delete");
+        screen.ChooseContextItem("Buy milk", "Delete");
 
         Assert.Empty(screen.RowTitles);
         Assert.True(screen.HasButton("Undo"));

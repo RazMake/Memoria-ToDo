@@ -1,8 +1,8 @@
 # Rendering: how task Markdown shows
 
-Status: Decided
+Status: Drafting
 
-Rendering is the shared module that turns a task's Markdown into what the user sees: an HTML page for a description in the web view, and styled text for titles and the editor. It also owns the color palette and the tag colors, and decides which links may open in the browser. Both apps use it, so a task looks the same on the desktop and the phone.
+Rendering is the shared module that turns a task's Markdown into what the user sees: an HTML page for a description in the web view, and styled text for titles and the editor. It also owns the color palette, the tag colors, and the look of headings, links, code, and italic text, and decides which links may open in the browser. Both apps use it, so a task looks the same on the desktop and the phone.
 
 ## Behavior
 
@@ -54,6 +54,30 @@ Proposed: the palette below. Each color has a value for the light theme and one 
 Rendering accepts only these names; there are no hex colors in task text. The editor, titles, and descriptions all take a color's value from this table, for the current theme.
 
 Tags don't use these six. A tag's badge takes one of [30 colors of its own](#thirty-tag-colors-stay-distinct-in-both-themes).
+
+### Headings, links, code, and italic text have one look in each theme
+
+Rendering owns one text look for each theme: the colors of headings 1 to 3, links, code, and italic text, the faded background behind code, and how much larger each heading level shows. The description page, the desktop's [formatted titles](desktop/formatted-view.md#it-shows-what-rendering-decides-never-markdown), its [editor](desktop/task-editor.md#the-editor-styles-markdown-in-place-with-no-preview), and [Configure's section titles](desktop/configure.md#the-window-shows-its-settings-in-labeled-sections) all take it from here, so a link or a heading looks the same wherever the app shows one. The user decided that the look applies everywhere Markdown shows, and that its colors are fixed values for each theme that pass the contrast rule, not the Windows accent color. Code blocks look like inline code. On the description page a code block also gets 8 pixels of padding and scrolls sideways when a line is too long, so it doesn't widen the page. Proposed: the values below. This is a decision to confirm.
+
+| Part | Light theme | Dark theme |
+| --- | --- | --- |
+| Heading 1 | `#0f548c` | `#6cb8f6` |
+| Heading 2 | `#0e7a75` | `#4fd1c5` |
+| Heading 3 | `#6b3fa0` | `#c4a7f5` |
+| Link | `#0969da` | `#4493f8` |
+| Code | `#9a3c00` | `#f0a868` |
+| Italic text | `#4f5b93` | `#b4bdf5` |
+| Code background | `#808080` at 15% opacity | `#808080` at 25% opacity |
+
+Every color meets the [palette's](#six-colors-read-well-in-light-and-dark-themes) contrast rule, at least 4.5:1 against both of its theme's backgrounds; the lowest is the dark link, at 4.57:1. Code text also keeps 4.5:1 on its faded background over both of its theme's backgrounds; the lowest is 5.19:1. Rendering's unit tests check both, as they check the tag colors, so a retuned value can't break them.
+
+Proposed, each a decision to confirm:
+
+- **Headings 4 to 6 keep the text color.** Every heading shows bold, at 1.6, 1.4, 1.25, 1.15, 1.1, and 1.05 times the text size for levels 1 to 6, the sizes the editor uses today.
+- **The link color keeps the palette's blue values**, so links look as they do now, but it's part of the look, not a palette name. `:blue[text]` still takes the palette's blue.
+- **Code shows in Consolas, in the code color, on the faded background.** The background is a gray with an opacity rather than a solid color, so it reads on both of a theme's backgrounds.
+- **Italic text shows in the italic color.** Bold text keeps the text color.
+- **A stretch with more than one style takes one color**, the first that applies: its own palette color, then the link color, the code color, the italic color, then its heading's color. So `:red[_x_]` shows red, and a link inside a heading shows in the link color.
 
 ### Thirty tag colors stay distinct in both themes
 
@@ -123,6 +147,7 @@ Both apps use these parts:
 - **The description page**: from the Markdown, the theme, and the clone's base address, a full HTML page for the web view.
 - **Styled spans**: from a title's or the editor's Markdown, the styled stretches of text.
 - **The palette**: each color's name and its values for the light and dark themes.
+- **The text look**, proposed: for each theme, the [colors of headings, links, code, and italic text](#headings-links-code-and-italic-text-have-one-look-in-each-theme), code's background and font, and each heading level's size; and the color a styled span shows in.
 - **The tag colors**: the 30 colors, each with its value and text color for each theme; finding one by name; and a tag's default color.
 - **The browser check**: whether an address may open in the default browser.
 
@@ -179,6 +204,7 @@ Also proposed for step 4, each a decision to confirm:
 - A color shows as a `span` whose `style` sets the palette's value for the theme, such as `<span style="color:#d1242f">`.
 - Each link keeps its address as written, so a task link stays `task:<id>`.
 - The page's text is `#1f1f1f` in the light theme and `#f3f3f3` in the dark theme, and the page sets no background, so the window's own background shows through the web view. Each text color is the other theme's darkest or lightest background in the [palette's](#six-colors-read-well-in-light-and-dark-themes) contrast check, so it reads well on its own theme's backgrounds.
+- The page carries one style block with the theme's [text look](#headings-links-code-and-italic-text-have-one-look-in-each-theme), which the content security policy's `style-src 'unsafe-inline'` already allows. It also sets the system's interface font, `system-ui`, at 14 pixels, the size of the windows' text, so a heading on the page looks like a heading in a window. Today the page names no font, so WebView2 shows a serif one.
 - `MayOpen` ignores the case of the scheme, so `HTTPS://` opens too.
 
 Row 8 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) adds the [tag colors](#thirty-tag-colors-stay-distinct-in-both-themes), also pure functions:
@@ -207,6 +233,51 @@ public static class TagColors
 
 Proposed: `Find` and `DefaultFor` throw `ArgumentNullException` for a null name or tag, rather than answer no color, since a null is the caller's mistake, not a tag without a color. This is a decision to confirm.
 
+Proposed: the [text look](#headings-links-code-and-italic-text-have-one-look-in-each-theme), also pure. Colors are `#rrggbb`. The background's opacity is a number of its own because CSS reads an eight-digit color as `#rrggbbaa`, but WPF reads it as `#aarrggbb`. This is a decision to confirm.
+
+```csharp
+namespace Memoria.ToDo.Shared.Rendering;
+
+/// The look of headings, links, code, and italic text in one theme.
+public sealed class TextLook
+{
+    public string Heading1 { get; }
+    public string Heading2 { get; }
+    public string Heading3 { get; }
+    public string Link { get; }
+    public string Code { get; }
+    public string Italic { get; }
+
+    /// The gray behind code, and how opaque it is: from 0 to 1.
+    public string CodeBackground { get; }
+    public double CodeBackgroundOpacity { get; }
+
+    /// A heading's color, or null for levels 4 to 6, which keep the text color.
+    /// Throws ArgumentOutOfRangeException for a level outside 1 to 6.
+    public string? HeadingColor(int level);
+
+    /// The color the span shows in, in this theme, or null for the text color: its palette color,
+    /// else the link, code, italic, or heading color, the first that applies.
+    public string? ColorOf(StyledSpan span);
+}
+
+public static class TextLooks
+{
+    public static TextLook Light { get; }
+    public static TextLook Dark { get; }
+
+    /// Light or Dark.
+    public static TextLook Of(bool dark);
+
+    /// How many times the text size a heading of this level shows: 1.6 for level 1 down to 1.05 for 6,
+    /// and 1 for 0, text that's no heading. Throws ArgumentOutOfRangeException outside 0 to 6.
+    public static double HeadingScale(int level);
+
+    /// The monospaced font code shows in.
+    public static string CodeFont { get; }
+}
+```
+
 ## Failure modes
 
 - **There's no invalid Markdown**: any text renders, and what Markdown can't read shows as text.
@@ -234,3 +305,7 @@ The options below were considered and rejected, grouped by decision.
 - A tag's default color:
   - **One shade per hue, from 10 colors**: two of seven tags would share a default far more often.
   - **A color picked at random and kept in `tags.json` when a tag is first used**: every new tag would write the file, and tags from before the file would still need a default.
+- The text look:
+  - **Heading 1 follows the Windows accent color**: Rendering is shared with Android and can't read Windows, and no test could promise its contrast.
+  - **Code blocks keep the text color**: the page and the editor would need a second code rule.
+  - **Only the link color in titles and the editor**: `code` and _italic_ would look different in the editor than in the description.

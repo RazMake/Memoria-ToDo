@@ -16,6 +16,7 @@ Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Value.set -> void
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.HasChanges.get -> bool
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Save(System.Action<Memoria.ToDo.Shared.Tasks.TaskDraft!>! save) -> bool
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.FocusTitle() -> void
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.FocusDescription() -> void
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.SaveRequested -> System.EventHandler?
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.SaveAndClearRequested -> System.EventHandler?
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.CancelRequested -> System.EventHandler?

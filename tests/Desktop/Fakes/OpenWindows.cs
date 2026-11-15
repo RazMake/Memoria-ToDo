@@ -17,6 +17,18 @@ public sealed class OpenWindows : IDisposable
     /// <summary>The windows on this thread that are showing.</summary>
     public IReadOnlyList<Window> Visible() => [.. All().Where(w => w.IsVisible)];
 
+    /// <summary>
+    /// Gives the window the Fluent theme the platform gives the app's windows, so the theme's resources and control
+    /// styles apply; a bare test window has none.
+    /// </summary>
+    public static void UseTheme(Window window, bool dark)
+    {
+#pragma warning disable WPF0001 // Window.ThemeMode is experimental; allowed only on this line.
+        window.ThemeMode = dark ? ThemeMode.Dark : ThemeMode.Light;
+#pragma warning restore WPF0001
+        window.UpdateLayout();
+    }
+
     /// <summary>The logical descendants of the window, such as its text and buttons.</summary>
     public static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
     {

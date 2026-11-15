@@ -73,13 +73,7 @@ internal sealed class AddScreen : IDisposable
     public TaskDraft? KeptDraft => Services.Tasks.LoadDraft();
 
     /// <summary>Gives the window the theme the platform gives the app's windows, so the theme's resources resolve; a bare test window has none.</summary>
-    public void UseTheme(bool dark)
-    {
-#pragma warning disable WPF0001 // Window.ThemeMode is experimental; allowed only on this line.
-        Window.ThemeMode = dark ? ThemeMode.Dark : ThemeMode.Light;
-#pragma warning restore WPF0001
-        Window.UpdateLayout();
-    }
+    public void UseTheme(bool dark) => OpenWindows.UseTheme(Window, dark);
 
     /// <summary>Presses Esc in the window.</summary>
     public void PressEscape() => OpenWindows.PressEscape(Window);

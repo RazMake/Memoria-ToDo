@@ -8,7 +8,7 @@ The Task list is the Android app's View Tasks screen: one list of open tasks in 
 
 ### One list in rank order, with one task open at a time
 
-As on the [desktop](../desktop/task-list.md#one-list-in-rank-order-with-one-task-open-at-a-time), View Tasks shows the open tasks in one list, in rank order. A tap expands a task in place to show its rendered description, and expanding another collapses it. Titles show their inline Markdown as styled text, from [Rendering](../rendering.md#titles-and-the-editor-get-styled-spans-not-html), and links work as [Rendering](../rendering.md#only-web-links-open-in-the-browser) decides.
+View Tasks shows the open tasks in one list, in rank order; the [desktop](../desktop/task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) instead groups them by tag, beside the selected task's description. A tap expands a task in place to show its rendered description, and expanding another collapses it. Titles show their inline Markdown as styled text, from [Rendering](../rendering.md#titles-and-the-editor-get-styled-spans-not-html), and links work as [Rendering](../rendering.md#only-web-links-open-in-the-browser) decides.
 
 A floating Add button opens Add from the [Task editor](task-editor.md#public-interface).
 
@@ -32,7 +32,7 @@ Proposed: the task's file is deleted when the Undo bar goes away or View Tasks c
 
 Proposed: tag chips and search work as on the [desktop](../desktop/task-list.md#tags-and-search-narrow-the-list), and search opens from a button in the top app bar. This is a decision to confirm.
 
-Deferred: the desktop shows tags as [colored badges](../desktop/task-list.md#tags-show-as-colored-badges-and-change-without-edit) on rows and in the filter, and changes them on an expanded task without Edit. Whether the phone's chips take each tag's color, and whether a tag changes without Edit, follows the [Task editor's](task-editor.md#tags-sit-as-chips-under-the-title) answer when the Android app is built.
+Deferred: the desktop shows tags as [colored badges](../desktop/task-list.md#tags-show-as-colored-badges-and-change-without-edit) on group headings and in the filter, and changes them on the selected task without Edit. Whether the phone's chips take each tag's color, and whether a tag changes without Edit, follows the [Task editor's](task-editor.md#tags-sit-as-chips-under-the-title) answer when the Android app is built.
 
 ### Resolved tasks wait behind a count at the bottom
 

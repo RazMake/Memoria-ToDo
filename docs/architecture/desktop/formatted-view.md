@@ -1,6 +1,6 @@
 # Formatted view: how the desktop app shows a task as a reader sees it
 
-Status: Decided
+Status: Drafting
 
 The Formatted view is the desktop module that shows a task's title and description formatted, with no Markdown characters, and opens their web links in the default browser. View Tasks uses it now, and Add's preview will use it later.
 
@@ -10,7 +10,7 @@ The Formatted view is the desktop module that shows a task's title and descripti
 
 The user decided that View Tasks shows titles and descriptions formatted, as a reader sees them, and that this part is common, so Add can later show a preview with it. [Rendering](../rendering.md) stays the one home of the formatting rules; the Formatted view only shows its output in WPF:
 
-- **A title shows as native WPF text**, from Rendering's [styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) without the spans marked as markers. Bold, italic, code, strikethrough, links, and colors show, with each color's value from the [palette](../rendering.md#six-colors-read-well-in-light-and-dark-themes) for the current theme. A title needs no web view.
+- **A title shows as native WPF text**, from Rendering's [styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) without the spans marked as markers. Bold, italic, code, strikethrough, links, and colors show. Proposed: each stretch's color comes from Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) for the current theme, which gives a palette color, a link, code, or italic text its color. This is a decision to confirm. A title needs no web view.
 - **A description shows in a web view**, as Rendering's [description page](../rendering.md#public-interface). The web view runs no scripts and loads only images from the clone, as [Rendering](../rendering.md#the-web-view-runs-no-scripts-and-loads-only-images-from-the-clone) requires.
 - **Both follow the theme**: when Windows switches between light and dark, a shown title and description switch too.
 
@@ -18,8 +18,8 @@ The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-pre
 
 Proposed, each a decision to confirm:
 
-- Code in a title shows in a monospaced font.
-- A shown title and description stop following the theme while they're off screen, so a closed View Tasks holds no subscription.
+- Code in a title shows as the text look's code does: in its font and color, on its faded background.
+- A shown title and description stop following the theme while they're off screen, so a closed View Tasks holds no subscription. They follow it through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), which the Task editor and Configure use too.
 
 ### A title's name is the text it shows
 
@@ -29,15 +29,15 @@ The title owns its name: a name set by its user is replaced the next time the ti
 
 ### Web links open in the default browser, and other links are reported
 
-Clicking a link in a title or a description applies Rendering's [browser check](../rendering.md#only-web-links-open-in-the-browser): an address that passes opens in the default browser, as the user confirmed. Any other address, such as a link to another task, opens nothing; the Formatted view reports it, so its user decides. The Task list expands a linked task, and ignores the rest.
+Clicking a link in a title or a description applies Rendering's [browser check](../rendering.md#only-web-links-open-in-the-browser): an address that passes opens in the default browser, as the user confirmed. Any other address, such as a link to another task, opens nothing; the Formatted view reports it, so its user decides. The Task list selects a linked task, and ignores the rest.
 
 The Formatted view knows no task formats: it doesn't tell a task link from other links; its user asks [Tasks](../tasks.md#a-time-ordered-id-names-each-task-its-file-and-links-to-it).
 
-Proposed: links in titles follow the same rule as links in descriptions, and clicking one doesn't also select the row around it. This is a decision to confirm.
+Proposed: links in titles follow the same rule as links in descriptions, and clicking one doesn't also select the row around it, as [View Tasks](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) does on a click on the title. This is a decision to confirm.
 
 ### One web view serves a window, and releases its browser
 
-A web view costs memory and start-up time, so each window that shows descriptions uses one, and releases it, with its browser, when the window closes. The Formatted view's description takes a web view when it's made and releases it when it's released. The [Task list](task-list.md#one-list-in-rank-order-with-one-task-open-at-a-time) makes one when View Tasks opens.
+A web view costs memory and start-up time, so each window that shows descriptions uses one, and releases it, with its browser, when the window closes. The Formatted view's description takes a web view when it's made and releases it when it's released. The [Task list](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) makes one when View Tasks opens.
 
 A description shown before the browser has started waits, and shows once it has.
 
@@ -55,7 +55,7 @@ The desktop app's web view:
 
 - serves the clone's folder at the clone's address, through WebView2's [virtual host mapping](https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.setvirtualhostnametofoldermapping);
 - turns scripts off;
-- sizes its element to the shown page's full height at the width it's given, and again when the width or the page changes, so a description shows at [full height](task-list.md#one-list-in-rank-order-with-one-task-open-at-a-time) with no WebView2-specific part in the Formatted view or the Task list. It measures the page's `html` box through the DevTools protocol's [DOM.getBoxModel](https://chromedevtools.github.io/devtools-protocol/tot/DOM/#method-getBoxModel), so no script runs in the page. That box isn't raised to the web view's height, as the browser's layout metrics are, so a shorter page shrinks the element again. Only the shown page counts: once a newer page replaces a page, whether that page loads, or can be measured, is ignored;
+- sizes its element to the shown page's full height at the width it's given, and again when the width or the page changes, so a description shows at [full height](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) with no WebView2-specific part in the Formatted view or the Task list. It measures the page's `html` box through the DevTools protocol's [DOM.getBoxModel](https://chromedevtools.github.io/devtools-protocol/tot/DOM/#method-getBoxModel), so no script runs in the page. That box isn't raised to the web view's height, as the browser's layout metrics are, so a shorter page shrinks the element again. Only the shown page counts: once a newer page replaces a page, whether that page loads, or can be measured, is ignored;
 - cancels every navigation the user starts, including a link that would open a new window, and reports its address instead.
 
 Proposed, each a decision to confirm:
@@ -74,7 +74,7 @@ The Task list uses these parts, and the composition root implements the two port
 - **The description web view**, a port: the WPF element, the clone's address, showing a page, reporting a clicked link's address and a failure that stops it showing pages, and releasing its browser.
 - **The default browser**, a port: opens an address.
 
-Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) builds it, in `Memoria.ToDo.Desktop.FormattedView`:
+Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) builds it, in `Memoria.ToDo.Desktop.FormattedView`. The user decided that the formatted title no longer takes the palette, since the [text look](../rendering.md#public-interface) gives every color it shows.
 
 ```csharp
 namespace Memoria.ToDo.Desktop.FormattedView;
@@ -82,7 +82,7 @@ namespace Memoria.ToDo.Desktop.FormattedView;
 /// A task's title as a reader sees it: native text, with no Markdown characters.
 public sealed class FormattedTitle : TextBlock
 {
-    public FormattedTitle(IReadOnlyList<PaletteColor> palette, ITheme theme, IDefaultBrowser browser);
+    public FormattedTitle(ITheme theme, IDefaultBrowser browser);
 
     /// The title's Markdown. Setting it shows it formatted, and sets the title's
     /// AutomationProperties.Name to the text shown.
@@ -176,3 +176,5 @@ The options below were considered and rejected, grouped by decision.
   - **A props file of the app's own, imported by both projects**: a new file and two imports, for one setting the root file can hold.
   - **The same target for every desktop project**: projects that call no Windows Runtime API would change too.
   - **A newer Windows version**: the app could call newer Windows APIs that no design needs.
+- Whether the formatted title takes the palette:
+  - **Keep it, only for `:red[text]` colors**: the title would take colors from two places that could disagree.

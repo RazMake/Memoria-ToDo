@@ -15,8 +15,18 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            null!));
+            null!, new FakeTheme()));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_a_missing_theme()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
+            new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
+            new CloseWindowKeys(), null!));
+
+        Assert.Equal("theme", failure.ParamName);
     }
 }

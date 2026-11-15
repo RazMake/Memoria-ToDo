@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -132,21 +133,64 @@ public class ConfigureWindowTests
     [WpfTheory]
     [InlineData("Shortcuts")]
     [InlineData("Startup")]
+    [InlineData("Sync settings")]
     public void The_open_sections_content_starts_right_under_its_title(string heading)
     {
         using var screen = new ConfigureScreen();
         screen.Open();
+        // The app's Fluent styles, which center some controls, must not move the content off its title.
+        OpenWindows.UseTheme(screen.Window, dark: false);
         screen.ClickTitle(heading);
         _ = screen.WindowSize;
         var title = screen.Title(heading);
-        UIElement first = heading == "Shortcuts"
-            ? OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b).StartsWith("Click a box"))
-            : screen.StartWithWindowsBox;
+        UIElement first = heading switch
+        {
+            "Shortcuts" => OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b).StartsWith("Click a box")),
+            "Startup" => screen.StartWithWindowsBox,
+            _ => OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b) == "Repository"),
+        };
 
         var gap = first.TranslatePoint(new Point(0, 0), screen.Window).Y
             - title.TranslatePoint(new Point(0, title.ActualHeight), screen.Window).Y;
 
         Assert.InRange(gap, 0, 40);
+    }
+
+    [WpfTheory]
+    [InlineData("Shortcuts", false)]
+    [InlineData("Startup", false)]
+    [InlineData("Sync settings", false)]
+    [InlineData("Shortcuts", true)]
+    [InlineData("Startup", true)]
+    [InlineData("Sync settings", true)]
+    public void Shows_each_section_title_in_heading_1s_color_bold_and_size_for_the_theme(string heading, bool dark)
+    {
+        using var screen = new ConfigureScreen();
+        screen.Theme.IsDark = dark;
+        screen.Open();
+        _ = screen.WindowSize;
+
+        var text = TitleBlock(screen, heading);
+
+        Assert.Equal(HeadingColor(dark), ((SolidColorBrush)text.Foreground).Color);
+        Assert.Equal(FontWeights.Bold, text.FontWeight);
+        Assert.Equal(TextLooks.HeadingScale(1) * NormalTextSize(screen), text.FontSize);
+    }
+
+    [WpfFact]
+    public void Switches_every_section_title_to_the_new_themes_heading_1_color_when_the_theme_changes()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+        _ = screen.WindowSize;
+
+        screen.Theme.Switch(isDark: true);
+        var dark = ConfigureScreen.SectionHeadings.Select(h => ((SolidColorBrush)TitleBlock(screen, h).Foreground).Color).ToList();
+        screen.Theme.Switch(isDark: false);
+        var light = ConfigureScreen.SectionHeadings.Select(h => ((SolidColorBrush)TitleBlock(screen, h).Foreground).Color).ToList();
+
+        Assert.All(dark, color => Assert.Equal(HeadingColor(true), color));
+        Assert.All(light, color => Assert.Equal(HeadingColor(false), color));
     }
 
     [WpfFact]
@@ -160,19 +204,6 @@ public class ConfigureWindowTests
         Assert.True(RoundedBoxes(screen.Box("Device name")) >= 2, "Git Access sits in a card inside the section.");
         screen.ClickTitle("Shortcuts");
         Assert.True(RoundedBoxes(screen.AddField) >= 1, "The shortcut rows sit in a section box.");
-    }
-
-    [WpfFact]
-    public void Shows_the_hand_cursor_on_every_section_title_and_every_button()
-    {
-        using var screen = new ConfigureScreen();
-        screen.Open();
-
-        var buttons = OpenWindows.Descendants(screen.Window).OfType<Button>().ToList();
-
-        Assert.NotEmpty(buttons);
-        Assert.All(buttons, button => Assert.Same(Cursors.Hand, button.Cursor));
-        Assert.All(screen.Titles, title => Assert.Same(Cursors.Hand, title.Cursor));
     }
 
     [WpfFact]
@@ -216,10 +247,11 @@ public class ConfigureWindowTests
 
         Assert.Equal(ResizeMode.NoResize, screen.Window.ResizeMode);
         Assert.Equal(SizeToContent.Manual, screen.Window.SizeToContent);
-        // Windows caps a window's height at the tallest it allows on the screen.
-        Assert.Equal(
-            new Size(800, Math.Min(850, SystemParameters.MaximumWindowTrackHeight)),
-            new Size(screen.Window.Width, screen.Window.Height));
+        // Windows caps a window's size at the largest it allows on the screen.
+        var width = Math.Min(800, SystemParameters.MaximumWindowTrackWidth);
+        var height = Math.Min(850, SystemParameters.MaximumWindowTrackHeight);
+        Assert.Equal(width, screen.Window.Width, 0.01);
+        Assert.Equal(height, screen.Window.Height, 0.01);
     }
 
     [WpfTheory]
@@ -273,6 +305,35 @@ public class ConfigureWindowTests
 
     private static string ScreenTitle(ContentControl title) =>
         title.Content as string ?? OpenWindows.TextOf((TextBlock)title.Content);
+
+    // The text block that draws the title's heading, whether the title's content is a string or a text block.
+    private static TextBlock TitleBlock(ConfigureScreen screen, string heading) =>
+        VisualTextBlocks(screen.Title(heading)).First();
+
+    private static IEnumerable<TextBlock> VisualTextBlocks(DependencyObject parent)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is TextBlock block)
+            {
+                yield return block;
+            }
+
+            foreach (var inner in VisualTextBlocks(child))
+            {
+                yield return inner;
+            }
+        }
+    }
+
+    private static Color HeadingColor(bool dark) =>
+        (Color)ColorConverter.ConvertFromString(TextLooks.Of(dark).HeadingColor(1)!);
+
+    // The window's normal text size: the size of the instruction line, which has no style of its own.
+    private static double NormalTextSize(ConfigureScreen screen) =>
+        OpenWindows.Descendants(screen.Window).OfType<TextBlock>()
+            .First(b => OpenWindows.TextOf(b).StartsWith("Click a box")).FontSize;
 
     // The rounded boxes (borders with a corner radius) the element sits in.
     private static int RoundedBoxes(DependencyObject element)

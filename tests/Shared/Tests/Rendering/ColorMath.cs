@@ -14,6 +14,18 @@ internal static class ColorMath
         return (lighter + 0.05) / (darker + 0.05);
     }
 
+    /// <summary>The solid "#rrggbb" a color shows as at this opacity (0 to 1) over a background, blended in sRGB as CSS and WPF do.</summary>
+    public static string Blend(string color, double opacity, string background)
+    {
+        var channels = new[] { 1, 3, 5 }.Select(from =>
+        {
+            var top = Convert.ToInt32(color.Substring(from, 2), 16);
+            var below = Convert.ToInt32(background.Substring(from, 2), 16);
+            return (int)Math.Round(top * opacity + below * (1 - opacity));
+        });
+        return "#" + string.Concat(channels.Select(c => c.ToString("x2")));
+    }
+
     /// <summary>CIEDE2000 (Sharma, Wu, Dalal 2005) between two sRGB colors, under D65.</summary>
     public static double DeltaE2000(string first, string second)
     {

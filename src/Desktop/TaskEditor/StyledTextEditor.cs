@@ -24,10 +24,10 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
     private readonly MarkdownStyler _styler;
     private bool _stylingQueued;
 
-    public StyledTextEditor(string automationId, MarkdownField field, IReadOnlyList<PaletteColor> palette, ITheme theme)
+    public StyledTextEditor(string automationId,     MarkdownField field, ITheme theme)
     {
         _field = field;
-        _styler = new MarkdownStyler(palette, theme);
+            _styler = new MarkdownStyler(theme);
         AutomationProperties.SetAutomationId(this, automationId);
 
         // Look like the theme's text box, from the theme's own resources, so the look follows the theme.
@@ -52,11 +52,7 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
         };
         TextArea.Caret.PositionChanged += (_, _) => Changed?.Invoke();
         TextArea.TextEntered += (_, e) => TextEntered?.Invoke(e.Text);
-        WhileLoaded.Run(this, () =>
-        {
-            theme.Changed += OnThemeChanged;
-            QueueStyling();
-        }, () => theme.Changed -= OnThemeChanged);
+        _ = new ThemeFollower(this, theme, QueueStyling);
     }
 
     public event Action? Changed;
@@ -64,8 +60,6 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
     public event Action<string>? TextEntered;
 
     public void FocusField() => KeyboardFocus.MoveTo(this);
-
-    private void OnThemeChanged(object? sender, EventArgs e) => QueueStyling();
 
     /// <summary>Paints the border in the theme's error color while <paramref name="invalid"/>, else in the theme's text box border again.</summary>
     public void ShowInvalid(bool invalid)

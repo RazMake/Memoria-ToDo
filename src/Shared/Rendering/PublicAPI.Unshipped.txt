@@ -88,3 +88,20 @@ static Memoria.ToDo.Shared.Rendering.TagColors.Find(string! name) -> Memoria.ToD
 static Memoria.ToDo.Shared.Rendering.TagFill.operator !=(Memoria.ToDo.Shared.Rendering.TagFill? left, Memoria.ToDo.Shared.Rendering.TagFill? right) -> bool
 static Memoria.ToDo.Shared.Rendering.TagFill.operator ==(Memoria.ToDo.Shared.Rendering.TagFill? left, Memoria.ToDo.Shared.Rendering.TagFill? right) -> bool
 static Memoria.ToDo.Shared.Rendering.StyledSpans.Of(string! markdown, Memoria.ToDo.Shared.Rendering.MarkdownField field) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.StyledSpan!>!
+Memoria.ToDo.Shared.Rendering.TextLook
+Memoria.ToDo.Shared.Rendering.TextLook.Code.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.CodeBackground.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.CodeBackgroundOpacity.get -> double
+Memoria.ToDo.Shared.Rendering.TextLook.ColorOf(Memoria.ToDo.Shared.Rendering.StyledSpan! span) -> string?
+Memoria.ToDo.Shared.Rendering.TextLook.Heading1.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.Heading2.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.Heading3.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.HeadingColor(int level) -> string?
+Memoria.ToDo.Shared.Rendering.TextLook.Italic.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.Link.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLooks
+static Memoria.ToDo.Shared.Rendering.TextLooks.CodeFont.get -> string!
+static Memoria.ToDo.Shared.Rendering.TextLooks.Dark.get -> Memoria.ToDo.Shared.Rendering.TextLook!
+static Memoria.ToDo.Shared.Rendering.TextLooks.HeadingScale(int level) -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.Light.get -> Memoria.ToDo.Shared.Rendering.TextLook!
+static Memoria.ToDo.Shared.Rendering.TextLooks.Of(bool dark) -> Memoria.ToDo.Shared.Rendering.TextLook!

@@ -5,38 +5,66 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// <summary>A task's new place, as the tasks it lands between: <see cref="After"/> and <see cref="Before"/> are null at an end.</summary>
 internal sealed record Move(string Id, string? After, string? Before);
 
-/// <summary>Where a task goes when it is nudged or dropped: always among the tasks of its own group, open or resolved.</summary>
+/// <summary>Where a task goes when it is nudged or dropped: always among the tasks of one group, as the tasks it lands between.</summary>
 internal static class ListOrder
 {
-    /// <summary>Moves the task <paramref name="step"/> places, or null when it is not listed or would pass an end.</summary>
-    public static Move? Nudge(IReadOnlyList<TaskItem> open, IReadOnlyList<TaskItem> resolved, string id, int step)
-    {
-        var group = GroupOf(open, id) ? open : resolved;
-        var at = IndexOf(group, id);
-        var without = group.Where(task => task.Id != id).ToList();
-        var to = at + step;
-        return at >= 0 && to >= 0 && to <= without.Count ? Place(id, without, to) : null;
-    }
-
     /// <summary>
-    /// Puts <paramref name="droppedId"/> before or after <paramref name="targetId"/>, or returns null when it is dropped on
-    /// itself or comes from the other group. A task that is not listed still gets a move, so Tasks can say it is gone.
+    /// Moves the task <paramref name="step"/> places among the tasks of <paramref name="group"/>, the group whose row has the
+    /// focus, or returns null when it is not in the group or would pass an end.
     /// </summary>
-    public static Move? Drop(IReadOnlyList<TaskItem> open, IReadOnlyList<TaskItem> resolved, string targetId, string droppedId, bool lowerHalf)
+    public static Move? Nudge(IReadOnlyList<TaskItem> group, string id, int step)
     {
-        var targetOpen = GroupOf(open, targetId);
-        var group = targetOpen ? open : resolved;
-        var listed = IndexOf(open, droppedId) >= 0 || IndexOf(resolved, droppedId) >= 0;
-        if (targetId == droppedId || listed && GroupOf(open, droppedId) != targetOpen)
+        var at = IndexOf(group, id);
+        var to = at + step;
+        if (at < 0 || step == 0 || to < 0 || to >= group.Count)
         {
             return null;
         }
 
-        var without = group.Where(task => task.Id != droppedId).ToList();
-        return Place(droppedId, without, without.FindIndex(task => task.Id == targetId) + (lowerHalf ? 1 : 0));
+        return step > 0
+            ? new Move(id, group[to].Id, to + 1 < group.Count ? group[to + 1].Id : null)
+            : new Move(id, to > 0 ? group[to - 1].Id : null, group[to].Id);
     }
 
-    private static bool GroupOf(IReadOnlyList<TaskItem> open, string id) => IndexOf(open, id) >= 0;
+    /// <summary>
+    /// Puts <paramref name="droppedId"/> before or after <paramref name="targetId"/> among the tasks of <paramref name="target"/>,
+    /// the group of the row it is dropped on. <paramref name="shown"/> is every task the list shows, in every group and among the
+    /// resolved ones. Returns null when it is dropped on itself, when it is dragged from another group than the target (even if it
+    /// is in both), or when it is shown but not in the target group. A task that is
+    /// not shown still gets a move, so Tasks can say it is gone.
+    /// </summary>
+    public static Move? Drop(IReadOnlyList<TaskItem> source, IReadOnlyList<TaskItem> target, IReadOnlyList<TaskItem> shown, string targetId, string droppedId, bool lowerHalf)
+    {
+        var at = IndexOf(target, targetId);
+        if (!ReferenceEquals(source, target) || droppedId == targetId || at < 0)
+        {
+            return null;
+        }
+
+        var droppedAt = IndexOf(target, droppedId);
+        if (droppedAt < 0 && IndexOf(shown, droppedId) >= 0)
+        {
+            return null;
+        }
+
+        // The neighbors are the target's, without the dropped task, which leaves its old place.
+        var before = lowerHalf ? at + 1 : at;
+        var after = lowerHalf ? at : at - 1;
+        return new Move(droppedId, NeighborId(target, after, droppedId, -1), NeighborId(target, before, droppedId, 1));
+    }
+
+    private static string? NeighborId(IReadOnlyList<TaskItem> group, int from, string skip, int direction)
+    {
+        for (var i = from; i >= 0 && i < group.Count; i += direction)
+        {
+            if (group[i].Id != skip)
+            {
+                return group[i].Id;
+            }
+        }
+
+        return null;
+    }
 
     private static int IndexOf(IReadOnlyList<TaskItem> list, string id)
     {
@@ -50,7 +78,4 @@ internal static class ListOrder
 
         return -1;
     }
-
-    private static Move Place(string id, List<TaskItem> without, int index) =>
-        new(id, index > 0 ? without[index - 1].Id : null, index < without.Count ? without[index].Id : null);
 }

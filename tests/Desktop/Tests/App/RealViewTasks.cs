@@ -68,16 +68,23 @@ internal sealed class RealViewTasks : IDisposable
         return core;
     }
 
-    /// <summary>Gives the row the keyboard focus and presses Enter on it, as the keyboard does.</summary>
+    /// <summary>Clicks the row's title, which selects the task and shows its description on the right.</summary>
     public void Expand(string title)
     {
         var window = Window;
         window.UpdateLayout();
         var row = Visuals(window).OfType<FrameworkElement>()
-            .Single(e => e.IsVisible && AutomationProperties.GetAutomationId(e) == "Row" && AutomationProperties.GetName(e) == title);
+            .First(e => e.IsVisible && AutomationProperties.GetAutomationId(e) == "Row" && AutomationProperties.GetName(e) == title);
         row.Focus();
         Keyboard.Focus(row);
-        SimulatedKey.Chord(row, Key.Enter);
+        foreach (var routed in new[] { Mouse.PreviewMouseDownEvent, Mouse.MouseDownEvent, Mouse.PreviewMouseUpEvent, Mouse.MouseUpEvent })
+        {
+            row.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            {
+                RoutedEvent = routed,
+                Source = row,
+            });
+        }
     }
 
     /// <summary>Waits on each finished page load until the page's text holds the words, with no sleeps.</summary>

@@ -44,3 +44,6 @@ Memoria.ToDo.Desktop.Platform.EscCloses
 static Memoria.ToDo.Desktop.Platform.EscCloses.Attach(System.Windows.Window! window) -> void
 Memoria.ToDo.Desktop.Platform.EventKey
 static Memoria.ToDo.Desktop.Platform.EventKey.Of(System.Windows.Input.KeyEventArgs! e) -> System.Windows.Input.Key
+Memoria.ToDo.Desktop.Platform.ThemeFollower
+Memoria.ToDo.Desktop.Platform.ThemeFollower.Dispose() -> void
+Memoria.ToDo.Desktop.Platform.ThemeFollower.ThemeFollower(System.Windows.FrameworkElement! element, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.Action! themeChanged) -> void

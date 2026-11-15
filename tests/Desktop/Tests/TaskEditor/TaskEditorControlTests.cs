@@ -95,6 +95,31 @@ public class TaskEditorControlTests
     }
 
     [WpfFact]
+    public void FocusDescription_puts_the_cursor_at_the_end_of_the_Description()
+    {
+        using var host = new EditorHost();
+        host.Editor.Value = host.Services.Tasks.StartDraft() with { Title = "Buy milk", Description = "first line\nsecond line" };
+        Assert.Equal(EditorFields.Title, host.FocusedField);
+
+        host.Editor.FocusDescription();
+
+        Assert.Equal(EditorFields.Description, host.FocusedField);
+        var length = EditorFields.TextOf(host.Editor, EditorFields.Description).Length;
+        Assert.Equal((length, 0), EditorFields.SelectionOf(host.Editor, EditorFields.Description));
+    }
+
+    [WpfFact]
+    public void FocusDescription_on_an_empty_Description_puts_the_cursor_in_it()
+    {
+        using var host = new EditorHost();
+
+        host.Editor.FocusDescription();
+
+        Assert.Equal(EditorFields.Description, host.FocusedField);
+        Assert.Equal((0, 0), EditorFields.SelectionOf(host.Editor, EditorFields.Description));
+    }
+
+    [WpfFact]
     public void Saves_nothing_itself()
     {
         using var host = new EditorHost();

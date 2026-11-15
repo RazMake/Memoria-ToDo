@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
-/// <summary>Tags in View Tasks: the badges on rows, the tag control of an expanded task, the Undo bar, and changes from Sync.</summary>
+/// <summary>Tags in View Tasks: the group headings, the selected task's tag control, the Undo bar, and changes from Sync.</summary>
 [UX]
 [Collection(ScreenTests.Collection)]
 public class TaskListTagsTests
@@ -19,11 +19,13 @@ public class TaskListTagsTests
     }
 
     [WpfFact]
-    public void A_row_shows_its_tags_as_badges_in_order()
+    public void The_selected_task_shows_its_tags_as_badges_in_order()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home", "errand");
         using var screen = new TaskListScreen(services);
+
+        screen.ClickRow("Buy milk");
 
         Assert.Equal(["home", "errand"], screen.BadgeTags("Buy milk"));
     }
@@ -57,28 +59,28 @@ public class TaskListTagsTests
     }
 
     [WpfFact]
-    public void An_expanded_open_task_shows_the_tag_control()
+    public void The_selected_open_task_shows_the_tag_control()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         using var screen = new TaskListScreen(services);
         Assert.False(screen.ShowsTagControl("Buy milk"));
 
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
 
         Assert.True(screen.ShowsTagControl("Buy milk"));
         Assert.Equal(["home"], screen.ControlTags("Buy milk"));
     }
 
     [WpfFact]
-    public void An_expanded_resolved_task_shows_the_tag_control()
+    public void The_selected_resolved_task_shows_the_tag_control()
     {
         var services = new ListServices();
         services.AddResolved("Old job", "", "home");
         using var screen = new TaskListScreen(services);
         screen.Click(screen.ResolvedLabel!);
 
-        screen.PressOn("Old job", Key.Enter);
+        screen.ClickRow("Old job");
 
         Assert.True(screen.ShowsTagControl("Old job"));
     }
@@ -89,9 +91,9 @@ public class TaskListTagsTests
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
 
-        screen.PressOn("Buy milk", Key.F2);
+        screen.Press(Key.F2);
 
         Assert.True(screen.IsEditing("Buy milk"));
         Assert.Equal(1, screen.TagControlCount);
@@ -104,7 +106,7 @@ public class TaskListTagsTests
         var services = new ListServices();
         services.Add("Buy milk", "", "home", "errand");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
 
         screen.RemoveTag("Buy milk", "home");
 
@@ -123,7 +125,7 @@ public class TaskListTagsTests
         services.Add("Buy milk", "", "home");
         services.Add("Call Ana", "", "work");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
         screen.OpenPlusMenu("Buy milk");
 
         screen.ChooseMenuTag("work");
@@ -138,7 +140,7 @@ public class TaskListTagsTests
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
         services.Files.FailWritesUnder(services.TaskFolder);
 
         screen.RemoveTag("Buy milk", "home");
@@ -155,6 +157,7 @@ public class TaskListTagsTests
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         using var screen = new TaskListScreen(services);
+        screen.ClickRow("Buy milk");
 
         ChangeTagsElsewhere(services, "Buy milk", "home", "errand");
 
@@ -167,7 +170,7 @@ public class TaskListTagsTests
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
         screen.OpenPlusMenu("Buy milk");
 
         ChangeTagsElsewhere(services, "Buy milk", "home", "errand");
@@ -183,7 +186,7 @@ public class TaskListTagsTests
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
         screen.OpenPlusMenu("Buy milk");
         screen.ChooseCustom();
         screen.TypeTags("pend");
@@ -196,35 +199,18 @@ public class TaskListTagsTests
     }
 
     [WpfFact]
-    public void Expanding_another_task_drops_Custom_and_its_text()
+    public void Selecting_another_task_drops_Custom_and_its_text()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         services.Add("Call Ana", "", "work");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
         screen.OpenPlusMenu("Buy milk");
         screen.ChooseCustom();
         screen.TypeTags("pend");
 
-        screen.PressOn("Call Ana", Key.Enter);
-
-        Assert.False(screen.CustomIsOpen);
-    }
-
-    [WpfFact]
-    public void Collapsing_the_task_drops_Custom_and_its_text()
-    {
-        var services = new ListServices();
-        services.Add("Buy milk", "", "home");
-        using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
-        screen.OpenPlusMenu("Buy milk");
-        screen.ChooseCustom();
-        screen.TypeTags("pend");
-
-        screen.PressOn("Buy milk", Key.Enter);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Call Ana");
 
         Assert.False(screen.CustomIsOpen);
     }

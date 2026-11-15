@@ -9,39 +9,62 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
 /// How a View Tasks test reaches the tag parts, through the ids the Task editor's tests already use (see <see cref="TagControls"/>).
-/// A row shows its tags as badges, elements with id "Badge {tag}", so a collapsed row's badges are its tags. The tag control of an
-/// expanded task, and the editor's own during an edit, both show remove buttons ("Remove {tag}") and the + button ("AddTag"), so
-/// whether a row shows a tag control is whether it shows the + button. Shared test setup.
+/// The selected task's tag control, and the editor's own during an edit, show on the right side: badges with id "Badge {tag}",
+/// remove buttons ("Remove {tag}"), and the + button ("AddTag"). A group heading shows its tag as one badge. Rows show no badges.
+/// Each helper that names a task's title needs that task to be the selected one. Shared test setup.
 /// </summary>
 internal sealed partial class TaskListScreen
 {
     /// <summary>Lets pending work finish, then lays the window out.</summary>
     public void Settle() => Refresh();
 
-    /// <summary>The tags of the badges the row shows, in order.</summary>
-    public IReadOnlyList<string> BadgeTags(string title) => TagControls.BadgeTags(Row(title));
+    /// <summary>The tags of the badges the selected task, named by <paramref name="title"/>, shows on the right side, in order.</summary>
+    public IReadOnlyList<string> BadgeTags(string title)
+    {
+        RequireSelected(title);
+        return TagControls.BadgeTags(Details);
+    }
 
-    /// <summary>The tags whose remove buttons the row's tag control shows, in order.</summary>
-    public IReadOnlyList<string> ControlTags(string title) => TagControls.RemovableTags(Row(title));
+    /// <summary>The tags of the badges in the group headings, top to bottom.</summary>
+    public IReadOnlyList<string> HeadingBadgeTags =>
+        [.. Headings().OrderBy(PositionFromTop).SelectMany(heading => TagControls.BadgeTags(heading))];
 
-    /// <summary>Whether the row shows a tag control: the one an expanded task has, or the editor's own during an edit.</summary>
-    public bool ShowsTagControl(string title) => HasTagControl(Row(title));
+    /// <summary>Whether any row shows a tag badge.</summary>
+    public bool RowsShowBadges => Rows().Any(row => TagControls.BadgeTags(row).Count > 0);
 
-    /// <summary>How many tag controls show in the whole window.</summary>
+    /// <summary>The tags whose remove buttons the selected task's tag control shows, in order.</summary>
+    public IReadOnlyList<string> ControlTags(string title)
+    {
+        RequireSelected(title);
+        return TagControls.RemovableTags(Details);
+    }
+
+    /// <summary>Whether the right side shows a tag control: the selected task's, or the editor's own during an edit.</summary>
+    public bool ShowsTagControl(string title) => SelectedTitles.Contains(title) && HasTagControl(Details);
+
+    /// <summary>How many tag controls show in the whole window: one on the right side, or none.</summary>
     public int TagControlCount
     {
         get
         {
             Refresh();
-            return Rows().Count(HasTagControl);
+            return HasTagControl(Details) ? 1 : 0;
         }
     }
 
-    /// <summary>Clicks the remove button of the tag in the row's tag control.</summary>
-    public void RemoveTag(string title, string tag) => Activate(TagControls.RemoveButton(Row(title), tag));
+    /// <summary>Clicks the remove button of the tag in the selected task's tag control.</summary>
+    public void RemoveTag(string title, string tag)
+    {
+        RequireSelected(title);
+        Activate(TagControls.RemoveButton(Details, tag));
+    }
 
-    /// <summary>Clicks the + button of the row's tag control, which opens its menu.</summary>
-    public void OpenPlusMenu(string title) => Activate(TagControls.Plus(Row(title)));
+    /// <summary>Clicks the + button of the selected task's tag control, which opens its menu.</summary>
+    public void OpenPlusMenu(string title)
+    {
+        RequireSelected(title);
+        Activate(TagControls.Plus(Details));
+    }
 
     /// <summary>Whether the + menu is open anywhere in the window.</summary>
     public bool PlusMenuIsOpen

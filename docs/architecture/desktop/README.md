@@ -10,7 +10,7 @@ Each module is a project of its own, and the [module map](../modules.md#module-m
 | --- | --- |
 | [Shell](shell.md) | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, updates, and how sync status shows |
 | [Task editor](task-editor.md) | The Add window: its fields, keys, draft, and tags. View Tasks edits a task with the same editor. |
-| [Task list](task-list.md) | View Tasks: the list in rank order, expanding and editing in place, the tag filter, search, resolving, deleting, and the Sync button |
+| [Task list](task-list.md) | View Tasks: tasks grouped by tag beside the selected task's description, editing it in place, the tag filter, search, resolving, deleting, and the Sync button |
 | [Formatted view](formatted-view.md) | A task's title and description as a reader sees them, with no Markdown characters, the web view the description shows in, and which links open in the default browser |
 | [Configure](configure.md) | The settings window: the two global shortcuts, the Close window shortcut, starting with Windows, the shared deletion delay, and sync status details |
 
@@ -24,7 +24,7 @@ Each window module keeps its screens' state and logic in internal [view models](
 
 The desktop platform, `Memoria.ToDo.Desktop.Platform`, holds the app's startup, as [Modules](../modules.md#the-platform-serves-every-module-and-knows-none) decides. The composition root, `Memoria.ToDo.Desktop.App`, builds the app from the modules and hands it to the platform to run.
 
-The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows). The decided parts are:
+The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows) and the theme follower, below the theme. The decided parts are:
 
 - **The app's lifetime**: an interface with two steps, start and stop. Start receives a way to end the app. [Shell](shell.md#public-interface) implements it, so the platform names no module. Proposed: the way to end the app works from any thread. The platform passes the call to the UI thread and returns without waiting, so a module that ends the app from a background task needs no thread rule of its own. This is a decision to confirm.
 - **Run the app**: takes a function that builds the lifetime, and returns the process's exit code. In order, it:
@@ -102,6 +102,23 @@ The platform's public interface has these parts: the three below, which are deci
   - **The theme reads Windows itself, with no setting interface**: no test could make it see a switch, or fail while it handles one, without changing the user's setting.
   - **The theme needs only a WPF dispatcher, so its switch tests are unit tests**: a theme made on a background thread with its own dispatcher would work, and raise Changed where no window lives.
   - **An integration test that switches Windows' setting and switches it back**: it changes the user's own theme for every app, and a test that stops midway leaves it switched.
+
+**Every button in the app shows the hand pointer**, as the user asked, so the user sees what can be clicked. Run the app sets this once, right after the theme in its third step, for every window and menu the app makes, so no module sets it and none can forget it. It covers push buttons and toggle buttons, such as Configure's section titles, the tag badges' remove buttons, and the + menu's button. It doesn't cover check boxes, radio buttons, or a scroll bar's arrows, which WPF also builds from button classes, since they don't read as buttons. A module may still show the hand over other things a click acts on, as [View Tasks' titles](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) do. It adds nothing to the platform's public interface. The rule holds for the whole process, so its test is one of Run the app's integration tests, each in a program of its own. The user decided that Run the app registers one class-wide rule for buttons ([Mouse.QueryCursor](https://learn.microsoft.com/en-us/dotnet/api/system.windows.input.mouse.querycursor), [EventManager.RegisterClassHandler](https://learn.microsoft.com/en-us/dotnet/api/system.windows.eventmanager.registerclasshandler)). An app-wide button style was ruled out, since it replaces the Fluent theme's button style unless based on it; so was a part each window attaches, since each new window and menu must remember it.
+
+**Proposed: a platform part, the theme follower, calls a module back when the theme switches, but only while an element is on screen**, and once when the element comes back on screen, since the theme may have switched while it was away. So a closed window holds no subscription. The Formatted view has it today, and the Task editor keeps a copy of the same rule; Configure's [section titles](configure.md#the-window-shows-its-settings-in-labeled-sections) would be a third user, so it moves to the platform, as [code shared by two modules](../modules.md#the-platform-serves-every-module-and-knows-none) does. This is a decision to confirm:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// Calls themeChanged when the theme switches, while element is loaded, and once each time it loads.
+/// Disposing it stops the calls.
+public sealed class ThemeFollower : System.IDisposable
+{
+    /// Throws ArgumentNullException for a null argument.
+    public ThemeFollower(System.Windows.FrameworkElement element, ITheme theme, System.Action themeChanged);
+    public void Dispose();
+}
+```
 
 **Cleanup runs while the lifetime's Windows resources still work.** The platform begins
 [`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) on the UI thread and awaits its one owned
@@ -349,6 +366,7 @@ The table lists each step, what it builds, and its status:
 | 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Next |
 | 7 | Esc and switching windows | The platform's [Esc part](#window-modules-read-keys-through-the-platform); Esc in [View Tasks](task-list.md#esc-goes-back-one-step-then-closes-view-tasks) and [Configure](configure.md#esc-and-the-close-window-shortcut-close-the-window); Shell's [shortcut switching](shell.md#a-shortcut-switches-between-add-and-view-tasks), with the close parts of [Add](task-editor.md#public-interface) and [View Tasks](task-list.md#public-interface); and View Tasks' [prompt for a changed edit](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) | Implemented |
 | 8 | Colored tags | Each tag's color in [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file), and Sync carrying `tags.json`; Rendering's [30 tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes); the Task editor's [badges and + menu](task-editor.md#tags-show-as-colored-badges-and-the-plus-button-adds-one); and the Task list's [colored tags and tag changes without Edit](task-list.md#tags-show-as-colored-badges-and-change-without-edit) | Implemented |
+| 9 | Text look and View Tasks by tag | Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) on the description page, in [titles](formatted-view.md#it-shows-what-rendering-decides-never-markdown), in the [editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview), and on [Configure's section titles](configure.md#the-window-shows-its-settings-in-labeled-sections); the platform's [hand pointer on every button and theme follower](#the-platform-runs-the-app-and-the-composition-root-builds-it); and View Tasks' [tag groups beside the description](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description), with [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) | Not scheduled |
 
 The remaining work follows this order:
 

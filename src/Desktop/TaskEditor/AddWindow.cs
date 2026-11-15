@@ -14,7 +14,10 @@ public static class AddWindow
         CloseWindowKeys closeWindowKeys)
     {
         ArgumentNullException.ThrowIfNull(tagColors);
-        return new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files));
+        ArgumentNullException.ThrowIfNull(closeWindowKeys);
+        var window = new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files));
+        closeWindowKeys.Attach(window);
+        return window;
     }
 }
 

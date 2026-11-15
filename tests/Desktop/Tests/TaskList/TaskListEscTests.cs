@@ -226,13 +226,13 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void Esc_with_a_task_only_expanded_closes_View_Tasks_and_does_not_collapse_it_first()
+    public void Esc_with_a_task_only_selected_closes_View_Tasks_and_does_not_clear_the_selection_first()
     {
         var services = new ListServices();
         services.Add("Buy milk", "Oat milk");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
-        Assert.Equal(["Buy milk"], screen.ExpandedTitles);
+        screen.ClickRow("Buy milk");
+        Assert.Equal(["Buy milk"], screen.SelectedTitles);
 
         screen.PressToClose(Key.Escape);
 

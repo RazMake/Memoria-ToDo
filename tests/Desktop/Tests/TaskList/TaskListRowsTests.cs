@@ -1,4 +1,3 @@
-using System.Windows.Input;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -23,29 +22,31 @@ public class TaskListRowsTests
     }
 
     [WpfFact]
-    public void Shows_each_rows_tags()
+    public void Rows_show_no_tag_badges_and_each_group_heading_shows_its_tag()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home", "errand");
         using var screen = new TaskListScreen(services);
 
-        Assert.Equal(["home", "errand"], screen.BadgeTags("Buy milk"));
+        Assert.False(screen.RowsShowBadges);
+        Assert.Equal(["errand", "home"], screen.HeadingBadgeTags);
     }
 
     [WpfFact]
-    public void Clicking_a_row_expands_it()
+    public void Clicking_a_title_selects_the_task_and_shows_its_description()
     {
         var services = new ListServices();
         services.Add("Buy milk", "Remember the oat milk");
         using var screen = new TaskListScreen(services);
 
-        screen.ClickRow("Buy milk");
+        screen.ClickTitle("Buy milk");
 
-        Assert.Equal(["Buy milk"], screen.ExpandedTitles);
+        Assert.Equal(["Buy milk"], screen.SelectedTitles);
+        Assert.Contains("Remember the oat milk", screen.Web.Page);
     }
 
     [WpfFact]
-    public async Task Clicking_a_link_in_a_title_opens_it_and_does_not_expand_the_row()
+    public async Task Clicking_a_link_in_a_title_opens_it_and_does_not_select_the_task()
     {
         var services = new ListServices();
         services.Add("Read [the docs](https://example.com/docs)", "Notes");
@@ -55,11 +56,11 @@ public class TaskListRowsTests
         await services.Browser.WaitForOpensAsync(1);
 
         Assert.Equal(["https://example.com/docs"], services.Browser.Opened);
-        Assert.Empty(screen.ExpandedTitles);
+        Assert.Empty(screen.SelectedTitles);
     }
 
     [WpfFact]
-    public void Clicking_a_task_link_in_a_title_expands_that_task_not_the_clicked_row_and_opens_no_browser()
+    public void Clicking_a_task_link_in_a_title_selects_that_task_not_the_clicked_row_and_opens_no_browser()
     {
         var services = new ListServices();
         var target = services.Add("Call Ana", "About the invoice");
@@ -68,37 +69,37 @@ public class TaskListRowsTests
 
         screen.ClickTitleLink("the call");
 
-        Assert.Equal(["Call Ana"], screen.ExpandedTitles);
+        Assert.Equal(["Call Ana"], screen.SelectedTitles);
         Assert.Empty(services.Browser.Opened);
     }
 
     [WpfFact]
-    public void Expanding_another_task_collapses_the_open_one_and_shows_the_other_description()
+    public void Selecting_another_task_shows_the_other_description()
     {
         var services = new ListServices();
         services.Add("Buy milk", "Remember the oat milk");
         services.Add("Call Ana", "About the invoice");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
 
-        screen.PressOn("Call Ana", Key.Enter);
+        screen.ClickRow("Call Ana");
 
-        Assert.Equal(["Call Ana"], screen.ExpandedTitles);
+        Assert.Equal(["Call Ana"], screen.SelectedTitles);
         Assert.Contains("About the invoice", screen.Web.Page);
     }
 
     [WpfFact]
-    public void A_task_link_in_a_description_expands_that_task()
+    public void A_task_link_in_a_description_selects_that_task()
     {
         var services = new ListServices();
         var target = services.Add("Call Ana", "About the invoice");
         services.Add("Buy milk", "See the other task");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
 
         screen.Web.ClickLink(services.Tasks.LinkAddress(target.Id));
 
-        Assert.Equal(["Call Ana"], screen.ExpandedTitles);
+        Assert.Equal(["Call Ana"], screen.SelectedTitles);
     }
 
     [WpfFact]
@@ -108,7 +109,7 @@ public class TaskListRowsTests
         services.Browser.Failure = new InvalidOperationException("No browser is installed.");
         services.Add("Buy milk", "See the shop");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
 
         screen.Web.ClickLink("https://example.com/shop");
 

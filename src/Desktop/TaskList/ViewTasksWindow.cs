@@ -31,7 +31,8 @@ public static class ViewTasksWindow
         ArgumentNullException.ThrowIfNull(createWebView);
         ArgumentNullException.ThrowIfNull(browser);
         ArgumentNullException.ThrowIfNull(sync);
-        return new Opener(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync);
+        ArgumentNullException.ThrowIfNull(closeWindowKeys);
+        return new Opener(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys);
     }
 
     // Holds a failure from a delete finished while the window closed, so the next window shows it, and the sync
@@ -45,7 +46,7 @@ public static class ViewTasksWindow
 
         public Opener(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
             IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-            Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync)
+            Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys)
         {
             _window = new SingleWindow(() =>
             {
@@ -57,6 +58,7 @@ public static class ViewTasksWindow
                     var window = new TaskListWindow(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, webView,
                         browser, listSync, message, failure => _carried = failure);
                     _carried = null;
+                    closeWindowKeys.Attach(window);
                     _current = window;
                     window.Closed += (_, _) => _current = null;
                     _opening = listSync.SyncAsync();

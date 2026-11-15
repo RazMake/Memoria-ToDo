@@ -54,10 +54,10 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
         _tagsModel = tagsModel;
         _tags = new TagEditor(tasks, _tagsModel, new TagLook(tagColors, theme));
         var tags = _tags;
-        _title = Field("Title", MarkdownField.Title, palette, theme);
+        _title = Field("Title", MarkdownField.Title, theme);
         _title.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
         _title.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-        _description = Field("Description", MarkdownField.Description, palette, theme);
+        _description = Field("Description", MarkdownField.Description, theme);
         _description.MinHeight = DescriptionMinHeight;
         _description.MaxHeight = DescriptionMaxHeight;
         _description.WordWrap = true;
@@ -184,6 +184,14 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
     /// <summary>Puts the cursor in the Title.</summary>
     public void FocusTitle() => Focus(_title);
 
+    /// <summary>Puts the cursor at the end of the Description.</summary>
+    public void FocusDescription()
+    {
+        Focus(_description);
+        _description.Select(_description.Text.Length, 0);
+        _description.TextArea.Caret.BringCaretToView();
+    }
+
     /// <summary>
     /// Adds typed tag text as a tag, then calls <paramref name="save"/> with <see cref="Value"/>, unless the Title is
     /// empty, which it marks and puts the cursor in. Returns false, keeping the text, when the Title is empty or
@@ -213,8 +221,8 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
         _title.ShowInvalid(true);
     }
 
-    private static StyledTextEditor Field(string automationId, MarkdownField field, IReadOnlyList<PaletteColor> palette, ITheme theme) =>
-        new(automationId, field, palette, theme) { Margin = new Thickness(0, 0, 0, 12) };
+    private static StyledTextEditor Field(string automationId, MarkdownField field, ITheme theme) =>
+        new(automationId, field, theme) { Margin = new Thickness(0, 0, 0, 12) };
 
     private static void Add(Panel panel, string caption, UIElement field)
     {

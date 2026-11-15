@@ -2,7 +2,7 @@
 
 Status: Decided
 
-The Task editor is the desktop app's Add window, built so one key press puts the cursor in a new task's title with no wait. View Tasks edits a task in place with the same editor.
+The Task editor is the desktop app's Add window, built so one key press puts the cursor in a new task's title with no wait. View Tasks edits a task with the same editor, on its right side.
 
 ## Behavior
 
@@ -105,7 +105,7 @@ The reference to another task opens a list, as above. It lists open tasks only, 
 
 ### Closing without saving keeps a draft on this device
 
-Closing Add without saving, with Esc or by clicking elsewhere, keeps its text as a draft. The next Add opens with the draft, and the Clear button clears it. Drafts stay on this device and never sync. Add never asks before it closes, since the draft keeps the text; View Tasks [asks](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) only before it drops a changed edit in place, which has no draft.
+Closing Add without saving, with Esc or by clicking elsewhere, keeps its text as a draft. The next Add opens with the draft, and the Clear button clears it. Drafts stay on this device and never sync. Add never asks before it closes, since the draft keeps the text; View Tasks [asks](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) only before it drops a changed edit, which has no draft.
 
 [Tasks keeps the draft](../tasks.md#a-draft-waits-on-this-device-until-its-saved), with its images, in `%LocalAppData%\Memoria-ToDo\draft\`, a folder the composition root gives it. Add keeps the draft when it hides and when the app exits, and saving the task clears it. Clicking Add's own buttons, its lists, or its file dialog isn't clicking elsewhere.
 
@@ -124,7 +124,7 @@ Proposed, each a decision to confirm:
 
 The user decided how tags look and are added. The task's tags show as badges, each in its own color, followed by a **+** button. The + opens a menu with the seven most-used tags, which add with one click, and a **Custom** item. Custom shows a text box for any tag and a picker of Rendering's 30 [tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes), in the current theme's set. [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color, so every device shows it.
 
-The badges and the + button make up the tag control. It's part of the editor, so Add and the Task list's [edit in place](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) both get it, and the Task list also shows it on an [expanded task](task-list.md#tags-show-as-colored-badges-and-change-without-edit). Tags still follow [Tasks' tag rules](../tasks.md#tags-and-search-ignore-case): case is ignored, and a typed tag takes the spelling of a matching tag in use.
+The badges and the + button make up the tag control. It's part of the editor, so Add and the Task list's [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) both get it, and the Task list also shows it under the [selected task's](task-list.md#tags-show-as-colored-badges-and-change-without-edit) description. Tags still follow [Tasks' tag rules](../tasks.md#tags-and-search-ignore-case): case is ignored, and a typed tag takes the spelling of a matching tag in use.
 
 Proposed, each a decision to confirm:
 
@@ -151,7 +151,7 @@ Proposed, each a decision to confirm:
 
 - Colored text shows in its palette color for the current [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), such as `:red[urgent]` in red.
 - Markdown's own characters, such as `**` around bold text, show dimmed.
-- A link shows underlined in the palette's blue for the current theme, and inline code in a monospace font on a subtle gray background.
+- Headings, links, code, and italic text take Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) for the current theme: headings 1 to 3 in their colors and every heading at its size, a link underlined in the link color, code in its font and color on the faded background, and italic text in the italic color.
 - Styling never delays typing: typed text shows at once, and its styling follows.
 
 ### A new task goes to the top
@@ -160,7 +160,7 @@ A saved new task goes to the top of the order, where the user sees it first in V
 
 ### Add and View Tasks save the same way, through the editor
 
-The editor runs every save itself, so Add and the Task list's [edit in place](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) save the same way. Its user passes the function that saves: Add passes [Tasks'](../tasks.md#public-interface) add, and the Task list passes Tasks' save of an edit. Each save takes three steps:
+The editor runs every save itself, so Add and the Task list's [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) save the same way. Its user passes the function that saves: Add passes [Tasks'](../tasks.md#public-interface) add, and the Task list passes Tasks' save of an edit. Each save takes three steps:
 
 1. Tag text typed and not yet added becomes a tag, so no typing is lost.
 2. An empty Title is marked, the cursor goes to it, and nothing is saved.
@@ -179,9 +179,9 @@ The composition root, Shell, and the Task list use these parts:
 - **Create the Add window**: the composition root creates it when the app starts, as [above](#add-opens-at-once-with-the-cursor-in-the-title), and gives it to Shell.
 - **Show Add**: shows the Add window, with the draft if there is one. Shell calls it from the [Add new task shortcut](shell.md#a-shortcut-switches-between-add-and-view-tasks), the tray icon, and the tray menu.
 - **Close Add**: hides the Add window and keeps the draft, as Esc does, and does nothing while it's hidden. Shell calls it when the Manage tasks shortcut [switches to View Tasks](shell.md#a-shortcut-switches-between-add-and-view-tasks).
-- **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-view-tasks-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. The Task list uses it to edit a task in place. The user decided that the editor tells what changed, so the Task list shows its [Undo bar](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) only for an edit with changes, and never loses tag text typed and not yet added.
-- **The tag control**: a task's tags as badges with remove buttons, then the + and its menu, as [above](#tags-show-as-colored-badges-and-the-plus-button-adds-one). It reports each tag the user adds or removes, and keeps a picked color through Tasks, but never saves the task. The editor holds one, and the Task list shows one on an expanded task.
-- **Tag badges**: tags as read-only badges in their colors. The Task list shows them on each row.
+- **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-view-tasks-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. The Task list uses it to edit a task on View Tasks' right side. The user decided that the editor tells what changed, so the Task list shows its [Undo bar](task-list.md#edit-description-turns-the-right-side-into-the-editor) only for an edit with changes, and never loses tag text typed and not yet added.
+- **The tag control**: a task's tags as badges with remove buttons, then the + and its menu, as [above](#tags-show-as-colored-badges-and-the-plus-button-adds-one). It reports each tag the user adds or removes, and keeps a picked color through Tasks, but never saves the task. The editor holds one, and the Task list shows one under the selected task's description.
+- **Tag badges**: tags as read-only badges in their colors. The Task list shows one as each tag group's heading.
 - **The top tags**: the seven most-used tags as badges in their colors, reporting the one clicked. The Task list uses them in its tag filter. The + menu shows the same seven, less the task's own tags, so the count has one home.
 - **Two ports**, the clipboard and the image file dialog, which the desktop app implements beside its composition root, so the Task editor's tests run on [fakes](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test).
 
@@ -239,6 +239,9 @@ public sealed class TaskEditorControl : UserControl
 
     /// Puts the cursor in the Title.
     public void FocusTitle();
+
+    /// Puts the cursor at the end of the Description, for View Tasks' Edit Description.
+    public void FocusDescription();
 
     public event EventHandler? SaveRequested;          // Ctrl+Enter
     public event EventHandler? SaveAndClearRequested;  // Ctrl+Shift+Enter
@@ -324,11 +327,11 @@ The options below were considered and rejected, grouped by decision.
   - **Clear beside Save at the bottom**: a slip of the mouse would clear the task instead of saving it.
   - **Save as the default button, pressed by Enter**: Enter already moves to the Description, breaks lines, and adds tags.
   - **A button for Ctrl+Shift+Enter too**: one more button in a compact window, for a key the user can learn.
-  - **Clear and Save inside the editor the Task list reuses**: the Task list's in-place edit has [its own design](task-list.md#edit-turns-the-open-task-into-the-editor-in-place).
+  - **Clear and Save inside the editor the Task list reuses**: the Task list's edit has [its own design](task-list.md#edit-description-turns-the-right-side-into-the-editor).
   - **Renaming Tasks' `DiscardDraft` to match Clear**: it would change a public interface only for the name on a button.
 - Which part of saving the editor owns:
   - **The editor publishes its save steps, and each screen runs them and shows its own messages**: Add and the Task list would repeat the same steps and messages, which the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) forbids.
-  - **A ready-made in-place edit panel from the Task editor, which saves through Tasks itself**: the Task editor would take on editing existing tasks, which the [Task list](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) owns.
+  - **A ready-made edit panel from the Task editor, which saves through Tasks itself**: the Task editor would take on editing existing tasks, which the [Task list](task-list.md#edit-description-turns-the-right-side-into-the-editor) owns.
 - How the Task list tells whether a discarded edit changed anything:
   - **Always show the Undo bar when an edit is left without saving**: it would say an edit was discarded when nothing changed.
   - **Publishing the tag text typed and not yet added**: the Task list would decide what counts as a change in the editor, splitting that rule across two modules.

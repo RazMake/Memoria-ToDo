@@ -6,7 +6,7 @@ Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Markdown.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.OpenFailed -> System.EventHandler<System.Exception!>?
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.OtherLinkClicked -> System.EventHandler<string!>?
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle
-Memoria.ToDo.Desktop.FormattedView.FormattedTitle.FormattedTitle(System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser) -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.FormattedTitle(Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser) -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.get -> string!
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.OpenFailed -> System.EventHandler<System.Exception!>?

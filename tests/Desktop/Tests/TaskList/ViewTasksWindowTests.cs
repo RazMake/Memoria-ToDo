@@ -22,27 +22,27 @@ public class ViewTasksWindowTests
     }
 
     [WpfFact]
-    public void Makes_one_web_view_when_it_opens_and_none_more_while_tasks_expand()
+    public void Makes_one_web_view_when_it_opens_and_none_more_while_tasks_are_selected()
     {
         var services = new ListServices();
         services.Add("First");
         services.Add("Second");
         using var screen = new TaskListScreen(services);
 
-        screen.PressOn("First", System.Windows.Input.Key.Enter);
-        screen.PressOn("Second", System.Windows.Input.Key.Enter);
+        screen.ClickRow("First");
+        screen.ClickRow("Second");
 
         Assert.Single(services.WebViews);
     }
 
     [WpfFact]
-    public void Shows_again_after_closing_with_a_new_web_view_and_nothing_expanded_or_filtered()
+    public void Shows_again_after_closing_with_a_new_web_view_and_nothing_selected_or_filtered()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         services.Add("Call Ana", "", "work");
         using var screen = new TaskListScreen(services);
-        screen.PressOn("Call Ana", System.Windows.Input.Key.Enter);
+        screen.ClickRow("Call Ana");
         screen.ClickChip("work");
         screen.Window.Close();
 
@@ -52,8 +52,8 @@ public class ViewTasksWindowTests
         Assert.Equal(2, services.WebViews.Count);
         Assert.True(services.WebViews[0].IsDisposed);
         Assert.False(services.WebViews[1].IsDisposed);
-        Assert.Equal(["Call Ana", "Buy milk"], screen.RowTitles);
-        Assert.Empty(screen.ExpandedTitles);
+        Assert.Equal(["home", "work"], screen.GroupNames);
+        Assert.Empty(screen.SelectedTitles);
     }
 
     [WpfFact]

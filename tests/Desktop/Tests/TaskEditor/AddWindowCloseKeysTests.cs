@@ -48,7 +48,7 @@ public class AddWindowCloseKeysTests
     {
         using var screen = new AddScreen();
         screen.Services.CloseWindowKeys.Set(ModifierKeys.Shift, Key.F9);
-        screen.Services.UseTag("home");
+        screen.Services.UseTag("hobby");
         screen.Show();
         screen.Fill("Buy milk", "Two litres", "home");
         screen.TypeTag("ho");
@@ -67,7 +67,7 @@ public class AddWindowCloseKeysTests
         screen.Services.CloseWindowKeys.Set(ModifierKeys.Shift, Key.F9);
         screen.Show();
         screen.Fill("Buy milk", "Two litres", "home");
-        screen.Edit(EditorFields.Description, "Two litres", 10);
+        screen.Edit(EditorFields.Description, "", 0);
         screen.Type("/");
         Assert.NotEmpty(screen.ShownSnippets);
 

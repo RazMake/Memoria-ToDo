@@ -455,7 +455,7 @@ The table lists each test.
 These tests change libgit2's process-wide settings, so they share one xUnit collection with parallelization turned
 off. xUnit runs such collections after the others, one at a time, with no other test running
 ([xUnit maintainer](https://github.com/xunit/xunit/discussions/3206)). Sync's other tests only ever set empty paths,
-so they still run side by side. To prove these tests can fail, at final validation remove the call that empties the
+so they still run side by side. To prove these tests can fail, when adding them remove the call that empties the
 levels, and see the last column's failures.
 
 Desktop tests reuse one fake `ISyncService`/setup implementation in `tests/Shared/Fakes`, rather than one per window.

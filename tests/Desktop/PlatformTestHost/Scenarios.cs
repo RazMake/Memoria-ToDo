@@ -101,6 +101,9 @@ internal static class Scenarios
         ["theme-switch-and-back-unseen"] = (ThemeScenarios.SwitchAndBackUnseen, DoNothing),
         ["theme-changed-handler-throws"] = (ThemeScenarios.ChangedHandlerThrows, DoNothing),
         ["theme-listeners-across-shutdown"] = (ThemeScenarios.ListenersAcrossShutdown, DoNothing),
+
+        // The hand pointer: see CursorScenarios.
+        ["cursor-button-kinds"] = (CursorScenarios.ButtonKinds, DoNothing),
     };
 
     private static Task DoNothing() => Task.CompletedTask;

@@ -14,7 +14,7 @@ public class TaskListTagEscTests
     {
         services.Add("Buy milk", "", "home");
         var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
         screen.OpenPlusMenu("Buy milk");
         return screen;
     }
@@ -29,7 +29,7 @@ public class TaskListTagEscTests
 
         Assert.False(screen.PlusMenuIsOpen);
         Assert.True(screen.View.IsOpen);
-        Assert.Equal(["Buy milk"], screen.ExpandedTitles);
+        Assert.Equal(["Buy milk"], screen.SelectedTitles);
     }
 
     [WpfFact]
@@ -79,7 +79,7 @@ public class TaskListTagEscTests
 
         Assert.False(screen.CustomIsOpen);
         Assert.True(screen.View.IsOpen);
-        Assert.Equal(["Buy milk"], screen.ExpandedTitles);
+        Assert.Equal(["Buy milk"], screen.SelectedTitles);
     }
 
     [WpfFact]
@@ -107,7 +107,7 @@ public class TaskListTagEscTests
     public void Esc_with_Custom_open_and_the_All_tags_list_open_closes_only_the_list_and_a_second_Esc_closes_Custom()
     {
         using var screen = new TaskListScreen(ServicesWithAllTagsList());
-        screen.PressOn("Buy milk", Key.Enter);
+        screen.ClickRow("Buy milk");
         screen.OpenPlusMenu("Buy milk");
         screen.ChooseCustom();
         screen.TypeTags("pend");

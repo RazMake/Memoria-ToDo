@@ -40,6 +40,7 @@ public static class AppRunner
 #pragma warning disable WPF0001 // Application.ThemeMode is experimental; allowed only on this line.
             application.ThemeMode = ThemeMode.System;
 #pragma warning restore WPF0001
+            ButtonCursor.Register();
             application.DispatcherUnhandledException += (_, e) =>
             {
                 e.Handled = true;
