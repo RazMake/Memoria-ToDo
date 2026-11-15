@@ -49,7 +49,7 @@ Not confirmed by a run:
 
 - **That Velopack's starter passes the sign-in argument on to the app**, also after an update. Its [source](https://github.com/velopack/velopack/blob/develop/src/bins/src/stub.rs) passes every argument on. No automated test can check it, since it needs an installed copy. To check it by hand:
   1. Install a release with its `setup.exe`. Start the app by hand once and finish device setup, so the [startup exceptions](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) don't open Configure: Sync is set up and both shortcuts register. Then exit the app from the tray menu.
-  2. Run `%LocalAppData%\MemoriaToDo\Memoria-ToDo.exe --at-sign-in`, the starter the `Run` key names. Only the tray icon shows, with no window.
+  2. Run `%LocalAppData%\MemoriaToDo\Memoria.ToDo.Desktop.App.exe --at-sign-in`, the starter the `Run` key names. Only the tray icon shows, with no window.
   3. Exit the app, then run the starter with no argument. The tray icon and View Tasks show.
   4. Install a newer release over it, or let the app download one and restart, then repeat step 2. The result is the same.
 - **That a second start hands over after an update was downloaded.** Velopack applies a downloaded update when any instance starts ([SetAutoApplyOnStartup](https://docs.velopack.io/reference/cs/Velopack/VelopackApp)), and its updater ends instances running from the install folder ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). A second start could then end the running instance instead of handing over. If a run shows this, it needs a decision of its own.
@@ -122,6 +122,8 @@ The composition root runs Velopack's own startup step first each time the app st
 
 The [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) puts each version on GitHub Releases.
 
+**The installer's ID is `MemoriaToDo`, and it never changes.** Velopack installs the app in `%LocalAppData%\MemoriaToDo`, and uninstalling deletes that whole folder ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). The repository's name, `Memoria-ToDo`, can't be the ID: each developer PC keeps the [pinned SDK](../technology-stack.md#three-files-pin-every-version) in `%LocalAppData%\Memoria-ToDo\dotnet`, which uninstalling would delete. Installed copies keep their ID, so changing it after the first release would strand them.
+
 Proposed, each a decision to confirm:
 
 - The app checks for updates at start and once a day. A failed check or download waits for the next check, with no message.
@@ -129,7 +131,6 @@ Proposed, each a decision to confirm:
 - The app looks at the clock at least once an hour while the PC is awake, so a check that fell due while the PC slept runs at most an hour after it wakes. Changing the PC's clock moves the next check: setting it forward brings the check sooner, and setting it back delays it by as much. Time zones and daylight saving time don't move it. Likely, but not confirmed by a run: one 24-hour timer wouldn't do, since on Windows 8 and later a timed wait doesn't count time asleep ([WaitForSingleObject](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject)), so it would wait 24 hours of awake time.
 - Stopping the app also stops a check that's under way. Velopack's check can't be cancelled, so the app stops waiting for it and lets its request end in the background; a download is cancelled.
 - The app and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) use Velopack's default channel, and the app ignores GitHub prereleases.
-- **The installer's ID is `MemoriaToDo`.** Velopack installs the app in `%LocalAppData%\MemoriaToDo`, and uninstalling deletes that whole folder ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). The repository's name, `Memoria-ToDo`, can't be the ID: each developer PC keeps the [pinned SDK](../technology-stack.md#three-files-pin-every-version) in `%LocalAppData%\Memoria-ToDo\dotnet`, which uninstalling would delete. Installed copies keep their ID, so it must be confirmed before the first version tag is pushed; after that release, the ID can't change.
 - The installer shows the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) in its Start menu shortcut and in Windows' list of installed apps.
 - The installer adds a Start menu shortcut and no desktop shortcut, since the app starts with Windows and lives in the tray. Velopack adds both by default ([vpk options](https://docs.velopack.io/reference/cli/content/vpk-windows)).
 - The installer isn't code-signed, so Windows may warn when it's first run. Velopack recommends signing, since an unsigned app may be flagged as a virus ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)).

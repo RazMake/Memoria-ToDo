@@ -111,7 +111,7 @@ Tests check results with xUnit.net's own assertions, its `Assert` class, and rep
 
 ### Each part keeps its tests in one test project
 
-Each part's tests share one test project, with each module's tests in a folder of their own, so the unit run starts few test applications. Starting one costs time whether or not it runs a test, and with one test project per module, starting them used up most of the unit run's [time limit](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue). You chose to restructure the tests rather than raise the limit. Proposed, each a decision to confirm:
+Each part's tests share one test project, with each module's tests in a folder of their own, so the unit run starts few test applications. Starting one costs time whether or not it runs a test, and with one test project per module, starting them used up most of the unit run's [time limit](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue). You chose to restructure the tests first, then to raise the limit when the restructured run was still over it. Proposed, each a decision to confirm:
 
 - **Three test projects exist today, and a fourth comes with the Android app.** The table lists each project, its folder, and what it tests:
 
@@ -134,7 +134,9 @@ These measurements, from November 13, 2026, shaped the choice:
 - **Every unit run started 15 test applications, four of them with no unit test.** One that runs no test still costs about a third of a processor-second, and `dotnet test` adds about 0.7 seconds for each, measured by running them one at a time.
 - **The tests cost most on the first test of each class**, which loads and compiles code the later ones reuse: about 2 seconds for each class of the analyzer's tests. The composition root's key store tests also make real RSA keys, about 2.3 seconds in all.
 
-Three test applications alone were estimated to bring the timed run to about 6 to 8 seconds on GitHub's runner, still over the limit, so the slowest tests got cheaper too. After both changes, the timed run with its JUnit reports took about 4.2 seconds on the same PC limited to 4 processors, down from 13.7. A run on GitHub's runner hasn't confirmed it yet.
+Three test applications alone were estimated to bring the timed run to about 6 to 8 seconds on GitHub's runner, still over the limit, so the slowest tests got cheaper too. After both changes, the timed run with its JUnit reports took about 4.2 seconds on the same PC limited to 4 processors, down from 13.7. On GitHub's runner, the timed run on November 14, 2026, took 5.2 seconds, still over the 5-second limit.
+
+You then raised [the limit](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue). On November 14, 2026, a run on a PC limited to 4 processors took 4.1 to 4.3 seconds, but on GitHub's runner the cold-start cost lands on different tests from run to run, and no test was slow on its own. Turning off profile-guided optimization for every test project saved at most 0.2 seconds there, about the noise.
 
 ### Attributes mark each test's kind
 
@@ -264,7 +266,7 @@ Not confirmed: that a GitHub-hosted Windows runner can show a tray icon and a me
 The [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) times a push's unit run, not counting the build, against the time limit [AGENTS.md](../../AGENTS.md#test-design) sets for the unit suite. Only the workflow acts on the limit: it alone opens, updates, and closes the issue below.
 
 - **A unit run on a PC prints its duration, and nothing else.** It doesn't fail on the limit, doesn't send work back, and doesn't open or update an issue. Plain `dotnet test` already prints the duration: its run summary ends with a `duration:` line, which counts from the end of the build to the end of the run ([the summary](https://github.com/dotnet/sdk/blob/main/src/Cli/dotnet/Commands/Test/MTP/Terminal/TerminalTestReporter.cs), [where the count starts](https://github.com/dotnet/sdk/blob/main/src/Cli/dotnet/Commands/Test/MTP/MicrosoftTestingPlatformTestCommand.cs)).
-- **The limit is one value in the workflow file, its only home.** It starts at 5 seconds, and you change it there. Other pages link to this section rather than repeat the number.
+- **The limit is one value in [the workflow file](../../.github/workflows/build.yml), `UNIT_RUN_LIMIT_SECONDS`, its only home.** You change it there. Other pages link to this section rather than repeat the number.
 - **A unit run over the limit opens a GitHub issue that lists each test's time, slowest first.** The push itself stays green.
 - **Only one such issue is open at a time.** When the issue already exists, the workflow adds a note to it instead of opening another. The note holds the run's duration and, like the issue, each test's time, slowest first.
 - **The workflow closes the issue when a timed run is under the limit**, so raising the limit also closes it.
@@ -441,7 +443,7 @@ The options below were considered and rejected, grouped by the decision they bel
   - **The architecture tests in a test project of their own**: it starts in every unit run with no unit test to run.
   - **Each part's test project in `tests/<Part>/`, around its `Fakes/` folder**: the project would compile the fakes too, unless rules in its project file left them out.
   - **New test namespaces that follow the new folders, such as `Memoria.ToDo.Shared.Tests.Sync`**: every test file would change, and the tests would check nothing new.
-  - **A higher limit instead**: you chose to keep 5 seconds.
+  - **Keeping the 5-second limit, with ReadyToRun-compiled test assemblies or fewer test projects**: build changes or a big restructuring, for an uncertain gain.
   - **Runtime settings, such as turning off .NET's profile-guided optimization with `DOTNET_TieredPGO=0`**: it saved about 3% of the run, far from enough.
 - How the unit suite's time limit is checked:
   - **Fail the unit run with `--timeout` set to the limit**: a busy machine can fail on time alone, and a stopped run reports no results for the tests it didn't finish.
