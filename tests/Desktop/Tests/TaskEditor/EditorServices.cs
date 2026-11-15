@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
@@ -91,16 +92,28 @@ internal sealed class EditorServices
     /// <summary>The Close window keys the Add window is attached to; a test sets them as Configure does.</summary>
     public CloseWindowKeys CloseWindowKeys { get; } = new();
 
-    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates);
+    /// <summary>The Save keys every editor made here saves on. Ctrl+Enter, as Configure sets them at first; a test sets others as Configure does.</summary>
+    public SaveKeys SaveKeys { get; } = CtrlEnter();
 
-    public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
+    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys);
+
+    public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys);
+
+    public TitleEditor CreateTitleEditor() => new(Tasks, Palette.Colors, Theme, Time, Clipboard, SaveKeys);
+
+    public DescriptionEditor CreateDescriptionEditor() => new(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys);
 
     /// <summary>The tag control over this Tasks, these tag colors, and this theme.</summary>
     public TagEditor CreateTagEditor() => new(Tasks, TagColors, Theme);
 
     public TagBadges CreateTagBadges() => new(TagColors, Theme);
 
-    public TopTags CreateTopTags() => new(Tasks, TagColors, Theme);
+    private static SaveKeys CtrlEnter()
+    {
+        var keys = new SaveKeys();
+        keys.Set(ModifierKeys.Control, Key.Enter);
+        return keys;
+    }
 
     /// <summary>Puts an image file where the user "chooses" or "drops" it, and returns its path. The fake image tools read its bytes.</summary>
     public string PutImageFile(string name, byte[] image)

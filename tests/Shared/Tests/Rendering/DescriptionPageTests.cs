@@ -76,8 +76,8 @@ public class DescriptionPageTests
     private const string FadedGray25 = @"rgba\(\s*128\s*,\s*128\s*,\s*128\s*,\s*0?\.25\s*\)|#80808040";
 
     [Theory]
-    [InlineData(false, "#0f548c", "#0e7a75", "#6b3fa0")]
-    [InlineData(true, "#6cb8f6", "#4fd1c5", "#c4a7f5")]
+    [InlineData(false, "#bc4c00", "#8a6a00", "#5c5c00")]
+    [InlineData(true, "#ffa500", "#ffff00", "#9a9a00")]
     public void Colors_headings_1_to_3_in_the_themes_heading_colors(bool dark, string h1, string h2, string h3)
     {
         var page = Page("# a\n\n## b\n\n### c", dark);
@@ -87,14 +87,16 @@ public class DescriptionPageTests
         AssertColorOf(page, "h3", h3);
     }
 
-    [Fact]
-    public void Leaves_headings_4_to_6_in_the_text_color()
+    [Theory]
+    [InlineData(false, "#0550ae")]
+    [InlineData(true, "#79c0ff")]
+    public void Colors_headings_4_to_6_in_the_themes_heading_4_color(bool dark, string h4)
     {
-        var page = Page("#### a\n\n##### b\n\n###### c");
+        var page = Page("#### a\n\n##### b\n\n###### c", dark);
 
-        Assert.NotEmpty(Rules(page, "h1", "h2", "h3"));
-        Assert.DoesNotContain(Rules(page, "h4", "h5", "h6"),
-            body => Regex.IsMatch(body, "(^|[;\\s])color\\s*:", RegexOptions.IgnoreCase));
+        AssertColorOf(page, "h4", h4);
+        AssertColorOf(page, "h5", h4);
+        AssertColorOf(page, "h6", h4);
     }
 
     [Theory]
@@ -321,6 +323,206 @@ public class DescriptionPageTests
     public void Refuses_a_relative_clone_address()
     {
         Assert.Throws<ArgumentException>(() => DescriptionPage.Of("a", false, new Uri("clone/", UriKind.Relative)));
+    }
+
+    // An image keeps the width the user gives it, and shows in a box the user can resize.
+
+    private const string Picture = "images/task/pic.png";
+
+    private static string[] BoxNumbers(string page) =>
+        Regex.Matches(page, "<[^>]*\\bdata-image=\"([^\"]*)\"").Select(m => m.Groups[1].Value).ToArray();
+
+    private static string Compact(string page) => Regex.Replace(page, "\\s+", "");
+
+    private static void AssertShownWidth(string page, int width) =>
+        AssertTag(page, $"width:\\s*{width}px|width=\"{width}\"");
+
+    private static void AssertNoShownWidth(string page) =>
+        Assert.DoesNotMatch(new Regex("width:\\s*\\d+px|width=\"\\d+\"", RegexOptions.IgnoreCase), page);
+
+    [Theory]
+    [InlineData("![a|300](" + Picture + ")", "a", 300)]
+    [InlineData("![a cat|1](" + Picture + ")", "a cat", 1)]
+    [InlineData("![a|10000](" + Picture + ")", "a", 10000)]
+    [InlineData("![a|b|250](" + Picture + ")", "a|b", 250)]
+    [InlineData("![|40](" + Picture + ")", "", 40)]
+    public void Shows_an_image_with_a_width_after_the_last_bar_at_that_width_with_the_rest_as_alt_text(
+        string markdown, string alt, int width)
+    {
+        var page = Page(markdown);
+
+        AssertTag(page, $"<img [^>]*alt=\"{Regex.Escape(alt)}\"");
+        AssertShownWidth(page, width);
+        Assert.DoesNotContain($"|{width}", page);
+    }
+
+    [Theory]
+    [InlineData("a|0")]
+    [InlineData("a|10001")]
+    [InlineData("a|-5")]
+    [InlineData("a|3.5")]
+    [InlineData("a|wide")]
+    [InlineData("a|300px")]
+    [InlineData("a|")]
+    [InlineData("a|300|wide")]
+    public void Keeps_text_after_the_last_bar_in_the_alt_text_when_it_is_no_width_from_1_to_10000(string alt)
+    {
+        var page = Page($"![{alt}]({Picture})");
+
+        // The alt text is escaped: its bar would otherwise be a regex alternation and match any alt text starting with "a".
+        AssertTag(page, $"<img [^>]*alt=\"{Regex.Escape(alt)}\"");
+        AssertNoShownWidth(page);
+    }
+
+    [Fact]
+    public void Shows_an_image_with_no_width_at_its_own_size()
+    {
+        AssertNoShownWidth(Page($"![a]({Picture})"));
+    }
+
+    [Fact]
+    public void Shows_an_image_from_outside_the_clone_with_a_width_as_a_link_with_the_alt_text_alone()
+    {
+        AssertTag(Page("![outside pic|300](https://evil.example/a.png)"),
+            "<a [^>]*href=\"https://evil.example/a.png\"[^>]*>outside pic</a>");
+    }
+
+    [Fact]
+    public void Puts_every_loaded_image_in_a_numbered_box_that_has_no_resize_corner()
+    {
+        var page = Compact(Page($"![a]({Picture})"));
+
+        Assert.Contains("display:inline-block", page);
+        Assert.DoesNotContain("resize:", page);
+        Assert.Contains("overflow:hidden", page);
+        Assert.Contains("max-width:100%", page);
+        Assert.Matches("<[^>]*data-image=\"0\"[^>]*>(<[^>]*>)*<img", page);
+    }
+
+    [Fact]
+    public void Keeps_the_width_of_each_image_on_the_page_without_resize_corners()
+    {
+        var page = Page($"![a|300]({Picture})\n\n![b]({Picture})\n\n![c|50]({Picture})");
+
+        Assert.Equal(["0", "1", "2"], BoxNumbers(page));
+        AssertTag(page, "<[^>]*data-image=\"0\"[^>]*width:\\s*300px");
+        AssertTag(page, "<[^>]*data-image=\"2\"[^>]*width:\\s*50px");
+    }
+
+    [Fact]
+    public void Gives_the_page_with_resizable_images_a_resize_corner_on_every_loaded_image_box()
+    {
+        var page = Compact(ResizablePage($"![a]({Picture})"));
+
+        Assert.Contains("[data-image]{display:inline-block;", page);
+        Assert.Contains("resize:horizontal", page);
+        Assert.Contains("overflow:hidden", page);
+        Assert.Contains("max-width:100%", page);
+        Assert.Matches("<[^>]*data-image=\"0\"[^>]*>(<[^>]*>)*<img", page);
+    }
+
+    [Fact]
+    public void Keeps_the_numbers_and_widths_on_the_page_with_resizable_images()
+    {
+        var page = ResizablePage(
+            $"![a|300]({Picture})\n\n![b](https://evil.example/b.png)\n\n![c]({Picture})");
+
+        Assert.Equal(["0", "2"], BoxNumbers(page));
+        AssertTag(page, "<[^>]*data-image=\"0\"[^>]*width:\\s*300px");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Differs_between_the_two_pages_only_in_the_resize_rule(bool dark)
+    {
+        var markdown = $"# T\n\n![a|300]({Picture}) text **bold**\n\n:red[x] ![b]({Picture})";
+
+        static string WithoutRule(string page) =>
+            Compact(page).Replace("resize:horizontal", "").Replace(";;", ";").Replace(";}", "}");
+
+        var plain = DescriptionPage.Of(markdown, dark, Clone);
+        var resizable = DescriptionPage.WithResizableImages(markdown, dark, Clone);
+
+        Assert.NotEqual(plain, resizable);
+        Assert.Equal(WithoutRule(plain), WithoutRule(resizable));
+    }
+
+    [Fact]
+    public void Keeps_the_content_security_policy_and_runs_no_script_on_the_page_with_resizable_images()
+    {
+        var page = ResizablePage($"![a|300]({Picture})");
+
+        Assert.Contains("default-src 'none'; img-src https://example.com/clone/; style-src 'unsafe-inline'", page);
+        Assert.DoesNotContain("<script", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("https://example.com/clone")]
+    [InlineData("ftp://example.com/clone/")]
+    [InlineData("file:///C:/clone/")]
+    [InlineData("https://example.com/clone/?query")]
+    [InlineData("https://example.com/clone/#fragment")]
+    public void Refuses_a_bad_clone_address_for_the_page_with_resizable_images(string address)
+    {
+        Assert.Throws<ArgumentException>(() => DescriptionPage.WithResizableImages("a", false, new Uri(address)));
+    }
+
+    [Fact]
+    public void Refuses_a_relative_clone_address_for_the_page_with_resizable_images()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            DescriptionPage.WithResizableImages("a", false, new Uri("clone/", UriKind.Relative)));
+    }
+
+    private static string ResizablePage(string markdown, bool dark = false) =>
+        DescriptionPage.WithResizableImages(markdown, dark, Clone);
+
+    [Fact]
+    public void Makes_the_image_fill_its_boxs_width()
+    {
+        Assert.Matches("width:100%", Compact(Page($"![a|300]({Picture})")));
+    }
+
+    [Fact]
+    public void Sizes_the_box_to_the_width_the_image_was_given()
+    {
+        var page = Page($"![a|300]({Picture})");
+
+        AssertTag(page, "<[^>]*data-image=\"0\"[^>]*width:\\s*300px");
+    }
+
+    [Fact]
+    public void Numbers_each_image_in_the_order_the_markdown_holds_them_from_0_counting_one_shown_as_a_link()
+    {
+        var page = Page(
+            $"![a]({Picture})\n\n![b](https://evil.example/b.png)\n\n[plain](https://example.org)\n\n![c|50]({Picture})");
+
+        Assert.Equal(["0", "2"], BoxNumbers(page));
+    }
+
+    [Fact]
+    public void Numbers_images_in_a_list_and_a_heading_in_the_order_the_markdown_holds_them()
+    {
+        var page = Page($"# ![a]({Picture})\n\n- ![b]({Picture})\n- ![c]({Picture})");
+
+        Assert.Equal(["0", "1", "2"], BoxNumbers(page));
+    }
+
+    [Fact]
+    public void Puts_no_box_around_text_without_an_image()
+    {
+        Assert.Empty(BoxNumbers(Page("hello [a](https://example.org)")));
+    }
+
+    [Fact]
+    public void Keeps_the_content_security_policy_and_runs_no_script_with_an_image_that_sets_a_width()
+    {
+        var page = Page($"![a|300]({Picture})");
+
+        Assert.Contains("default-src 'none'; img-src https://example.com/clone/; style-src 'unsafe-inline'", page);
+        Assert.DoesNotContain("<script", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("script-src", page, StringComparison.OrdinalIgnoreCase);
     }
 
     // Colors follow the theme.

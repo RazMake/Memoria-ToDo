@@ -78,13 +78,13 @@ public class ListContentTests
     }
 
     [Fact]
-    public void Shows_only_the_tasks_the_filter_leaves_and_counts_only_the_resolved_ones_it_leaves()
+    public void Shows_only_the_tasks_the_search_leaves_and_counts_only_the_resolved_ones_it_leaves()
     {
-        _tasks.Add("Open home", "", "home");
-        _tasks.Add("Open work", "", "work");
-        _tasks.AddResolved("Done home", "", "home");
-        _tasks.AddResolved("Done work", "", "work");
-        _filter.ToggleTag("work");
+        _tasks.Add("Open home");
+        _tasks.Add("Open work");
+        _tasks.AddResolved("Done home");
+        _tasks.AddResolved("Done work");
+        _filter.SearchText = "work";
 
         var snapshot = Build();
 
@@ -145,13 +145,13 @@ public class ListContentTests
     }
 
     [Fact]
-    public void Keeps_the_task_being_edited_at_its_old_position_among_the_others_the_filter_leaves()
+    public void Keeps_the_task_being_edited_at_its_old_position_among_the_others_the_search_leaves()
     {
-        _tasks.Add("C work", "", "work");
-        var b = _tasks.Add("B home", "", "home");
-        _tasks.Add("A work", "", "work");
+        _tasks.Add("C work");
+        var b = _tasks.Add("B home");
+        _tasks.Add("A work");
         var before = Build();
-        _filter.ToggleTag("work");
+        _filter.SearchText = "work";
 
         var snapshot = Build(b, before);
 

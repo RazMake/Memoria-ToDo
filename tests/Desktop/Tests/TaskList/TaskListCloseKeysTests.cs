@@ -55,7 +55,7 @@ public class TaskListCloseKeysTests
         screen.PasteImageIntoDescription();
         var images = services.AllFiles.Except(before).ToList();
         Assert.NotEmpty(images);
-        screen.TypeTitle("Buy milk", "Buy oat milk");
+        screen.TypeDescription("Oat milk");
 
         screen.Press(Key.LeftShift, Key.F9);
 

@@ -28,14 +28,14 @@ public class TaskWindowsWiringTests : IDisposable
 
     public TaskWindowsWiringTests()
     {
-        _tasks = TaskStore.Create(_files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine("device-folder"));
+        _tasks = TaskStore.Create(_files, new FakeImageEncoder(), new FakeTimeProvider(), Path.GetFullPath("device-folder"));
         _tasks.UseRepositoryFolder("clone");
     }
 
     private (IAddWindow Add, IViewTasksWindow ViewTasks) Wire() => TaskWindows.Create(
         _tasks, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(), _files,
         () => new FakeDescriptionWebView(), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
-        new FakeUpdateStatus());
+        new FakeUpdateStatus(), new Platform.SaveKeys());
 
     public void Dispose() => _windows.Dispose();
 
@@ -50,11 +50,8 @@ public class TaskWindowsWiringTests : IDisposable
 
         Assert.Equal(
             TagControls.Expected(TagColors.Find("teal-3")!, dark: false),
-            TagControls.FillOf(TopTagsIn(_windows.Visible().Single()), "home"));
+            TagControls.FillOf(_windows.Visible().Single(), "home"));
     }
-
-    // The row of the task shows the tag too, so the badge is read from the one place, the top tags above the list.
-    private static TopTags TopTagsIn(DependencyObject window) => OpenWindows.Descendants(window).OfType<TopTags>().Single();
 
     [WpfFact]
     public void Add_paints_a_tag_of_the_kept_draft_in_the_color_the_store_keeps()

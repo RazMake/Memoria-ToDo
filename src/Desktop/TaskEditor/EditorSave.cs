@@ -51,17 +51,6 @@ internal sealed class EditorSave
             return false;
         }
 
-        try
-        {
-            save(draft);
-        }
-        catch (Exception e) when (SaveFailures.MessageOf(e) is not null)
-        {
-            _showMessage(SaveFailures.MessageOf(e)!);
-            return false;
-        }
-
-        _showMessage("");
-        return true;
+        return SaveFailures.Try(save, draft, _showMessage);
     }
 }

@@ -57,23 +57,26 @@ Tags don't use these six. A tag's badge takes one of [30 colors of its own](#thi
 
 ### Headings, links, code, and italic text have one look in each theme
 
-Rendering owns one text look for each theme: the colors of headings 1 to 3, links, code, and italic text, the faded background behind code, and how much larger each heading level shows. The description page, the desktop's [formatted titles](desktop/formatted-view.md#it-shows-what-rendering-decides-never-markdown), its [editor](desktop/task-editor.md#the-editor-styles-markdown-in-place-with-no-preview), and [Configure's section titles](desktop/configure.md#the-window-shows-its-settings-in-labeled-sections) all take it from here, so a link or a heading looks the same wherever the app shows one. The user decided that the look applies everywhere Markdown shows, and that its colors are fixed values for each theme that pass the contrast rule, not the Windows accent color. Code blocks look like inline code. On the description page a code block also gets 8 pixels of padding and scrolls sideways when a line is too long, so it doesn't widen the page. Proposed: the values below. This is a decision to confirm.
+Rendering owns one text look for each theme: the colors of every heading level, links, code, and italic text, the faded background behind code, and how much larger each heading level shows. The description page, the desktop's [formatted titles](desktop/formatted-view.md#it-shows-what-rendering-decides-never-markdown), its [editor](desktop/task-editor.md#the-editor-styles-markdown-in-place-with-no-preview), and [Configure's section and card titles](desktop/configure.md#the-window-shows-its-settings-in-labeled-sections) all take it from here, so a link or a heading looks the same wherever the app shows one. The user decided that the look applies everywhere Markdown shows, and that its colors are fixed values for each theme that pass the contrast rule, not the Windows accent color. Code blocks look like inline code. On the description page a code block also gets 8 pixels of padding and scrolls sideways when a line is too long, so it doesn't widen the page.
+
+The user decided the heading hues: heading 1 orange, heading 2 yellow, heading 3 dark yellow, and headings 4 to 6 blue. The dark values match the user's example picture, sampled as `#ffa500`, `#ffff00`, `#8b8b00`, and `#79c0ff` on `#121314`. The user decided that the dark heading 3 is lightened to `#9a9a00`, so it passes the contrast rule on `#2b2b2b`, where `#8b8b00` measures 3.90:1, and every color keeps one rule. Yellow can't reach 4.5:1 on white and stay bright, so the light theme keeps the hue order with darker shades: a golden yellow for heading 2, and an olive, darker than it, for heading 3. The other values are unchanged. Proposed: the light values, and the values of the other parts, below. This is a decision to confirm.
 
 | Part | Light theme | Dark theme |
 | --- | --- | --- |
-| Heading 1 | `#0f548c` | `#6cb8f6` |
-| Heading 2 | `#0e7a75` | `#4fd1c5` |
-| Heading 3 | `#6b3fa0` | `#c4a7f5` |
+| Heading 1 | `#bc4c00` | `#ffa500` |
+| Heading 2 | `#8a6a00` | `#ffff00` |
+| Heading 3 | `#5c5c00` | `#9a9a00` |
+| Headings 4 to 6 | `#0550ae` | `#79c0ff` |
 | Link | `#0969da` | `#4493f8` |
 | Code | `#9a3c00` | `#f0a868` |
 | Italic text | `#4f5b93` | `#b4bdf5` |
 | Code background | `#808080` at 15% opacity | `#808080` at 25% opacity |
 
-Every color meets the [palette's](#six-colors-read-well-in-light-and-dark-themes) contrast rule, at least 4.5:1 against both of its theme's backgrounds; the lowest is the dark link, at 4.57:1. Code text also keeps 4.5:1 on its faded background over both of its theme's backgrounds; the lowest is 5.19:1. Rendering's unit tests check both, as they check the tag colors, so a retuned value can't break them.
+Every color meets the [palette's](#six-colors-read-well-in-light-and-dark-themes) contrast rule, at least 4.5:1 against both of its theme's backgrounds; the lowest is the light heading 1, at 4.54:1. Code text also keeps 4.5:1 on its faded background over both of its theme's backgrounds; the lowest is 5.19:1. Rendering's unit tests check both, as they check the tag colors, so a retuned value can't break them. The heading colors of one theme are also at least 10 apart in CIEDE2000, as [tag colors](#thirty-tag-colors-stay-distinct-in-both-themes) are measured, so the levels stay apart; the closest pair is the light headings 2 and 3, at 13.1.
 
 Proposed, each a decision to confirm:
 
-- **Headings 4 to 6 keep the text color.** Every heading shows bold, at 1.6, 1.4, 1.25, 1.15, 1.1, and 1.05 times the text size for levels 1 to 6, the sizes the editor uses today.
+- **Every heading shows bold**, at 1.6, 1.4, 1.25, 1.15, 1.1, and 1.05 times the text size for levels 1 to 6, the sizes the editor uses today.
 - **The link color keeps the palette's blue values**, so links look as they do now, but it's part of the look, not a palette name. `:blue[text]` still takes the palette's blue.
 - **Code shows in Consolas, in the code color, on the faded background.** The background is a gray with an opacity rather than a solid color, so it reads on both of a theme's backgrounds.
 - **Italic text shows in the italic color.** Bold text keeps the text color.
@@ -116,13 +119,29 @@ Proposed, each a decision to confirm:
   - All 30 colors are used, so two of seven tags share a default about 53% of the time, against 94% with one shade per hue.
   - Changing the rule after release would recolor every tag with no color kept, so a unit test pins the default of a few fixed tags.
 
-### The web view runs no scripts and loads only images from the clone
+### The web view runs no scripts and loads images only from the clone's address
 
 These rules apply to the description's web view in both apps:
 
 - **No scripts run.** Each app turns scripts off in its web view. Proposed: the page Rendering makes also carries a content security policy that allows no scripts, so the rule holds even if one side slips. This is a decision to confirm.
-- **Images load only from the local clone.** The app passes in the clone's base address, and the page loads nothing else, from the network or anywhere on the device. Proposed: an image from anywhere else shows as a link with its alt text, and isn't loaded. This is a decision to confirm.
+- **Images load only from the clone's address.** The app passes in the clone's base address, and the page loads nothing else, from the network or anywhere on the device. Proposed: an image from anywhere else shows as a link with its alt text, and isn't loaded. This is a decision to confirm.
+- **The app serves only image files at that address, read-only**: the clone's images, and on the desktop also this device's images that [wait for an open edit to be saved](tasks.md#images-are-at-most-1-mb-and-live-beside-their-task). The user decided this, so an edit's [Preview](desktop/task-list.md#edit-description-has-an-edit-tab-and-a-preview-tab) shows an image pasted or dropped before Save. The Android app shows no preview, so its address serves only the clone.
+- **A waiting image loads from the clone's address too.** Its link is the same relative path it keeps once saved, and the desktop's [web view](desktop/formatted-view.md#the-clones-address-also-serves-an-open-edits-waiting-images) looks in the clone first, then among the waiting images. So Rendering, its page, and its content security policy don't change. This is a decision to confirm.
 - **The theme comes from the app**, light or dark, so the page's colors match the window around it.
+
+### An image keeps the width the user gives it
+
+The user decided that an image in a description can be resized, and that its size stays with the task, so it shows at that size on every device. Only the width is kept; the height follows the image's own proportions. An image never shows wider than the page, so a wide image shrinks to fit a narrow window. An image with no width shows at its own size, as today. Rendering owns reading and writing the width, so both apps agree. The desktop's [Task View](desktop/task-list.md#an-image-resizes-by-dragging-its-corner-in-the-edits-preview) says how the user resizes one: only while editing the description, in the edit's Preview.
+
+The user decided that the width is written at the end of the image's alt text, after a `|`, as [Obsidian](https://obsidian.md/help/syntax) writes it: `![chart|300](images/<task-id>/<image-id>.png)` shows the image 300 pixels wide, with the alt text `chart`. The task file's fields don't change, and the width syncs and merges as part of the description. An alt text that really ends in `|` and digits reads as a width; that's an accepted cost.
+
+Proposed, each a decision to confirm:
+
+- **A width is a whole number from 1 to 10000**, in the page's pixels, which are the windows' device-independent pixels. Any other text after the last `|`, such as `|wide` or `|0`, stays part of the alt text, and the image shows at its own size.
+- **Rendering's own Markdig extension reads it**, as it reads `:red[…]`, and the page shows the alt text without the `|` and the width.
+- **The page numbers each image in the order the Markdown holds them**, from 0, including an image from outside the clone that shows as a link, so the number names the same image in the page and in the Markdown. An app reports a resized image by its number, and Rendering's [width function](#public-interface) writes the new width into that image's alt text, replacing a width already there.
+- **Each image the page loads shows in a box**, with the CSS rules `display:inline-block; overflow:hidden; max-width:100%`, and the image fills the box's width. Each box carries its image's number in a `data-image` attribute, which the app's web view reads.
+- **Only the page with resizable images lets the user drag a box wider or narrower**: its boxes add the CSS rule `resize:horizontal`, which draws the browser's own resize corner. The user decided that images resize only while a description is edited, so the plain page, which the apps show otherwise, has no corner. No script runs on either page, so the content security policy doesn't change.
 
 ### Only web links open in the browser
 
@@ -144,10 +163,10 @@ Proposed, each a decision to confirm:
 
 Both apps use these parts:
 
-- **The description page**: from the Markdown, the theme, and the clone's base address, a full HTML page for the web view.
+- **The description page**: from the Markdown, the theme, and the clone's base address, a full HTML page for the web view, plain or with [resizable images](#an-image-keeps-the-width-the-user-gives-it).
 - **Styled spans**: from a title's or the editor's Markdown, the styled stretches of text.
 - **The palette**: each color's name and its values for the light and dark themes.
-- **The text look**, proposed: for each theme, the [colors of headings, links, code, and italic text](#headings-links-code-and-italic-text-have-one-look-in-each-theme), code's background and font, and each heading level's size; and the color a styled span shows in.
+- **The text look**, proposed: for each theme, the [colors of headings, links, code, and italic text](#headings-links-code-and-italic-text-have-one-look-in-each-theme), code's background and font, and each heading level's size; and the color a styled span shows in. Every heading level has a color, so `HeadingColor` never answers null.
 - **The tag colors**: the 30 colors, each with its value and text color for each theme; finding one by name; and a tag's default color.
 - **The browser check**: whether an address may open in the default browser.
 
@@ -244,6 +263,9 @@ public sealed class TextLook
     public string Heading1 { get; }
     public string Heading2 { get; }
     public string Heading3 { get; }
+
+    /// The color of headings 4, 5, and 6.
+    public string Heading4 { get; }
     public string Link { get; }
     public string Code { get; }
     public string Italic { get; }
@@ -252,9 +274,9 @@ public sealed class TextLook
     public string CodeBackground { get; }
     public double CodeBackgroundOpacity { get; }
 
-    /// A heading's color, or null for levels 4 to 6, which keep the text color.
+    /// A heading's color: Heading4 for levels 4 to 6.
     /// Throws ArgumentOutOfRangeException for a level outside 1 to 6.
-    public string? HeadingColor(int level);
+    public string HeadingColor(int level);
 
     /// The color the span shows in, in this theme, or null for the text color: its palette color,
     /// else the link, code, italic, or heading color, the first that applies.
@@ -278,10 +300,31 @@ public static class TextLooks
 }
 ```
 
+Row 11 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) adds the [image width](#an-image-keeps-the-width-the-user-gives-it) function and the page with resizable images, also pure. `DescriptionPage.Of` keeps its shape and makes the plain page, so the Android app, which resizes no image, keeps calling it. Proposed: their shape. This is a decision to confirm.
+
+```csharp
+namespace Memoria.ToDo.Shared.Rendering;
+
+public static class ImageWidths
+{
+    /// The Markdown with its image number `image`, counted from 0 in the order the Markdown holds images,
+    /// as the description page numbers them, set to show width pixels wide; a width already there is replaced.
+    /// Throws ArgumentOutOfRangeException when the Markdown has no such image, or width is outside 1 to 10000.
+    public static string With(string markdown, int image, int width);
+}
+
+public static class DescriptionPage
+{
+    /// The same page as Of, except that each loaded image's box has a resize corner, so the user can drag it
+    /// wider or narrower. Throws as Of does.
+    public static string WithResizableImages(string markdown, bool dark, Uri cloneAddress);
+}
+```
+
 ## Failure modes
 
 - **There's no invalid Markdown**: any text renders, and what Markdown can't read shows as text.
-- **An image is missing from the clone**: the page shows its alt text in its place.
+- **An image is missing from the clone**, and isn't waiting for an open edit either: the page shows its alt text in its place.
 - **A link fails the browser check**: clicking it does nothing.
 
 ## Ruled out
@@ -309,3 +352,12 @@ The options below were considered and rejected, grouped by decision.
   - **Heading 1 follows the Windows accent color**: Rendering is shared with Android and can't read Windows, and no test could promise its contrast.
   - **Code blocks keep the text color**: the page and the editor would need a second code rule.
   - **Only the link color in titles and the editor**: `code` and _italic_ would look different in the editor than in the description.
+  - **The dark heading 3 in the picture's exact `#8b8b00`**: it measures 3.90:1 on `#2b2b2b`, so headings would need their own, looser rule, 3:1, which WCAG allows only for large text, and heading 3, bold at 1.25 times the text size, is below WCAG's large-text size.
+- Where an image's width is written:
+  - **Markdig's generic attributes, `![chart](images/…png){width=300}`**: the extension allows any attribute, such as a class or an id, on any element, so Rendering would have to strip all but this one, and the form shows as text in other viewers.
+  - **A new field in the task file**, a width for each image: the task file's format, its merge rules, and the Android app would all change, and a width would outlive the image's text if the user deleted it.
+- How an edit's Preview loads images that wait for Save:
+  - **A second address for waiting images, in the page and its content security policy**: Rendering reads no files, so it can't tell a waiting image from a saved one. The app would have to pass the list of waiting images, through Tasks, the Task list, and a new `DescriptionPage` argument, and the link would change address when the edit is saved.
+- How a page gets its resize corners:
+  - **Every page, always**: the user chose to resize images only while editing.
+  - **A flag on `Of`**: every caller, the Android app's included, would pass a value it doesn't care about, and the public API files would show a removed and an added `Of`.

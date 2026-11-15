@@ -71,12 +71,12 @@ public class TaskListSyncTests
         services.Add("Editing");
         using var screen = new TaskListScreen(services);
         screen.PressOn("Editing", Key.F2);
-        screen.TypeTitle("Editing", "Unsaved work");
+        screen.TypeDescription("Unsaved work");
 
         await Task.Run(() => services.Add("Arrived from sync"));
         await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
 
         Assert.Contains("Arrived from sync", screen.RowTitles);
-        Assert.Equal("Unsaved work", screen.EditorTitleText("Editing"));
+        Assert.Equal("Unsaved work", screen.EditedDescriptionText);
     }
 }

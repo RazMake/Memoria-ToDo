@@ -16,6 +16,7 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly ShortcutSetting _addNewTask;
     private readonly ShortcutSetting _manageTasks;
     private readonly CloseWindowSetting _closeWindow;
+    private readonly SaveSetting _save;
     private readonly CloseWindowKeys _closeWindowKeys;
     private readonly ITheme _theme;
     private readonly IUpdateStatus _updates;
@@ -25,7 +26,7 @@ internal sealed class ConfigureShow : IConfigureWindow
 
     public ConfigureShow(
         IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions,
-        CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates)
+        CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates, SaveKeys saveKeys)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
         ArgumentNullException.ThrowIfNull(settings);
@@ -34,11 +35,13 @@ internal sealed class ConfigureShow : IConfigureWindow
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(updates);
+        ArgumentNullException.ThrowIfNull(saveKeys);
         _updates = updates;
         _theme = theme;
         _settings = settings;
         _closeWindowKeys = closeWindowKeys;
         _closeWindow = new CloseWindowSetting(() => settings.CloseWindowShortcut, settings.SetCloseWindowShortcut, closeWindowKeys.Set);
+        _save = new SaveSetting(() => settings.SaveShortcut, settings.SetSaveShortcut, saveKeys.Set);
         _addNewTask = new("Add new task", Shortcut.AddNewTaskDefault,
             () => settings.AddNewTaskShortcut, settings.SetAddNewTaskShortcut);
         _manageTasks = new("Task View", Shortcut.ManageTasksDefault,
@@ -82,15 +85,16 @@ internal sealed class ConfigureShow : IConfigureWindow
         _addNewTask.SettingsChanged();
         _manageTasks.SettingsChanged();
         _closeWindow.SettingsChanged();
+        _save.SettingsChanged();
         _refreshOpen?.Invoke();
     });
 
     private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)
     {
-        var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _closeWindow);
+        var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _closeWindow, _save);
         var delay = new DeletionDelayRow(_settings);
         var ui = new SyncUi(sync, setupActions, _notices.Post);
-        var syncSettings = new SyncSettingsSection(ui, delay);
+        var syncSettings = new SyncSettingsSection(ui, delay, _theme);
         var sections = new Accordion(
             _theme,
             ("Shortcuts", shortcuts),

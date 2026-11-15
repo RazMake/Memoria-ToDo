@@ -14,7 +14,7 @@ A floating Add button opens Add from the [Task editor](task-editor.md#public-int
 
 ### One web view starts the first time a task expands
 
-Proposed: one Android WebView shows every description, as [Rendering](../rendering.md#the-web-view-runs-no-scripts-and-loads-only-images-from-the-clone) allows. It's created the first time a task expands, not when Task View opens, so opening the app never waits for it. It's released when Task View closes. This is a decision to confirm.
+Proposed: one Android WebView shows every description, as [Rendering](../rendering.md#the-web-view-runs-no-scripts-and-loads-images-only-from-the-clones-address) allows. It's created the first time a task expands, not when Task View opens, so opening the app never waits for it. It's released when Task View closes. This is a decision to confirm.
 
 Android screens get UX tests on an emulator, as the [technology stack](../technology-stack.md#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator) decides, once the implementation finds a test runner that can host them. If they do, the Task list gets its web view the way the desktop's [Formatted view](../desktop/formatted-view.md#the-app-supplies-the-web-view-and-the-browser) does: through an interface it publishes, which the composition root implements with Android's WebView.
 
@@ -30,9 +30,9 @@ Proposed: the task's file is deleted when the Undo bar goes away or Task View cl
 
 ### Tags and search narrow the list
 
-Proposed: tag chips and search work as on the [desktop](../desktop/task-list.md#tags-and-search-narrow-the-list), and search opens from a button in the top app bar. This is a decision to confirm.
+Proposed: tag chips filter the list one tag at a time, and choosing a tag again clears the filter; search works as on the [desktop](../desktop/task-list.md#search-narrows-the-list), and opens from a button in the top app bar. This is a decision to confirm. The desktop dropped its tag filter, since its tag groups collapse; whether the phone keeps its chips is decided when the Android app is built.
 
-Deferred: the desktop shows tags as [colored badges](../desktop/task-list.md#tags-show-as-colored-badges-and-change-without-edit) on group headings and in the filter, and changes them on the selected task without Edit. Whether the phone's chips take each tag's color, and whether a tag changes without Edit, follows the [Task editor's](task-editor.md#tags-sit-as-chips-under-the-title) answer when the Android app is built.
+Deferred: the desktop shows tags as [colored badges](../desktop/task-list.md#tags-show-as-colored-badges-and-change-without-edit) on group headings, and changes them on the selected task without Edit. Whether the phone's chips take each tag's color, and whether a tag changes without Edit, follows the [Task editor's](task-editor.md#tags-sit-as-chips-under-the-title) answer when the Android app is built.
 
 ### Resolved tasks wait behind a count at the bottom
 

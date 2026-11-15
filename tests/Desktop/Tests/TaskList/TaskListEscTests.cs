@@ -7,8 +7,8 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 /// <summary>
 /// Esc in Task View goes back one step, then closes the window: it closes an open list, then leaves an edit, then closes
 /// Task View. The rule for which edits show the Undo bar is unit-tested in EditCleanupTests, and Esc on a changed edit with
-/// its Undo is in TaskListEditTests. Task View has the editor's snippet list, the tag control's + menu and its Custom box,
-/// and the filter's all-tags list; Esc with the menu or Custom open is in TaskListTagEscTests. Esc from the real
+/// its Undo is in TaskListEditTests. Task View has the Description editor's snippet list and the tag control's + menu and its Custom box;
+/// Esc with the menu or Custom open is in TaskListTagEscTests. Esc from the real
 /// description web view is an integration test, ViewTasksEscWithRealWebViewTests.
 /// </summary>
 [UX]
@@ -33,27 +33,14 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void Esc_with_the_all_tags_list_open_closes_only_the_list()
-    {
-        var services = new ListServices();
-        TaskListFilterTests.AddTasksWithTagsOnlyInAllTagsList(services);
-        using var screen = new TaskListScreen(services);
-        screen.OpenAllTagsList();
-        Assert.True(screen.AllTagsListIsOpen);
-
-        screen.Press(Key.Escape);
-
-        Assert.False(screen.AllTagsListIsOpen);
-        Assert.True(screen.View.IsOpen);
-    }
-
-    [WpfFact]
     public void Esc_after_the_list_closed_closes_Task_View()
     {
         var services = new ListServices();
-        TaskListFilterTests.AddTasksWithTagsOnlyInAllTagsList(services);
+        services.Add("Buy milk");
         using var screen = new TaskListScreen(services);
-        screen.OpenAllTagsList();
+        screen.PressOn("Buy milk", Key.F2);
+        screen.TypeInDescription("/");
+        screen.Press(Key.Escape);
         screen.Press(Key.Escape);
 
         screen.PressToClose(Key.Escape);
@@ -68,7 +55,7 @@ public class TaskListEscTests
         services.Add("Buy milk");
         using var screen = new TaskListScreen(services);
         screen.PressOn("Buy milk", Key.F2);
-        screen.TypeTitle("Buy milk", "Buy oat milk");
+        screen.TypeDescription("Oat milk");
         screen.FocusSearchBox();
         Assert.True(screen.SearchHasFocus);
 
@@ -80,14 +67,14 @@ public class TaskListEscTests
     }
 
     [WpfFact]
-    public void Esc_with_a_changed_edit_and_the_focus_on_a_header_button_leaves_the_edit_with_its_Undo_bar_and_keeps_the_window()
+    public void Esc_with_a_changed_edit_and_the_focus_on_the_Sync_button_leaves_the_edit_with_its_Undo_bar_and_keeps_the_window()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         using var screen = new TaskListScreen(services);
         screen.PressOn("Buy milk", Key.F2);
-        screen.TypeTitle("Buy milk", "Buy oat milk");
-        screen.FocusChip("home");
+        screen.TypeDescription("Oat milk");
+        screen.FocusSyncButton();
 
         screen.Press(Key.Escape);
 
@@ -103,24 +90,8 @@ public class TaskListEscTests
         services.Add("Buy milk");
         using var screen = new TaskListScreen(services);
         screen.PressOn("Buy milk", Key.F2);
-        screen.TypeTitle("Buy milk", "Buy oat milk");
+        screen.TypeDescription("Oat milk");
         screen.FocusSearchBox();
-        screen.Press(Key.Escape);
-
-        screen.PressToClose(Key.Escape);
-
-        Assert.False(screen.View.IsOpen);
-    }
-
-    [WpfFact]
-    public void A_second_Esc_after_leaving_a_changed_edit_from_a_header_button_closes_Task_View()
-    {
-        var services = new ListServices();
-        services.Add("Buy milk", "", "home");
-        using var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.F2);
-        screen.TypeTitle("Buy milk", "Buy oat milk");
-        screen.FocusChip("home");
         screen.Press(Key.Escape);
 
         screen.PressToClose(Key.Escape);
@@ -168,7 +139,7 @@ public class TaskListEscTests
         services.Add("Buy milk");
         using var screen = new TaskListScreen(services);
         screen.PressOn("Buy milk", Key.F2);
-        screen.TypeTitle("Buy milk", "Buy oat milk");
+        screen.TypeDescription("Oat milk");
         screen.Press(Key.Escape);
         Assert.True(screen.View.IsOpen);
 

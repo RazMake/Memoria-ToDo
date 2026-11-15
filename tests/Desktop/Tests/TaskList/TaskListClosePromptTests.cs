@@ -23,8 +23,17 @@ public class TaskListClosePromptTests
     {
         services.Add("Buy milk");
         var screen = new TaskListScreen(services);
-        screen.PressOn("Buy milk", Key.F2);
+        screen.PressOn("Buy milk", Key.LeftShift, Key.F2);
         screen.TypeTitle("Buy milk", "Buy oat milk");
+        return screen;
+    }
+
+    private static TaskListScreen ChangedDescriptionEdit(ListServices services)
+    {
+        services.Add("Buy milk");
+        var screen = new TaskListScreen(services);
+        screen.PressOn("Buy milk", Key.F2);
+        screen.TypeDescription("Oat milk");
         return screen;
     }
 
@@ -151,7 +160,7 @@ public class TaskListClosePromptTests
     public void Discard_deletes_the_edits_images_saves_nothing_closes_and_returns_true()
     {
         var services = new ListServices();
-        using var screen = ChangedEdit(services);
+        using var screen = ChangedDescriptionEdit(services);
         var before = services.AllFiles;
         services.Clipboard.Image = FakeImageEncoder.Image(ImageFormat.Png, 100, 80);
         screen.PasteImageIntoDescription();
@@ -230,7 +239,7 @@ public class TaskListClosePromptTests
     public void A_plain_WM_CLOSE_with_a_changed_edit_closes_without_asking_and_discards_the_edit_and_its_images()
     {
         var services = new ListServices();
-        using var screen = ChangedEdit(services);
+        using var screen = ChangedDescriptionEdit(services);
         var before = services.AllFiles;
         services.Clipboard.Image = FakeImageEncoder.Image(ImageFormat.Png, 100, 80);
         screen.PasteImageIntoDescription();

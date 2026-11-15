@@ -90,7 +90,8 @@ public sealed class TagEditor : UserControl
                 model.TypedText = _input.Text;
             }
         };
-        DataObject.AddPastingHandler(_input, TextPaste.JoinLines);
+        DataObject.AddPastingHandler(_input, TagText.OnPaste);
+        _input.PreviewTextInput += OnInputText;
         _suggestions.PreviewMouseLeftButtonUp += OnSuggestionClicked;
         // Esc closes an open part wherever the cursor is in the window, before the window's own Esc. A key an editor
         // around this control handled first arrives handled and is left alone.
@@ -137,6 +138,27 @@ public sealed class TagEditor : UserControl
     /// Returns false, doing nothing, when none is open.
     /// </summary>
     internal bool CloseOpen() => _model.CloseSuggestions() || _menu.Close() || _model.CloseCustom();
+
+    // Typed letters become lowercase and typed whitespace does nothing, even over a selection, as pasted text does through the same rule.
+    private void OnInputText(object sender, TextCompositionEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(e.Text))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var text = TagText.Of(e.Text);
+        if (text == e.Text)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        var start = _input.SelectionStart;
+        _input.SelectedText = text;
+        _input.CaretIndex = start + text.Length;
+    }
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
     {

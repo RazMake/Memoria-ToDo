@@ -25,4 +25,7 @@ public interface IDescriptionWebView : IDisposable
     /// It can be raised while <see cref="Show"/> runs. A failure to measure a page that a newer page has replaced is ignored.
     /// </summary>
     event EventHandler<string>? Failed;
+
+    /// <summary>Raised when the user resizes an image in the page. The web view saves nothing.</summary>
+    event EventHandler<ImageResize>? ImageResized;
 }

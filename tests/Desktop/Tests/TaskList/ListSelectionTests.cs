@@ -128,27 +128,6 @@ public class ListSelectionTests
     }
 
     [Fact]
-    public void Clears_the_selection_when_the_tag_filter_hides_the_task()
-    {
-        var task = _tasks.Add("Buy milk", "", "home");
-        _tasks.Add("Wash car", "", "work");
-        _selection.Select(task.Id);
-        _filter.ToggleTag("work");
-
-        Assert.Null(_selection.Update(Snapshot()));
-    }
-
-    [Fact]
-    public void Keeps_the_selection_when_a_filter_still_shows_the_task()
-    {
-        var task = _tasks.Add("Buy milk", "", "home", "work");
-        _selection.Select(task.Id);
-        _filter.ToggleTag("work");
-
-        Assert.Equal(task.Id, _selection.Update(Snapshot())?.Id);
-    }
-
-    [Fact]
     public void Selects_a_resolved_task_while_the_resolved_tasks_show()
     {
         var task = _tasks.AddResolved("Done");
@@ -159,37 +138,18 @@ public class ListSelectionTests
     }
 
     [Fact]
-    public void Following_a_link_to_a_task_a_tag_filter_hides_clears_only_that_filter_and_selects_the_task()
+    public void Following_a_link_to_a_task_a_search_hides_clears_the_search_and_selects_the_task()
     {
-        var target = _tasks.Add("Home note", "", "home");
-        _tasks.Add("Work note", "", "work");
-        _filter.ToggleTag("work");
-        _filter.SearchText = "note";
-
-        var outcome = new ListLinks(_tasks.Tasks, _filter, _content).Follow(_tasks.Tasks.LinkAddress(target.Id));
-        _selection.Select(outcome.TaskId!);
-        var selected = _selection.Update(Snapshot());
-
-        Assert.Equal(LinkOutcome.Kind.Show, outcome.What);
-        Assert.Null(_filter.TagFilter);
-        Assert.Equal("note", _filter.SearchText);
-        Assert.Equal(target.Id, selected?.Id);
-    }
-
-    [Fact]
-    public void Following_a_link_to_a_task_a_search_hides_clears_only_the_search_and_selects_the_task()
-    {
-        var target = _tasks.Add("Home note", "", "home");
-        _tasks.Add("Other", "", "home");
-        _filter.ToggleTag("home");
+        var target = _tasks.Add("Home note");
+        _tasks.Add("Other");
         _filter.SearchText = "other";
 
         var outcome = new ListLinks(_tasks.Tasks, _filter, _content).Follow(_tasks.Tasks.LinkAddress(target.Id));
         _selection.Select(outcome.TaskId!);
         var selected = _selection.Update(Snapshot());
 
+        Assert.Equal(LinkOutcome.Kind.Show, outcome.What);
         Assert.Equal("", _filter.SearchText);
-        Assert.Equal("home", _filter.TagFilter);
         Assert.Equal(target.Id, selected?.Id);
     }
 

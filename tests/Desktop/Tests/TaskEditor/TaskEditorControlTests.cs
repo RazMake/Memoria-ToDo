@@ -51,6 +51,30 @@ public class TaskEditorControlTests
     }
 
     [WpfFact]
+    public void New_Save_keys_apply_to_the_open_editor_and_the_old_keys_stop_saving()
+    {
+        using var host = new EditorHost();
+        host.Services.SaveKeys.Set(ModifierKeys.Control, Key.S);
+
+        host.Press(Key.LeftCtrl, Key.Enter);
+        Assert.Equal((0, 0, 0), host.Counts);
+
+        host.Press(Key.LeftCtrl, Key.S);
+        Assert.Equal((1, 0, 0), host.Counts);
+    }
+
+    [WpfFact]
+    public void Save_wins_when_the_user_picks_Ctrl_Shift_Enter_as_the_Save_keys()
+    {
+        using var host = new EditorHost();
+        host.Services.SaveKeys.Set(ModifierKeys.Control | ModifierKeys.Shift, Key.Enter);
+
+        host.Press(Key.LeftCtrl, Key.LeftShift, Key.Enter);
+
+        Assert.Equal((1, 0, 0), host.Counts);
+    }
+
+    [WpfFact]
     public void Ctrl_Shift_Enter_asks_to_save_and_clear_once_and_nothing_else()
     {
         using var host = new EditorHost();

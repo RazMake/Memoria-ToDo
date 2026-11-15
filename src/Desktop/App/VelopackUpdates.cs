@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using System.Reflection;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Velopack;
 using Velopack.Logging;
@@ -31,8 +31,7 @@ internal sealed class VelopackUpdates : IAppInstall
 
     public string Version => WithoutMetadata(_manager.IsInstalled && _manager.CurrentVersion is { } current
         ? current.ToString()
-        : typeof(VelopackUpdates).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? throw new InvalidOperationException("The app has no version."));
+        : AppVersion.Value);
 
     public async Task<NewerVersion?> CheckAsync(CancellationToken cancellationToken)
     {

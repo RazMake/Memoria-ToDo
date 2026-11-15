@@ -34,12 +34,14 @@ internal sealed class TaskRow : Border
     private Point? _pressedAt;
     private bool _updating;
     private bool _selected;
+    private UIElement? _editor;
 
     public TaskRow(TaskItem task, ITheme theme, IDefaultBrowser browser)
     {
         Task = task;
         Group = [];
         Focusable = true;
+        FocusVisualStyle = null;
         AllowDrop = true;
         Padding = new Thickness(8);
         BorderThickness = new Thickness(0, 0, 0, 1);
@@ -83,6 +85,8 @@ internal sealed class TaskRow : Border
     public event EventHandler? SelectRequested;
 
     public event EventHandler? EditRequested;
+
+    public event EventHandler? EditTitleRequested;
 
     public event EventHandler? DeleteRequested;
 
@@ -129,11 +133,42 @@ internal sealed class TaskRow : Border
 
     private ContextMenu MakeMenu()
     {
+        var editTitle = new MenuItem { Header = "Edit Title", InputGestureText = ShortcutText.Of(ModifierKeys.Shift, Key.F2) };
+        editTitle.Click += (_, _) => EditTitleRequested?.Invoke(this, EventArgs.Empty);
         var edit = new MenuItem { Header = "Edit Description", InputGestureText = "F2" };
         edit.Click += (_, _) => EditRequested?.Invoke(this, EventArgs.Empty);
         var delete = new MenuItem { Header = "Delete", InputGestureText = "Del" };
         delete.Click += (_, _) => DeleteRequested?.Invoke(this, EventArgs.Empty);
-        return new ContextMenu { Items = { edit, delete } };
+        return new ContextMenu { Items = { editTitle, edit, delete } };
+    }
+
+    /// <summary>
+    /// Puts the Title editor in place of the title, or puts the title back when <paramref name="editor"/> is null. While it is
+    /// there, the checkbox is off and a press or drag on the row does nothing, so the editor keeps the keyboard focus.
+    /// </summary>
+    public void ShowEditor(UIElement? editor)
+    {
+        if (_editor == editor)
+        {
+            return;
+        }
+
+        var grid = (Grid)Child;
+        if (_editor is not null)
+        {
+            grid.Children.Remove(_editor);
+        }
+
+        _editor = editor;
+        if (editor is not null)
+        {
+            Grid.SetColumn(editor, 1);
+            grid.Children.Add(editor);
+        }
+
+        // The title stays in the grid, so the row keeps the title as its name.
+        _title.Visibility = editor is null ? Visibility.Visible : Visibility.Collapsed;
+        _resolved.IsEnabled = editor is null;
     }
 
     private void Toggled(bool resolved)
@@ -146,6 +181,11 @@ internal sealed class TaskRow : Border
 
     private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (_editor is not null)
+        {
+            return;
+        }
+
         if (e.ChangedButton == MouseButton.Left)
         {
             _pressedAt = e.GetPosition(this);
@@ -160,7 +200,7 @@ internal sealed class TaskRow : Border
     // A click on the row itself or its title, not on the checkbox or a link inside it.
     private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject source || !IsPlain(source))
+        if (_editor is not null || e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject source || !IsPlain(source))
         {
             return;
         }
@@ -187,7 +227,7 @@ internal sealed class TaskRow : Border
 
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || _pressedAt is not { } from || e.OriginalSource is not DependencyObject source || !IsPlain(source))
+        if (_editor is not null || e.LeftButton != MouseButtonState.Pressed || _pressedAt is not { } from || e.OriginalSource is not DependencyObject source || !IsPlain(source))
         {
             return;
         }

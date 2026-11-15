@@ -202,6 +202,55 @@ public class TagsModelTests
     }
 
     [Fact]
+    public void A_lowercase_typed_tag_that_matches_a_tag_in_use_is_added_with_the_spelling_in_use()
+    {
+        _services.UseTag("Work");
+        _model.TypedText = "work";
+
+        _model.AddTypedText();
+
+        Assert.Equal(["Work"], _model.Tags);
+    }
+
+    [Fact]
+    public void Suggestions_keep_the_spelling_of_the_tags_in_use()
+    {
+        _services.UseTag("Work", 2);
+        _services.UseTag("WiFi");
+
+        _model.TypedText = "w";
+
+        Assert.Equal(["Work", "WiFi"], _model.Suggestions.Items);
+    }
+
+    [Fact]
+    public void The_plus_menu_lists_the_tags_in_use_with_the_spelling_in_use()
+    {
+        _services.UseTag("Work", 2);
+        _services.UseTag("home");
+
+        Assert.Equal(["Work", "home"], _model.MenuTags);
+    }
+
+    [Fact]
+    public void Tags_the_task_already_has_keep_their_spelling()
+    {
+        _model.Tags = ["Work", "HOME"];
+
+        Assert.Equal(["Work", "HOME"], _model.Tags);
+    }
+
+    [Fact]
+    public void A_tag_chosen_from_the_plus_menu_keeps_the_spelling_in_use()
+    {
+        _services.UseTag("Work");
+
+        _model.Add(_model.MenuTags[0]);
+
+        Assert.Equal(["Work"], _model.Tags);
+    }
+
+    [Fact]
     public void A_model_without_Tasks_is_rejected()
     {
         Assert.Throws<ArgumentNullException>(() => new TagsModel(null!, _services.TagColors));

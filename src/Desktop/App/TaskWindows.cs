@@ -15,8 +15,8 @@ internal static class TaskWindows
 {
     public static (IAddWindow Add, IViewTasksWindow ViewTasks) Create(ITaskStore tasks, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView,
-        IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates) =>
-        (AddWindow.Create(tasks, tasks.TagColors, Palette.Colors, theme, time, clipboard, imageFiles, files, closeWindowKeys, updates),
+        IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys) =>
+        (AddWindow.Create(tasks, tasks.TagColors, Palette.Colors, theme, time, clipboard, imageFiles, files, closeWindowKeys, updates, saveKeys),
          ViewTasksWindow.Create(tasks, tasks.TagColors, Palette.Colors, theme, time, clipboard, imageFiles, files,
-             createWebView, browser, sync, closeWindowKeys, updates));
+             createWebView, browser, sync, closeWindowKeys, updates, saveKeys));
 }

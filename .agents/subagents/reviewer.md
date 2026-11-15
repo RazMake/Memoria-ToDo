@@ -40,7 +40,7 @@ Apply this pass when a change adds, removes, or alters a public interface or its
 
 ## Boundaries
 
-- **Stay read-only**: don't edit files, apply fixes, install dependencies, or change Git state. Run only commands known not to change files or external state. Don't mutate code to test the tests.
+- **Stay read-only**: don't edit files, apply fixes, install dependencies, or change Git state. Run only commands known not to change files or external state. Don't build, run tests, or mutate code to test the tests; judge from the test evidence in the brief.
 - **Do the work yourself**; don't delegate to other agents.
 
 ## Report

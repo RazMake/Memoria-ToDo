@@ -28,10 +28,8 @@ public class TaskListUndoLifetimeTests
         return added;
     }
 
-    [WpfTheory]
-    [InlineData("search")]
-    [InlineData("tag")]
-    public void Undo_restores_the_edit_with_its_images_even_when_a_filter_hides_the_task(string filter)
+    [WpfFact]
+    public void Undo_restores_the_edit_with_its_images_even_when_a_search_hides_the_task()
     {
         var services = new ListServices();
         services.Add("Other", "", "work");
@@ -40,14 +38,7 @@ public class TaskListUndoLifetimeTests
         var images = EditWithImage(services, screen, "Buy milk");
         var typed = screen.EditedDescriptionText;
         screen.Press(Key.Escape);
-        if (filter == "search")
-        {
-            screen.Search("Other");
-        }
-        else
-        {
-            screen.ClickChip("work");
-        }
+        screen.Search("Other");
 
         Assert.DoesNotContain("Buy milk", screen.RowTitles);
         Assert.Equal(1, screen.CountButtons("Undo"));
@@ -78,7 +69,7 @@ public class TaskListEditImageCleanupFailureTests
         screen.PasteImageIntoDescription();
         var images = services.AllFiles.Except(before).ToList();
         Assert.NotEmpty(images);
-        screen.TypeTitle(title, title + " changed");
+        screen.TypeDescription(title + " changed");
         screen.Press(Key.Escape);
         services.Files.FailDeletesUnder(System.IO.Path.GetDirectoryName(images[0])!);
         return images;
@@ -120,13 +111,12 @@ public class TaskListNarrowWindowTests
     }
 
     [WpfFact]
-    public void Keeps_the_tag_filter_and_search_inside_the_window_at_its_narrowest_with_long_tags()
+    public void Keeps_the_search_and_the_status_bar_inside_the_window_at_its_narrowest_with_long_tags()
     {
         using var screen = new TaskListScreen(FiveLongTags());
 
         screen.ResizeTo(Narrowest);
 
-        Assert.NotEmpty(screen.ChipTags);
         Assert.Empty(screen.ControlsOutsideTheWindow());
     }
 }

@@ -102,17 +102,6 @@ internal sealed partial class TaskListScreen
         }
     }
 
-    /// <summary>Every tag the "All tags" list offers, in order.</summary>
-    public IReadOnlyList<string> AllTags => [.. AllTagsList().Items.Cast<string>()];
-
-    /// <summary>Gives the tag's chip in the filter the keyboard focus, as tabbing to a header button does.</summary>
-    public void FocusChip(string tag)
-    {
-        var chip = Buttons(Named("Tag filter")).Single(b => LabelOf(b) == tag);
-        chip.Focus();
-        Keyboard.Focus(chip);
-    }
-
     /// <summary>Gives the search box the keyboard focus, as clicking it does.</summary>
     public void FocusSearchBox()
     {
@@ -122,17 +111,22 @@ internal sealed partial class TaskListScreen
         Keyboard.Focus(box);
     }
 
-    /// <summary>The fill of the tag's badge in the open "All tags" list, found by the badge's automation id, whatever the list's items are.</summary>
-    public TagFill AllTagsBadgeFill(string tag)
+    /// <summary>What Custom's tag box holds: the tag text typed and not yet added.</summary>
+    public string EditedTagsText => TextFields.TextOf(CustomBox());
+
+    /// <summary>Types the text into Custom's tag box without adding it as a tag, and gives the box the focus. The box must be open.</summary>
+    public void TypeTags(string text)
     {
-        var all = Visuals(Window).OfType<System.Windows.Controls.ComboBox>()
-            .Single(c => c.IsVisible && AutomationProperties.GetName(c) == "All tags");
+        var field = CustomBox();
+        TextFields.Type(field, text);
+        field.Focus();
+        Keyboard.Focus(field);
+    }
+
+    private FrameworkElement CustomBox()
+    {
         Refresh();
-        var item = Enumerable.Range(0, all.Items.Count)
-            .Select(all.ItemContainerGenerator.ContainerFromIndex)
-            .OfType<DependencyObject>()
-            .Single(container => TagControls.BadgeTags(container).Contains(tag));
-        return TagControls.FillOf(item, tag);
+        return TextFields.FindShowing(Window, EditorFields.Tags) ?? throw new InvalidOperationException("Custom's tag box isn't showing.");
     }
 
     private static bool HasTagControl(FrameworkElement row) =>

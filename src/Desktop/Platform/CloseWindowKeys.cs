@@ -23,17 +23,7 @@ public sealed class CloseWindowKeys
     /// </summary>
     public void Set(ModifierKeys modifiers, Key key)
     {
-        const ModifierKeys All = ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift | ModifierKeys.Windows;
-        if ((modifiers & ~All) != 0)
-        {
-            throw new ArgumentException("Only Ctrl, Alt, Shift, and Win can be modifiers.", nameof(modifiers));
-        }
-
-        if (key is Key.None or Key.System || ModifierKey.Of(key) != ModifierKeys.None)
-        {
-            throw new ArgumentException("The key can't be none or a modifier key.", nameof(key));
-        }
-
+        ShortcutKeyCheck.Validate(modifiers, key);
         _modifiers = modifiers;
         _key = key;
     }

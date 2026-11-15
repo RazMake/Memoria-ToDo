@@ -10,28 +10,21 @@ internal static class TagGroups
 {
     /// <summary>
     /// A group for each tag in alphabetical order ignoring case, then the "No tag" group, with its tasks in the order given. A
-    /// task with two tags is in both groups. Groups with no task are left out. With <paramref name="onlyTag"/>, only that tag's
-    /// group is made, plus the groups of the task <paramref name="keepId"/> names: the task being edited stays in the list.
+    ///     task with two tags is in both groups. Groups with no task are left out.
     /// </summary>
-    public static IReadOnlyList<TaskGroup> Of(IReadOnlyList<TaskItem> open, string? onlyTag = null, string? keepId = null)
+       public static IReadOnlyList<TaskGroup> Of(IReadOnlyList<TaskItem> open)
     {
         var tagged = new Dictionary<string, (string Tag, List<TaskItem> Tasks)>(StringComparer.OrdinalIgnoreCase);
         var untagged = new List<TaskItem>();
         foreach (var task in open)
         {
-            var kept = task.Id == keepId;
-            if (task.Tags.Count == 0 && (onlyTag is null || kept))
+            if (task.Tags.Count == 0)
             {
                 untagged.Add(task);
             }
 
             foreach (var tag in task.Tags)
             {
-                if (onlyTag is not null && !kept && !string.Equals(tag, onlyTag, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
                 if (!tagged.TryGetValue(tag, out var group))
                 {
                     group = (tag, []);

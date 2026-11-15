@@ -27,6 +27,7 @@ internal sealed class RealViewTasks : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "view-tasks-web-view", Guid.NewGuid().ToString("N"));
     private readonly OpenWindows _windows = new();
     private readonly List<WpfDescriptionWebView> _made = [];
+    private readonly IRepositoryFileRules _rules;
     private readonly TaskCompletionSource<CoreWebView2> _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Channel<bool> _pages = Channel.CreateUnbounded<bool>();
     private Process? _browser;
@@ -36,12 +37,14 @@ internal sealed class RealViewTasks : IDisposable
         var clone = Path.Combine(_root, "clone");
         Directory.CreateDirectory(clone);
         var files = new FakeFileSystem();
-        Tasks = TaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device"));
+        var store = TaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device"));
+        Tasks = store;
+        _rules = store.Synchronization.Files;
         Tasks.UseRepositoryFolder(clone);
         View = ViewTasksWindow.Create(
             Tasks, new FakeTagColors(), Palette.Colors, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(),
             files, () => MakeWebView(clone), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
-            new FakeUpdateStatus());
+            new FakeUpdateStatus(), new Platform.SaveKeys());
     }
 
     public ITasks Tasks { get; }
@@ -105,23 +108,8 @@ internal sealed class RealViewTasks : IDisposable
 
     public void Dispose()
     {
-        // The test's own cleanup of what it made, whatever the window did on close.
-        _windows.Dispose();
-        foreach (var webView in _made)
-        {
-            webView.Dispose();
-            ((WebView2CompositionControl)webView.Element).Dispose();
-        }
-
-        if (_browser is not null)
-        {
-            var exited = _browser.WaitForExit(Limit);
-            _browser.Dispose();
-            if (!exited)
-            {
-                throw new TimeoutException($"The browser using {_root} did not exit, so its folder was left in place.");
-            }
-        }
+        // The test's own cleanup of what it made, whatever the window did on close: the web views first, then the windows.
+        WebViewTeardown.Run(_made, _windows.Dispose, _browser, _root);
 
         if (Directory.Exists(_root))
         {
@@ -131,7 +119,8 @@ internal sealed class RealViewTasks : IDisposable
 
     private WpfDescriptionWebView MakeWebView(string clone)
     {
-        var webView = new WpfDescriptionWebView(clone, Path.Combine(_root, "browser-data"));
+        var webView = new WpfDescriptionWebView(
+            clone, Path.Combine(_root, "edit-images"), Path.Combine(_root, "browser-data"), new WindowsFileSystem(), _rules);
         _made.Add(webView);
         var control = (WebView2CompositionControl)webView.Element;
         control.CoreWebView2InitializationCompleted += (_, e) =>

@@ -9,42 +9,38 @@ using Memoria.ToDo.Shared.Tasks;
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
-/// The edit of one task's description on the right side: the whole Task editor, opened on the task as the list shows it. It
-/// ends by saving, or by leaving without saving, where a changed edit can be brought back with Undo.
+/// The one open edit of a task's title, in its row, or of its description, on the right side. It ends by saving, or by leaving
+/// without saving, where a changed description can be brought back with Undo.
 /// </summary>
-internal sealed class ListEditing(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-    IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, EditCleanup cleanup, Action<string> restored)
+internal sealed class ListEditing(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, EditCleanup cleanup, Action<string> restored)
 {
-    private sealed record Edit(TaskEditorControl Editor, TaskItem Started);
+    private IFieldEdit? _edit;
 
-    private Edit? _edit;
+    /// <summary>The open edit, or null.</summary>
+    public IFieldEdit? Current => _edit;
 
-    /// <summary>The editor while an edit is open, or null.</summary>
-    public TaskEditorControl? Editor => _edit?.Editor;
+    /// <summary>The open edit when it is of a description, which has a draft to preview, else null.</summary>
+    public IDescriptionEdit? Describing => _edit as IDescriptionEdit;
 
     /// <summary>The task as it was when the open edit began, or null when none is open.</summary>
     public TaskItem? Started => _edit?.Started;
 
-    /// <summary>Opens an edit of the task, with the editor's Save and Esc calling the given actions.</summary>
-    public TaskEditorControl Begin(TaskItem task, Action saveRequested, Action cancelRequested)
-    {
-        var draft = new TaskDraft(task.Id, task.Title, task.Description, task.Tags);
-        var editor = new TaskEditorControl(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files) { Value = draft };
-        editor.SaveRequested += (_, _) => saveRequested();
-        editor.SaveAndClearRequested += (_, _) => saveRequested();
-        editor.CancelRequested += (_, _) => cancelRequested();
-        _edit = new Edit(editor, task);
-        return editor;
-    }
+    /// <summary>Opens an edit of the task's description, with the editor's Save and Esc calling the given actions.</summary>
+    public IFieldEdit BeginDescription(TaskItem task, Action saveRequested, Action cancelRequested) =>
+        _edit = new DescriptionEdit(tasks, palette, theme, time, clipboard, imageFiles, files, saveKeys, task, saveRequested, cancelRequested);
+
+    /// <summary>Opens an edit of the task's title, with the editor's Save and Esc calling the given actions.</summary>
+    public IFieldEdit BeginTitle(TaskItem task, Action saveRequested, Action cancelRequested) =>
+        _edit = new TitleEdit(tasks, palette, theme, time, clipboard, saveKeys, task, saveRequested, cancelRequested);
 
     /// <summary>
-    /// Saves the edit through Tasks and ends it. False, with the edit still open, when the Title is empty or Tasks can't save it;
+    /// Saves the edit through Tasks and ends it. False, with the edit still open, when the field is empty or Tasks can't save it;
     /// the editor says why.
     /// </summary>
     public bool Save()
     {
-        var edit = _edit!;
-        if (!edit.Editor.Save(draft => tasks.SaveEdit(edit.Started, draft)))
+        if (!_edit!.Save())
         {
             return false;
         }
@@ -54,14 +50,14 @@ internal sealed class ListEditing(ITasks tasks, ITagColors tagColors, IReadOnlyL
     }
 
     /// <summary>
-    /// Ends the edit without saving. A clean one throws its images away now; a changed one waits on the Undo bar, where Undo
-    /// opens the same editor again.
+    /// Ends the edit without saving. A clean description throws its images away now; a changed one waits on the Undo bar, where
+    /// Undo opens the same editor again. A title edit just ends.
     /// </summary>
     public void Leave()
     {
         var edit = _edit!;
         _edit = null;
-        cleanup.Leave(edit.Started.Id, edit.Editor.HasChanges, () =>
+        edit.Leave(cleanup, () =>
         {
             // An edit open now is left as Esc leaves it, with its own Undo bar; this one's bar was just used.
             if (_edit is not null)
@@ -74,12 +70,12 @@ internal sealed class ListEditing(ITasks tasks, ITagColors tagColors, IReadOnlyL
         });
     }
 
-    /// <summary>Drops the open edit with no cleanup, and returns its task, or null when none was open.</summary>
-    public TaskItem? Forget()
+    /// <summary>Drops the open edit with no cleanup, and returns it, or null when none was open.</summary>
+    public IFieldEdit? Forget()
     {
-        var started = _edit?.Started;
+        var edit = _edit;
         _edit = null;
-        return started;
+        return edit;
     }
 
     /// <summary>Whether the element is the editor or inside it.</summary>
@@ -88,7 +84,7 @@ internal sealed class ListEditing(ITasks tasks, ITagColors tagColors, IReadOnlyL
 
     // With the focus outside the editor, Esc still takes its steps: the editor gets the key as if the focus were in it, and closes
     // its open list or reports that the edit is cancelled. The key the editor is sent is handled in the editor, so the window's
-    // own Esc never sees it, and the editor's tag control, which also listens at the window, sees it handled.
+    // own Esc never sees it.
     /// <summary>Gives the editor the Esc key that arrived elsewhere, and says whether it handled it.</summary>
     public bool SendEsc(KeyEventArgs original)
     {

@@ -9,10 +9,10 @@ Each module is a project of its own, and the [module map](../modules.md#module-m
 | Module | What its design file decides |
 | --- | --- |
 | [Shell](shell.md) | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, the installer, and how sync status shows |
-| [Task editor](task-editor.md) | The Add window: its fields, keys, draft, and tags. Task View edits a task with the same editor. |
-| [Task list](task-list.md) | Task View: tasks grouped by tag beside the selected task's description, editing it in place, the tag filter, search, resolving, deleting, and the Sync button |
+| [Task editor](task-editor.md) | The Add window: its fields, keys, draft, and tags. Task View edits a task's title or description with the same fields. |
+| [Task list](task-list.md) | Task View: tasks grouped by tag, in groups that collapse, beside the selected task's description, editing a description or title in place, search, resolving, deleting, and the Sync button and the version in the status bar |
 | [Formatted view](formatted-view.md) | A task's title and description as a reader sees them, with no Markdown characters, the web view the description shows in, and which links open in the default browser |
-| [Configure](configure.md) | The settings window: the two global shortcuts, the Close window shortcut, starting with Windows, the shared deletion delay, and sync status details |
+| [Configure](configure.md) | The settings window: the two global shortcuts, the Close window and Save shortcuts, starting with Windows, the shared deletion delay, and sync status details |
 | [Updates](updates.md) | When the app checks for a new version, the status bar Add and Task View share, What is new, Auto update, and how an update restarts the app |
 
 Two shared modules serve the desktop app: [Editing](../editing.md) holds the formatting and snippet commands, and [Rendering](../rendering.md) turns Markdown into HTML and styled text. [How the apps fit together](../overview.md) picks the main libraries, such as AvalonEdit for the editor and WebView2 for rendered descriptions.
@@ -25,7 +25,7 @@ Each window module keeps its screens' state and logic in internal [view models](
 
 The desktop platform, `Memoria.ToDo.Desktop.Platform`, holds the app's startup, as [Modules](../modules.md#the-platform-serves-every-module-and-knows-none) decides. The composition root, `Memoria.ToDo.Desktop.App`, builds the app from the modules and hands it to the platform to run.
 
-The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows) and the theme follower, below the theme. The decided parts are:
+The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; the app's [version](#the-apps-version-has-one-home), which the user decided; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows) and the theme follower, below the theme; and [Save keys](#the-save-shortcut-saves-in-any-window-that-edits), which the user decided. The decided parts are:
 
 - **The app's lifetime**: an interface with two steps, start and stop. Start receives a way to end the app. [Shell](shell.md#public-interface) implements it, so the platform names no module. Proposed: the way to end the app works from any thread. The platform passes the call to the UI thread and returns without waiting, so a module that ends the app from a background task needs no thread rule of its own. This is a decision to confirm.
 - **Run the app**: takes a function that builds the lifetime, and returns the process's exit code. In order, it:
@@ -162,7 +162,9 @@ The selection adapter reuses `repository-folder.txt`, loads Tasks, and never clo
 stores a second path. Failed adoption restores the previous saved path and Tasks selection; rollback failures
 retain the original error too. Its initial load follows [Sync's approved initialization boundary](../sync.md#public-interface),
 not composition. Client Git/SSH operations belong only to Sync. The web-view factory reads the
-selected folder from Tasks when making each new web view. The setup-action adapter reuses App's existing clipboard
+selected folder from Tasks when making each new web view, and gives it the store's
+[folder of waiting edit images](../tasks.md#step-5-publishes-small-capabilities-without-growing-task-operations) too, so an edit's
+Preview shows [images not saved yet](formatted-view.md#the-clones-address-also-serves-an-open-edits-waiting-images). The setup-action adapter reuses App's existing clipboard
 and default-browser components, without adding dependencies between Configure and the window modules.
 
 Decision to confirm: App supplies `%LocalAppData%` joined with the platform's `AppName.Value` as the device folder.
@@ -201,6 +203,29 @@ Proposed, each a decision to confirm:
   - **The app's file and every window.** The composition root's project sets it as the app's icon. A WPF window that sets no icon shows the first icon in the running program's file ([Window.Icon](https://learn.microsoft.com/en-us/dotnet/api/system.windows.window.icon), [WPF's source](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/MS/Internal/AppModel/IconHelper.cs)), so no module's window names the file. Not confirmed by a run.
   - **The tray icon.** The tray adapter in the composition root loads the same file, built into the composition root.
   - **The installer.** The [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) passes the same file to Velopack's packing step ([vpk options](https://docs.velopack.io/reference/cli/content/vpk-windows)).
+
+### The app's version has one home
+
+The user decided that the app's version, which Task View's [status bar](task-list.md#a-status-bar-holds-the-sync-button-and-the-version) shows, comes from a platform part, App version, beside App name, so no module's `Create` takes it. Its only home is the build: the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) builds the app with the version tag's number, and a local build is 1.0.0, the .NET SDK's default.
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// The app's version as users see it, such as 1.4.2.
+public static class AppVersion
+{
+    /// The version the build stamps into the platform assembly's informational version,
+    /// without the "+" and commit the .NET SDK adds after it.
+    /// Throws InvalidOperationException when the assembly has no informational version.
+    public static string Value { get; }
+}
+```
+
+Proposed, each a decision to confirm:
+
+- **It reads the platform assembly's informational version**, as App name reads its product, so the whole app shows one version: the build passes the same `Version` to every project.
+- **Its tests are unit tests**: the version has the form of numbers with dots, and holds no `+`.
+- **Updates' install adapter reads it too.** The adapter in the composition root gives [Updates](updates.md#public-interface) Velopack's version when the app is installed, and otherwise the build's: that one is App version's value, so the adapter reads no informational version of its own. An installed copy's two versions match, since a [version tag](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) gives its number to both the app's files and its Velopack package.
 
 ### Windows open on the screen with the mouse pointer
 
@@ -278,7 +303,7 @@ public static class EventKey
 ```
 
 - **It unwraps only Alt.** A key an input method or a dead key handles stays as WPF reports it, so the Enter that confirms an input method's text isn't taken as the Task list's or the editor's Enter. Only Configure's shortcut field also unwraps those two itself, so a [shortcut](configure.md#public-interface) is always made of a real key.
-- **What each key does stays in the design of the module that reads it**: the Task list's [keys](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) and [tag list](task-list.md#tags-and-search-narrow-the-list), the [Task editor's keys](task-editor.md#keys-save-close-and-move-between-fields), and [Configure's shortcut checks](configure.md#configure-explains-every-shortcut-it-cant-use).
+- **What each key does stays in the design of the module that reads it**: the Task list's [keys](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) and [search box](task-list.md#search-narrows-the-list), the [Task editor's keys](task-editor.md#keys-save-close-and-move-between-fields), and [Configure's shortcut checks](configure.md#configure-explains-every-shortcut-it-cant-use).
 
 Two other homes were ruled out: a method on `ModifierKey`, since its one job is saying which keys are modifiers; and one copy shared inside the Task list only, which would leave the same code in the Task editor and Configure.
 
@@ -330,6 +355,46 @@ public sealed class CloseWindowKeys
 - **The modules use the class itself, not an interface**, as they use [Single window](#a-closed-window-is-made-again-on-the-next-show): it has one implementation and does no I/O, so tests use the real one.
 - **Its tests are the platform's UX tests**, each with a plain test window holding a text box.
 
+### The Save shortcut saves in any window that edits
+
+The [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window) saves in Add, and in Task View's Edit Description and Edit Title, so its keys have one home: a platform part, Save keys, the user decided. The composition root makes one for the app and passes it to Configure, which sets it, and to the Task editor and the Task list, whose editors ask it whether a key press is the Save shortcut:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// The keys that save the task being edited, in whichever of the app's windows edits one.
+/// The composition root makes one for the app. Use it on the UI thread.
+public sealed class SaveKeys
+{
+    /// No keys yet: no key press is the Save shortcut until Set is called.
+    public SaveKeys();
+
+    /// From now on, these keys save. Throws ArgumentException when key is Key.None or a modifier key,
+    /// or modifiers holds anything but Ctrl, Alt, Shift, and Win.
+    public void Set(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key);
+
+    /// Whether key, pressed with exactly these modifier keys held, is the Save shortcut now.
+    public bool Matches(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key);
+
+    /// The Save shortcut as the user reads it, such as "Ctrl+Enter"; empty until Set is called.
+    public string Text { get; }
+}
+
+/// Writes a shortcut the way the app shows it to the user.
+public static class ShortcutText
+{
+    /// The modifiers in the order Win, Ctrl, Alt, Shift, then the key, such as "Win+Alt+N"; Enter is written "Enter".
+    public static string Of(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key);
+}
+```
+
+Proposed, each a decision to confirm:
+
+- **The platform owns shortcut text.** `ShortcutText` is the one place that writes a shortcut for the user, so Configure's fields and messages, and a tooltip that names the Save shortcut, read the same. `SaveKeys` offers its text so a window, such as the Add window's Save button tooltip, reads it when it opens without asking Configure.
+- **An editor asks it on each key press**, with the modifier keys it already tracks through [Held modifier keys](#window-modules-read-keys-through-the-platform), so a change applies to an edit already open, and the editor needs no event.
+- **It checks keys as Close window keys does**, through one key check both share, so the rule that a shortcut is real keys has one home. Configure alone decides the keys' default and rules.
+- **The modules use the class itself, not an interface**, as for Close window keys: it has one implementation and does no I/O, so tests use the real one. Its tests are unit tests.
+
 ## Later designs answer what these files leave open
 
 The desktop design relies on rules that belong to the shared Tasks and Sync modules and to the technology stack, a later row of the [design backlog](../README.md#design-backlog). The table lists each, the desktop modules that need it, and the design that answers it:
@@ -339,7 +404,7 @@ The desktop design relies on rules that belong to the shared Tasks and Sync modu
 | The rank that puts a new task first, and a task's rank after a move | Task editor, Task list | [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors) |
 | The tags in use, how often each is used, and when two tags are the same | Task editor, Task list | [Tasks](../tasks.md#tags-and-search-ignore-case) |
 | Each tag's color, and the 30 colors a tag can take | Task editor, Task list | [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) |
-| How search and the tag filter match tasks | Task list | [Tasks](../tasks.md#tags-and-search-ignore-case) |
+| How search matches tasks | Task list | [Tasks](../tasks.md#tags-and-search-ignore-case) |
 | The link format of a reference to another task | Task editor, Task list | [Tasks](../tasks.md#a-time-ordered-id-names-each-task-its-file-and-links-to-it) |
 | Where an image is saved, its path in the Markdown, its shrinking to 1 MB, and where an unsaved task's images wait | Task editor, Task list | [Tasks](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task) |
 | Where a new task's draft waits, and when it's deleted | Task editor | [Tasks](../tasks.md#a-draft-waits-on-this-device-until-its-saved) |
@@ -364,15 +429,17 @@ The table lists each step, what it builds, and its status:
 | 3 | Adding tasks | The platform's [theme part](#the-platform-runs-the-app-and-the-composition-root-builds-it), which tells modules whether windows are light or dark, built first; then the rest of the [Task editor](task-editor.md#behavior), on [Tasks](../tasks.md), the shared library's [platform](../modules.md#the-file-system-interface-reads-and-writes-whole-files), [Editing](../editing.md), and [Rendering's](../rendering.md#public-interface) styled spans and palette | Implemented |
 | 4 | Viewing tasks | The [Formatted view](formatted-view.md#behavior), and the [Task list](task-list.md#behavior) except its Sync button and the sync when Task View opens | Implemented |
 | 5 | Sync | [Sync through git](../sync.md); Shell's [sync status](shell.md#sync-stays-quiet-unless-something-is-wrong) and its redirect to Configure until the device is configured; Configure's [sync](configure.md#configure-shows-how-sync-is-doing), deletion delay, and saving and loading the [shortcuts](configure.md#each-setting-has-one-owner) in `settings.json`; the Task list's [Sync button and the sync when Task View opens](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button). | Implemented |
-| 6 | Install and updates | Shell's [installer](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), with each release's notes from the [changelog](../version-tags.md#a-version-is-tagged-only-when-the-changelog-has-its-notes). Proposed: the update checks now come with step 10, since [Updates](updates.md) replaces the background download, and the release notes come with this step, so the first release already has them. This is a decision to confirm. | Next |
+| 6 | Install and updates | Shell's [installer](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), with each release's notes from the [changelog](../version-tags.md#a-version-is-tagged-only-when-the-changelog-has-its-notes). Proposed: the update checks now come with step 10, since [Updates](updates.md) replaces the background download, and the release notes come with this step, so the first release already has them. This is a decision to confirm. | Not scheduled |
 | 7 | Esc and switching windows | The platform's [Esc part](#window-modules-read-keys-through-the-platform); Esc in [Task View](task-list.md#esc-goes-back-one-step-then-closes-task-view) and [Configure](configure.md#esc-and-the-close-window-shortcut-close-the-window); Shell's [shortcut switching](shell.md#a-shortcut-switches-between-add-and-task-view), with the close parts of [Add](task-editor.md#public-interface) and [Task View](task-list.md#public-interface); and Task View's [prompt for a changed edit](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) | Implemented |
 | 8 | Colored tags | Each tag's color in [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file), and Sync carrying `tags.json`; Rendering's [30 tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes); the Task editor's [badges and + menu](task-editor.md#tags-show-as-colored-badges-and-the-plus-button-adds-one); and the Task list's [colored tags and tag changes without Edit](task-list.md#tags-show-as-colored-badges-and-change-without-edit) | Implemented |
 | 9 | Text look and Task View by tag | Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) on the description page, in [titles](formatted-view.md#it-shows-what-rendering-decides-never-markdown), in the [editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview), and on [Configure's section titles](configure.md#the-window-shows-its-settings-in-labeled-sections); the platform's [hand pointer on every button and theme follower](#the-platform-runs-the-app-and-the-composition-root-builds-it); and Task View's [tag groups beside the description](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description), with [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) | Not scheduled |
-| 10 | Updates you agree to | [Updates](updates.md): the checks at start and at 3 AM, the [status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) in [Add](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) and [Task View](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button), Configure's [update card](configure.md#an-update-card-sits-above-the-sections), What is new, Auto update, and the restart | Not scheduled |
+| 10 | Updates you agree to | [Updates](updates.md): the checks at start and at 3 AM, the [status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) in [Add](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) and [Task View](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button), Configure's [update card](configure.md#an-update-card-sits-above-the-sections), What is new, Auto update, and the restart | Implemented |
+| 11 | Task View refinements | Rendering's [heading colors](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme), also on [Configure's card titles](configure.md#the-window-shows-its-settings-in-labeled-sections); the Task editor's [lowercase tags with no spaces](task-editor.md#tags-show-as-colored-badges-and-the-plus-button-adds-one); and Task View's [status bar](task-list.md#a-status-bar-holds-the-sync-button-and-the-version), [search box](task-list.md#search-narrows-the-list) with no tag filter, [collapsing groups](task-list.md#a-click-on-a-groups-tag-collapses-or-expands-it), [description-only edit](task-list.md#edit-description-turns-the-right-side-into-the-editor), [Edit Title](task-list.md#edit-title-edits-the-title-in-its-row), [resizable images](task-list.md#an-image-resizes-by-dragging-its-corner-in-the-edits-preview) in Edit Description's [Preview](task-list.md#edit-description-has-an-edit-tab-and-a-preview-tab), and [no focus rectangle on the split bar or the list](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete); with the platform's [app version](#the-apps-version-has-one-home) and [Save keys](#the-save-shortcut-saves-in-any-window-that-edits), Configure's [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window), and Tasks' [Save shortcut setting](../tasks.md#one-versioned-file-holds-the-three-shared-settings). | Next |
 
 The remaining work follows this order:
 
-1. Install and updates (step 6).
-2. Review and refine [Tasks View](task-list.md), including its decisions awaiting confirmation. This review is deferred, not waived.
-3. Add the [Add window's formatted preview](task-editor.md).
-4. Build the [Android app](../android/README.md).
+1. Task View refinements (step 11), which you asked for ahead of the rest.
+2. Install and updates (step 6).
+3. Review and refine [Tasks View](task-list.md), including its decisions awaiting confirmation. This review is deferred, not waived.
+4. Add the [Add window's formatted preview](task-editor.md).
+5. Build the [Android app](../android/README.md).

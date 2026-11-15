@@ -1,5 +1,7 @@
 using System.Windows.Controls;
+using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Sync;
@@ -9,8 +11,8 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Task View's status bar runs along the window's bottom edge and always shows. The Sync button and its failure line
-/// sit at its start; the update text, while a version is available or updating, sits at its end.
+/// Task View's status bar runs along the window's bottom edge and always shows. The Sync icon button and a failed sync's
+/// error sit at its start, then the app's version; the update text, while a version is available or updating, sits at its end.
 /// </summary>
 [UX]
 [Collection(ScreenTests.Collection)]
@@ -65,7 +67,47 @@ public class TaskListStatusBarTests
     }
 
     [WpfFact]
-    public void A_failed_sync_shows_its_details_in_the_bar_after_the_Sync_button()
+    public void The_Sync_button_is_named_Sync_and_has_the_tooltip_Sync_F5()
+    {
+        using var screen = new TaskListScreen(new ListServices());
+
+        Assert.Equal("Sync (F5)", screen.SyncTooltip);
+    }
+
+    [WpfFact]
+    public void The_Sync_button_starts_a_sync_and_F5_still_does()
+    {
+        var services = new ListServices();
+        using var screen = new TaskListScreen(services);
+
+        screen.Click("Sync");
+        screen.Press(Key.F5);
+
+        Assert.Equal(3, services.Sync.SyncCount);
+    }
+
+    [WpfFact]
+    public async Task The_Sync_buttons_tooltip_says_Syncing_while_a_sync_runs()
+    {
+        var services = new ListServices();
+        var pending = new TaskCompletionSource<ISyncStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
+        services.Sync.SyncOperation = _ => pending.Task;
+        using var screen = new TaskListScreen(services);
+        try
+        {
+            Assert.Equal("Syncing…", screen.SyncTooltip);
+        }
+        finally
+        {
+            pending.TrySetResult(new FakeSyncStatus());
+        }
+
+        await System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+        Assert.Equal("Sync (F5)", screen.SyncTooltip);
+    }
+
+    [WpfFact]
+    public void A_failed_sync_shows_its_error_in_the_status_bar_right_of_the_button_and_a_good_sync_clears_it()
     {
         var services = new ListServices();
         using var screen = new TaskListScreen(services);
@@ -79,7 +121,43 @@ public class TaskListStatusBarTests
         var line = screen.FailureLine("Requested sync failed");
         Assert.NotNull(line);
         Assert.True(screen.IsInStatusBar(line));
-        Assert.True(screen.LeftOf(line) >= screen.RightOf(screen.SyncButton) - 0.5, "The failure line isn't after the button.");
+        Assert.True(screen.StatusBarTextLeft("Requested sync failed") >= screen.SyncButtonRight, "The failure line isn't after the button.");
+
+        services.Sync.SyncOperation = _ => Task.FromResult<ISyncStatus>(new FakeSyncStatus());
+        screen.Click("Sync");
+
+        Assert.False(screen.ShowsText("Requested sync failed"));
+    }
+
+    [WpfFact]
+    public void The_status_bar_shows_the_apps_version_at_its_right_edge_while_no_update_shows()
+    {
+        using var screen = new TaskListScreen(new ListServices());
+
+        Assert.True(screen.StatusBarShowsText("Version " + AppVersion.Value));
+        Assert.True(screen.StatusBarTextLeft("Version ") > screen.SyncButtonRight);
+        Assert.True(screen.StatusBarTextRight("Version ") >= screen.RightOf(screen.StatusBar) - 16, "The version isn't at the bar's right edge.");
+    }
+
+    [WpfFact]
+    public void The_version_sits_just_left_of_the_update_text_while_an_update_shows()
+    {
+        var services = new ListServices();
+        services.Updates.State = new UpdateState(UpdateStage.Available, "2.1.0", "2.2.0", null);
+        using var screen = new TaskListScreen(services);
+
+        var gap = screen.StatusBarTextLeft("Update available") - screen.StatusBarTextRight("Version ");
+
+        Assert.InRange(gap, 0, 16);
+    }
+
+    [WpfFact]
+    public void The_status_bar_is_not_a_keyboard_stop()
+    {
+        using var screen = new TaskListScreen(new ListServices());
+
+        Assert.Contains("Sync", screen.TabOrder);
+        Assert.False(screen.StatusBarIsTabStop);
     }
 
     [WpfFact]
@@ -91,7 +169,8 @@ public class TaskListStatusBarTests
 
         Assert.Contains("Update available: 2.2.0", screen.StatusBarTexts);
         Assert.True(screen.RightOf(screen.UpdateTextButton) >= screen.RightOf(screen.StatusBar) - 16, "The update text isn't at the bar's end.");
-        Assert.True(screen.LeftOf(screen.UpdateTextButton) > screen.RightOf(screen.SyncButton), "The update text isn't after the Sync button.");
+        Assert.True(screen.StatusBarTextRight("Update available") >= screen.RightOf(screen.StatusBar) - 16, "The update words aren't at the bar's end.");
+        Assert.True(screen.LeftOf(screen.UpdateTextButton) > screen.StatusBarTextLeft("Version "), "The update text isn't after the version.");
     }
 
     [WpfFact]

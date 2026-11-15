@@ -19,10 +19,11 @@ internal sealed class ConfigureServices
     public FakeSyncService Sync { get; }
     public FakeSetupActions SetupActions { get; } = new();
     public CloseWindowKeys CloseWindowKeys { get; } = new();
+    public SaveKeys SaveKeys { get; } = new();
     public FakeTheme Theme { get; } = new();
     public FakeUpdateStatus Updates { get; } = new();
     public ITaskStore Store { get; }
 
     public IConfigureWindow Create() =>
-        ConfigureWindow.Create(StartWithWindows, Store.Settings, Sync, SetupActions, CloseWindowKeys, Theme, Updates);
+        ConfigureWindow.Create(StartWithWindows, Store.Settings, Sync, SetupActions, CloseWindowKeys, Theme, Updates, SaveKeys);
 }

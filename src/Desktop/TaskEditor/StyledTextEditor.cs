@@ -61,6 +61,14 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
 
     public void FocusField() => KeyboardFocus.MoveTo(this);
 
+    /// <summary>Puts the cursor at the end of the text, in view, and gives the field the focus.</summary>
+    public void FocusEnd()
+    {
+        FocusField();
+        Select(Text.Length, 0);
+        TextArea.Caret.BringCaretToView();
+    }
+
     /// <summary>Paints the border in the theme's error color while <paramref name="invalid"/>, else in the theme's text box border again.</summary>
     public void ShowInvalid(bool invalid)
     {

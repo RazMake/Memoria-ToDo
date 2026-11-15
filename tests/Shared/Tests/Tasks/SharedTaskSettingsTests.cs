@@ -64,218 +64,239 @@ public sealed class SharedTaskSettingsTests
         Assert.Equal("Ctrl+Alt+M", Settings.ManageTasksShortcut);
     }
 
-    [Fact]
-    public void Reads_the_close_window_shortcut_in_the_file()
+    // The optional shortcuts after the manage shortcut: each test runs once per setting.
+
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Reads_an_optional_shortcut_in_the_file(ShortcutSetting s)
     {
-        f.SeedSettings(close: "Ctrl+W");
+        f.SeedSettings(shortcuts: s.Entries("Ctrl+W"));
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Equal("Ctrl+W", Settings.CloseWindowShortcut);
+        Assert.Equal("Ctrl+W", s.Get(Settings));
     }
 
-    [Fact]
-    public void Supplies_no_close_window_shortcut_without_a_file_and_writes_nothing()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Supplies_no_optional_shortcut_without_a_file_and_writes_nothing(ShortcutSetting s)
     {
-        Assert.Null(Settings.CloseWindowShortcut);
+        Assert.Null(s.Get(Settings));
 
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Null(Settings.CloseWindowShortcut);
+        Assert.Null(s.Get(Settings));
         Assert.False(f.Files.FileExists(f.SettingsFile));
     }
 
-    [Fact]
-    public void Reads_a_file_without_a_close_window_shortcut_as_null_and_the_other_settings_normally()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Reads_a_file_without_an_optional_shortcut_as_null_and_the_other_settings_normally(ShortcutSetting s)
     {
-        f.SeedSettings(days: 30, add: "A", manage: "M", withClose: false);
+        f.SeedSettings(days: 30, add: "A", manage: "M", shortcuts: s.EntriesWithout());
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Null(Settings.CloseWindowShortcut);
+        Assert.Null(s.Get(Settings));
         Assert.Equal(30, Settings.DeletionDelayDays);
         Assert.Equal("A", Settings.AddNewTaskShortcut);
         Assert.Equal("M", Settings.ManageTasksShortcut);
     }
 
-    [Fact]
-    public void Dates_a_missing_close_window_shortcut_at_the_epoch_when_a_write_adds_it()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Dates_a_missing_optional_shortcut_at_the_epoch_when_a_write_adds_it(ShortcutSetting s)
     {
-        f.SeedSettings(days: 7, withClose: false);
+        f.SeedSettings(days: 7, shortcuts: s.EntriesWithout());
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         Settings.SetDeletionDelayDays(30);
 
-        Assert.Null(ReadShortcut("closeWindowShortcut"));
-        Assert.Equal(Epoch, Read("closeWindowShortcut").Updated);
+        Assert.Null(ReadShortcut(s.Name));
+        Assert.Equal(Epoch, Read(s.Name).Updated);
     }
 
-    [Fact]
-    public void Keeps_the_close_window_shortcut_and_its_time_when_another_setting_is_saved()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Keeps_an_optional_shortcut_and_its_time_when_another_setting_is_saved(ShortcutSetting s)
     {
-        f.SeedSettings(close: "Ctrl+W", closeTime: "2026-04-04T00:00:00.000Z");
+        f.SeedSettings(shortcuts: s.Entries("Ctrl+W", "2026-04-04T00:00:00.000Z"));
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         Settings.SetManageTasksShortcut("M");
 
-        Assert.Equal("Ctrl+W", ReadShortcut("closeWindowShortcut"));
-        Assert.Equal("2026-04-04T00:00:00.000Z", Read("closeWindowShortcut").Updated);
+        Assert.Equal("Ctrl+W", ReadShortcut(s.Name));
+        Assert.Equal("2026-04-04T00:00:00.000Z", Read(s.Name).Updated);
     }
 
     [Fact]
-    public void Writes_the_close_window_shortcut_last_in_the_file()
+    public void Writes_the_close_window_and_save_shortcuts_last_in_the_file_in_that_order()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Settings.SetCloseWindowShortcut("Ctrl+W");
+        Settings.SetSaveShortcut("Ctrl+S");
 
         using var json = f.ReadJson(f.SettingsFile);
-        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut"],
+        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut", "saveShortcut"],
             json.RootElement.EnumerateObject().Select(p => p.Name).ToArray());
     }
 
     // Writing
 
-    [Fact]
-    public void Saves_the_close_window_shortcut_with_the_current_time_changing_only_its_time()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Saves_an_optional_shortcut_with_the_current_time_changing_only_its_time(ShortcutSetting s)
     {
         f.SeedSettings(days: 7, add: "A", manage: "M", addTime: "2026-02-02T00:00:00.000Z", manageTime: "2026-03-03T00:00:00.000Z");
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Settings.SetCloseWindowShortcut("Ctrl+W");
+        s.Set(Settings, "Ctrl+W");
 
-        Assert.Equal("Ctrl+W", ReadShortcut("closeWindowShortcut"));
-        Assert.Equal(NowText, Read("closeWindowShortcut").Updated);
-        Assert.Equal("Ctrl+W", Settings.CloseWindowShortcut);
+        Assert.Equal("Ctrl+W", ReadShortcut(s.Name));
+        Assert.Equal(NowText, Read(s.Name).Updated);
+        Assert.Equal("Ctrl+W", s.Get(Settings));
         Assert.Equal((7, "2026-01-01T00:00:00.000Z"), Read("deletionDelayDays"));
         Assert.Equal("2026-02-02T00:00:00.000Z", Read("addNewTaskShortcut").Updated);
         Assert.Equal("2026-03-03T00:00:00.000Z", Read("manageTasksShortcut").Updated);
+        foreach (var other in ShortcutSetting.All.Where(o => o != s))
+        {
+            Assert.Null(other.Get(Settings));
+            Assert.Equal("2026-01-01T00:00:00.000Z", Read(other.Name).Updated);
+        }
     }
 
-    [Fact]
-    public void Creates_a_missing_file_when_the_close_window_shortcut_is_set()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Creates_a_missing_file_when_an_optional_shortcut_is_set(ShortcutSetting s)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Settings.SetCloseWindowShortcut("Esc");
+        s.Set(Settings, "Esc");
 
         Assert.Equal((7, Epoch), Read("deletionDelayDays"));
         Assert.Equal(Epoch, Read("addNewTaskShortcut").Updated);
         Assert.Equal(Epoch, Read("manageTasksShortcut").Updated);
-        Assert.Equal(NowText, Read("closeWindowShortcut").Updated);
+        Assert.Equal(NowText, Read(s.Name).Updated);
+        foreach (var other in ShortcutSetting.All.Where(o => o != s))
+            Assert.Equal(Epoch, Read(other.Name).Updated);
     }
 
-    [Fact]
-    public void Keeps_the_close_window_shortcut_text_as_typed()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Keeps_an_optional_shortcut_text_as_typed(ShortcutSetting s)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Settings.SetCloseWindowShortcut("  not a shortcut  ");
+        s.Set(Settings, "  not a shortcut  ");
 
-        Assert.Equal("  not a shortcut  ", Settings.CloseWindowShortcut);
-        Assert.Equal("  not a shortcut  ", ReadShortcut("closeWindowShortcut"));
+        Assert.Equal("  not a shortcut  ", s.Get(Settings));
+        Assert.Equal("  not a shortcut  ", ReadShortcut(s.Name));
     }
 
-    [Fact]
-    public void Restores_the_default_close_window_shortcut_when_it_is_set_to_null()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Restores_the_default_optional_shortcut_when_it_is_set_to_null(ShortcutSetting s)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
-        Settings.SetCloseWindowShortcut("Ctrl+W");
+        s.Set(Settings, "Ctrl+W");
 
         f.Time.Advance(TimeSpan.FromMinutes(1));
-        Settings.SetCloseWindowShortcut(null);
+        s.Set(Settings, null);
 
-        Assert.Null(Settings.CloseWindowShortcut);
-        Assert.Null(ReadShortcut("closeWindowShortcut"));
-        Assert.Equal("2026-11-12T08:31:15.123Z", Read("closeWindowShortcut").Updated);
+        Assert.Null(s.Get(Settings));
+        Assert.Null(ReadShortcut(s.Name));
+        Assert.Equal("2026-11-12T08:31:15.123Z", Read(s.Name).Updated);
     }
 
-    [Fact]
-    public void Refuses_to_set_the_close_window_shortcut_when_no_repository_is_selected_and_writes_nothing()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Refuses_to_set_an_optional_shortcut_when_no_repository_is_selected_and_writes_nothing(ShortcutSetting s)
     {
-        Assert.Throws<NoRepositoryFolderException>(() => Settings.SetCloseWindowShortcut("x"));
+        Assert.Throws<NoRepositoryFolderException>(() => s.Set(Settings, "x"));
 
         Assert.False(f.Files.FileExists(f.SettingsFile));
     }
 
-    [Fact]
-    public void Writes_nothing_and_raises_no_notice_when_the_close_window_shortcut_keeps_its_value()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Writes_nothing_and_raises_no_notice_when_an_optional_shortcut_keeps_its_value(ShortcutSetting s)
     {
-        f.SeedSettings(close: "Ctrl+W");
+        f.SeedSettings(shortcuts: s.Entries("Ctrl+W"));
         f.Tasks.UseRepositoryFolder(f.Clone);
         var before = f.Files.ReadFile(f.SettingsFile);
         var (settings, saved) = CountNotices();
         f.Files.FailWritesUnder(f.Clone);
 
-        Settings.SetCloseWindowShortcut("Ctrl+W");
+        s.Set(Settings, "Ctrl+W");
 
         Assert.Equal(before, f.Files.ReadFile(f.SettingsFile));
         Assert.Equal(0, settings());
         Assert.Equal(0, saved());
     }
 
-    [Fact]
-    public void Writes_nothing_when_a_missing_close_window_shortcut_is_set_to_null()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Writes_nothing_when_a_missing_optional_shortcut_is_set_to_null(ShortcutSetting s)
     {
-        f.SeedSettings(withClose: false);
+        f.SeedSettings(shortcuts: s.EntriesWithout());
         f.Tasks.UseRepositoryFolder(f.Clone);
         var before = f.Files.ReadFile(f.SettingsFile);
         f.Files.FailWritesUnder(f.Clone);
 
-        Settings.SetCloseWindowShortcut(null);
+        s.Set(Settings, null);
 
         Assert.Equal(before, f.Files.ReadFile(f.SettingsFile));
     }
 
-    [Fact]
-    public void Raises_one_settings_notice_and_one_local_save_when_the_close_window_shortcut_changes()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Raises_one_settings_notice_and_one_local_save_when_an_optional_shortcut_changes(ShortcutSetting s)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
         var (settings, saved) = CountNotices();
 
-        Settings.SetCloseWindowShortcut("Ctrl+W");
+        s.Set(Settings, "Ctrl+W");
 
         Assert.Equal(1, settings());
         Assert.Equal(1, saved());
     }
 
-    [Fact]
-    public void Keeps_the_close_window_shortcut_after_a_restart()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Keeps_an_optional_shortcut_after_a_restart(ShortcutSetting s)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
-        Settings.SetCloseWindowShortcut("Ctrl+W");
+        s.Set(Settings, "Ctrl+W");
 
         var restarted = Assert.IsAssignableFrom<ITaskStore>(f.Restarted());
         restarted.UseRepositoryFolder(f.Clone);
 
-        Assert.Equal("Ctrl+W", restarted.Settings.CloseWindowShortcut);
+        Assert.Equal("Ctrl+W", s.Get(restarted.Settings));
     }
 
     [Theory]
-    [InlineData("""{ "value": 5, "updated": "2026-01-01T00:00:00.000Z" }""")]
-    [InlineData("""{ "value": "x", "updated": "yesterday" }""")]
-    [InlineData("""{ "value": "x" }""")]
-    [InlineData("""7""")]
-    public void Fails_reads_and_writes_when_the_close_window_shortcut_is_present_but_invalid_and_leaves_the_file_untouched(string closeWindowShortcut)
+    [MemberData(nameof(ShortcutSetting.EachInvalidValue), MemberType = typeof(ShortcutSetting))]
+    public void Fails_reads_and_writes_when_an_optional_shortcut_is_present_but_invalid_and_leaves_the_file_untouched(ShortcutSetting s, string invalid)
     {
-        var content = $$"""{ "version": 1, "deletionDelayDays": { "value": 7, "updated": "2026-01-01T00:00:00.000Z" }, "addNewTaskShortcut": { "value": null, "updated": "2026-01-01T00:00:00.000Z" }, "manageTasksShortcut": { "value": null, "updated": "2026-01-01T00:00:00.000Z" }, "closeWindowShortcut": {{closeWindowShortcut}} }""";
+        var content = s.FileWith(invalid);
         f.WriteText(f.SettingsFile, content);
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Throws<InvalidDataException>(() => Settings.CloseWindowShortcut);
+        Assert.Throws<InvalidDataException>(() => s.Get(Settings));
         Assert.Throws<InvalidDataException>(() => Settings.DeletionDelayDays);
-        Assert.Throws<InvalidDataException>(() => Settings.SetCloseWindowShortcut("x"));
+        Assert.Throws<InvalidDataException>(() => s.Set(Settings, "x"));
         Assert.Throws<InvalidDataException>(f.Store.Synchronization.EnsureSettings);
         Assert.Equal(content, f.ReadText(f.SettingsFile));
     }
 
-    [Fact]
-    public void Initialization_creates_the_close_window_shortcut_dated_at_the_epoch()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Initialization_creates_an_optional_shortcut_dated_at_the_epoch(ShortcutSetting s)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         f.Store.Synchronization.EnsureSettings();
 
-        Assert.Null(ReadShortcut("closeWindowShortcut"));
-        Assert.Equal(Epoch, Read("closeWindowShortcut").Updated);
+        Assert.Null(ReadShortcut(s.Name));
+        Assert.Equal(Epoch, Read(s.Name).Updated);
     }
 
     // Writing the other settings

@@ -44,14 +44,14 @@ public class ViewTasksWindowTests
     }
 
     [WpfFact]
-    public void Shows_again_after_closing_with_a_new_web_view_and_nothing_selected_or_filtered()
+    public void Shows_again_after_closing_with_a_new_web_view_and_nothing_selected_or_collapsed()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
         services.Add("Call Ana", "", "work");
         using var screen = new TaskListScreen(services);
         screen.ClickRow("Call Ana");
-        screen.ClickChip("work");
+        screen.ToggleGroup("work");
         screen.Window.Close();
 
         screen.View.Show();
@@ -61,6 +61,7 @@ public class ViewTasksWindowTests
         Assert.True(services.WebViews[0].IsDisposed);
         Assert.False(services.WebViews[1].IsDisposed);
         Assert.Equal(["home", "work"], screen.GroupNames);
+        Assert.Equal(["Call Ana"], screen.RowTitlesIn("work"));
         Assert.Empty(screen.SelectedTitles);
     }
 
@@ -84,5 +85,5 @@ public class ViewTasksWindowTests
 
     private static IViewTasksWindow CreateWindow(ListServices services, ISyncService sync, Func<IDescriptionWebView> createWebView) =>
         ViewTasksWindow.Create(services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard,
-            new FakeImageFileChooser(), services.Files, createWebView, services.Browser, sync, services.CloseWindowKeys, services.Updates);
+            new FakeImageFileChooser(), services.Files, createWebView, services.Browser, sync, services.CloseWindowKeys, services.Updates, services.SaveKeys);
 }

@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
-/// <summary>What <see cref="AddWindow.Create"/> requires: every part, the platform's Close window keys included.</summary>
+/// <summary>What <see cref="AddWindow.Create"/> and the editors require: every part, the platform's Close window keys and Save keys included.</summary>
 [Unit]
 public class AddWindowCreateTests
 {
@@ -15,7 +15,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, null!, services.Updates));
+            services.Files, null!, services.Updates, services.SaveKeys));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
     }
@@ -27,8 +27,54 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.CloseWindowKeys, null!));
+            services.Files, services.CloseWindowKeys, null!, services.SaveKeys));
 
         Assert.Equal("updates", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_missing_Save_keys()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
+            services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
+            services.Files, services.CloseWindowKeys, services.Updates, null!));
+
+        Assert.Equal("saveKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void The_editor_rejects_missing_Save_keys()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => new TaskEditorControl(
+            services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
+            services.Files, null!));
+
+        Assert.Equal("saveKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void The_Title_editor_rejects_missing_Save_keys()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => new TitleEditor(
+            services.Tasks, Palette.Colors, services.Theme, services.Time, services.Clipboard, null!));
+
+        Assert.Equal("saveKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void The_Description_editor_rejects_missing_Save_keys()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => new DescriptionEditor(
+            services.Tasks, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles, services.Files, null!));
+
+        Assert.Equal("saveKeys", failure.ParamName);
     }
 }

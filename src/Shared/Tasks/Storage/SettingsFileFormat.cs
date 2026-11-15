@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
-/// <summary>The JSON of <c>settings.json</c>: a version and four settings, each a value and the time it changed.</summary>
+/// <summary>The JSON of <c>settings.json</c>: a version and five settings, each a value and the time it changed.</summary>
 internal static class SettingsFileFormat
 {
     public static byte[] Write(SharedSettings settings) => JsonFields.Write(writer =>
@@ -12,6 +12,7 @@ internal static class SettingsFileFormat
         WriteSetting(writer, "addNewTaskShortcut", settings.AddNewTaskShortcut, WriteText);
         WriteSetting(writer, "manageTasksShortcut", settings.ManageTasksShortcut, WriteText);
         WriteSetting(writer, "closeWindowShortcut", settings.CloseWindowShortcut, WriteText);
+        WriteSetting(writer, "saveShortcut", settings.SaveShortcut, WriteText);
     });
 
     /// <summary>Throws <see cref="InvalidDataException"/> when the file isn't settings this app can read.</summary>
@@ -26,10 +27,13 @@ internal static class SettingsFileFormat
         return new SharedSettings(days,
             ReadSetting(root, "addNewTaskShortcut", JsonFields.OptionalString),
             ReadSetting(root, "manageTasksShortcut", JsonFields.OptionalString),
-            root.TryGetProperty("closeWindowShortcut", out _)
-                ? ReadSetting(root, "closeWindowShortcut", JsonFields.OptionalString)
-                : SharedSettings.Defaults.CloseWindowShortcut);
+            ReadLaterShortcut(root, "closeWindowShortcut", SharedSettings.Defaults.CloseWindowShortcut),
+            ReadLaterShortcut(root, "saveShortcut", SharedSettings.Defaults.SaveShortcut));
     }
+
+    /// <summary>A shortcut added after the first version: a file without it gets <paramref name="missing"/>.</summary>
+    private static Setting<string?> ReadLaterShortcut(JsonElement root, string name, Setting<string?> missing) =>
+        root.TryGetProperty(name, out _) ? ReadSetting(root, name, JsonFields.OptionalString) : missing;
 
     private static void WriteSetting<T>(Utf8JsonWriter writer, string name, Setting<T> setting, Action<Utf8JsonWriter, T> value)
     {

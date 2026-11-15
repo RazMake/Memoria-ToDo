@@ -42,12 +42,12 @@ public class TaskListExternalChangeTests
         services.Add("Buy milk", "Two litres");
         using var screen = new TaskListScreen(services);
         screen.PressOn("Buy milk", Key.F2);
-        screen.TypeTitle("Buy milk", "Buy oat milk");
+        screen.TypeDescription("Three litres of oat milk");
 
         ChangeElsewhere(services, "Buy milk", "Buy milk", "Three litres");
 
         Assert.True(screen.IsEditingAny);
-        Assert.Equal("Buy oat milk", screen.EditedTitleText);
+        Assert.Equal("Three litres of oat milk", screen.EditedDescriptionText);
     }
 
 }

@@ -29,6 +29,37 @@ public class AddWindowSaveTests
         Assert.False(screen.IsShowing);
     }
 
+    [WpfFact]
+    public void Changed_Save_keys_save_in_an_open_Add_window_and_the_old_keys_stop_saving()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Fill("Buy milk");
+        screen.Services.SaveKeys.Set(System.Windows.Input.ModifierKeys.Control, System.Windows.Input.Key.S);
+
+        screen.Save();
+        Assert.Empty(screen.Saved);
+
+        screen.Press(System.Windows.Input.Key.LeftCtrl, System.Windows.Input.Key.S);
+
+        Assert.Equal("Buy milk", Assert.Single(screen.Saved).Title);
+    }
+
+    [WpfFact]
+    public void Ctrl_Shift_Enter_chosen_as_the_Save_keys_saves_and_hides_instead_of_saving_and_clearing()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Fill("Buy milk");
+        screen.Services.SaveKeys.Set(
+            System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift, System.Windows.Input.Key.Enter);
+
+        screen.SaveAndClear();
+
+        Assert.Single(screen.Saved);
+        Assert.False(screen.IsShowing);
+    }
+
     [WpfTheory]
     [InlineData(EditorFields.Description)]
     [InlineData(EditorFields.AddTag)]
@@ -78,6 +109,39 @@ public class AddWindowSaveTests
         Assert.True(screen.TitleIsMarked);
         Assert.Equal(EditorFields.Title, screen.FocusedField);
         Assert.Equal(["errand"], screen.Editor.Value.Tags);
+    }
+
+    [WpfTheory]
+    [InlineData(EditorFields.Title)]
+    [InlineData(EditorFields.Description)]
+    [InlineData(EditorFields.AddTag)]
+    public void An_Escape_based_Save_shortcut_saves_instead_of_closing_Add_with_the_draft_kept(string field)
+    {
+        using var screen = new AddScreen();
+        screen.Services.SaveKeys.Set(System.Windows.Input.ModifierKeys.Shift, System.Windows.Input.Key.Escape);
+        screen.Show();
+        screen.Fill("Buy milk");
+        screen.Focus(field);
+
+        screen.Press(System.Windows.Input.Key.LeftShift, System.Windows.Input.Key.Escape);
+
+        Assert.Equal("Buy milk", Assert.Single(screen.Saved).Title);
+        Assert.False(screen.IsShowing);
+    }
+
+    [WpfFact]
+    public void Plain_Esc_still_closes_Add_without_saving_when_the_Save_shortcut_is_Shift_Esc()
+    {
+        using var screen = new AddScreen();
+        screen.Services.SaveKeys.Set(System.Windows.Input.ModifierKeys.Shift, System.Windows.Input.Key.Escape);
+        screen.Show();
+        screen.Fill("Buy milk");
+
+        screen.PressEscape();
+
+        Assert.False(screen.IsShowing);
+        Assert.Empty(screen.Saved);
+        Assert.Equal("Buy milk", screen.KeptDraft?.Title);
     }
 
     [WpfFact]

@@ -19,7 +19,7 @@ internal sealed class AddWindowView : Window, IAddWindow
     private readonly TaskEditorControl _editor;
     private readonly AddDraft _draft;
 
-    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates)
+    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates, SaveKeys saveKeys)
     {
         _editor = editor;
         _draft = new AddDraft(tasks, editor);
@@ -41,10 +41,12 @@ internal sealed class AddWindowView : Window, IAddWindow
         var save = new Button
         {
             Content = "Save",
-            ToolTip = "Save the task (Ctrl+Enter)",
+            ToolTip = SaveTip(saveKeys),
             HorizontalAlignment = HorizontalAlignment.Right,
             Margin = new Thickness(16, 0, 16, 16),
         };
+        // The Save keys can change while the window lives, so the tip names them as they are when it opens.
+        save.ToolTipOpening += (_, _) => save.ToolTip = SaveTip(saveKeys);
         save.SetResourceReference(StyleProperty, "AccentButtonStyle");
         save.Click += (_, _) => editor.RequestSave();
         editor.ShareKeysWith(clear);
@@ -85,10 +87,20 @@ internal sealed class AddWindowView : Window, IAddWindow
 
     void IAddWindow.Close() => HideAndKeepDraft();
 
-    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    private static string SaveTip(SaveKeys saveKeys) =>
+        saveKeys.Text.Length == 0 ? "Save the task" : $"Save the task ({saveKeys.Text})";
+
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        base.OnPreviewKeyDown(e);
-        if (e.Key == Key.Escape)
+        base.OnKeyDown(e);
+        // The editor's keys see Esc first, as the Save shortcut or to close a list, and handle it. Of the Esc presses that reach
+        // the window, only a plain one closes.
+        if (e.Handled)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Escape && e.KeyboardDevice.Modifiers == ModifierKeys.None)
         {
             e.Handled = true;
             if (!_editor.CloseOpenList())

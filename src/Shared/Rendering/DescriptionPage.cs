@@ -5,6 +5,7 @@ using Markdig;
 using Markdig.Renderers;
 using Markdig.Renderers.Html.Inlines;
 using Memoria.ToDo.Shared.Rendering.ColorDirective;
+using Memoria.ToDo.Shared.Rendering.ImageBox;
 
 namespace Memoria.ToDo.Shared.Rendering;
 
@@ -15,30 +16,36 @@ public static class DescriptionPage
     private const string DarkText = "#f3f3f3";
 
     // Each theme's style block never changes, so it's built once.
-    private static readonly string LightStyle = StyleOf(TextLooks.Light, LightText);
-    private static readonly string DarkStyle = StyleOf(TextLooks.Dark, DarkText);
+    private static readonly string LightStyle = StyleOf(TextLooks.Light, LightText, false);
+    private static readonly string DarkStyle = StyleOf(TextLooks.Dark, DarkText, false);
+    private static readonly string LightResizableStyle = StyleOf(TextLooks.Light, LightText, true);
+    private static readonly string DarkResizableStyle = StyleOf(TextLooks.Dark, DarkText, true);
 
-    private static string StyleOf(TextLook look, string text)
+    private const string ResizeRule = "resize:horizontal;";
+
+    private static string StyleOf(TextLook look, string text, bool resizable)
     {
         var faded = look.CodeBackground + ((int)Math.Round(look.CodeBackgroundOpacity * 255)).ToString("x2", CultureInfo.InvariantCulture);
         var sizes = new StringBuilder();
         for (var level = 1; level <= 6; level++)
         {
-            sizes.Append($"h{level}{{font-size:{TextLooks.HeadingScale(level).ToString(CultureInfo.InvariantCulture)}em;");
-            if (look.HeadingColor(level) is { } color)
-            {
-                sizes.Append($"color:{color};");
-            }
-
-            sizes.Append('}');
+            sizes.Append($"h{level}{{font-size:{TextLooks.HeadingScale(level).ToString(CultureInfo.InvariantCulture)}em;color:{look.HeadingColor(level)}}}");
         }
 
         return $"html,body{{color:{text};font-family:system-ui;font-size:14px}}"
             + sizes
             + $"a{{color:{look.Link}}}em{{color:{look.Italic}}}"
             + $"code,pre{{color:{look.Code};background:{faded};font-family:{TextLooks.CodeFont},monospace}}"
-            + "pre{padding:8px;overflow-x:auto}pre code{background:transparent}";
+            + "pre{padding:8px;overflow-x:auto}pre code{background:transparent}"
+            + "[data-image]{display:inline-block;" + (resizable ? ResizeRule : "") + "overflow:hidden;max-width:100%}"
+            + "[data-image] img{display:block;width:100%}";
     }
+
+    /// <summary>
+    /// The same page as <see cref="Of"/>, plus a resize corner on every loaded image box, so the user can drag an image to a new width.
+    /// Throws ArgumentException when cloneAddress isn't an absolute http or https address ending in "/".
+    /// </summary>
+    public static string WithResizableImages(string markdown, bool dark, Uri cloneAddress) => Build(markdown, dark, cloneAddress, true);
 
     /// <summary>
     /// A full HTML page of the description for the web view, in the light or dark theme.
@@ -46,7 +53,9 @@ public static class DescriptionPage
     /// a relative image path, such as images/&lt;task-id&gt;/&lt;image-id&gt;.png, loads from it.
     /// Throws ArgumentException when cloneAddress isn't an absolute http or https address ending in "/".
     /// </summary>
-    public static string Of(string markdown, bool dark, Uri cloneAddress)
+    public static string Of(string markdown, bool dark, Uri cloneAddress) => Build(markdown, dark, cloneAddress, false);
+
+    private static string Build(string markdown, bool dark, Uri cloneAddress, bool resizable)
     {
         ArgumentNullException.ThrowIfNull(markdown);
         ArgumentNullException.ThrowIfNull(cloneAddress);
@@ -58,6 +67,7 @@ public static class DescriptionPage
         }
 
         var document = Markdown.Parse(markdown, DescriptionMarkdown.Pipeline);
+        ImageBoxes.Box(document, markdown);
         CloneImages.Restrict(document, cloneAddress);
         NestedTextColors.Apply(document, TextLooks.Of(dark));
 
@@ -65,12 +75,13 @@ public static class DescriptionPage
         writer.Write("<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">\n<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src ");
         writer.Write(WebUtility.HtmlEncode(cloneAddress.AbsoluteUri));
         writer.Write("; style-src 'unsafe-inline'\">\n<style>");
-        writer.Write(dark ? DarkStyle : LightStyle);
+        writer.Write(dark ? (resizable ? DarkResizableStyle : DarkStyle) : (resizable ? LightResizableStyle : LightStyle));
         writer.Write("</style>\n</head><body>\n");
 
         var renderer = new HtmlRenderer(writer);
         DescriptionMarkdown.Pipeline.Setup(renderer);
         renderer.ObjectRenderers.Insert(0, new ColorInlineRenderer(dark));
+        renderer.ObjectRenderers.Insert(0, new ImageBoxRenderer());
         renderer.ObjectRenderers.FindExact<LineBreakInlineRenderer>()!.RenderAsHardlineBreak = true;
         renderer.Render(document);
 

@@ -12,6 +12,11 @@ public static class TaskStore
         ArgumentNullException.ThrowIfNull(images);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceFolder);
+        if (!Path.IsPathFullyQualified(deviceFolder))
+        {
+            throw new ArgumentException("The device folder must be a fully qualified path.", nameof(deviceFolder));
+        }
+
         return new TaskService(files, images, time, deviceFolder);
     }
 }

@@ -28,6 +28,43 @@ public sealed record Shortcut
     /// <summary>Shift+Esc, the shortcut Close window starts with.</summary>
     internal static Shortcut CloseWindowDefault { get; } = new(ModifierKeys.Shift, Key.Escape);
 
+    /// <summary>Ctrl+Enter, the shortcut Save starts with.</summary>
+    internal static Shortcut SaveDefault { get; } = new(ModifierKeys.Control, Key.Enter);
+
+    /// <summary>
+    /// Makes the Save shortcut and returns null, or returns why the keys break its rules and no shortcut: one or more
+    /// modifier keys plus any other key, but never Shift alone with a key that types a character.
+    /// </summary>
+    internal static string? CheckSave(ModifierKeys modifiers, Key key, out Shortcut? shortcut)
+    {
+        shortcut = null;
+        if (CheckKeys(modifiers, key) is { } broken)
+        {
+            return broken;
+        }
+
+        if (modifiers == ModifierKeys.None)
+        {
+            return "Use one or more modifier keys (Ctrl, Alt, Shift, Win) plus any key.";
+        }
+
+        if (modifiers == ModifierKeys.Shift && TypesCharacter(key))
+        {
+            return "Shift alone with a key that types a character would stop it typing. Add Ctrl, Alt, or Win.";
+        }
+
+        shortcut = new Shortcut(modifiers, key);
+        return null;
+    }
+
+    // Letters, digits, the number pad's digits and operators, Space, and the punctuation keys.
+    private static bool TypesCharacter(Key key) =>
+        key is >= Key.A and <= Key.Z or >= Key.D0 and <= Key.D9 or >= Key.NumPad0 and <= Key.Divide
+            or Key.Space or >= Key.Oem1 and <= Key.OemBackslash;
+
+    /// <summary>Reads text that <see cref="ToDisplayText"/> wrote and that follows <see cref="CheckSave"/>; null for any other text.</summary>
+    internal static Shortcut? ParseSave(string? text) => Parse(text, CheckSave);
+
     /// <summary>
     /// Makes the Close window shortcut and returns null, or returns why the keys break its rules and no shortcut: two
     /// or more modifier keys plus any other key, or one modifier key plus Esc or a function key (F1 to F24).
@@ -107,12 +144,13 @@ public sealed record Shortcut
         return null;
     }
 
-    /// <summary>The shortcut as the user reads it, such as <c>Win+Alt+T</c>.</summary>
-    internal string ToDisplayText() => $"{ModifierKey.Describe(Modifiers)}+{Key}";
+    /// <summary>The shortcut as the user reads it, such as <c>Win+Alt+T</c>; the platform's <see cref="ShortcutText"/> writes it.</summary>
+    internal string ToDisplayText() => ShortcutText.Of(Modifiers, Key);
 
     /// <summary>
     /// Reads text that <see cref="ToDisplayText"/> wrote, and also follows the rules of <see cref="Check"/>. Returns
-    /// null for any other text, including the same keys in a different spelling or order.
+    /// null for any other text, including the same keys in a different spelling or order, except that "Return" is
+    /// read as "Enter".
     /// </summary>
     internal static Shortcut? Parse(string? text) => Parse(text, Check);
 
@@ -135,6 +173,8 @@ public sealed record Shortcut
             }
         }
 
-        return rules(modifiers, key, out var shortcut) is null && shortcut!.ToDisplayText() == text ? shortcut : null;
+        // Enter and Return are one key; the text is compared as the display text writes it.
+        var written = parts[^1] == "Return" ? text![..^"Return".Length] + "Enter" : text;
+        return rules(modifiers, key, out var shortcut) is null && shortcut!.ToDisplayText() == written ? shortcut : null;
     }
 }

@@ -1,6 +1,9 @@
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Dispose() -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.FormattedDescription(Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView! webView, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser) -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.ImageResized -> System.EventHandler<Memoria.ToDo.Desktop.FormattedView.ImageResize!>?
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.IsPreview.get -> bool
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.IsPreview.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Markdown.get -> string!
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Markdown.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.OpenFailed -> System.EventHandler<System.Exception!>?
@@ -12,10 +15,25 @@ Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.OpenFailed -> System.EventHandler<System.Exception!>?
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.OtherLinkClicked -> System.EventHandler<string!>?
 Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser
+Memoria.ToDo.Desktop.FormattedView.ImageResize
+Memoria.ToDo.Desktop.FormattedView.ImageResize.Deconstruct(out int Image, out int Width) -> void
+Memoria.ToDo.Desktop.FormattedView.ImageResize.<Clone>$() -> Memoria.ToDo.Desktop.FormattedView.ImageResize!
+Memoria.ToDo.Desktop.FormattedView.ImageResize.Equals(Memoria.ToDo.Desktop.FormattedView.ImageResize? other) -> bool
+override Memoria.ToDo.Desktop.FormattedView.ImageResize.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.FormattedView.ImageResize.GetHashCode() -> int
+override Memoria.ToDo.Desktop.FormattedView.ImageResize.ToString() -> string!
+static Memoria.ToDo.Desktop.FormattedView.ImageResize.operator !=(Memoria.ToDo.Desktop.FormattedView.ImageResize? left, Memoria.ToDo.Desktop.FormattedView.ImageResize? right) -> bool
+static Memoria.ToDo.Desktop.FormattedView.ImageResize.operator ==(Memoria.ToDo.Desktop.FormattedView.ImageResize? left, Memoria.ToDo.Desktop.FormattedView.ImageResize? right) -> bool
+Memoria.ToDo.Desktop.FormattedView.ImageResize.Image.get -> int
+Memoria.ToDo.Desktop.FormattedView.ImageResize.Image.init -> void
+Memoria.ToDo.Desktop.FormattedView.ImageResize.ImageResize(int Image, int Width) -> void
+Memoria.ToDo.Desktop.FormattedView.ImageResize.Width.get -> int
+Memoria.ToDo.Desktop.FormattedView.ImageResize.Width.init -> void
 Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser.Open(string! address) -> void
 Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView
 Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.CloneAddress.get -> System.Uri!
 Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.Element.get -> System.Windows.FrameworkElement!
 Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.Failed -> System.EventHandler<string!>?
+Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.ImageResized -> System.EventHandler<Memoria.ToDo.Desktop.FormattedView.ImageResize!>?
 Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.LinkClicked -> System.EventHandler<string!>?
 Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.Show(string! page) -> void

@@ -109,7 +109,7 @@ public class TaskListLayoutTests
     }
 
     [WpfFact]
-    public void Right_clicking_a_row_selects_it_and_offers_Edit_Description_and_Delete()
+    public void Right_clicking_a_row_selects_it_and_offers_Edit_Title_Edit_Description_and_Delete()
     {
         var services = new ListServices();
         services.Add("Buy milk");
@@ -119,7 +119,7 @@ public class TaskListLayoutTests
         screen.RightClick("Call Ana");
 
         Assert.Equal(["Call Ana"], screen.SelectedTitles);
-        Assert.Equal([("Edit Description", "F2"), ("Delete", "Del")], screen.ContextMenuItems("Call Ana"));
+        Assert.Equal([("Edit Title", "Shift+F2"), ("Edit Description", "F2"), ("Delete", "Del")], screen.ContextMenuItems("Call Ana"));
         Assert.False(screen.HasButton("Edit"));
     }
 

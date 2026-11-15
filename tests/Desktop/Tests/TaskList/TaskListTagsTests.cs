@@ -31,34 +31,6 @@ public class TaskListTagsTests
     }
 
     [WpfFact]
-    public void The_filter_offers_the_top_tags_and_the_all_tags_list_offers_every_tag()
-    {
-        var services = new ListServices();
-        services.Add("Buy milk", "", "home");
-        services.Add("Call Ana", "", "work", "rare");
-        using var screen = new TaskListScreen(services);
-
-        Assert.Contains("home", screen.ChipTags);
-        Assert.Contains("work", screen.ChipTags);
-        Assert.Equal(["home", "rare", "work"], screen.AllTags.Order());
-    }
-
-    [WpfFact]
-    public void Choosing_a_filter_tag_filters_and_choosing_it_again_clears_the_filter()
-    {
-        var services = new ListServices();
-        services.Add("Buy milk", "", "home");
-        services.Add("Call Ana", "", "work");
-        using var screen = new TaskListScreen(services);
-
-        screen.ClickChip("work");
-        Assert.Equal(["Call Ana"], screen.RowTitles);
-        screen.ClickChip("work");
-
-        Assert.Equal(2, screen.RowTitles.Count);
-    }
-
-    [WpfFact]
     public void The_selected_open_task_shows_the_tag_control()
     {
         var services = new ListServices();
@@ -86,7 +58,7 @@ public class TaskListTagsTests
     }
 
     [WpfFact]
-    public void During_an_edit_only_the_editors_own_tag_control_shows()
+    public void During_a_description_edit_the_tags_show_as_read_only_badges_with_no_tag_control()
     {
         var services = new ListServices();
         services.Add("Buy milk", "", "home");
@@ -96,8 +68,8 @@ public class TaskListTagsTests
         screen.Press(Key.F2);
 
         Assert.True(screen.IsEditing("Buy milk"));
-        Assert.Equal(1, screen.TagControlCount);
-        Assert.Equal(["home"], screen.ControlTags("Buy milk"));
+        Assert.Equal(0, screen.TagControlCount);
+        Assert.Equal(["home"], screen.BadgeTags("Buy milk"));
     }
 
     [WpfFact]

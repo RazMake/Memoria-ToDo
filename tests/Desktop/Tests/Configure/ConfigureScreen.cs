@@ -107,17 +107,23 @@ internal sealed partial class ConfigureScreen : IDisposable
         return button.ContextMenu;
     }
 
-    /// <summary>The Add new task row's shortcut box, the first of the three.</summary>
+    /// <summary>The Add new task row's shortcut box, the first of the four.</summary>
     public TextBox AddField => ShortcutFields[0];
 
-    /// <summary>The Task View row's shortcut box, the second of the three.</summary>
+    /// <summary>The Task View row's shortcut box, the second of the four.</summary>
     public TextBox ManageField => ShortcutFields[1];
 
-    /// <summary>The Close window row's shortcut box, the third of the three.</summary>
+    /// <summary>The Close window row's shortcut box, the third of the four.</summary>
     public TextBox CloseField => ShortcutFields[2];
+
+    /// <summary>The Save row's shortcut box, the fourth of the four.</summary>
+    public TextBox SaveField => ShortcutFields[3];
 
     /// <summary>The Close window keys the window was given.</summary>
     public CloseWindowKeys CloseWindowKeys => services.CloseWindowKeys;
+
+    /// <summary>The Save keys the window was given.</summary>
+    public SaveKeys SaveKeys => services.SaveKeys;
 
     public CheckBox StartWithWindowsBox =>
         OpenWindows.Descendants(Window).OfType<CheckBox>().Single(box => box.Content as string == "Start with Windows");
@@ -130,6 +136,9 @@ internal sealed partial class ConfigureScreen : IDisposable
 
     /// <summary>The message under the Close window row's box; empty when none.</summary>
     public string CloseMessage => MessageUnder(CloseField);
+
+    /// <summary>The message under the Save row's box; empty when none.</summary>
+    public string SaveMessage => MessageUnder(SaveField);
 
     /// <summary>The description under the row's box: the first text block after the box, before the message.</summary>
     public static TextBlock DescriptionUnder(TextBox field) => ((Panel)field.Parent).Children.OfType<TextBlock>().First();
@@ -147,7 +156,7 @@ internal sealed partial class ConfigureScreen : IDisposable
         }
     }
 
-    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(3)];
+    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(4)];
 
     /// <summary>Opens the window, as the tray's Configure item does.</summary>
     public void Open() => configure.Show();

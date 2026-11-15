@@ -13,7 +13,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// The Task View window: the open tasks grouped by tag on the left, the selected task's description and tags on the right,
-/// and above them the search, the tag filter, and the resolved tasks. It works on the tasks through <see cref="ITasks"/> and
+/// above them the search, the tag filter, and the resolved tasks, and below them the status bar. It works on the tasks through <see cref="ITasks"/> and
 /// shows what they say.
 /// </summary>
 internal sealed class TaskListWindow : Window
@@ -28,6 +28,7 @@ internal sealed class TaskListWindow : Window
     private readonly FormattedDescription _description;
     private readonly DetailsPane _details;
     private readonly GroupedRows _rows;
+    private readonly GroupCollapse _collapse = new();
     private readonly ListFilter _filter = new();
     private readonly ListHeader _header;
     private readonly ListSync _sync;
@@ -39,6 +40,7 @@ internal sealed class TaskListWindow : Window
     private readonly TaskDeletion _deletion;
     private readonly EditCleanup _cleanup;
     private readonly TagChanges _tagChanges;
+    private readonly SaveKeys _saveKeys;
     private readonly ListSelection _selection = new();
     private readonly ListEditing _editing;
     private readonly CloseDecision _decision;
@@ -47,16 +49,20 @@ internal sealed class TaskListWindow : Window
     private ListSnapshot _snapshot = new([], [], false);
     private TaskItem? _selected;
     private TagEditor? _tagEditor;
+    private TagBadges? _editBadges;
+    private RowPosition? _titleAt;
     private string? _detailsId;
+    private bool _previewing;
     private bool _closing;
     private bool _closed;
 
     public TaskListWindow(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
-        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, string? message, Action<string> carry)
+        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, string? message, Action<string> carry)
     {
         _sync = sync;
-        _statusBar = new UpdateStatusBar(updates, sync);
+        _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync));
+        _saveKeys = saveKeys;
         _tagColors = tagColors;
         _decision = new CloseDecision(new CloseDialog(this));
         _tasks = tasks;
@@ -67,6 +73,7 @@ internal sealed class TaskListWindow : Window
         {
             [RowAction.Toggle] = row => SelectTask(row.Task.Id),
             [RowAction.Edit] = BeginEditOf,
+            [RowAction.EditTitle] = BeginTitleEditOf,
             [RowAction.Resolve] = row => Resolve(row, row.Task.Resolved is null),
             [RowAction.Delete] = Delete,
             [RowAction.MoveUp] = row => Nudge(row, -1),
@@ -81,9 +88,11 @@ internal sealed class TaskListWindow : Window
         _description = new FormattedDescription(webView, theme, browser);
         _description.OtherLinkClicked += (_, address) => FollowLink(address);
         _description.OpenFailed += (_, failure) => Report(failure.Message);
+        _description.ImageResized += (_, resize) => ResizeImage(resize);
         _details = new DetailsPane(_description);
+        _details.TabChosen += (_, preview) => SwitchTab(preview);
 
-        _header = new ListHeader(tasks, tagColors, theme, _filter);
+        _header = new ListHeader(_filter);
         _content = new ListContent(tasks, _filter);
         _links = new ListLinks(tasks, _filter, _content);
         _actions = new ListActions(tasks, Report);
@@ -91,7 +100,7 @@ internal sealed class TaskListWindow : Window
         _deletion = new TaskDeletion(tasks, _content, _pending, Report, Refresh);
         _cleanup = new EditCleanup(tasks, _pending, Report);
         _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report);
-        _editing = new ListEditing(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, _cleanup, RestoreEdit);
+        _editing = new ListEditing(tasks, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit);
         _rows = new GroupedRows(tagColors, theme, CreateRow);
         _header.ShowMessage(message);
         _filter.Changed += (_, _) => Refresh();
@@ -101,6 +110,7 @@ internal sealed class TaskListWindow : Window
             _content.ShowResolved = !_content.ShowResolved;
             Refresh();
         };
+        _rows.GroupToggled += (_, tag) => ToggleGroup(tag);
 
         Content = Layout();
         EscCloses.Attach(this);
@@ -148,9 +158,9 @@ internal sealed class TaskListWindow : Window
         try
         {
             _pending.Commit();
-            if (_editing.Forget() is { } started)
+            if (_editing.Forget() is { } edit)
             {
-                _cleanup.Close(started.Id);
+                edit.Close(_cleanup);
             }
         }
         finally
@@ -162,9 +172,16 @@ internal sealed class TaskListWindow : Window
     }
 
     // The header over the two sides, which scroll on their own and share a bar that moves the split.
-    private DockPanel Layout()
+    private Grid Layout()
     {
-        var left = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = _rows };
+        var left = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Focusable = false,
+            Content = _rows,
+        };
+        KeyboardNavigation.SetIsTabStop(left, false);
         var splitter = new GridSplitter
         {
             Width = 6,
@@ -172,6 +189,8 @@ internal sealed class TaskListWindow : Window
             VerticalAlignment = VerticalAlignment.Stretch,
             ResizeDirection = GridResizeDirection.Columns,
             ResizeBehavior = GridResizeBehavior.PreviousAndNext,
+            Focusable = false,
+            IsTabStop = false,
         };
         splitter.SetResourceReference(BackgroundProperty, "CardStrokeColorDefaultBrush");
         var sides = new Grid();
@@ -184,13 +203,19 @@ internal sealed class TaskListWindow : Window
         sides.Children.Add(splitter);
         sides.Children.Add(_details);
 
-        var layout = new DockPanel();
-        DockPanel.SetDock(_statusBar, Dock.Bottom);
-        DockPanel.SetDock(_header, Dock.Top);
-        layout.Children.Add(_statusBar);
+        // A grid, not a dock panel: Tab follows the order the children are added, and the status bar's Sync button comes last,
+        // after the list, while the bar still sits at the bottom.
+        var layout = new Grid();
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Grid.SetRow(sides, 1);
+        Grid.SetRow(_statusBar, 2);
         layout.Children.Add(_header);
         layout.Children.Add(sides);
+        layout.Children.Add(_statusBar);
         return layout;
+
     }
 
     private void OnChanged(object? sender, EventArgs e)
@@ -216,16 +241,37 @@ internal sealed class TaskListWindow : Window
 
         _snapshot = _content.Build(_editing.Started, _snapshot);
         _selected = _selection.Update(_snapshot);
-        _rows.Show(_snapshot, _filter.TagFilter, _editing.Started?.Id, _selection.IsSelected);
+        var rowEdit = _editing.Current is { ShowsInRow: true } ? _editing.Current : null;
+        _rows.Show(_snapshot, _collapse, rowEdit is null ? null : _titleAt, rowEdit?.Editor, _selection.IsSelected);
         ShowDetails();
-        _header.ShowTags([.. _tasks.TagsInUse().Select(use => use.Tag)]);
     }
 
     private void ShowDetails()
     {
-        if (_editing.Editor is { } editor)
+        var describing = _editing.Describing;
+        if (describing is null)
         {
-            _details.ShowEditor(editor);
+            // Preview belongs to an open description edit; whatever ends it, the next one opens on Edit.
+            _previewing = false;
+        }
+
+        if (describing is not null)
+        {
+            _editBadges ??= new TagBadges(_tagColors, _theme);
+            if (!_editBadges.Tags.SequenceEqual(_selected?.Tags ?? describing.Started.Tags))
+            {
+                _editBadges.Tags = _selected?.Tags ?? describing.Started.Tags;
+            }
+
+            if (_previewing)
+            {
+                _details.ShowPreview(describing.Draft, describing.Editor, _editBadges);
+            }
+            else
+            {
+                _details.ShowEditor(describing.Editor, _editBadges);
+            }
+
             _tagEditor = null;
             _detailsId = null;
         }
@@ -286,6 +332,7 @@ internal sealed class TaskListWindow : Window
         var row = new TaskRow(task, _theme, _browser);
         row.SelectRequested += (_, _) => SelectTask(row.Task.Id);
         row.EditRequested += (_, _) => BeginEditOf(row);
+        row.EditTitleRequested += (_, _) => BeginTitleEditOf(row);
         row.DeleteRequested += (_, _) => Delete(row);
         row.ResolveToggled += (_, on) => Resolve(row, on);
         row.LinkClicked += (_, address) => FollowLink(address);
@@ -331,27 +378,54 @@ internal sealed class TaskListWindow : Window
 
     // ---- Edit ----
 
-    private void BeginEditOf(TaskRow row)
+    private void BeginEditOf(TaskRow row) => Begin(row, title: false);
+
+    private void BeginTitleEditOf(TaskRow row) => Begin(row, title: true);
+
+    // Opens the title edit in the row, or the description edit on the right side. One edit is open at a time, so an edit of
+    // another field or task is left first, as Esc leaves it.
+    private void Begin(TaskRow row, bool title)
     {
         _header.ShowMessage(null);
         var task = row.Task;
-        if (_editing.Started?.Id == task.Id)
+        var at = _rows.PositionOf(row) ?? new RowPosition(null, task.Id);
+        if (_editing.Current is { } open && open.Started.Id == task.Id && open.ShowsInRow == title)
         {
-            _pending.CommitIfFor(task.Id);
+            if (title)
+            {
+                // The edit goes to the row the user chose, with its text, and takes the cursor there.
+                _titleAt = at;
+                Refresh();
+                UpdateLayout();
+                open.FocusEnd();
+            }
+            else
+            {
+                _pending.CommitIfFor(task.Id);
+            }
+
             return;
         }
 
         SelectTask(task.Id);
-
-        // A fresh edit starts from a clean stage. When that can't be made the edit doesn't open, and nothing else changes.
-        if (_cleanup.BeginFresh(task.Id))
+        if (_editing.Current is not null)
         {
-            var editor = _editing.Begin(task, () => SaveEdit(), LeaveEdit);
+            LeaveEdit();
+        }
+
+        // A fresh description edit starts from a clean stage. When that can't be made the edit doesn't open, and nothing else
+        // changes. A title edit has no images, so it leaves the stage, and the Undo of a description edit just left, alone.
+        if (title || _cleanup.BeginFresh(task.Id))
+        {
+            _titleAt = at;
+            var edit = title
+                ? _editing.BeginTitle(task, () => SaveEdit(), LeaveEdit)
+                : _editing.BeginDescription(task, () => SaveEdit(), LeaveEdit);
             Refresh();
 
             // The editor joins the window's visual tree on layout, and only an element in it takes the focus.
             UpdateLayout();
-            editor.FocusDescription();
+            edit.FocusEnd();
         }
     }
 
@@ -359,6 +433,11 @@ internal sealed class TaskListWindow : Window
     {
         if (!_editing.Save())
         {
+            if (ShowEditInFull())
+            {
+                _editing.Current!.FocusEnd();
+            }
+
             return false;
         }
 
@@ -367,10 +446,10 @@ internal sealed class TaskListWindow : Window
         return true;
     }
 
-    // Closing the editor without saving: a clean one throws its images away; a dirty one can be brought back with Undo.
+    // Closing the editor without saving: a clean description throws its images away; a dirty one can be brought back with Undo.
     private void LeaveEdit()
     {
-        var hadFocus = _editing.Editor!.IsKeyboardFocusWithin;
+        var hadFocus = _previewing || _editing.Current!.Editor.IsKeyboardFocusWithin;
         _editing.Leave();
         Refresh();
         if (hadFocus)
@@ -379,20 +458,77 @@ internal sealed class TaskListWindow : Window
         }
     }
 
-    // Undo brings the edit back even when a filter now hides the task, so nothing typed is lost.
+    // Undo brings the edit back even when a filter now hides the task, so nothing typed is lost. It opens on Edit.
     private void RestoreEdit(string id)
     {
         _selection.Select(id);
+        _previewing = false;
         Refresh();
-        _editing.Editor!.FocusTitle();
+        _editing.Current!.FocusEnd();
+    }
+
+    // Shows the open edit where the user can type in it: on its Edit tab, and in its row when a collapsed group hid that. True
+    // when that changed anything, so the cursor needs putting back.
+    private bool ShowEditInFull()
+    {
+        var changed = _previewing;
+        _previewing = false;
+        if (_editing.Current is { ShowsInRow: true } && _titleAt is { } at && !_rows.IsShown(at))
+        {
+            _collapse.Expand(at.Tag);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            Refresh();
+            UpdateLayout();
+        }
+
+        return changed;
+    }
+
+    // ---- Tabs ----
+
+    // Preview shows the draft as it is now, so it is shown again at each switch, and the focus goes to the right side to scroll
+    // it. Edit puts the cursor back where it was.
+    private void SwitchTab(bool preview)
+    {
+        if (_editing.Describing is not { } edit || _previewing == preview)
+        {
+            return;
+        }
+
+        _header.ShowMessage(null);
+        _previewing = preview;
+        ShowDetails();
+        UpdateLayout();
+        if (preview)
+        {
+            _details.FocusContent();
+        }
+        else
+        {
+            edit.FocusEditor();
+        }
+    }
+
+    // The new width goes into the draft, as typing it would; saving and abandoning treat it as the rest of the edit.
+    private void ResizeImage(ImageResize resize)
+    {
+        _header.ShowMessage(null);
+        if (_previewing && _editing.Describing is { } edit)
+        {
+            edit.SetImageWidth(resize.Image, resize.Width);
+        }
     }
 
     // The edit as closing sees it, or null when none is open.
-    private IClosingEdit? ClosingEdit() => _editing.Editor is { } editor ? new EditToClose(this, editor, _editing.Started!.Id) : null;
+    private IClosingEdit? ClosingEdit() => _editing.Current is { } edit ? new EditToClose(this, edit) : null;
 
-    private sealed class EditToClose(TaskListWindow window, TaskEditorControl editor, string taskId) : IClosingEdit
+    private sealed class EditToClose(TaskListWindow window, IFieldEdit edit) : IClosingEdit
     {
-        public bool HasChanges => editor.HasChanges;
+        public bool HasChanges => edit.HasChanges;
 
         public bool Save() => window.SaveEdit();
 
@@ -401,7 +537,7 @@ internal sealed class TaskListWindow : Window
         {
             window._closing = true;
             window._editing.Forget();
-            window._cleanup.Close(taskId);
+            edit.Close(window._cleanup);
         }
 
         // Nothing to return to when the application's exit closed the window under the prompt.
@@ -409,9 +545,18 @@ internal sealed class TaskListWindow : Window
         {
             if (!window._closed)
             {
-                editor.FocusTitle();
+                window.ShowEditInFull();
+                edit.FocusEnd();
             }
         }
+    }
+
+    // ---- Groups ----
+
+    private void ToggleGroup(string? tag)
+    {
+        _collapse.Toggle(tag);
+        Refresh();
     }
 
     // ---- Delete, resolve, reopen ----
@@ -484,6 +629,11 @@ internal sealed class TaskListWindow : Window
             return;
         }
 
+        if (_tasks.All.FirstOrDefault(task => task.Id == id) is { Resolved: null } target)
+        {
+            _collapse.Reveal(target);
+        }
+
         SelectTask(id);
         _rows.FirstRowOf(id)?.BringIntoView();
     }
@@ -513,15 +663,20 @@ internal sealed class TaskListWindow : Window
         }
 
         var modifiers = _held.Modifiers;
-        // The open All tags list is the innermost step, so it closes first and alone. This handler is added before the tag
-        // control's window handler, so it runs first, and a tag part stays open under it.
-        if (key == Key.Escape && modifiers == ModifierKeys.None && _header.CloseAllTagsList())
+        if (TabKeys(modifiers, key))
         {
             e.Handled = true;
         }
-        else if (key == Key.Escape && modifiers == ModifierKeys.None && _editing.Editor is not null && !_editing.Contains(e.OriginalSource))
+        else if (key == Key.Escape && modifiers == ModifierKeys.None && _editing.Current is not null && !_editing.Contains(e.OriginalSource))
         {
+            // Esc with the focus outside the open editor still takes the editor's steps. An editor out of the window, such as a
+            // title edit hidden by a collapsed group, can't be sent the key, so the edit is left as the key leaves it.
             e.Handled = _editing.SendEsc(e);
+            if (!e.Handled)
+            {
+                LeaveEdit();
+                e.Handled = true;
+            }
         }
         else if (modifiers == ModifierKeys.Control && key == Key.F && !_editing.Contains(e.OriginalSource))
         {
@@ -532,6 +687,31 @@ internal sealed class TaskListWindow : Window
         {
             e.Handled = ActOnRow(row, modifiers, key);
         }
+    }
+
+    // While a description is edited, Ctrl+Tab and Ctrl+Shift+Tab switch between Edit and Preview, from anywhere. In Preview no
+    // editor has the focus to see the Save shortcut, so the window saves on it.
+    private bool TabKeys(ModifierKeys modifiers, Key key)
+    {
+        if (_editing.Describing is null)
+        {
+            return false;
+        }
+
+        // Save comes first: the user may set Ctrl+Tab or Ctrl+Shift+Tab as a Save key, and Save wins over the other keys.
+        if (_saveKeys.Matches(modifiers, key))
+        {
+            SaveEdit();
+            return true;
+        }
+
+        if (key == Key.Tab && modifiers is ModifierKeys.Control or (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            SwitchTab(!_previewing);
+            return true;
+        }
+
+        return false;
     }
 
     // Up and Down select the row above or below; the other keys are the row's actions.

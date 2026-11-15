@@ -75,14 +75,7 @@ public class ShortcutCloseWindowTests
     }
 
     [Theory]
-    [InlineData(Ctrl | Alt, Key.LeftCtrl, "Add a key besides the modifier keys.")]
-    [InlineData(Ctrl, Key.RWin, "Add a key besides the modifier keys.")]
-    [InlineData(Ctrl | Alt, Key.None, "Add a key besides the modifier keys.")]
-    [InlineData(Ctrl | Alt, Key.System, "Pick a key on the keyboard.")]
-    [InlineData(Ctrl | Alt, Key.ImeProcessed, "Pick a key on the keyboard.")]
-    [InlineData(Ctrl | Alt, Key.DeadCharProcessed, "Pick a key on the keyboard.")]
-    [InlineData(Ctrl | Alt, (Key)int.MaxValue, "Pick a key on the keyboard.")]
-    [InlineData((ModifierKeys)0x10 | Ctrl | Alt, Key.K, "Use only Ctrl, Alt, Shift, and Win as modifier keys.")]
+    [MemberData(nameof(ShortcutKeyData.NotRealKeys), MemberType = typeof(ShortcutKeyData))]
     public void Rejects_keys_that_are_not_real_keys_or_modifiers_that_are_not_Ctrl_Alt_Shift_or_Win(
         ModifierKeys modifiers, Key key, string expected)
     {
@@ -106,14 +99,8 @@ public class ShortcutCloseWindowTests
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("")]
+    [MemberData(nameof(ShortcutKeyData.NotShortcutText), MemberType = typeof(ShortcutKeyData))]
     [InlineData("Ctrl+K")]
-    [InlineData("Escape")]
-    [InlineData("Shift+Esc")]
-    [InlineData("Escape+Shift")]
-    [InlineData("Shift+escape")]
-    [InlineData("not a shortcut")]
     public void Parse_rejects_text_that_breaks_a_rule_or_is_not_the_display_text(string? text)
     {
         Assert.Null(Shortcut.ParseCloseWindow(text));

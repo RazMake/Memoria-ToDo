@@ -14,7 +14,7 @@
     "copilot": { "model": ["claude-opus-5.5", "Claude Opus 5.5 (copilot)"], "effort": "medium" }
   },
   "tester": {
-    "description": "Designs requirement-driven tests that read as a living spec, following the repository test policy's run checkpoints. Give it the module, the owner design file, and the behaviors or bug to cover; it delivers failing tests of every kind from one scoped run, each proven able to fail when it's added.",
+    "description": "Designs requirement-driven tests that read as a living spec, following the repository test policy's run checkpoints. Give it the module, the owner design file, and the behaviors or bug to cover; it delivers tests of every kind from one scoped run of the new unit and integration tests, and at the session's end proves every new test that run didn't see fail, in the fewest groups of breaks.",
     "readOnly": false,
     "claude": { "model": "claude-sonnet-5-5", "effort": "medium" },
     "codex": { "model": "gpt-6.1-terra", "effort": "medium" },

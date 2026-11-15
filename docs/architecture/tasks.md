@@ -125,7 +125,7 @@ Android preserves it without using it. A null shortcut means Configure's existin
 
 Each setting merges by its own `updated` time; the later time wins, and equal times take the remote value.
 An absent file contributes no settings and never deletes settings from a present file. Three absent files merge to no file.
-A present file must hold the first three settings with valid types and times; `closeWindowShortcut` may be missing, as below. An unsupported version or unreadable file
+A present file must hold the first three settings with valid types and times; `closeWindowShortcut` and `saveShortcut` may be missing, as below. An unsupported version or unreadable file
 is reported, left untouched, and cannot be replaced by a setter or initialization.
 
 With no file, reads supply the existing deletion default and null shortcuts without writing. `EnsureSettings` creates
@@ -152,6 +152,19 @@ string? CloseWindowShortcut { get; }
 /// Throws NoRepositoryFolderException when no repository is selected. An unchanged value writes nothing.
 /// </summary>
 void SetCloseWindowShortcut(string? shortcut);
+```
+
+A fifth setting, `saveShortcut`, after `closeWindowShortcut`, holds the [Save shortcut](desktop/configure.md#the-save-shortcut-saves-an-edit-in-any-window), as the user decided. It's kept, merged, read when missing, and written exactly as `closeWindowShortcut` is, and its public parts follow the same pattern:
+
+```csharp
+/// <summary>Shortcut text Windows interprets; null means Windows' existing default.</summary>
+string? SaveShortcut { get; }
+
+/// <summary>
+/// Saves text without interpreting it, or null to use Windows' default, and its UTC change time.
+/// Throws NoRepositoryFolderException when no repository is selected. An unchanged value writes nothing.
+/// </summary>
+void SetSaveShortcut(string? shortcut);
 ```
 
 ### Sync shares Tasks' local update lock, never a network wait
@@ -186,10 +199,11 @@ Images are PNG for screenshots and images with transparency, and JPEG for photos
 Each of these rules also holds:
 
 - A JPEG file stays JPEG; an image from the clipboard or in any other format starts as PNG.
-- Each image is named by its own UUID version 7, so two offline devices never pick the same name. A description links to it from the clone's root, such as `![alt](images/<task-id>/<image-id>.png)`, and [Rendering loads it from the clone](rendering.md#the-web-view-runs-no-scripts-and-loads-only-images-from-the-clone).
+- Each image is named by its own UUID version 7, so two offline devices never pick the same name. A description links to it from the clone's root, such as `![alt](images/<task-id>/<image-id>.png)`, and [Rendering loads it from the clone's address](rendering.md#the-web-view-runs-no-scripts-and-loads-images-only-from-the-clones-address).
 - An image is deleted only with its task, even when no link to it is left, because a merge can drop the only link.
 - An image added to a draft or an open edit waits outside the clone, and moves into the task's folder on save. Discarding deletes it. A draft gets its task ID when it starts, so its image links are final.
 - Tasks tells an open edit's image from a draft's by its task ID: an image for a task that already exists belongs to that task's open edit. It waits apart from the draft's images, so keeping, discarding, or adding the draft never deletes it. Both apps' editors keep every image through the same call.
+- An open edit's images wait in one folder on this device, laid out as the clone, so the link an image gets names it there too, before Save, and in the clone after. Tasks publishes where that folder is, and nothing else about it, so the desktop's web view can [show an image in an edit's Preview before Save](desktop/formatted-view.md#the-clones-address-also-serves-an-open-edits-waiting-images). The user decided that the web view serves those images. Proposed: the folder is a read-only property of the store, not of every task operation. This is a decision to confirm.
 
 Each app's image tools only read an image's format and size, scale it, and save it as PNG, or as JPEG at a given quality, through an interface Tasks publishes. Tasks runs the steps above, so both apps shrink images the same way.
 
@@ -263,7 +277,7 @@ Each app's modules and Sync use these parts:
 - **Tags and search**: the tags in use with how many tasks use each, and the tasks matching a search and a tag.
 - **Task links**: a task's link, and the task ID in a link's address, if it's a task link.
 - **Drafts**: start, load, keep, and discard this device's draft of a new task, with its images.
-- **Images**: save an image for a draft or an open edit and get its Markdown, and discard an open edit's images.
+- **Images**: save an image for a draft or an open edit and get its Markdown, discard an open edit's images, and the folder where an open edit's images wait.
 - **[Shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs)**: the typed settings capability used by Configure.
 - **[Tag colors](#tag-colors-are-a-capability-of-their-own)**: the color name kept for a tag, and keeping a new one.
 - **[Synchronization](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs)**: Sync's separate capability, including its [pure file rules](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs). The source contracts define initialization, automatic deletion, coordinated updates, reloads, and diagnostics.
@@ -414,7 +428,7 @@ this section describes the design, not a claim that final validation or delivery
 | Contract | What its caller gets |
 | --- | --- |
 | [`ITaskStore`](../../src/Shared/Tasks/ITaskStore.cs) | Existing `ITasks` operations, plus `Settings` and `Synchronization` |
-| [`ISharedTaskSettings`](../../src/Shared/Tasks/ISharedTaskSettings.cs) | Three typed values, one setter each, and a settings-change notice |
+| [`ISharedTaskSettings`](../../src/Shared/Tasks/ISharedTaskSettings.cs) | Typed values, one setter each, and a settings-change notice |
 | [`ITaskSynchronization`](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs) | Selected folder, skipped files, local-save notice, settings initialization, automatic deletion, and exclusive local updates |
 | [`IRepositoryFileRules`](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs) | Canonical managed paths and pure three-version task/settings byte merges |
 | [`ISkippedRepositoryFile`](../../src/Shared/Tasks/Synchronization/ISkippedRepositoryFile.cs) | Immutable relative path, reason, and whether updating the app is needed |
@@ -423,7 +437,8 @@ The [factory contract](../../src/Shared/Tasks/TaskStore.cs) exposes these capabi
 Existing callers can still use the result as `ITasks`; Configure receives only `Settings`, and
 Sync receives only `Synchronization`. No caller casts a concrete implementation or creates another store.
 
-`IRepositoryFileRules` is the only public home of the managed directory/file names and their classification.
+Row 11 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) adds the folder where an open edit's [images wait](#images-are-at-most-1-mb-and-live-beside-their-task), for the desktop's composition root, which gives it to the web view: [`ITaskStore.EditImagesFolder`](../../src/Shared/Tasks/ITaskStore.cs). It's laid out like the clone, so the link an image gets names the image under it. Proposed: its shape. This is a decision to confirm.
+That folder is under the device folder, so `TaskStore.Create` throws `ArgumentException` when the device folder isn't fully qualified, before any side effect: a relative path would follow the working directory. This is a decision to confirm.`IRepositoryFileRules` is the only public home of the managed directory/file names and their classification.
 Its implementation reuses `RepositoryLayout` and the existing codecs. A Git-relative path uses `/`, is never rooted,
 and contains no `.` or `..` segment. Task, settings, and tag-color merges do no I/O and reject unreadable inputs rather than
 returning a success-shaped fallback. Sync catches that failure per file, reports it, and leaves its bytes intact,
@@ -573,6 +588,9 @@ The options below were considered and rejected, grouped by decision.
 - Images for an open edit:
   - **The editor says whether it holds a draft or a task, and calls a separate image part for edits**: an extra setting on the editor, and two image parts that shrink images the same way.
   - **Images added during an edit go straight into the clone**: a sync during the edit could push images that a discard then deletes, and git history would keep them.
+- How the desktop's web view finds an open edit's waiting images:
+  - **A call that reads a waiting image's bytes for a link**: a bigger interface, and Tasks would serve the web view's requests one by one, for what one folder path gives.
+  - **The composition root joins the draft folder and `edits` itself**: the folder's layout would then live in two places that must change together.
 - Where a tag's color is kept:
   - **In each task file, beside each tag**: one tag could carry different colors on different tasks, a recolor rewrites every task with the tag, and task files would need version 2, which older apps skip entirely.
   - **On each device only**, outside the clone: colors wouldn't travel, so a tag colored on the PC would show its default color on the phone.

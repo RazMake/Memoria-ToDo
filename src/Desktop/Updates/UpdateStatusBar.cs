@@ -1,18 +1,20 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 
 namespace Memoria.ToDo.Desktop.Updates;
 
 /// <summary>
-/// The status bar Add and Task View show along their bottom edge. <c>start</c>, when given, sits at the bar's start,
-/// and the bar always shows; without it, the bar shows only while a version is available or updating.
+/// The status bar Add and Task View show along their bottom edge. <c>start</c>, when given, takes all the width the update
+/// text leaves, and the bar always shows; without it, the bar shows only while a version is available or updating.
+/// The update text sits at the bar's right end.
 /// </summary>
 public sealed class UpdateStatusBar : Border
 {
     private readonly IUpdateStatus _updates;
     private readonly UIElement? _start;
-    private readonly DockPanel _panel = new() { LastChildFill = false };
+    private readonly DockPanel _panel = new();
     private UIElement? _updateText;
 
     public UpdateStatusBar(IUpdateStatus updates, UIElement? start)
@@ -22,9 +24,12 @@ public sealed class UpdateStatusBar : Border
         _start = start;
         Padding = new Thickness(8, 4, 8, 4);
         Child = _panel;
+        // The last child fills what the update text leaves, so it is the start; without a start, the update text keeps its right edge.
+        _panel.LastChildFill = start is not null;
         if (start is not null)
         {
-            DockPanel.SetDock(start, Dock.Left);
+            // The update text is added before the start so the start fills, but Tab reaches the start first.
+            KeyboardNavigation.SetTabIndex(start, 0);
             _panel.Children.Add(start);
         }
 
@@ -60,7 +65,8 @@ public sealed class UpdateStatusBar : Border
         if (_updateText is not null)
         {
             DockPanel.SetDock(_updateText, Dock.Right);
-            _panel.Children.Add(_updateText);
+            KeyboardNavigation.SetTabIndex(_updateText, 1);
+            _panel.Children.Insert(0, _updateText);
         }
 
         Visibility = _start is not null || _updateText is not null ? Visibility.Visible : Visibility.Collapsed;
