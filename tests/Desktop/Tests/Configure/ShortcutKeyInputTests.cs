@@ -75,13 +75,22 @@ public class ShortcutKeyInputTests
     }
 
     [Fact]
-    public void Esc_is_handled_and_picks_nothing()
+    public void Esc_with_a_modifier_held_is_handled_and_picks_nothing()
     {
         Down(Key.LeftCtrl);
 
         var handled = _input.KeyDown(Key.Escape, isRepeat: false);
 
         Assert.True(handled);
+        Assert.Empty(_picks);
+    }
+
+    [Fact]
+    public void Plain_Esc_is_left_to_the_window_and_picks_nothing()
+    {
+        var handled = _input.KeyDown(Key.Escape, isRepeat: false);
+
+        Assert.False(handled);
         Assert.Empty(_picks);
     }
 

@@ -1,6 +1,8 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
@@ -20,6 +22,7 @@ internal sealed class TaskListWindow : Window
     private const string GoneText = "This task no longer exists.";
 
     private readonly ITasks _tasks;
+    private readonly ITagColors _tagColors;
     private readonly IReadOnlyList<PaletteColor> _palette;
     private readonly ITheme _theme;
     private readonly TimeProvider _time;
@@ -39,6 +42,7 @@ internal sealed class TaskListWindow : Window
     private readonly ListActions _actions;
     private readonly TaskDeletion _deletion;
     private readonly EditCleanup _cleanup;
+    private readonly TagChanges _tagChanges;
     private readonly StackPanel _panel = new() { Margin = new Thickness(8, 0, 8, 8) };
     private readonly Button _resolvedButton = new() { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 0, 8) };
     private readonly Dictionary<string, TaskRow> _rows = [];
@@ -46,15 +50,20 @@ internal sealed class TaskListWindow : Window
     private readonly Dictionary<RowAction, Action<TaskRow>> _rowActions;
     private ListSnapshot _snapshot = new([], [], false);
     private TaskRow? _descriptionRow;
+    private TagEditor? _tagEditor;
     private string? _expandedId;
+    private readonly CloseDecision _decision;
     private Edit? _edit;
     private bool _closing;
+    private bool _closed;
 
-    public TaskListWindow(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    public TaskListWindow(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
         IDefaultBrowser browser, ListSync sync, string? message, Action<string> carry)
     {
         _sync = sync;
+        _tagColors = tagColors;
+        _decision = new CloseDecision(new CloseDialog(this));
         _tasks = tasks;
         _palette = palette;
         _theme = theme;
@@ -84,13 +93,14 @@ internal sealed class TaskListWindow : Window
         _description.OpenFailed += (_, failure) => Report(failure.Message);
         _park.Child = _description;
 
-        _header = new ListHeader(tasks, _filter);
+        _header = new ListHeader(tasks, tagColors, theme, _filter);
         _content = new ListContent(tasks, _filter);
         _links = new ListLinks(tasks, _filter, _content);
         _actions = new ListActions(tasks, Report);
         _pending = new PendingUndo(time, post => Dispatcher.BeginInvoke(post), () => _header.ShowUndo(_pending!.IsPending ? _pending.Label : null));
         _deletion = new TaskDeletion(tasks, _content, _pending, Report, Refresh);
         _cleanup = new EditCleanup(tasks, _pending, Report);
+        _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report);
         _header.ShowMessage(message);
         _filter.Changed += (_, _) => Refresh();
         _header.UndoClicked += (_, _) => _pending.Undo();
@@ -111,6 +121,7 @@ internal sealed class TaskListWindow : Window
         layout.Children.Add(scroll);
         Content = layout;
 
+        EscCloses.Attach(this);
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewKeyUp += (_, e) => _held.Released(EventKey.Of(e));
         Deactivated += (_, _) => _held.Clear();
@@ -118,9 +129,62 @@ internal sealed class TaskListWindow : Window
         Refresh();
     }
 
+    /// <summary>
+    /// Closes the window as its close button does: a changed edit asks first. False, with the window open, when the
+    /// user cancels, the save fails, or the prompt already shows.
+    /// </summary>
+    public bool TryClose()
+    {
+        var mayClose = _decision.MayClose(ClosingEdit());
+
+        // The application ending can close the window while the prompt shows; it is closed then, whatever the answer.
+        if (_closed)
+        {
+            return true;
+        }
+
+        if (mayClose)
+        {
+            Close();
+        }
+
+        return mayClose;
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        // Windows sends SC_CLOSE for the close button, Alt+F4 and the window menu's Close, and only then does the window ask.
+        // The application ending sends a plain WM_CLOSE, which closes without asking: Exit and signing out discard the edit.
+        // WPF can't close a window while its modal prompt shows, so the prompt closes first, answering Cancel.
+        HwndSource.FromHwnd(new WindowInteropHelper(this).Handle).AddHook((nint _, int message, nint wParam, nint _, ref bool handled) =>
+        {
+            if (message == WmSysCommand && (wParam & 0xFFF0) == ScClose)
+            {
+                handled = true;
+                TryClose();
+            }
+            else if (message == WmClose)
+            {
+                foreach (var owned in OwnedWindows.Cast<Window>().ToList())
+                {
+                    owned.Close();
+                }
+            }
+
+            return 0;
+        });
+    }
+
+    private const int WmClose = 0x0010;
+    private const int WmSysCommand = 0x0112;
+    private const int ScClose = 0xF060;
+
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
+        _closed = true;
         _closing = true;
         _tasks.Changed -= OnChanged;
         try
@@ -218,6 +282,12 @@ internal sealed class TaskListWindow : Window
             _description.Markdown = row.Task.Description;
         }
 
+        // A change from Sync updates the badges and leaves an open menu or Custom as it is.
+        if (_tagEditor is { } tagEditor && _descriptionRow is { } tagRow && !tagEditor.Tags.SequenceEqual(tagRow.Task.Tags))
+        {
+            tagEditor.Tags = tagRow.Task.Tags;
+        }
+
         _header.ShowTags([.. _tasks.TagsInUse().Select(use => use.Tag)]);
     }
 
@@ -233,7 +303,7 @@ internal sealed class TaskListWindow : Window
             return row;
         }
 
-        row = new TaskRow(task, _palette, _theme, _browser);
+        row = new TaskRow(task, _tagColors, _palette, _theme, _browser);
         row.ClickRequested += (_, _) => ToggleExpanded(row);
         row.EditRequested += (_, _) => BeginEditOf(row);
         row.DeleteRequested += (_, _) => Delete(row);
@@ -309,11 +379,38 @@ internal sealed class TaskListWindow : Window
         row.SetContent(_description);
         row.ShowActions(true);
         _descriptionRow = row;
+        ShowTagControl(row);
+    }
+
+    // A new control for each expanded task, so closing it drops what was typed in Custom.
+    private void ShowTagControl(TaskRow row)
+    {
+        var control = new TagEditor(_tasks, _tagColors, _theme) { Tags = row.Task.Tags };
+        control.TagAdded += (_, tag) => ChangeTag(row, control, shown => _tagChanges.Add(shown, tag));
+        control.TagRemoved += (_, tag) => ChangeTag(row, control, shown => _tagChanges.Remove(shown, tag));
+        row.SetTagControl(control);
+        _tagEditor = control;
+    }
+
+    // The control already shows the change; when it can't be saved the badges go back to the task as shown.
+    private void ChangeTag(TaskRow row, TagEditor control, Func<TaskItem, TaskItem?> change)
+    {
+        _header.ShowMessage(null);
+        if (change(row.Task) is { } saved)
+        {
+            row.Update(saved);
+        }
+        else
+        {
+            control.Tags = row.Task.Tags;
+        }
     }
 
     private void ParkDescription()
     {
         _descriptionRow?.SetContent(null);
+        _descriptionRow?.SetTagControl(null);
+        _tagEditor = null;
         _descriptionRow = null;
         _park.Child = _description;
     }
@@ -340,7 +437,7 @@ internal sealed class TaskListWindow : Window
 
     private void BeginEdit(TaskRow row, TaskItem started, TaskDraft draft)
     {
-        var editor = new TaskEditorControl(_tasks, _palette, _theme, _time, _clipboard, _imageFiles, _files) { Value = draft };
+        var editor = new TaskEditorControl(_tasks, _tagColors, _palette, _theme, _time, _clipboard, _imageFiles, _files) { Value = draft };
         editor.SaveRequested += (_, _) => SaveEdit();
         editor.SaveAndClearRequested += (_, _) => SaveEdit();
         editor.CancelRequested += (_, _) =>
@@ -369,13 +466,13 @@ internal sealed class TaskListWindow : Window
         edit.Editor.FocusTitle();
     }
 
-    private void SaveEdit()
+    private bool SaveEdit()
     {
         var edit = _edit!;
         TaskItem? saved = null;
         if (!edit.Editor.Save(draft => saved = _tasks.SaveEdit(edit.Started, draft)))
         {
-            return;
+            return false;
         }
 
         _edit = null;
@@ -386,6 +483,34 @@ internal sealed class TaskListWindow : Window
 
         ShowDescription(edit.Row);
         Refresh();
+        return true;
+    }
+
+    // The edit as closing sees it, or null when none is open.
+    private IClosingEdit? ClosingEdit() => _edit is { } edit ? new EditToClose(this, edit) : null;
+
+    private sealed class EditToClose(TaskListWindow window, Edit edit) : IClosingEdit
+    {
+        public bool HasChanges => edit.Editor.HasChanges;
+
+        public bool Save() => window.SaveEdit();
+
+        // The window is going, so a failure to remove the images is carried to the next one, as when it closes.
+        public void Discard()
+        {
+            window._closing = true;
+            window._edit = null;
+            window._cleanup.Close(edit.Started.Id);
+        }
+
+        // Nothing to return to when the application's exit closed the window under the prompt.
+        public void ReturnToEditor()
+        {
+            if (!window._closed)
+            {
+                edit.Editor.FocusTitle();
+            }
+        }
     }
 
     // Closing the editor without saving: a clean one throws its images away; a dirty one can be brought back with Undo.
@@ -506,7 +631,17 @@ internal sealed class TaskListWindow : Window
         }
 
         var modifiers = _held.Modifiers;
-        if (modifiers == ModifierKeys.Control && key == Key.F && !InEditor(e.OriginalSource))
+        // The open All tags list is the innermost step, so it closes first and alone. This handler is added before the tag
+        // control's window handler, so it runs first, and a tag part stays open under it.
+        if (key == Key.Escape && modifiers == ModifierKeys.None && _header.CloseAllTagsList())
+        {
+            e.Handled = true;
+        }
+        else if (key == Key.Escape && modifiers == ModifierKeys.None && _edit is { } editing && !InEditor(e.OriginalSource))
+        {
+            e.Handled = SendEscToEditor(editing.Editor, e);
+        }
+        else if (modifiers == ModifierKeys.Control && key == Key.F && !InEditor(e.OriginalSource))
         {
             _header.FocusSearch();
             e.Handled = true;
@@ -516,6 +651,21 @@ internal sealed class TaskListWindow : Window
             _rowActions[action](row);
             e.Handled = true;
         }
+    }
+
+    // With the focus outside the editor, Esc still takes its steps: the editor gets the key as if the focus were in it, and closes
+    // its open list or reports that the edit is cancelled. The key the editor is sent is handled in the editor, so the window's
+    // own Esc never sees it, and the editor's tag control, which also listens at the window, sees it handled.
+    private static bool SendEscToEditor(TaskEditorControl editor, KeyEventArgs original)
+    {
+        if (PresentationSource.FromVisual(editor) is not { } source)
+        {
+            return false;
+        }
+
+        var sent = new KeyEventArgs(original.KeyboardDevice, source, original.Timestamp, Key.Escape) { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+        editor.RaiseEvent(sent);
+        return sent.Handled;
     }
 
     private async void SyncOnKey() => await _sync.SyncAsync();

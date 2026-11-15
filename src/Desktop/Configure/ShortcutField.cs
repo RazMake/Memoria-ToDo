@@ -42,7 +42,7 @@ internal sealed class ShortcutField : TextBox
         }
         else
         {
-            base.OnPreviewKeyDown(e); // Plain Tab still moves on, so the field doesn't trap the keyboard.
+            base.OnPreviewKeyDown(e); // Plain Tab still moves on, and plain Esc reaches the window, so the field doesn't trap the keyboard.
         }
     }
 

@@ -30,19 +30,11 @@ public class EditCleanupTests
         _cleanup = new EditCleanup(_tasks.Tasks, _pending, _reports.Add);
     }
 
-    // Pastes an image into an edit of the task and returns the files the paste added.
-    private IReadOnlyList<string> PasteImage(string taskId)
-    {
-        var before = _tasks.AllFiles;
-        _tasks.Tasks.SaveImage(taskId, FakeImageEncoder.Image(ImageFormat.Png, 100, 80), "photo");
-        var added = _tasks.AllFiles.Except(before).ToList();
-        Assert.NotEmpty(added);
-        return added;
-    }
+    private IReadOnlyList<string> PasteImage(string taskId) => _tasks.PasteImage(taskId);
 
     private bool AnyKept(IEnumerable<string> files) => files.Any(_tasks.Files.FileExists);
 
-    private void StopDeleting(IReadOnlyList<string> images) => _tasks.Files.FailDeletesUnder(Path.GetDirectoryName(images[0])!);
+    private void StopDeleting(IReadOnlyList<string> images) => _tasks.StopDeleting(images);
 
     private void Restore() => _restored++;
 

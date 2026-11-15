@@ -90,6 +90,7 @@ internal sealed class ConfigureShow : IConfigureWindow
             ResizeMode = ResizeMode.NoResize,
             Content = sections,
         };
+        EscCloses.Attach(window);
         _open = window;
         _refreshOpen = () =>
         {

@@ -69,11 +69,12 @@ public class TaskEditorControlTests
     }
 
     [WpfFact]
-    public void Esc_closes_an_open_suggestion_list_first_and_only_a_second_Esc_asks_to_cancel()
+    public void Esc_closes_an_open_suggestion_list_first_then_Custom_and_only_a_third_Esc_asks_to_cancel()
     {
         using var host = new EditorHost();
         host.Services.UseRepository();
         host.Services.UseTag("home");
+        host.OpenCustom();
         host.Focus(EditorFields.Tags);
         host.Type(EditorFields.Tags, "ho");
         Assert.NotEmpty(EditorFields.ShownSuggestions(host.Editor));
@@ -81,6 +82,11 @@ public class TaskEditorControlTests
         host.Press(Key.Escape);
 
         Assert.Empty(EditorFields.ShownSuggestions(host.Editor));
+        Assert.Equal((0, 0, 0), host.Counts);
+
+        host.Press(Key.Escape);
+
+        Assert.False(TagControls.CustomIsOpen(host.Editor));
         Assert.Equal((0, 0, 0), host.Counts);
 
         host.Press(Key.Escape);
@@ -143,6 +149,13 @@ internal sealed class EditorHost : IDisposable
         var element = EditorFields.Field(Editor, field);
         element.Focus();
         Keyboard.Focus(element);
+    }
+
+    /// <summary>Clicks + and then Custom, which opens the tag box.</summary>
+    public void OpenCustom()
+    {
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.Plus(Editor));
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.CustomItem(Editor));
     }
 
     /// <summary>The name of the field that holds the keyboard focus.</summary>

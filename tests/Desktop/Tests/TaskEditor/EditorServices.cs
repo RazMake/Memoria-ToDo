@@ -24,6 +24,8 @@ internal sealed class EditorServices
 
     public FakeTheme Theme { get; } = new();
 
+    public FakeTagColors TagColors { get; } = new();
+
     public FakeClipboard Clipboard { get; } = new();
 
     public FakeImageFileChooser ImageFiles { get; } = new();
@@ -83,9 +85,16 @@ internal sealed class EditorServices
     /// <summary>Like <see cref="UseTag"/>, but from a worker thread, so Tasks raises Changed there as a background sync does.</summary>
     public Task UseTagOnWorkerThread(string tag, int count = 1) => Task.Run(() => UseTag(tag, count));
 
-    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
+    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
 
-    public TaskEditorControl CreateEditor() => new(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
+    public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
+
+    /// <summary>The tag control over this Tasks, these tag colors, and this theme.</summary>
+    public TagEditor CreateTagEditor() => new(Tasks, TagColors, Theme);
+
+    public TagBadges CreateTagBadges() => new(TagColors, Theme);
+
+    public TopTags CreateTopTags() => new(Tasks, TagColors, Theme);
 
     /// <summary>Puts an image file where the user "chooses" or "drops" it, and returns its path. The fake image tools read its bytes.</summary>
     public string PutImageFile(string name, byte[] image)

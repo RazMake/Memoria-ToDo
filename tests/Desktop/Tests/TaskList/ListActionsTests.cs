@@ -158,6 +158,12 @@ public class ListFailuresTests
     }
 
     [Fact]
+    public void Knows_no_message_for_an_incomplete_change_so_that_it_is_not_swallowed()
+    {
+        Assert.Null(ListFailures.MessageOf(new AggregateException()));
+    }
+
+    [Fact]
     public void Knows_no_message_for_any_other_failure_so_that_it_is_not_swallowed()
     {
         Assert.Null(ListFailures.MessageOf(new NotSupportedException("Unexpected.")));

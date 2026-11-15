@@ -67,6 +67,7 @@ public class AddWindowLookTests
         screen.Save();
 
         screen.Edit(EditorFields.Title, "Buy milk", 8);
+        screen.OpenCustom();
 
         Assert.True(Looks.BrushesAreEqual(
             ((Control)EditorFields.Field(screen.Window, EditorFields.Tags)).BorderBrush, screen.TitleBorderBrush));
@@ -81,8 +82,10 @@ public class AddWindowLookTests
     }
 
     // Add opens with the Title focused, and a focused field looks different, so the focus goes to a button first.
+    // The tag box shows only in Custom, so Custom opens first.
     private static void AssertSameLook(AddScreen screen, string field)
     {
+        screen.OpenCustom();
         Keyboard.Focus(screen.SaveButton);
         Look.Of(screen, field).AssertSameAs(Look.Of(screen, EditorFields.Tags));
     }

@@ -18,7 +18,7 @@ Two global shortcuts work from any app. The user changes either one in [Configur
 The tray icon's menu offers Add new task, Manage tasks, Configure, and Exit, for when the mouse is closer than the keyboard.
 
 - **The defaults are the user's choice.** A RegisterHotKey probe on the user's PC found Win+Alt+T taken by Windows and Win+Alt+N free; Win+Alt+V wasn't probed. The defaults avoid Ctrl+Alt, which equals AltGr on many keyboard layouts ([WM_SYSKEYUP](https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-syskeyup)). The OneNote desktop app uses Win+Alt+N for Quick Notes ([OneNote shortcuts](https://shortcut-tools.com/en/shortcuts/onenote/)); on a PC that runs it, Add new task has no shortcut until the user picks another, and Configure says why.
-- **While any of the app's windows is open, a shortcut press opens nothing.** So the user can't open Add from Configure, or View Tasks from Add. Each window port says whether its window is open, and Shell checks all three before showing one.
+- **A shortcut never opens a window beside another.** It [switches between Add and View Tasks](#a-shortcut-switches-between-add-and-view-tasks) instead, and does nothing while Configure is open. Each window port says whether its window is open, and Shell checks all three before showing one.
 - **A left click on the tray icon opens Add, and a right click opens the menu.** Adding a task is the app's most common action, so it takes one click.
 - **The tray icon uses [H.NotifyIcon.Wpf](https://www.nuget.org/packages/H.NotifyIcon.Wpf/2.4.1) 2.4.1.** Its menu is a Windows Presentation Foundation (WPF) menu, so it follows the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
 - **Shell runs each shortcut's action, and Configure picks the keys.** Shell gives Configure one [shortcut action](configure.md#public-interface) for each shortcut, which registers keys through Shell's [global shortcut port](#public-interface) and opens its window when pressed. The composition root implements the port with the Windows [RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey) function, with no shortcut library. [Configure](configure.md#a-new-shortcut-is-checked-at-once) checks each shortcut before Shell sees it.
@@ -33,6 +33,26 @@ Proposed: the tray menu's first two items take the shortcuts' names, so the menu
 **Decided by the user:** until the device is configured, the first start, Add, and View Tasks open Configure.
 After local initialization reports an unconfigured device or fails, startup opens Configure even at Windows
 sign-in, so setup or its error is visible.
+
+### A shortcut switches between Add and View Tasks
+
+The user decided that pressing the other window's shortcut closes the open window and opens the other one, and pressing the open window's own shortcut does nothing. The table lists what each shortcut does, by the window that's open:
+
+| Open window | Add new task shortcut | Manage tasks shortcut |
+| --- | --- | --- |
+| None | Opens Add | Opens View Tasks |
+| Add | Nothing | Closes Add, keeping its [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Esc does, then opens View Tasks |
+| View Tasks | Closes View Tasks, asking first about a changed edit, then opens Add once it's closed | Nothing, even while View Tasks is behind other windows |
+| Configure | Nothing | Nothing |
+
+Closing View Tasks this way works as its close button does: a pending Undo finishes, as the [Task list](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) says. The user decided that an [edit in place](task-list.md#edit-turns-the-open-task-into-the-editor-in-place) with changes asks first, offering Save, Discard, or Cancel, as the [Task list](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) says. Shell closes each window through its port's close part. It opens Add only when View Tasks' close part says the window closed, so Cancel, or a save that fails, leaves View Tasks open and Add closed. Add's close part hides it with its draft, then Shell opens View Tasks.
+
+Proposed, each a decision to confirm:
+
+- **While Configure is open, a shortcut does nothing**, as before. The user's rule names the two windows the shortcuts open, and Configure has no shortcut.
+- **While both Add and View Tasks are open, a shortcut does nothing.** Only the tray can open the second one, and either shortcut's own window is then already open.
+- **The tray menu and a left click on the tray icon keep opening their window** without closing another, since the user's rule is about the shortcuts.
+- **Until the device is configured, both shortcuts still open Configure**, as the setup rule above decides.
 
 ### Only one instance runs, and a start by hand shows View Tasks
 
@@ -140,8 +160,8 @@ Proposed, each a decision to confirm:
 No module uses Shell. Only the composition root does, through one part:
 
 - **[Create the tray app](../../../src/Desktop/Shell/TrayApp.cs)** retains its existing arguments and adds the shared Sync service last. It returns the platform's async-stop lifetime; no duplicate instance starts Sync.
-  - **Starting** first asks the one-instance port to claim the sign-in session. If another instance runs, Starting ends the app and does nothing else. Otherwise it adds the tray icon with its menu, connects Configure's shortcuts, begins the [update checks](#velopack-installs-the-app-and-keeps-it-up-to-date), and resolves its windows through the [startup rules](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) after local initialization. Each menu item calls its window's Show part, and Exit ends the app. A left click and the Add new task shortcut call Show Add, the Manage tasks shortcut calls Show View Tasks, and each later start calls Show View Tasks.
-  - **Connecting the shortcuts** hands Configure two [shortcut actions](configure.md#public-interface): Add new task's opens Add, and Manage tasks' opens View Tasks. Each action has at most one shortcut registered, through the global shortcut port, and neither touches the other's.
+  - **Starting** first asks the one-instance port to claim the sign-in session. If another instance runs, Starting ends the app and does nothing else. Otherwise it adds the tray icon with its menu, connects Configure's shortcuts, begins the [update checks](#velopack-installs-the-app-and-keeps-it-up-to-date), and resolves its windows through the [startup rules](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) after local initialization. Each menu item calls its window's Show part, and Exit ends the app. A left click calls Show Add, the two shortcuts follow the [switching rule](#a-shortcut-switches-between-add-and-view-tasks), and each later start calls Show View Tasks.
+  - **Connecting the shortcuts** hands Configure two [shortcut actions](configure.md#public-interface): Add new task's opens Add, and Manage tasks' opens View Tasks, each as the [switching rule](#a-shortcut-switches-between-add-and-view-tasks) says. Each action has at most one shortcut registered, through the global shortcut port, and neither touches the other's.
     - **Register** registers a new shortcut; when Windows takes it, the action releases its previous one. The shortcut already registered stays, and Register returns true without registering it again.
     - **Unregister** releases the action's shortcut, so its keys reach the focused window, and does nothing when there's none. A later Register registers again.
     - Any failure of the port other than a taken shortcut passes on to Configure.
@@ -216,3 +236,6 @@ The options below were considered and rejected, grouped by decision.
 - The installer's ID:
   - **`Memoria-ToDo`, with the SDK moved to another folder**: every developer PC would move its SDK, and a decided path would change.
   - **`Memoria.ToDo`, like the projects' names**: the dot reads like a file extension.
+- What happens to a changed edit in place when a shortcut closes View Tasks:
+  - **Close anyway, discarding the edit**: one key press could lose a long edit, with no Undo, since the bar closes with the window.
+  - **Don't switch while the edit has changes, and say why in View Tasks' message line**: the shortcut would seem to do nothing beyond the message.

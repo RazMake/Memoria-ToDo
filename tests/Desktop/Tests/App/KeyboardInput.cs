@@ -8,6 +8,7 @@ internal static class KeyboardInput
     public const ushort Shift = 0x10;
     public const ushort Control = 0x11;
     public const ushort Alt = 0x12;
+    public const ushort Escape = 0x1B;
 
     private const uint InputKeyboard = 1;
     private const uint KeyUp = 0x0002;

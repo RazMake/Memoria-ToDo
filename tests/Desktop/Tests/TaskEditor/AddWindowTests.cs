@@ -28,7 +28,7 @@ public class AddWindowTests
         using var screen = new AddScreen();
         screen.Show();
         var first = screen.Window;
-        screen.Focus(EditorFields.Tags);
+        screen.Focus(EditorFields.AddTag);
 
         OpenWindows.PressEscape(first);
 

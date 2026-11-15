@@ -31,31 +31,9 @@ public class PaletteTests
         {
             foreach (var background in backgrounds)
             {
-                var contrast = Contrast(value(color), background);
+                var contrast = ColorMath.Contrast(value(color), background);
                 Assert.True(contrast >= MinimumContrast, $"{color.Name} {value(color)} on {background} has contrast {contrast:0.00}.");
             }
         }
-    }
-
-    private static double Contrast(string foreground, string background)
-    {
-        var (lighter, darker) = (Luminance(foreground), Luminance(background));
-        if (lighter < darker)
-        {
-            (lighter, darker) = (darker, lighter);
-        }
-
-        return (lighter + 0.05) / (darker + 0.05);
-    }
-
-    private static double Luminance(string hex)
-    {
-        double Channel(int from)
-        {
-            var c = Convert.ToInt32(hex.Substring(from, 2), 16) / 255.0;
-            return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
-        }
-
-        return 0.2126 * Channel(1) + 0.7152 * Channel(3) + 0.0722 * Channel(5);
     }
 }

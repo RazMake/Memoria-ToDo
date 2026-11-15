@@ -12,8 +12,8 @@ public static class TrayApp
     /// <summary>
     /// Creates the app's lifetime. Start first claims the sign-in session; when another instance runs, it ends the app
     /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Manage tasks, Configure,
-    /// Exit; a left click shows Add), connects Configure's two shortcuts (a press shows Add or View Tasks, and does
-    /// nothing while any of the app's windows is open), begins the
+    /// Exit; a left click shows Add), connects Configure's two shortcuts     (a press switches between Add and View Tasks as
+        /// the shell design says, and does nothing while Configure is open), begins the
     /// update checks and the shared sync service. Startup and later actions open Configure until setup is complete;
     /// otherwise startup shows View Tasks when <paramref name="startedAtSignIn"/> is false.
     /// Configure also opens when an initial shortcut could not be registered, after View Tasks on a configured
@@ -59,7 +59,14 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(sync);
         ArgumentNullException.ThrowIfNull(uiThread);
 
-        bool AnyWindowOpen() => add.IsOpen || viewTasks.IsOpen || configure.IsOpen;
+        bool ConfigureOpen() => configure.IsOpen;
+        bool AddOpen() => add.IsOpen;
+        bool ViewTasksOpen() => viewTasks.IsOpen;
+        bool CloseAdd()
+        {
+            add.Close();
+            return true;
+        }
 
         var redirect = new SetupRedirect(sync, configure);
         var showAdd = redirect.Through(add.Show);
@@ -74,8 +81,8 @@ public static class TrayApp
             showViewTasks,
             configure,
             oneInstance,
-            new ActiveShortcut(shortcut, () => { if (!AnyWindowOpen()) { addByUser(); } }),
-            new ActiveShortcut(shortcut, () => { if (!AnyWindowOpen()) { viewTasksByUser(); } }),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, AddOpen, ViewTasksOpen, viewTasks.Close, addByUser).Press),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, AddOpen, CloseAdd, viewTasksByUser).Press),
             startup,
             new UpdateSchedule(updates, time),
             sync);

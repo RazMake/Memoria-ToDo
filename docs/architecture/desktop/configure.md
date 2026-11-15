@@ -17,7 +17,7 @@ The table lists every setting in Configure, the module that owns it, where it's 
 | Days before a resolved task is deleted | Tasks | In the repository, shared by every device | One week, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides |
 | The repository's SSH address, the device name, the device's SSH key, and the accepted host keys | Sync | On this device | The device name starts as the machine's name; the rest is set up as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says |
 
-**Every device uses the same shortcuts.** Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-and-one-settings-file) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
+**Every device uses the same shortcuts.** Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-settings-and-tag-colors) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
 
 Tasks keeps the two shortcuts as shared text settings without interpreting them. Windows Configure checks their values against its [shortcut rules](#a-new-shortcut-is-checked-at-once). Android preserves them through merges but neither displays nor uses them.
 
@@ -38,6 +38,11 @@ The window shows each shortcut with the name of what it does, Add new task and M
 - **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: headings in the theme's heading style, messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
 - **The window keeps its width.** The user can't resize it; its height follows the open section and its messages, which take no room while empty.
 - **The window opens with no field focused**, so the shortcuts keep working until the user clicks a field, as [below](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) explains.
+
+The user decided that Esc closes every window. Proposed, each a decision to confirm:
+
+- **Esc closes Configure as its close button does**, so anything typed and not yet applied, such as a repository address, is dropped, and a running sync goes on, as [below](#configure-shows-how-sync-is-doing) says. An open list or menu, such as the Configure button's, closes first, and the next Esc closes the window.
+- **Plain Esc in a shortcut field closes Configure too**, leaving the shortcut as it was, as the help line promises. Leaving the field registers the shortcuts again, as when the window closes in the middle of a pick. Esc with a modifier key held stays in the field and picks nothing, as today.
 
 ### A new shortcut is checked at once
 

@@ -67,6 +67,24 @@ internal sealed class TasksFixture
         }
         """;
 
+    public string TagColorsFile => Path.Combine(Clone, "tags.json");
+
+    /// <summary>Writes tags.json in the clone as literal JSON.</summary>
+    public void SeedTagColors(int version = 1, params (string Tag, string Color, string Updated)[] entries) =>
+        WriteText(TagColorsFile, TagColorsJson(version, entries));
+
+    /// <summary>A tag colors file as literal JSON, so tests don't depend on how Tasks writes it.</summary>
+    public static string TagColorsJson(int version = 1, params (string Tag, string Color, string Updated)[] entries) =>
+        $$"""
+        {
+          "version": {{version}},
+          "tags": [{{string.Join(", ", entries.Select(TagColorEntry))}}]
+        }
+        """;
+
+    private static string TagColorEntry((string Tag, string Color, string Updated) e) =>
+        "{ \"tag\": " + Quote(e.Tag) + ", \"color\": " + Quote(e.Color) + ", \"updated\": " + Quote(e.Updated) + " }";
+
     public void WriteText(string path, string text) => Files.WriteFile(path, Encoding.UTF8.GetBytes(text));
 
     public string ReadText(string path) => Encoding.UTF8.GetString(Files.ReadFile(path));

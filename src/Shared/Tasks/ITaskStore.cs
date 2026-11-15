@@ -6,6 +6,9 @@ public interface ITaskStore : ITasks
     /// <summary>The settings in this store's selected repository.</summary>
     ISharedTaskSettings Settings { get; }
 
+    /// <summary>Each tag's color in this store's selected repository.</summary>
+    ITagColors TagColors { get; }
+
     /// <summary>Sync's access to this same store, including its local update lock.</summary>
     ITaskSynchronization Synchronization { get; }
 }

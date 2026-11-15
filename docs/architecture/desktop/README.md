@@ -137,7 +137,8 @@ For the Sync step, App creates one `ITaskStore` and constructs one
 clock, the device data folder, the machine name, and the desktop interval specified by [Sync](../sync.md#public-interface).
 Only App chooses the filesystem, secure-key, repository-selection, and setup-action adapters. It passes Tasks'
 typed settings to Configure and the same Sync instance to Configure, Task list, and Shell. No factory gets a dummy
-service, optional test switch, or old overload unused by production.
+service, optional test switch, or old overload unused by production. For colored tags, it passes the store's
+[tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own) to the Task editor and the Task list.
 
 The selection adapter reuses `repository-folder.txt`, loads Tasks, and never clones, invokes Git, or
 stores a second path. Failed adoption restores the previous saved path and Tasks selection; rollback failures
@@ -263,6 +264,23 @@ public static class EventKey
 
 Two other homes were ruled out: a method on `ModifierKey`, since its one job is saying which keys are modifiers; and one copy shared inside the Task list only, which would leave the same code in the Task editor and Configure.
 
+**A fourth part closes a window when Esc reaches it unused**, since the user decided that Esc closes every window, and View Tasks and Configure would otherwise each close on Esc in a copy of their own. A control that uses Esc first, such as an open list or menu, marks the key handled, so the window stays open. Add doesn't need the part: its editor already [hides Add on Esc](task-editor.md#keys-save-close-and-move-between-fields) after closing an open list. What uses Esc first in View Tasks is the Task list's [steps](task-list.md#esc-goes-back-one-step-then-closes-view-tasks), and in Configure its [proposal](configure.md#the-window-shows-its-settings-in-labeled-sections). The user approved the part, which adds to the platform's public interface:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+public static class EscCloses
+{
+    /// Closes the window when an Esc key press, with no modifier key held, reaches it
+    /// with no control having handled it.
+    public static void Attach(System.Windows.Window window);
+}
+```
+
+The [single window](#a-closed-window-is-made-again-on-the-next-show) could close on Esc instead, since View Tasks and Configure both use it, but its one job is where a window opens and what happens after it closes.
+
+Proposed: the Windows key counts as a modifier, as it does for `ModifierKey`, so Win+Esc doesn't close the window. Windows uses Win+Esc to close Magnifier ([keyboard shortcuts in Windows](https://support.microsoft.com/en-us/windows/keyboard-shortcuts-in-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec)). This is a decision to confirm.
+
 ## Later designs answer what these files leave open
 
 The desktop design relies on rules that belong to the shared Tasks and Sync modules and to the technology stack, a later row of the [design backlog](../README.md#design-backlog). The table lists each, the desktop modules that need it, and the design that answers it:
@@ -271,6 +289,7 @@ The desktop design relies on rules that belong to the shared Tasks and Sync modu
 | --- | --- | --- |
 | The rank that puts a new task first, and a task's rank after a move | Task editor, Task list | [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors) |
 | The tags in use, how often each is used, and when two tags are the same | Task editor, Task list | [Tasks](../tasks.md#tags-and-search-ignore-case) |
+| Each tag's color, and the 30 colors a tag can take | Task editor, Task list | [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) |
 | How search and the tag filter match tasks | Task list | [Tasks](../tasks.md#tags-and-search-ignore-case) |
 | The link format of a reference to another task | Task editor, Task list | [Tasks](../tasks.md#a-time-ordered-id-names-each-task-its-file-and-links-to-it) |
 | Where an image is saved, its path in the Markdown, its shrinking to 1 MB, and where an unsaved task's images wait | Task editor, Task list | [Tasks](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task) |
@@ -285,7 +304,7 @@ The desktop design relies on rules that belong to the shared Tasks and Sync modu
 
 ## Delivery backlog
 
-The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1 to 5 are built. Step 5 leaves two checks that no test can make yet to Sync's [validation backlog](../sync.md#implementation-and-focused-checks). You choose the remaining delivery order, recorded below the table. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
+The desktop app is built in steps, one row each, and each row links to the design sections it builds. Steps 1 to 5, 7 and 8 are built. Step 5 leaves two checks that no test can make yet to Sync's [validation backlog](../sync.md#implementation-and-focused-checks). You choose the remaining delivery order, recorded below the table. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested.
 
 The table lists each step, what it builds, and its status:
 
@@ -297,6 +316,8 @@ The table lists each step, what it builds, and its status:
 | 4 | Viewing tasks | The [Formatted view](formatted-view.md#behavior), and the [Task list](task-list.md#behavior) except its Sync button and the sync when View Tasks opens | Implemented |
 | 5 | Sync | [Sync through git](../sync.md); Shell's [sync status](shell.md#sync-stays-quiet-unless-something-is-wrong) and its redirect to Configure until the device is configured; Configure's [sync](configure.md#configure-shows-how-sync-is-doing), deletion delay, and saving and loading the [shortcuts](configure.md#each-setting-has-one-owner) in `settings.json`; the Task list's [Sync button and the sync when View Tasks opens](task-list.md#view-tasks-syncs-when-it-opens-and-on-its-sync-button). | Implemented |
 | 6 | Install and updates | Shell's [installer and updates](shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), except removing the `Run` key, which comes with step 2; and the [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | Next |
+| 7 | Esc and switching windows | The platform's [Esc part](#window-modules-read-keys-through-the-platform); Esc in [View Tasks](task-list.md#esc-goes-back-one-step-then-closes-view-tasks) and [Configure](configure.md#the-window-shows-its-settings-in-labeled-sections); Shell's [shortcut switching](shell.md#a-shortcut-switches-between-add-and-view-tasks), with the close parts of [Add](task-editor.md#public-interface) and [View Tasks](task-list.md#public-interface); and View Tasks' [prompt for a changed edit](task-list.md#closing-view-tasks-asks-before-it-drops-a-changed-edit) | Implemented |
+| 8 | Colored tags | Each tag's color in [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file), and Sync carrying `tags.json`; Rendering's [30 tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes); the Task editor's [badges and + menu](task-editor.md#tags-show-as-colored-badges-and-the-plus-button-adds-one); and the Task list's [colored tags and tag changes without Edit](task-list.md#tags-show-as-colored-badges-and-change-without-edit) | Implemented |
 
 The remaining work follows this order:
 

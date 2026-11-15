@@ -81,6 +81,8 @@ internal sealed class AddWindowView : Window, IAddWindow
 
     bool IAddWindow.IsOpen => IsVisible;
 
+    void IAddWindow.Close() => HideAndKeepDraft();
+
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);

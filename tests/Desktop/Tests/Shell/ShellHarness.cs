@@ -39,7 +39,7 @@ internal sealed class ShellHarness
     public int EndAppCalls { get; private set; }
     public IAppLifetime Lifetime { get; }
 
-    /// <summary>The windows shown, in order: "Add", "View Tasks", and "Configure".</summary>
+    /// <summary>The window calls, in order: "Add", "View Tasks", and "Configure" for a Show, "Close Add" and "Close View Tasks" for a Close.</summary>
     public List<string> Shown { get; } = [];
 
     /// <summary>The UI thread Shell was given: a fake the test drives, unless the test passed a real one.</summary>

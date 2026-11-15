@@ -16,11 +16,12 @@ public static class ViewTasksWindow
     /// Creates View Tasks. The window, and its description web view, are made only on <see cref="IViewTasksWindow.Show"/>;
     /// the web view is released when the window closes.
     /// </summary>
-    public static IViewTasksWindow Create(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme,
+    public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
         Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync)
     {
         ArgumentNullException.ThrowIfNull(tasks);
+        ArgumentNullException.ThrowIfNull(tagColors);
         ArgumentNullException.ThrowIfNull(palette);
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(time);
@@ -30,7 +31,7 @@ public static class ViewTasksWindow
         ArgumentNullException.ThrowIfNull(createWebView);
         ArgumentNullException.ThrowIfNull(browser);
         ArgumentNullException.ThrowIfNull(sync);
-        return new Opener(tasks, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync);
+        return new Opener(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync);
     }
 
     // Holds a failure from a delete finished while the window closed, so the next window shows it, and the sync
@@ -39,9 +40,10 @@ public static class ViewTasksWindow
     {
         private readonly SingleWindow _window;
         private string? _carried;
+        private TaskListWindow? _current;
         private Task _opening = Task.CompletedTask;
 
-        public Opener(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+        public Opener(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
             IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
             Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync)
         {
@@ -52,9 +54,11 @@ public static class ViewTasksWindow
                 var listSync = new ListSync(sync);
                 try
                 {
-                    var window = new TaskListWindow(tasks, palette, theme, time, clipboard, imageFiles, files, webView,
+                    var window = new TaskListWindow(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, webView,
                         browser, listSync, message, failure => _carried = failure);
                     _carried = null;
+                    _current = window;
+                    window.Closed += (_, _) => _current = null;
                     _opening = listSync.SyncAsync();
                     return window;
                 }
@@ -70,6 +74,8 @@ public static class ViewTasksWindow
         public void Show() => _window.Show();
 
         public bool IsOpen => _window.IsOpen;
+
+        public bool Close() => _current is not { } window || !_window.IsOpen || window.TryClose();
     }
 }
 
@@ -81,4 +87,11 @@ public interface IViewTasksWindow
 
     /// <summary>Whether the window is open now.</summary>
     bool IsOpen { get; }
+
+    /// <summary>
+    /// Closes the window as its close button does, first asking Save, Discard, or Cancel when an edit in place has
+    /// changes. True when the window is closed, or was not open; false when the user cancels, Save doesn't save, or the
+    /// prompt already shows.
+    /// </summary>
+    bool Close();
 }

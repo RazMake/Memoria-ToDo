@@ -56,7 +56,7 @@ Follow [writing docs](docs/contributing/writing-docs.md): write for a person who
 
 The user decides and reviews architecture; AI writes and reviews the implementation.
 
-1. **Only the user commits.** AI never commits or pushes.
+1. **Only the user commits.** AI never commits or pushes. The one exception: after the user approves its preview, the [`version-tag` skill](docs/architecture/version-tags.md#the-skill-previews-asks-you-then-runs-the-script) runs the script that pushes or deletes one version tag.
 2. **Architecture lives only in the review surface**, the only files the user needs to read:
    - `README.md`, `docs/`, every `AGENTS.md`, `.agents/`, and `.github/workflows/`;
    - each module's and the platform's public interface;
@@ -75,11 +75,13 @@ The user decides and reviews architecture; AI writes and reviews the implementat
 - **No tool-specific instruction files.** Don't create `CLAUDE.md`, `CLAUDE.local.md`, `.claude/CLAUDE.md`, `.github/copilot-instructions.md`, `.github/instructions/`, or `.claude/rules/`. They duplicate or split these rules, and any `CLAUDE.md` makes Claude Code stop reading `AGENTS.md`.
 - **Scope rules to folders.** Put rules that apply to one part of the repository in an `AGENTS.md` in that folder. Keep every `AGENTS.md` short: each one loads into every session.
 - **Agents are defined only in `.agents/subagents/`.** `subagents.json` sets each role's description, models, and reasoning effort, and `<role>.md` its instructions. After changing `subagents.json`, run `node .agents/generate.mjs` to rewrite `.claude/agents/`, `.codex/agents/`, and `.github/agents/`. Never edit those generated files; `node .agents/generate.mjs --check` reports stale ones.
-- **Skills**, when one is needed, live only in `.agents/skills/<name>/SKILL.md`.
+- **Skills**, when one is needed, live only in `.agents/skills/<name>/SKILL.md`. For Claude Code, which doesn't read that folder, `node .agents/generate.mjs` also writes a [pointer](docs/architecture/agent-skills.md#claude-code-reads-each-skill-through-a-generated-pointer) to each skill in `.claude/skills/`. Rerun it after adding or removing a skill or changing its frontmatter, and never edit the pointers.
 
-### Checking the agent generator
+### Checking the `.agents` scripts
 
-At [final validation](#tests), run `node --test .agents/generate.test.mjs`. These [tests](.agents/generate.test.mjs) run [generate.mjs](.agents/generate.mjs) with temporary agent settings and inspect the Claude, Codex, and Copilot files it writes. They check settings, missing or outdated files, and invalid input. They don't launch agents or change this repository's agent files.
+Each script's tests sit beside it in `<script>.test.mjs`, on Node's test runner. Each top-level `describe` ends its name with its tests' [kind](#test-design), `(unit)` or `(integration)`. From the repository root, run the unit tests during development with `node --test --test-name-pattern="\(unit\)" ".agents/*.test.mjs"`, and every test at [final validation](#run-timing) with `node --test ".agents/*.test.mjs"`.
+
+The [generator's tests](.agents/generate.test.mjs) check the Claude, Codex, and Copilot files [generate.mjs](.agents/generate.mjs) makes from temporary agent settings and skills. They check settings, missing or outdated files, and invalid input. They don't launch agents or change this repository's agent or skill files. [Version tags](docs/architecture/version-tags.md#unit-tests-replace-git-and-integration-tests-use-temporary-repositories) says what the version tag script's tests check.
 
 ### Working with agents
 

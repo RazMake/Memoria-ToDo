@@ -16,7 +16,10 @@ internal static class EditorFields
     public const string Description = "Description";
     public const string Tags = "Tags";
 
-    private static readonly string[] Names = [Title, Description, Tags];
+    /// <summary>The tag control's + button, which has the keyboard focus when the user tabs to the tags.</summary>
+    public const string AddTag = "AddTag";
+
+    private static readonly string[] Names = [Title, Description, Tags, AddTag];
 
     /// <summary>The field with the name, found below <paramref name="root"/>.</summary>
     public static FrameworkElement Field(DependencyObject root, string name) => TextFields.Find(root, name);
@@ -26,9 +29,6 @@ internal static class EditorFields
 
     /// <summary>The element that lists the suggestions for the typed text, as the items of an items control.</summary>
     public const string Suggestions = "Suggestions";
-
-    /// <summary>The tag chips control.</summary>
-    public const string TagChips = "TagChips";
 
     /// <summary>Sets what the user has typed in the field, as typing does.</summary>
     public static void Type(DependencyObject root, string name, string text) => TextFields.Type(Field(root, name), text);
@@ -120,27 +120,24 @@ internal static class EditorFields
             ?? throw new InvalidOperationException($"The {name} field isn't a styled text editor.");
 
     /// <summary>The tags the task shows, in order.</summary>
-    public static IReadOnlyList<string> ShownTags(DependencyObject root) => ItemsOf(root, TagList);
+    public static IReadOnlyList<string> ShownTags(DependencyObject root) => TagControls.BadgeTags(Field(root, TagList));
 
     /// <summary>The suggestions on offer: empty while the list is closed.</summary>
     public static IReadOnlyList<string> ShownSuggestions(DependencyObject root) =>
         Field(root, Suggestions).IsVisible ? ItemsOf(root, Suggestions) : [];
 
-    /// <summary>The tag chips' tags, in order. Lays the window out first, so the chips exist.</summary>
-    public static IReadOnlyList<string> ChipTags(DependencyObject root) =>
-        [.. Chips(root).Select(chip => (string)chip.Content)];
-
-    /// <summary>The chip buttons below <paramref name="root"/>, or <paramref name="root"/> itself when it is the chips control.</summary>
-    public static IReadOnlyList<System.Windows.Controls.Button> Chips(DependencyObject root)
+    /// <summary>Clicks the tag in the open suggestion list: the left mouse button goes up on its row.</summary>
+    public static void ClickSuggestion(DependencyObject root, string tag)
     {
-        var chips = AutomationProperties.GetAutomationId(root) == TagChips ? root : Field(root, TagChips);
-        Layout(chips);
-        return [.. VisualButtons(chips)];
+        var list = (System.Windows.Controls.ListBox)Field(root, Suggestions);
+        list.UpdateLayout();
+        var row = (UIElement)list.ItemContainerGenerator.ContainerFromIndex(ShownSuggestions(root).ToList().IndexOf(tag));
+        row.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+        {
+            RoutedEvent = Mouse.PreviewMouseUpEvent,
+            Source = row,
+        });
     }
-
-    /// <summary>The chip button for the tag.</summary>
-    public static System.Windows.Controls.Button Chip(DependencyObject root, string tag) =>
-        Chips(root).Single(chip => (string)chip.Content == tag);
 
     /// <summary>The texts of the text blocks the user can see below <paramref name="root"/>, such as the message line when it is shown.</summary>
     public static IReadOnlyList<string> VisibleTexts(DependencyObject root) =>

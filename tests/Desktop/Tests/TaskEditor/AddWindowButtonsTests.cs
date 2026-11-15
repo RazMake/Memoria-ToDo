@@ -8,7 +8,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 /// <summary>
-/// The Add window's two buttons: a small Clear above the Title and a Save below the tag chips and the message line.
+/// The Add window's two buttons: a small Clear above the Title and a Save below the tag badges and the message line.
 /// What Clear and Save do to the draft and the repository is in the unit tests of the add draft and the editor save;
 /// these check the buttons are wired to it, on the common path.
 /// </summary>
@@ -51,7 +51,7 @@ public class AddWindowButtonsTests
     {
         using var screen = Shown();
         screen.Fill("   ", "A description");
-        screen.Focus(EditorFields.Tags);
+        screen.Focus(EditorFields.AddTag);
 
         screen.ClickSave();
 
@@ -77,9 +77,10 @@ public class AddWindowButtonsTests
     }
 
     [WpfFact]
-    public void Tab_goes_from_Clear_to_the_Title_through_the_fields_and_chips_to_Save()
+    public void Tab_goes_from_Clear_to_the_Title_through_the_fields_the_remove_buttons_and_the_plus_to_Save()
     {
         using var screen = Shown("home", "work");
+        screen.Fill("Buy milk", "", "home");
         var sequence = TabSequence(screen);
 
         var order = new[]
@@ -87,8 +88,8 @@ public class AddWindowButtonsTests
             sequence.FindIndex(e => e == screen.ClearButton),
             sequence.FindIndex(e => IsInside(e, EditorFields.Field(screen.Window, EditorFields.Title))),
             sequence.FindIndex(e => IsInside(e, EditorFields.Field(screen.Window, EditorFields.Description))),
-            sequence.FindIndex(e => IsInside(e, EditorFields.Field(screen.Window, EditorFields.Tags))),
-            sequence.FindLastIndex(e => IsInside(e, EditorFields.Field(screen.Window, EditorFields.TagChips))),
+            sequence.FindIndex(e => e == TagControls.RemoveButton(screen.Window, "home")),
+            sequence.FindIndex(e => e == TagControls.Plus(screen.Window)),
             sequence.FindIndex(e => e == screen.SaveButton),
         };
         Assert.DoesNotContain(-1, order);
@@ -135,6 +136,7 @@ public class AddWindowButtonsTests
     private static List<DependencyObject> TabSequence(AddScreen screen)
     {
         var sequence = new List<DependencyObject>();
+        screen.Window.UpdateLayout(); // As on screen, where the tags are laid out before a key reaches them.
         FocusButton(screen, "Clear");
         for (var i = 0; i < 60; i++)
         {

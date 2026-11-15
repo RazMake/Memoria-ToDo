@@ -4,8 +4,8 @@ using Memoria.ToDo.Desktop.Platform;
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// What a shortcut box does with its key events. It reports a pick on the first key that isn't a modifier, and Esc
-/// cancels a pick. It handles every modifier key's release, Alt's included, so Windows doesn't move the keyboard to
+/// What a shortcut box does with its key events. It reports a pick on the first key that isn't a modifier. Plain Esc
+/// picks nothing and is left to the window, which closes; Esc with a modifier held picks nothing and stays here. It handles every modifier key's release, Alt's included, so Windows doesn't move the keyboard to
 /// the window's hidden system menu. It also reports two or more modifier keys pressed and released with no other key,
 /// which is what a shortcut taken by Windows or another app looks like. Each method returns whether the box keeps
 /// the key to itself.
@@ -26,7 +26,7 @@ internal sealed class ShortcutKeyInput
         _swallowed = swallowed;
     }
 
-    /// <summary>A key went down. Plain Tab isn't handled, so the box doesn't trap the keyboard.</summary>
+    /// <summary>A key went down. Plain Tab isn't handled, so the box doesn't trap the keyboard; nor is plain Esc.</summary>
     public bool KeyDown(Key key, bool isRepeat)
     {
         if (key == Key.None)
@@ -41,7 +41,7 @@ internal sealed class ShortcutKeyInput
         }
 
         _held.OtherKeyReached();
-        if (key == Key.Tab && !_held.AnyHeld)
+        if (key is Key.Tab or Key.Escape && !_held.AnyHeld)
         {
             return false;
         }

@@ -24,7 +24,7 @@ internal sealed class ListHeader : StackPanel
     private bool _syncing;
     private string? _reChosen;
 
-    public ListHeader(ITasks tasks, ListFilter filter)
+    public ListHeader(ITasks tasks, ITagColors tagColors, ITheme theme, ListFilter filter)
     {
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(filter);
@@ -33,7 +33,8 @@ internal sealed class ListHeader : StackPanel
         _undoBar.SetResourceReference(Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
         AutomationProperties.SetName(_search, "Search");
         AutomationProperties.SetName(_allTags, "All tags");
-        var chips = new TagChips(tasks);
+        _allTags.ItemTemplate = TagBadgeTemplate.For(tagColors, theme);
+        var chips = new TopTags(tasks, tagColors, theme);
         AutomationProperties.SetName(chips, "Tag filter");
         chips.TagChosen += (_, chosen) => _filter.ToggleTag(chosen);
         _allTags.SelectionChanged += (_, _) =>
@@ -97,6 +98,18 @@ internal sealed class ListHeader : StackPanel
     }
 
     public event EventHandler? UndoClicked;
+
+    /// <summary>Closes the all-tags list and returns true, or returns false, doing nothing, when it is not open.</summary>
+    public bool CloseAllTagsList()
+    {
+        if (!_allTags.IsDropDownOpen)
+        {
+            return false;
+        }
+
+        _allTags.IsDropDownOpen = false;
+        return true;
+    }
 
     public void FocusSearch()
     {

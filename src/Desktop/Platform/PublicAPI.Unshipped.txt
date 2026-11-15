@@ -36,5 +36,7 @@ Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Released(System.Windows.Input.Key
 Memoria.ToDo.Desktop.Platform.ModifierKey
 static Memoria.ToDo.Desktop.Platform.ModifierKey.Describe(System.Windows.Input.ModifierKeys modifiers) -> string!
 static Memoria.ToDo.Desktop.Platform.ModifierKey.Of(System.Windows.Input.Key key) -> System.Windows.Input.ModifierKeys
+Memoria.ToDo.Desktop.Platform.EscCloses
+static Memoria.ToDo.Desktop.Platform.EscCloses.Attach(System.Windows.Window! window) -> void
 Memoria.ToDo.Desktop.Platform.EventKey
 static Memoria.ToDo.Desktop.Platform.EventKey.Of(System.Windows.Input.KeyEventArgs! e) -> System.Windows.Input.Key

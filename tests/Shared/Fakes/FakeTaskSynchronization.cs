@@ -50,6 +50,7 @@ public sealed class FakeTaskSynchronization : ITaskSynchronization
         public string TasksFolderName => "tasks";
         public string ImagesFolderName => "images";
         public string SettingsFileName => "settings.json";
+        public string TagColorsFileName => "tags.json";
 
         public RepositoryFileKind Classify(string relativePath) => throw new NotSupportedException();
 
@@ -58,6 +59,8 @@ public sealed class FakeTaskSynchronization : ITaskSynchronization
         public byte[]? MergeTask(string expectedTaskId, byte[]? basis, byte[]? local, byte[]? remote) => throw new NotSupportedException();
 
         public byte[]? MergeSettings(byte[]? basis, byte[]? local, byte[]? remote) => throw new NotSupportedException();
+
+        public byte[]? MergeTagColors(byte[]? basis, byte[]? local, byte[]? remote) => throw new NotSupportedException();
     }
 }
 

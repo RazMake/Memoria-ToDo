@@ -40,6 +40,33 @@ Memoria.ToDo.Shared.Rendering.StyledSpan.StyledSpan(int Start, int Length, Memor
 Memoria.ToDo.Shared.Rendering.StyledSpan.Styles.get -> Memoria.ToDo.Shared.Rendering.SpanStyle
 Memoria.ToDo.Shared.Rendering.StyledSpan.Styles.init -> void
 Memoria.ToDo.Shared.Rendering.StyledSpans
+Memoria.ToDo.Shared.Rendering.TagColor
+Memoria.ToDo.Shared.Rendering.TagColor.<Clone>$() -> Memoria.ToDo.Shared.Rendering.TagColor!
+Memoria.ToDo.Shared.Rendering.TagColor.Dark.get -> Memoria.ToDo.Shared.Rendering.TagFill!
+Memoria.ToDo.Shared.Rendering.TagColor.Dark.init -> void
+Memoria.ToDo.Shared.Rendering.TagColor.Deconstruct(out string! Name, out Memoria.ToDo.Shared.Rendering.TagFill! Light, out Memoria.ToDo.Shared.Rendering.TagFill! Dark) -> void
+Memoria.ToDo.Shared.Rendering.TagColor.Equals(Memoria.ToDo.Shared.Rendering.TagColor? other) -> bool
+Memoria.ToDo.Shared.Rendering.TagColor.Light.get -> Memoria.ToDo.Shared.Rendering.TagFill!
+Memoria.ToDo.Shared.Rendering.TagColor.Light.init -> void
+Memoria.ToDo.Shared.Rendering.TagColor.Name.get -> string!
+Memoria.ToDo.Shared.Rendering.TagColor.Name.init -> void
+Memoria.ToDo.Shared.Rendering.TagColor.TagColor(string! Name, Memoria.ToDo.Shared.Rendering.TagFill! Light, Memoria.ToDo.Shared.Rendering.TagFill! Dark) -> void
+Memoria.ToDo.Shared.Rendering.TagColors
+Memoria.ToDo.Shared.Rendering.TagFill
+Memoria.ToDo.Shared.Rendering.TagFill.<Clone>$() -> Memoria.ToDo.Shared.Rendering.TagFill!
+Memoria.ToDo.Shared.Rendering.TagFill.Background.get -> string!
+Memoria.ToDo.Shared.Rendering.TagFill.Background.init -> void
+Memoria.ToDo.Shared.Rendering.TagFill.Deconstruct(out string! Background, out string! Text) -> void
+Memoria.ToDo.Shared.Rendering.TagFill.Equals(Memoria.ToDo.Shared.Rendering.TagFill? other) -> bool
+Memoria.ToDo.Shared.Rendering.TagFill.TagFill(string! Background, string! Text) -> void
+Memoria.ToDo.Shared.Rendering.TagFill.Text.get -> string!
+Memoria.ToDo.Shared.Rendering.TagFill.Text.init -> void
+override Memoria.ToDo.Shared.Rendering.TagColor.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Rendering.TagColor.GetHashCode() -> int
+override Memoria.ToDo.Shared.Rendering.TagColor.ToString() -> string!
+override Memoria.ToDo.Shared.Rendering.TagFill.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Rendering.TagFill.GetHashCode() -> int
+override Memoria.ToDo.Shared.Rendering.TagFill.ToString() -> string!
 override Memoria.ToDo.Shared.Rendering.PaletteColor.Equals(object? obj) -> bool
 override Memoria.ToDo.Shared.Rendering.PaletteColor.GetHashCode() -> int
 override Memoria.ToDo.Shared.Rendering.PaletteColor.ToString() -> string!
@@ -53,4 +80,11 @@ static Memoria.ToDo.Shared.Rendering.PaletteColor.operator !=(Memoria.ToDo.Share
 static Memoria.ToDo.Shared.Rendering.PaletteColor.operator ==(Memoria.ToDo.Shared.Rendering.PaletteColor? left, Memoria.ToDo.Shared.Rendering.PaletteColor? right) -> bool
 static Memoria.ToDo.Shared.Rendering.StyledSpan.operator !=(Memoria.ToDo.Shared.Rendering.StyledSpan? left, Memoria.ToDo.Shared.Rendering.StyledSpan? right) -> bool
 static Memoria.ToDo.Shared.Rendering.StyledSpan.operator ==(Memoria.ToDo.Shared.Rendering.StyledSpan? left, Memoria.ToDo.Shared.Rendering.StyledSpan? right) -> bool
+static Memoria.ToDo.Shared.Rendering.TagColor.operator !=(Memoria.ToDo.Shared.Rendering.TagColor? left, Memoria.ToDo.Shared.Rendering.TagColor? right) -> bool
+static Memoria.ToDo.Shared.Rendering.TagColor.operator ==(Memoria.ToDo.Shared.Rendering.TagColor? left, Memoria.ToDo.Shared.Rendering.TagColor? right) -> bool
+static Memoria.ToDo.Shared.Rendering.TagColors.All.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.TagColor!>!
+static Memoria.ToDo.Shared.Rendering.TagColors.DefaultFor(string! tag) -> Memoria.ToDo.Shared.Rendering.TagColor!
+static Memoria.ToDo.Shared.Rendering.TagColors.Find(string! name) -> Memoria.ToDo.Shared.Rendering.TagColor?
+static Memoria.ToDo.Shared.Rendering.TagFill.operator !=(Memoria.ToDo.Shared.Rendering.TagFill? left, Memoria.ToDo.Shared.Rendering.TagFill? right) -> bool
+static Memoria.ToDo.Shared.Rendering.TagFill.operator ==(Memoria.ToDo.Shared.Rendering.TagFill? left, Memoria.ToDo.Shared.Rendering.TagFill? right) -> bool
 static Memoria.ToDo.Shared.Rendering.StyledSpans.Of(string! markdown, Memoria.ToDo.Shared.Rendering.MarkdownField field) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.StyledSpan!>!

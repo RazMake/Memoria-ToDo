@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -42,7 +43,7 @@ public class AddWindowTagSuggestionsTests
     }
 
     [WpfFact]
-    public void Esc_closes_the_suggestions_first_and_a_second_Esc_hides_Add()
+    public void Esc_closes_the_suggestions_first_then_Custom_and_a_third_Esc_hides_Add()
     {
         using var screen = new AddScreen();
         screen.Services.UseTag("home");
@@ -52,6 +53,12 @@ public class AddWindowTagSuggestionsTests
         screen.Press(Key.Escape);
 
         Assert.Empty(screen.Suggestions);
+        Assert.True(screen.IsShowing);
+        Assert.True(TagControls.CustomIsOpen(screen.Window));
+
+        screen.Press(Key.Escape);
+
+        Assert.False(TagControls.CustomIsOpen(screen.Window));
         Assert.True(screen.IsShowing);
 
         screen.Press(Key.Escape);
@@ -92,7 +99,7 @@ public class AddWindowTagSuggestionsTests
     }
 
     [WpfFact]
-    public void Clicking_a_suggestion_adds_that_tag_and_keeps_the_cursor_in_the_Tags_line()
+    public void Clicking_a_suggestion_adds_that_tag_and_hides_Custom()
     {
         using var screen = new AddScreen();
         screen.Services.UseTag("home", 2);
@@ -105,7 +112,7 @@ public class AddWindowTagSuggestionsTests
 
         Assert.Equal(["hobby"], screen.Editor.Value.Tags);
         Assert.Equal("", screen.TypedTag);
-        Assert.Equal(EditorFields.Tags, screen.FocusedField);
+        Assert.False(TagControls.CustomIsOpen(screen.Window));
     }
 
     [WpfFact]
@@ -114,6 +121,7 @@ public class AddWindowTagSuggestionsTests
         using var screen = new AddScreen();
         screen.Show();
         screen.Fill("Buy milk", "", "a", "b");
+        screen.OpenCustom();
         screen.Focus(EditorFields.Tags);
 
         screen.Press(Key.Back);
@@ -143,39 +151,143 @@ public class AddWindowTagSuggestionsTests
 
 [UX]
 [Collection(ScreenTests.Collection)]
-public class AddWindowTagChipsTests
+public class AddWindowTagMenuTests
 {
     [WpfFact]
-    public void The_five_most_used_tags_show_as_chips_below_the_Tags_line_most_used_first()
+    public void Clicking_a_tag_in_the_plus_menu_adds_it_after_the_tags_already_there()
     {
         using var screen = new AddScreen();
-        SixTagsInUse(screen.Services);
-        screen.Show();
-
-        Assert.Equal(["gamma", "echo", "alpha", "beta", "delta"], screen.ChipTags);
-    }
-
-    [WpfFact]
-    public void Clicking_a_chip_adds_its_tag_after_the_tags_already_there()
-    {
-        using var screen = new AddScreen();
-        SixTagsInUse(screen.Services);
+        screen.Services.UseTag("echo", 4);
         screen.Show();
         screen.Fill("Buy milk", "", "mine");
 
-        OpenWindows.Click(EditorFields.Chip(screen.Window, "echo"));
+        OpenWindows.Click(TagControls.Plus(screen.Window));
+        OpenWindows.Click(TagControls.MenuItem(screen.Window, "echo"));
 
         Assert.Equal(["mine", "echo"], screen.Editor.Value.Tags);
-        Assert.Equal(["mine", "echo"], screen.ShownTags);
+        Assert.Equal(["mine", "echo"], TagControls.BadgeTags(screen.Window));
     }
 
-    private static void SixTagsInUse(EditorServices services)
+    [WpfFact]
+    public void Clicking_a_remove_button_removes_the_tag_from_the_task()
     {
-        services.UseTag("alpha", 3);
-        services.UseTag("beta", 2);
-        services.UseTag("gamma", 5);
-        services.UseTag("delta");
-        services.UseTag("echo", 4);
-        services.UseTag("zulu");
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Fill("Buy milk", "", "a", "b");
+
+        OpenWindows.Click(TagControls.RemoveButton(screen.Window, "a"));
+
+        Assert.Equal(["b"], screen.Editor.Value.Tags);
+    }
+
+    [WpfFact]
+    public void Esc_closes_the_menu_first_and_a_second_Esc_hides_Add()
+    {
+        using var screen = new AddScreen();
+        screen.Services.UseTag("echo");
+        screen.Show();
+        OpenWindows.Click(TagControls.Plus(screen.Window));
+
+        screen.Press(Key.Escape);
+
+        Assert.False(TagControls.MenuIsOpen(screen.Window));
+        Assert.True(screen.IsShowing);
+
+        screen.Press(Key.Escape);
+
+        Assert.False(screen.IsShowing);
+    }
+
+    [WpfFact]
+    public void Esc_with_Custom_open_and_the_cursor_in_the_Title_closes_Custom_first_and_a_second_Esc_hides_Add()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.TypeTag("urgent");
+        screen.Focus(EditorFields.Title);
+
+        screen.Press(Key.Escape);
+
+        Assert.False(TagControls.CustomIsOpen(screen.Window));
+        Assert.True(screen.IsShowing);
+
+        screen.Press(Key.Escape);
+
+        Assert.False(screen.IsShowing);
+    }
+
+    [WpfFact]
+    public void Esc_with_Custom_open_and_the_cursor_on_Save_closes_Custom_first_and_Add_stays()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.TypeTag("urgent");
+        TagEditorWindow.Focus(screen.SaveButton);
+
+        screen.Press(Key.Escape);
+
+        Assert.False(TagControls.CustomIsOpen(screen.Window));
+        Assert.True(screen.IsShowing);
+    }
+
+    [WpfFact]
+    public void Esc_with_the_menu_open_and_the_cursor_in_the_Title_closes_the_menu_first_and_Add_stays()
+    {
+        using var screen = new AddScreen();
+        screen.Services.UseTag("echo");
+        screen.Show();
+        OpenWindows.Click(TagControls.Plus(screen.Window));
+        screen.Focus(EditorFields.Title);
+
+        screen.Press(Key.Escape);
+
+        Assert.False(TagControls.MenuIsOpen(screen.Window));
+        Assert.True(screen.IsShowing);
+    }
+
+    [WpfFact]
+    public void Esc_in_Custom_drops_the_typed_text_and_keeps_Add_showing()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.TypeTag("urgent");
+
+        screen.Press(Key.Escape);
+
+        Assert.False(TagControls.CustomIsOpen(screen.Window));
+        Assert.True(screen.IsShowing);
+        Assert.Empty(screen.Editor.Value.Tags);
+    }
+
+    [WpfFact]
+    public void Save_with_a_typed_tag_whose_color_cant_be_kept_saves_nothing_and_keeps_Custom_open_with_the_reason()
+    {
+        using var screen = new AddScreen();
+        screen.Services.TagColors.Failure = new NoRepositoryFolderException();
+        screen.Show();
+        screen.Fill("Buy milk");
+        screen.TypeTag("urgent");
+        screen.PickColor("red-2");
+
+        screen.Save();
+
+        Assert.Empty(screen.Saved);
+        Assert.True(TagControls.CustomIsOpen(screen.Window));
+        Assert.Contains(EditorFields.VisibleTexts(screen.Window), text => text.Contains("Configure", StringComparison.Ordinal));
+    }
+
+    [WpfFact]
+    public void Save_with_a_typed_tag_keeps_its_picked_color_and_saves_the_tag()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Fill("Buy milk");
+        screen.TypeTag("urgent");
+        screen.PickColor("red-2");
+
+        screen.Save();
+
+        Assert.Equal(["urgent"], Assert.Single(screen.Saved).Tags);
+        Assert.Equal([("urgent", "red-2")], screen.Services.TagColors.Kept);
     }
 }

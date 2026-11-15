@@ -60,10 +60,10 @@ internal sealed partial class TaskService
         {
             var root = clone ?? throw new NoRepositoryFolderException();
             var changed = edit(settings.Require());
-            if (changed == settings.Settings)
+            if (changed == settings.Value)
                 return;
             settingsFolder.Write(root, changed);
-            settings = new SettingsLoad(changed, true, null);
+            settings = new FileLoad<SharedSettings>(changed, true, null);
         }
 
         Announce(Notice.Settings | Notice.LocalSaved);

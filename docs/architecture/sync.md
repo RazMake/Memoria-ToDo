@@ -77,7 +77,7 @@ Proposed: each sync runs these steps. This is a decision to confirm.
 1. **Delete** the tasks [due for automatic deletion](tasks.md#resolved-tasks-are-deleted-after-a-delay-every-device-shares).
 2. **Commit** this device's changes as one commit. Its message lists them, such as `Add: Buy milk`, and its author is the device name.
 3. **Fetch** the remote's default branch, the only branch sync uses.
-4. **Merge**, when both sides have new commits. The app computes the merged files with [Tasks' merge rules](tasks.md#two-versions-of-a-task-merge-field-by-field), never git's line-based merge, and commits a merge with two parents.
+4. **Merge**, when both sides have new commits. The app computes the merged files with [Tasks' merge rules](tasks.md#two-versions-of-a-task-merge-field-by-field), never git's line-based merge, and commits a merge with two parents. Settings and [tag colors](tasks.md#each-tags-color-is-kept-in-one-synced-file) merge by Tasks' rules too, one setting or tag at a time.
 5. **Push**. When another device pushed first, the push is rejected, and sync fetches and merges again.
 
 Also proposed, each a decision to confirm:
@@ -85,7 +85,7 @@ Also proposed, each a decision to confirm:
 - Commit messages name the device and list each changed managed path with its action: Add, Update, or Delete.
   The task title above is an example, not a requirement to look titles up. Paths also describe settings and image
   changes, and use Git's existing change information without parsing Tasks' files or adding a public interface.
-- Files outside `tasks/`, `images/`, and `settings.json`, such as a README, are left as the remote has them.
+- Files outside `tasks/`, `images/`, `settings.json`, and `tags.json`, such as a README, are left as the remote has them.
 - A task file from the remote that can't be read is skipped, never deleted, and named in the sync status.
 - After 3 rejected pushes in a row, the sync fails with an error and retries later. Only pushes within one sync
   count, whatever reason the remote gives for rejecting them. The write-access check below isn't a push.
@@ -424,6 +424,11 @@ worker, as [Modules](modules.md#a-module-is-one-capability-behind-a-small-interf
 internals to App or another module.
 The shared fake assembly can implement that port and the public device adapters, so a fake still has only one home.
 
+Sync picks each managed file's merge through one internal registration, from the file's kind to the matching merge
+in Tasks' [file rules](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs), so a new kind of synced file
+adds one entry rather than a branch in a `switch`. A kind with no entry, such as an image, keeps the side that
+changed, and the remote's copy when both did.
+
 The Sync tester starts with unit scenarios for address rejection, immutable status, scheduling/coalescing,
 caller cancellation, stop/dispose ownership, trust changes, and key-handle lifetime. Use completion signals,
 not sleeps. Real Git/SSH, writable-key checks, branch safety, complete merge/push round trips, and interruption
@@ -587,7 +592,7 @@ The options below were considered and rejected, grouped by decision. The git and
 - Desktop timing:
   - **Every 5 minutes**: the user chose 30.
   - **Every minute**: about 1,400 contacts with the host a day.
-  - **Only at start and when View Tasks opens**: the tag chips and task references in Add would go stale.
+  - **Only at start and when View Tasks opens**: the tags and task references in Add would go stale.
 - Local work in the two discard cases above:
   - **Stop sync and preserve the local bytes and index**: the user chose to allow the remote result instead,
     accepting possible loss rather than blocking the pass for manual repair.
@@ -620,3 +625,8 @@ The options below were considered and rejected, grouped by decision. The git and
     broken file would show two kinds, and the tray would notify twice.
   - **Naming only a failed setup refresh after a successful pass by its cause**: a corrupt device name or key file
     would still show two kinds.
+- How Sync picks a file's merge:
+  - **A `switch` on the file's kind**: each new kind of synced file edits it, which
+    [Extend, don't edit](../../AGENTS.md#code-design) rules out.
+  - **One merge method on Tasks' file rules that takes the kind**: a public interface change, for a choice Sync can
+    make inside itself.

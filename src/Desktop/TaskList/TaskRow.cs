@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -20,8 +21,9 @@ internal sealed class TaskRow : Border
 {
     private readonly CheckBox _resolved = new() { VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 8, 0) };
     private readonly FormattedTitle _title;
-    private readonly TextBlock _tags = new() { Opacity = 0.7, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TagBadges _tags;
     private readonly Border _slot = new() { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 0) };
+    private readonly Border _tagSlot = new() { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 0) };
     private readonly StackPanel _buttons = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0), Visibility = Visibility.Collapsed };
     private readonly Button _edit = Labeled("Edit");
     private readonly Button _delete = Labeled("Delete");
@@ -30,9 +32,10 @@ internal sealed class TaskRow : Border
     private Point? _pressedAt;
     private bool _updating;
 
-    public TaskRow(TaskItem task, IReadOnlyList<PaletteColor> palette, ITheme theme, IDefaultBrowser browser)
+    public TaskRow(TaskItem task, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, IDefaultBrowser browser)
     {
         Task = task;
+        _tags = new TagBadges(tagColors, theme) { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         Focusable = true;
         AllowDrop = true;
         Padding = new Thickness(8);
@@ -62,6 +65,7 @@ internal sealed class TaskRow : Border
         var content = new StackPanel();
         content.Children.Add(header);
         content.Children.Add(_slot);
+        content.Children.Add(_tagSlot);
         content.Children.Add(_buttons);
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -107,7 +111,7 @@ internal sealed class TaskRow : Border
     {
         Task = task;
         _title.Markdown = task.Title;
-        _tags.Text = string.Join(", ", task.Tags);
+        _tags.Tags = task.Tags;
         _tags.Visibility = task.Tags.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         _updating = true;
         _resolved.IsChecked = task.Resolved is not null;
@@ -131,6 +135,13 @@ internal sealed class TaskRow : Border
     {
         _slot.Child = content;
         _slot.Visibility = content is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>Puts the tag control under the description, or removes it.</summary>
+    public void SetTagControl(UIElement? control)
+    {
+        _tagSlot.Child = control;
+        _tagSlot.Visibility = control is null ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void Toggled(bool resolved)
@@ -164,7 +175,7 @@ internal sealed class TaskRow : Border
     {
         for (var current = source; current is not null && current != this; current = ParentOf(current))
         {
-            if (current is ButtonBase or Hyperlink || current == _slot)
+            if (current is ButtonBase or Hyperlink || current == _slot || current == _tagSlot)
             {
                 return false;
             }

@@ -31,7 +31,7 @@ public class AddWindowFieldsTests
 
         screen.Press(Key.Tab);
 
-        Assert.Equal(EditorFields.Tags, screen.FocusedField);
+        Assert.Equal(EditorFields.AddTag, screen.FocusedField);
     }
 
     [WpfFact]

@@ -1,6 +1,7 @@
 using System.IO;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
+using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
@@ -31,6 +32,22 @@ internal class ListTasks
         Tasks = TaskStore.Create(Files, new FakeImageEncoder(), Time, Path.Combine(Root, "device"));
         Tasks.UseRepositoryFolder(Clone);
     }
+
+    /// <summary>The tag colors the window shows tags in.</summary>
+    public FakeTagColors TagColors { get; } = new();
+
+    /// <summary>Pastes an image into an edit of the task and returns the files the paste added.</summary>
+    public IReadOnlyList<string> PasteImage(string taskId)
+    {
+        var before = AllFiles;
+        Tasks.SaveImage(taskId, FakeImageEncoder.Image(ImageFormat.Png, 100, 80), "photo");
+        var added = AllFiles.Except(before).ToList();
+        Assert.NotEmpty(added);
+        return added;
+    }
+
+    /// <summary>Makes deleting the pasted images fail, as a locked file would.</summary>
+    public void StopDeleting(IReadOnlyList<string> images) => Files.FailDeletesUnder(Path.GetDirectoryName(images[0])!);
 
     /// <summary>Saves an open task at the top of the list.</summary>
     public TaskItem Add(string title, string description = "", params string[] tags) =>

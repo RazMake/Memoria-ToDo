@@ -104,12 +104,35 @@ internal sealed class AddScreen : IDisposable
 
     public void Save() => Press(Key.LeftCtrl, Key.Enter);
 
-    /// <summary>Types the text into the Tags line, which gets the keyboard focus, as the user does.</summary>
+    /// <summary>Types the text into the Tag box, opening Custom first as the user does, which gives the box the keyboard focus.</summary>
     public void TypeTag(string text)
     {
+        OpenCustom();
         Focus(EditorFields.Tags);
         EditorFields.Type(Window, EditorFields.Tags, text);
     }
+
+    /// <summary>Clicks + and then Custom, unless Custom is already open.</summary>
+    public void OpenCustom()
+    {
+        if (TagControls.CustomIsOpen(Window))
+        {
+            return;
+        }
+
+        OpenWindows.Click(TagControls.Plus(Window));
+        OpenWindows.Click(TagControls.CustomItem(Window));
+    }
+
+    /// <summary>The tags of the + menu's items, in order; empty while it is closed.</summary>
+    public IReadOnlyList<string> MenuTags => TagControls.MenuTags(Window);
+
+    /// <summary>The name of the color picked in Custom, or null.</summary>
+    public string? PickedColor => TagControls.PickedColor(Window);
+
+    /// <summary>Clicks the color in Custom's grid.</summary>
+    public void PickColor(string name) => OpenWindows.Click(TagControls.ColorButton(Window, name));
+
 
     /// <summary>What the Tags line holds, typed and not yet added.</summary>
     public string TypedTag => EditorFields.TextOf(Window, EditorFields.Tags);
@@ -121,20 +144,7 @@ internal sealed class AddScreen : IDisposable
     public IReadOnlyList<string> Suggestions => EditorFields.ShownSuggestions(Window);
 
     /// <summary>Clicks the tag in the open suggestion list: the left mouse button goes up on its row.</summary>
-    public void ClickSuggestion(string tag)
-    {
-        var list = (System.Windows.Controls.ListBox)EditorFields.Field(Window, EditorFields.Suggestions);
-        list.UpdateLayout();
-        var row = (UIElement)list.ItemContainerGenerator.ContainerFromIndex(Suggestions.ToList().IndexOf(tag));
-        row.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
-        {
-            RoutedEvent = Mouse.PreviewMouseUpEvent,
-            Source = row,
-        });
-    }
-
-    /// <summary>The tags of the chips below the Tags line, in order.</summary>
-    public IReadOnlyList<string> ChipTags => EditorFields.ChipTags(Window);
+    public void ClickSuggestion(string tag) => EditorFields.ClickSuggestion(Window, tag);
 
     /// <summary>Puts the text in the field, selects <paramref name="length"/> characters from <paramref name="start"/>, and gives the field the keyboard focus.</summary>
     public void Edit(string field, string text, int start, int length = 0)

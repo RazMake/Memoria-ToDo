@@ -6,12 +6,15 @@ internal static class RepositoryLayout
     public const string TasksFolderName = "tasks";
     public const string ImagesFolderName = "images";
     public const string SettingsFileName = "settings.json";
+    public const string TagColorsFileName = "tags.json";
 
     public static string TaskFile(string clone, string taskId) => Path.Combine(TasksFolder(clone), taskId + ".json");
 
     public static string TasksFolder(string clone) => Path.Combine(clone, TasksFolderName);
 
     public static string SettingsFile(string clone) => Path.Combine(clone, SettingsFileName);
+
+    public static string TagColorsFile(string clone) => Path.Combine(clone, TagColorsFileName);
 
     public static string ImagesFolder(string root, string taskId) => Path.Combine(root, ImagesFolderName, taskId);
 

@@ -1,4 +1,6 @@
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.TaskEditor.Tests;
+using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -59,19 +61,39 @@ public class TaskListFilterTests
 
         screen.ChooseFromAllTags("rare", input);
 
-        Assert.Equal(["Rare one", "Common 5b", "Common 5a", "Common 4b", "Common 4a", "Common 3b", "Common 3a", "Common 2b", "Common 2a", "Common 1b", "Common 1a"], screen.RowTitles);
+        Assert.Equal(
+            ["Rare one", "Common 8b", "Common 8a", "Common 7b", "Common 7a", "Common 6b", "Common 6a", "Common 5b", "Common 5a",
+             "Common 4b", "Common 4a", "Common 3b", "Common 3a", "Common 2b", "Common 2a", "Common 1b", "Common 1a"],
+            screen.RowTitles);
     }
 
-    // Five tags with two tasks each fill the chips; "rare" has one task, so only the all-tags list offers it.
-    private static void AddTasksWithTagsOnlyInAllTagsList(ListServices services)
+    // Eight tags with two tasks each fill the seven top badges and leave one over; "rare" has one task, so only the all-tags list offers it.
+    internal static void AddTasksWithTagsOnlyInAllTagsList(ListServices services)
     {
-        for (var tag = 1; tag <= 5; tag++)
+        for (var tag = 1; tag <= 8; tag++)
         {
             services.Add($"Common {tag}a", "", $"common{tag}");
             services.Add($"Common {tag}b", "", $"common{tag}");
         }
 
         services.Add("Rare one", "", "rare");
+    }
+
+    [WpfTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void The_all_tags_list_shows_a_tag_outside_the_top_badges_as_a_badge_in_its_kept_color(bool dark)
+    {
+        var services = new ListServices();
+        services.Theme.IsDark = dark;
+        AddTasksWithTagsOnlyInAllTagsList(services);
+        services.TagColors.Seed("rare", "teal-3");
+        using var screen = new TaskListScreen(services);
+        screen.OpenAllTagsList();
+
+        var fill = screen.AllTagsBadgeFill("rare");
+
+        Assert.Equal(TagControls.Expected(TagColors.Find("teal-3")!, dark), fill);
     }
 
     [WpfFact]

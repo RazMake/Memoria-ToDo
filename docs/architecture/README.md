@@ -1,6 +1,6 @@
 # Architecture
 
-This chapter holds Memoria-ToDo's design: what each part does, how parts depend on each other, and the decisions still to confirm. The [purpose and scope](purpose.md), [how the apps fit together](overview.md), the [module rules and map](modules.md), the [Android app](android/README.md), the [desktop app](desktop/README.md), the [Editing](editing.md), [Rendering](rendering.md), [Tasks](tasks.md), and [Sync through git](sync.md) modules, and the [technology stack](technology-stack.md) are decided. The desktop app and the shared modules it uses have code, for the built steps of the desktop [delivery backlog](desktop/README.md#delivery-backlog); the Android app has none yet.
+This chapter holds Memoria-ToDo's design: what each part does, how parts depend on each other, and the decisions still to confirm. The [purpose and scope](purpose.md), [how the apps fit together](overview.md), the [module rules and map](modules.md), the [Android app](android/README.md), the [desktop app](desktop/README.md), the [Editing](editing.md), [Rendering](rendering.md), [Tasks](tasks.md), and [Sync through git](sync.md) modules, the [technology stack](technology-stack.md), [version tags](version-tags.md), and [how each AI tool finds a skill](agent-skills.md) are decided. The desktop app and the shared modules it uses have code, for the built steps of the desktop [delivery backlog](desktop/README.md#delivery-backlog); the Android app has none yet.
 
 | If you want to | Read |
 | --- | --- |
@@ -10,6 +10,8 @@ This chapter holds Memoria-ToDo's design: what each part does, how parts depend 
 | Learn how the desktop app is built | [Desktop app](desktop/README.md) |
 | Learn how the Android app is built | [Android app](android/README.md) |
 | Learn how the code is built, tested, and released | [Technology stack](technology-stack.md) |
+| Make a version tag, which starts a release, or clear one | [Version tags](version-tags.md) |
+| Add a skill for AI tools, or learn how each tool finds one | [Agent skills](agent-skills.md) |
 | Start a design file for a new area | [Design file template](template.md) |
 | Learn how a design decision gets made | [Changing the design](../contributing/process.md#changing-the-design) |
 
@@ -34,3 +36,5 @@ Proposed: the technology stack row's place and scope. This is a decision to conf
 | 9 | Sync through git: when and how changes travel, and the device's SSH key. Designed together with Tasks. | [Sync through git](sync.md) | Decided |
 | 10 | Android app: its own Shell, Task editor, Task list, and Configure modules | [Android app](android/README.md), folder `android/` | Decided |
 | 11 | Technology stack: how the code is laid out; test tools; the one command that builds the code and runs every test; whether the desktop app carries its own .NET runtime; the release step that publishes the desktop installer and the Android package to GitHub Releases, as the desktop [Shell](desktop/shell.md#velopack-installs-the-app-and-keeps-it-up-to-date) and the [Android app](android/README.md#later-designs-answer-what-these-files-leave-open) need; the build of libgit2 for Android, and where the key that signs the Android package is kept; and an architecture test that compares project references with the [module map](modules.md#module-map). The language, .NET version, and main libraries are in [How the apps fit together](overview.md). Must be **Decided** before any product code is written. The throwaway proofs are exempt and run on a branch that's never merged, as the [technology stack](technology-stack.md#the-throwaway-proofs-run-on-a-never-merged-branch-before-this-page-is-decided) says. | [Technology stack](technology-stack.md) | Decided |
+| 12 | Version tags: the script and skill that make the next version tag and push it, or clear one; how the release job checks a tag; and how their tests run. Designed together with Agent skills. | [Version tags](version-tags.md) | Decided |
+| 13 | Agent skills: how each AI tool finds a skill, the pointer `generate.mjs` writes for Claude Code, and the rules a skill must meet. Designed together with Version tags. | [Agent skills](agent-skills.md) | Decided |
