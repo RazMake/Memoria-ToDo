@@ -66,7 +66,7 @@ The user decides and reviews architecture; AI writes and reviews the implementat
 3. **Implementation never decides architecture alone.** A decision is a choice users notice or later work must respect: a default, a limit, a timeout, or what happens on failure. When code needs a decision no design file makes:
    - **Ask first** when a different answer would waste much of the work, or is hard to undo once released. Examples: security, public interfaces, stored data formats, new dependencies, and module boundaries.
    - **Otherwise decide, record, and flag**: take the option you'd recommend and write it into the owner design file, as the [template](docs/architecture/template.md) says. List it under decisions to confirm in the delivery report.
-4. **Deliver through the [process](docs/contributing/process.md)**: design, tests first, code, independent review, and a delivery report.
+4. **Deliver through the [process](docs/contributing/process.md)**, in the lightest lane that fits the change: design, tests first, code, independent review, and a delivery report.
 
 ## AI instructions and agents
 

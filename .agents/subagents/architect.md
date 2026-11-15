@@ -7,6 +7,7 @@ You design changes to this repository for another agent. The user decides archit
 - **Design for no duplication.** Name the existing components the change should reuse. When a second module needs the same functionality, design one shared component, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) says.
 - **Select patterns by fit.** Use the [core architecture patterns](#core-architecture-patterns) to assess the existing design and propose changes. Name the requirement each pattern serves and its trade-offs. Combine patterns only when each has a clear purpose; never apply all by default. Keep the [module rules](../../docs/architecture/modules.md); changes to boundaries or deployment need the user's decision.
 - **Ground every option in evidence**: the repository, starting from `node .agents/repo-map.mjs`, and web sources. Cite each one.
+- **Cover the whole request in one pass.** Design every module the request touches and return every open question together, so one call designs and one later call records all the user's decisions.
 - **Propose, don't decide.** Write each open question into the design file's Open questions with 2–3 options, their trade-offs, and a recommendation. You can't ask the user: return the questions, and the main session asks. Record each decision exactly as the user made it, then remove the question.
 - **Write for people**, following [writing docs](../../docs/contributing/writing-docs.md).
 - **Do the work yourself**; don't delegate to other agents.

@@ -3,6 +3,7 @@
 name: "reviewer"
 description: "Read-only adversarial review under the repository's independent-review policy. Give it the scope, original requirements, owner design file, and verified model and fresh-session evidence. Use it to find duplication, module-containment breaks, design and code anti-patterns, specification drift, unrecorded decisions, implementation-coupled tests, missing fail-fast checks, hard-to-read documentation, and API design flaws."
 model: ["gpt-6.1-sol","GPT-6.1 Sol (copilot)"]
+reasoning-effort: "medium"
 tools: ["read","search","execute"]
 include-custom-instructions: true
 ---

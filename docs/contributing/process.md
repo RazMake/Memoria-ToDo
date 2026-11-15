@@ -13,6 +13,26 @@ The session you talk to runs these steps, asks you each decision, and delivers t
 | Review | [reviewer](../../.agents/subagents/reviewer.md) | Findings, sorted into code defects and design gaps |
 | Final validation | [tester](../../.agents/subagents/tester.md) and [coder](../../.agents/subagents/coder.md) | [Failure proof and final checks](../../AGENTS.md#tests) |
 
+## Pick the lightest lane that fits
+
+Before any agent starts, the session sizes the change and picks a lane. When unsure, it takes the heavier lane.
+
+| Lane | When | What changes |
+| --- | --- | --- |
+| Trivial | A few lines in one module, such as a typo, a wrong constant, or an off-by-one. The owner design file or the bug report makes the expected behavior obvious. No [review-surface](../../AGENTS.md#contributions) file changes. | No architect. The coder does red and green alone: it writes the failing unit test, sees it fail for the expected reason, then fixes the code. |
+| Small | One module, and the owner design file already decides every behavior. No review-surface file changes. | No architect. The tester takes the behaviors straight from the design file. Modules don't run in parallel. |
+| Full | Anything else: a missing decision, a review-surface change, or more than one module. | Every step, with the [architect batched](#changing-the-code) and [modules in parallel](#run-modules-in-parallel). |
+
+Every lane still gets an [independent review](#independent-review) and [final validation](../../AGENTS.md#tests).
+
+## Raise effort only for hard problems
+
+The architect and reviewer run at medium reasoning effort, as [subagents.json](../../.agents/subagents/subagents.json) sets. The session raises one call to high when the problem is complicated: it changes a public interface, a module boundary, the platform, or a stored data format; it touches security or concurrency; or it has several decisions that depend on each other. It uses the tool's per-call effort override. When the tool has none, the call runs at medium, and the delivery report says so.
+
+## Run modules in parallel
+
+In the full lane, a change that spans modules runs one red-and-green pipeline per module, with at most two agents running at a time. The architect declares any new public interface first, so each pipeline can build against it. Pipelines share the working tree, so each one changes only its own module's files. The composition root and other shared files change after both finish.
+
 ## Changing the design
 
 A design change is needed when the request needs a decision no design file makes, or it touches the [review surface](../../AGENTS.md#contributions). The design grows one decision at a time, so work can stop after any step and resume in a later session.
@@ -27,8 +47,8 @@ Design files describe the current design only. Git history records how it change
 
 ## Changing the code
 
-1. **List the behaviors.** The architect lists each rule the change must satisfy, from the owner design file. A rule that needs a missing decision goes through [Changing the design](#changing-the-design) first, or is decided, recorded, and flagged as [contributions](../../AGENTS.md#contributions) principle 3 allows.
-2. **Red.** The tester follows the [test policy](../../AGENTS.md#tests), delivering failing unit tests, and written UX and integration tests.
+1. **List the behaviors.** In the full lane, the architect lists each rule the change must satisfy, from the owner design file. One architect call covers the whole request: every module, behavior, and open question. After you decide, one more call records all your decisions. In the trivial and small lanes, the owner design file already lists the behaviors, so there is no architect call. A rule that needs a missing decision goes through [Changing the design](#changing-the-design) first, or is decided, recorded, and flagged as [contributions](../../AGENTS.md#contributions) principle 3 allows.
+2. **Red.** The tester follows the [test policy](../../AGENTS.md#tests), delivering failing unit tests, and written UX and integration tests. In the trivial lane, the coder writes the failing test instead.
 3. **Green.** The coder changes the code until the selected unit tests pass, without editing them. A test that turns out wrong goes back to the tester. The coder handles production refactors needed for testability under the [test policy](../../AGENTS.md#tests).
 4. **Review.** Follow [Independent review](#independent-review) to launch the reviewer and resolve every finding. The reviewer checks the change against the design file and the [module rules](../architecture/modules.md). Each finding is one of two kinds:
    - **Code defect**: the code, tests, or docs miss the design. Fix it test first, from step 2.
@@ -49,7 +69,8 @@ The main session owns reviewer selection and finding resolution. A reviewer cann
 - **Start a fresh session for each review.** Never reuse the author's session or an earlier reviewer session, or fork their conversations. Give the reviewer a self-contained brief with the scope, original requirements, owner design file, applicable instructions, code changes, and test evidence. Include the author and reviewer model identities and evidence of how the fresh session was created. Don't carry over the author's reasoning or earlier review conclusions.
 - **Stop if independence cannot be verified.** If the tool cannot launch or confirm a fresh session with a distinct model, report the blocker and ask you how to proceed. Don't silently use the same model or claim an independent review occurred.
 - **Evaluate every finding.** Track each by ID. Record either a verified fix or an evidence-backed rejection, with the reason and supporting code, specification, or test evidence. Take design gaps to you before implementing a decision. Keep unrelated pre-existing issues separate and ask you before expanding scope.
-- **Re-review fixes without an arbitrary round limit.** Apply the same launch rules to each new review of the corrected change. Resolve every finding before final validation and completion; don't automatically carry leftovers into the report after two rounds. If progress stalls or a finding cannot be resolved, report the blocker and ask you rather than claiming completion.
+- **Scope each review.** The first review covers the change itself: its diff, plus the callers and tests needed to check the diff's contract. A re-review covers only the fixes and the findings they address. Reviewers note pre-existing issues apart, without reviewing them.
+- **Stop after two rounds.** The first review and one scoped re-review use the same launch rules. Findings still open after the re-review come to you with their evidence before final validation. You decide whether to fix one, accept it, or order another re-review.
 
 ## Delivery report
 
