@@ -7,7 +7,7 @@ namespace Memoria.ToDo.Desktop.Configure;
 internal sealed class StatusSection : StackPanel
 {
     private readonly SyncUi _ui;
-    private readonly TextBlock _text = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 5) };
+    private readonly TextBlock _text = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 6) };
     private readonly TextBlock _message = ThemedText.Message();
 
     public StatusSection(SyncUi ui)

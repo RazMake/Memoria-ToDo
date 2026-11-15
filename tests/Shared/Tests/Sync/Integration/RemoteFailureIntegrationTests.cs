@@ -247,7 +247,7 @@ public sealed class RemoteFailureIntegrationTests
     [Fact]
     public async Task A_clone_the_host_denies_write_access_keeps_that_denial_as_its_failure_when_undoing_the_clone_also_fails()
     {
-        Assert.SkipUnless(OperatingSystem.IsWindows(), "An open file only blocks its own deletion on Windows.");
+        Assert.True(OperatingSystem.IsWindows(), "This test needs Windows: an open file only blocks its own deletion there.");
         var ct = TestContext.Current.CancellationToken;
         await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
         var a = await TrustingDeviceWithAReadOnlyKeyAsync(world, ct);

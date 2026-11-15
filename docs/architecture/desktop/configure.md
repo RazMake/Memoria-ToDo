@@ -31,12 +31,12 @@ Proposed: the deletion delay shows in days. This is a decision to confirm.
 
 The window shows each shortcut with the name of what it does, Add new task and Manage tasks, and it's wide enough to read at a glance. Proposed, each a decision to confirm:
 
-- **Three collapsible sections, in order: Shortcuts, Startup, and Sync settings.** All start collapsed, and expanding one collapses the others, so one is open at a time.
+- **Three collapsible sections, in order: Shortcuts, Startup, and Sync settings.** Exactly one is open at all times: the window opens with Shortcuts open, expanding one collapses the others, and clicking the open section's heading leaves it open.
 - **Shortcuts starts with a line saying how to change one**: click its field and press the new keys, or press Esc to keep the current one. Then each shortcut has a row, Add new task first: its name on the left and its field on the right, with the row's message under the field. The names share one column, so both fields line up, 5 pixels apart while neither has a message.
 - **Startup holds the Start with Windows check box**, a line of help under it, and its message.
 - **Sync settings shows the current repository and its local path**, and a Configure button offers two ways to change them: clone a repository, or use a clone the user already has. See [below](#the-sync-settings-section-sets-the-devices-clone).
 - **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: headings in the theme's heading style, messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
-- **The window keeps its width.** The user can't resize it; its height follows the open section and its messages, which take no room while empty.
+- **The window keeps its size.** It's 800 pixels wide and 850 tall, or as tall as the screen allows on a shorter screen, and neither the user, the open section, nor its messages change that. The headings of the sections below the open one stay at the window's bottom, and the open section fills the space between; it scrolls when its content is taller. Messages take no room while empty.
 - **The window opens with no field focused**, so the shortcuts keep working until the user clicks a field, as [below](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) explains.
 
 The user decided that Esc closes every window. Proposed, each a decision to confirm:
@@ -113,6 +113,13 @@ Not confirmed by a run: Windows' [Startup apps page](https://support.microsoft.c
 ### The Sync settings section sets the device's clone
 
 The section keeps the folder of this device's git clone, through [Sync's setup contract](../../../src/Shared/Sync/Setup/ISyncSetup.cs).
+
+Proposed, each a decision to confirm, so the section reads at a glance and fits the window:
+
+- **Four groups, each under a small bold heading, in order: Repository, Device, Status, and Tasks.** Repository holds the help line, the three lines, the Configure button, and the clone controls. Device holds the device name, the key buttons, and the host key. Status holds the sync status and Sync now. Tasks holds the deletion delay.
+- **In the Device group, labels share one column on the left, and their controls sit beside them**: Device name beside its box, and SSH key beside its three buttons in one row. Tasks reads as one sentence: "Delete resolved tasks after", a narrow days box, then "days".
+- **Buttons that act together sit in one row**: Generate key, Copy public key, and Add key at host; Accept host key and Forget host key, under the host key's text.
+- **Add key at host has a tooltip** saying it opens the host's page for adding this device's SSH key.
 
 - **The section shows three lines, each starting with its name in bold**: Repository, the clone's `origin` address; Local Path, the clone's folder; and Identity, the device name, which Sync puts on each commit it makes ([Sync through git](../sync.md#device-metadata-has-one-owner-and-never-travels-in-task-commits)). Repository and Local Path show "None" when there's none. A failure to read them shows as the section's message.
 - **A Configure button opens a menu with two choices**: Clone a repo, and Use existing repo clone. Each shows only its own controls under the lines, replacing the other's. Clicking Clone or Use this clone hides the controls at once; on success the lines update, and on failure the controls show again with the error. Proposed; a decision to confirm.
@@ -217,6 +224,8 @@ The options below were considered and rejected, grouped by decision.
   - **Saying nothing**: the user pressed keys and saw nothing happen, with no reason.
 - Laying out the window:
   - **Sizing the window to what it holds, the first desktop step's way**: it was cramped, and would jump in size as messages come and go.
+  - **A fixed width with a height that follows the open section**: the window jumped in size whenever the user opened another section.
+  - **All sections collapsed at first, and the open one collapsible**: the window showed nothing but headings.
 - Entering a shortcut:
   - **Check boxes for Ctrl, Alt, Shift, and Win, and a list of keys**: slower, and looks dated.
   - **Typing it, such as `Win+Alt+N`**: typing mistakes, and a format to explain.

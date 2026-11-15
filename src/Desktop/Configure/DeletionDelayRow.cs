@@ -9,7 +9,7 @@ namespace Memoria.ToDo.Desktop.Configure;
 internal sealed class DeletionDelayRow : StackPanel
 {
     private readonly DeletionDelaySetting _setting;
-    private readonly TextBox _days = new() { Width = 80, HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly TextBox _days = new() { Width = 60, Margin = new Thickness(6, 0, 6, 0) };
     private readonly TextBlock _message = ThemedText.Message();
 
     public DeletionDelayRow(ISharedTaskSettings settings)
@@ -17,8 +17,11 @@ internal sealed class DeletionDelayRow : StackPanel
         _setting = new DeletionDelaySetting(settings);
         AutomationProperties.SetName(_days, "Deletion delay (days)");
         _days.LostFocus += (_, _) => Commit();
-        Children.Add(new TextBlock { Text = "Deletion delay (days)", Margin = new Thickness(0, 12, 0, 4) });
-        Children.Add(_days);
+        var line = new StackPanel { Orientation = Orientation.Horizontal };
+        line.Children.Add(new TextBlock { Text = "Delete resolved tasks after", VerticalAlignment = VerticalAlignment.Center });
+        line.Children.Add(_days);
+        line.Children.Add(new TextBlock { Text = "days", VerticalAlignment = VerticalAlignment.Center });
+        Children.Add(line);
         Children.Add(_message);
         Refresh();
     }

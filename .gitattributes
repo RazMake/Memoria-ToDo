@@ -1,1 +1,7 @@
 * text=auto
+
+# .agents/generate.mjs writes these with LF endings; keep them LF on every machine.
+.claude/agents/** text eol=lf
+.claude/skills/** text eol=lf
+.codex/agents/** text eol=lf
+.github/agents/** text eol=lf

@@ -191,7 +191,7 @@ public sealed class TransportIntegrationTests
 
     private static async Task CancelledCloneWithFailingCleanupScenario(SyncWorld world)
     {
-        Assert.SkipUnless(OperatingSystem.IsWindows(), "An open file only blocks its own deletion on Windows.");
+        Assert.True(OperatingSystem.IsWindows(), "This test needs Windows: an open file only blocks its own deletion there.");
         var ct = TestContext.Current.CancellationToken;
         var a = world.AddDevice("a");
         await a.Sync.Setup.GenerateKeyAsync(ct);

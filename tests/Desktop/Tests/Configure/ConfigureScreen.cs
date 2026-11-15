@@ -54,6 +54,14 @@ internal sealed class ConfigureScreen : IDisposable
     public void Expand(string heading) =>
         Sections.Single(section => ((TextBlock)section.Header).Text == heading).IsExpanded = true;
 
+    /// <summary>Collapses the section with the heading, as a click on the heading of the open section does.</summary>
+    public void Collapse(string heading) =>
+        Sections.Single(section => ((TextBlock)section.Header).Text == heading).IsExpanded = false;
+
+    /// <summary>The headings of the open sections, in order.</summary>
+    public IReadOnlyList<string> OpenSections =>
+        [.. Sections.Where(section => section.IsExpanded).Select(section => ((TextBlock)section.Header).Text)];
+
     /// <summary>The Add new task action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction AddNewTask { get; }
 
