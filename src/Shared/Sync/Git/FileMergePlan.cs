@@ -110,12 +110,7 @@ internal static class FileMergePlan
         var (b, l, r) = (versions.Base, versions.Local, versions.Remote);
         try
         {
-            return kind switch
-            {
-                RepositoryFileKind.Task => rules.MergeTask(rules.TaskIdInPath(path)!, b, l, r),
-                RepositoryFileKind.Settings => rules.MergeSettings(b, l, r),
-                _ => SameContent(b, l) ? r : SameContent(b, r) ? l : r,
-            };
+            return FileMerges.Merge(kind, rules, path, versions);
         }
         catch (InvalidDataException)
         {
@@ -155,7 +150,7 @@ internal static class FileMergePlan
         }
     }
 
-    private static bool SameContent(byte[]? a, byte[]? b) => a is null ? b is null : b is not null && a.AsSpan().SequenceEqual(b);
+    internal static bool SameContent(byte[]? a, byte[]? b) => a is null ? b is null : b is not null && a.AsSpan().SequenceEqual(b);
 
     private sealed record SkippedMergeFile(string RelativePath, string Reason) : ISkippedRepositoryFile
     {

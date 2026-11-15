@@ -49,30 +49,22 @@ internal static class Program
                 deviceFolder,
                 Environment.MachineName,
                 TimeSpan.FromMinutes(30));
+            var (add, viewTasks) = TaskWindows.Create(
+                tasks,
+                theme,
+                TimeProvider.System,
+                clipboard,
+                imageFiles,
+                files,
+                // Each open of View Tasks serves the folder the repository is in then.
+                () => new WpfDescriptionWebView(tasks.Synchronization.RepositoryFolder, BrowserDataFolder()),
+                browser,
+                sync,
+                closeWindowKeys);
             return TrayApp.Create(
                 new TrayIcon(),
-                AddWindow.Create(
-                    tasks,
-                    Palette.Colors,
-                    theme,
-                    TimeProvider.System,
-                    clipboard,
-                    imageFiles,
-                    files,
-                    closeWindowKeys),
-                ViewTasksWindow.Create(
-                    tasks,
-                    Palette.Colors,
-                    theme,
-                    TimeProvider.System,
-                    clipboard,
-                    imageFiles,
-                    files,
-                    // Each open of View Tasks serves the folder the repository is in then.
-                    () => new WpfDescriptionWebView(tasks.Synchronization.RepositoryFolder, BrowserDataFolder()),
-                    browser,
-                    sync,
-                    closeWindowKeys),
+                add,
+                viewTasks,
                 ConfigureWindow.Create(
                     StartWithWindows(),
                     tasks.Settings,

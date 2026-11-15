@@ -9,10 +9,13 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 public static class AddWindow
 {
     /// <summary>Creates the Add window. It opens only on <see cref="IAddWindow.Show"/>.</summary>
-    public static IAddWindow Create(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        CloseWindowKeys closeWindowKeys) =>
-        new AddWindowView(tasks, new TaskEditorControl(tasks, palette, theme, time, clipboard, imageFiles, files));
+        CloseWindowKeys closeWindowKeys)
+    {
+        ArgumentNullException.ThrowIfNull(tagColors);
+        return new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files));
+    }
 }
 
 /// <summary>The Add window, as Shell uses it.</summary>
@@ -23,4 +26,7 @@ public interface IAddWindow
 
     /// <summary>Whether the window is open now.</summary>
     bool IsOpen { get; }
+
+    /// <summary>Hides an open Add window and keeps its draft, as Esc does. Does nothing when it isn't open.</summary>
+    void Close();
 }

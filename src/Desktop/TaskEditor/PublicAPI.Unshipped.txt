@@ -1,7 +1,8 @@
 Memoria.ToDo.Desktop.TaskEditor.AddWindow
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow
+Memoria.ToDo.Desktop.TaskEditor.IAddWindow.Close() -> void
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.Show() -> void
-static Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create(Memoria.ToDo.Shared.Tasks.ITasks! tasks, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys) -> Memoria.ToDo.Desktop.TaskEditor.IAddWindow!
+static Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys) -> Memoria.ToDo.Desktop.TaskEditor.IAddWindow!
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.IsOpen.get -> bool
 Memoria.ToDo.Desktop.TaskEditor.IClipboard
 Memoria.ToDo.Desktop.TaskEditor.IClipboard.ImagePng() -> byte[]?
@@ -9,7 +10,7 @@ Memoria.ToDo.Desktop.TaskEditor.IClipboard.Text() -> string?
 Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser
 Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser.Choose() -> string?
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl
-Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.TaskEditorControl(Memoria.ToDo.Shared.Tasks.ITasks! tasks, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files) -> void
+Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.TaskEditorControl(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files) -> void
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Value.get -> Memoria.ToDo.Shared.Tasks.TaskDraft!
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.Value.set -> void
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.HasChanges.get -> bool
@@ -18,6 +19,16 @@ Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.FocusTitle() -> void
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.SaveRequested -> System.EventHandler?
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.SaveAndClearRequested -> System.EventHandler?
 Memoria.ToDo.Desktop.TaskEditor.TaskEditorControl.CancelRequested -> System.EventHandler?
-Memoria.ToDo.Desktop.TaskEditor.TagChips
-Memoria.ToDo.Desktop.TaskEditor.TagChips.TagChips(Memoria.ToDo.Shared.Tasks.ITasks! tasks) -> void
-Memoria.ToDo.Desktop.TaskEditor.TagChips.TagChosen -> System.EventHandler<string!>?
+Memoria.ToDo.Desktop.TaskEditor.TagEditor
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme) -> void
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.Tags.set -> void
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagAdded -> System.EventHandler<string!>?
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagRemoved -> System.EventHandler<string!>?
+Memoria.ToDo.Desktop.TaskEditor.TagBadges
+Memoria.ToDo.Desktop.TaskEditor.TagBadges.TagBadges(Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme) -> void
+Memoria.ToDo.Desktop.TaskEditor.TagBadges.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Desktop.TaskEditor.TagBadges.Tags.set -> void
+Memoria.ToDo.Desktop.TaskEditor.TopTags
+Memoria.ToDo.Desktop.TaskEditor.TopTags.TopTags(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme) -> void
+Memoria.ToDo.Desktop.TaskEditor.TopTags.TagChosen -> System.EventHandler<string!>?

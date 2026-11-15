@@ -22,7 +22,7 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 /// <item>The editor's Title field has automation id "Title".</item>
 /// </list>
 /// </summary>
-internal sealed class TaskListScreen : IDisposable
+internal sealed partial class TaskListScreen : IDisposable
 {
     private static readonly Regex ResolvedCountLabel = new(@"^\d+ resolved$");
 
@@ -105,7 +105,7 @@ internal sealed class TaskListScreen : IDisposable
             throw new ArgumentOutOfRangeException(nameof(input), input, "Not a way to pick from the All tags list.");
         }
 
-        var all = Visuals(Window).OfType<ComboBox>().Single(c => c.IsVisible && AutomationProperties.GetName(c) == "All tags");
+        var all = AllTagsList();
         if (input == AllTagsInput.Mouse)
         {
             all.IsDropDownOpen = true;
@@ -142,6 +142,22 @@ internal sealed class TaskListScreen : IDisposable
 
         Refresh();
     }
+
+    /// <summary>Opens the "All tags" list and gives it the keyboard focus, as F4 on it does.</summary>
+    public void OpenAllTagsList()
+    {
+        var all = AllTagsList();
+        all.Focus();
+        Keyboard.Focus(all);
+        all.IsDropDownOpen = true;
+        Refresh();
+    }
+
+    /// <summary>Whether the "All tags" list is open.</summary>
+    public bool AllTagsListIsOpen => AllTagsList().IsDropDownOpen;
+
+    private ComboBox AllTagsList() =>
+        Visuals(Window).OfType<ComboBox>().Single(c => c.IsVisible && AutomationProperties.GetName(c) == "All tags");
 
     private static void RequireOpen(ComboBox all, string when)
     {
@@ -204,6 +220,15 @@ internal sealed class TaskListScreen : IDisposable
     {
         SimulatedKey.Chord(FocusedElement as UIElement ?? Window, keys);
         Refresh();
+    }
+
+    /// <summary>
+    /// Presses the keys, the last of which closes View Tasks. Nothing is laid out afterwards, since no window is left.
+    /// </summary>
+    public void PressToClose(params Key[] keys)
+    {
+        SimulatedKey.Chord(FocusedElement as UIElement ?? Window, keys);
+        System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     // The window's own focused element. Keyboard.FocusedElement is the process-wide keyboard focus, which isn't this window's
@@ -322,17 +347,43 @@ internal sealed class TaskListScreen : IDisposable
     /// <summary>What the Title field of whichever row is being edited holds now.</summary>
     public string EditedTitleText => TextFields.TextOf(EditedField("Title"));
 
+    /// <summary>Whether the edited row's Title is marked as empty, for the eye and for assistive tools.</summary>
+    public bool EditedTitleIsMarked => !string.IsNullOrEmpty(AutomationProperties.GetItemStatus(EditedField("Title")));
+
+    /// <summary>Whether the keyboard focus is in one of the editor's fields.</summary>
+    public bool FocusIsInEditor => TaskEditor.Tests.EditorFields.FocusedFieldName() is not null;
+
     /// <summary>What the Tags field of the row being edited holds: the tag text typed and not yet added.</summary>
     public string EditedTagsText => TextFields.TextOf(EditedField("Tags"));
 
-    /// <summary>Types the text into the edited row's Tags field, without adding it as a tag.</summary>
+    /// <summary>Types the text into the edited row's Tags field, without adding it as a tag. That field is Custom's tag box, so this opens the + menu and chooses Custom first when the box isn't showing.</summary>
     public void TypeTags(string text)
     {
+        if (!CustomIsOpen)
+        {
+            var tagRow = Rows().Single(row => TextFields.FindShowing(row, TaskEditor.Tests.TagControls.AddTag) is not null);
+            Activate(TaskEditor.Tests.TagControls.Plus(tagRow));
+            ChooseCustom();
+        }
+
         var field = EditedField("Tags");
         TextFields.Type(field, text);
         field.Focus();
         Keyboard.Focus(field);
     }
+
+    /// <summary>Types the text into the edited row's Description, one character at a time as the keyboard does; "/" opens the snippet list.</summary>
+    public void TypeInDescription(string text)
+    {
+        var field = EditedField("Description");
+        field.Focus();
+        Keyboard.Focus(field);
+        TaskEditor.Tests.EditorFields.TypeOnFocused(text);
+        Refresh();
+    }
+
+    /// <summary>The snippets the edited row's open snippet list offers; empty while it is closed.</summary>
+    public IReadOnlyList<string> ShownSnippets => TaskEditor.Tests.EditorFields.ShownSnippets(Window);
 
     /// <summary>What the Description field of the row being edited holds now.</summary>
     public string EditedDescriptionText => TextFields.TextOf(EditedField("Description"));

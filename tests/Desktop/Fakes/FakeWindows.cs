@@ -5,15 +5,18 @@ using Memoria.ToDo.Desktop.TaskList;
 namespace Memoria.ToDo.Desktop.Fakes;
 
 /// <summary>
-/// The shared fake of <see cref="IAddWindow"/>: counts Show calls, and adds "Add" to the shared log, when given one,
-/// so a test can read the order in which windows were shown.
+/// The shared fake of <see cref="IAddWindow"/>: counts Show and Close calls, and adds "Add" for a Show and "Close Add"
+/// for a Close to the shared log, when given one, so a test can read the order of the calls. Close hides the window.
 /// </summary>
 public sealed class FakeAddWindow(List<string>? shownLog = null) : IAddWindow
 {
     /// <summary>How many times Show was called.</summary>
     public int ShowCount { get; private set; }
 
-    /// <summary>What IsOpen answers; false when not set.</summary>
+    /// <summary>How many times Close was called.</summary>
+    public int CloseCount { get; private set; }
+
+    /// <summary>What IsOpen answers; false when not set. Close sets it to false.</summary>
     public bool IsOpen { get; set; }
 
     /// <inheritdoc />
@@ -22,16 +25,46 @@ public sealed class FakeAddWindow(List<string>? shownLog = null) : IAddWindow
         ShowCount++;
         shownLog?.Add("Add");
     }
+
+    /// <inheritdoc />
+    public void Close()
+    {
+        CloseCount++;
+        IsOpen = false;
+        shownLog?.Add("Close Add");
+    }
 }
 
-/// <summary>The shared fake of <see cref="IViewTasksWindow"/>: counts Show calls, and logs "View Tasks" like <see cref="FakeAddWindow"/>.</summary>
+/// <summary>
+/// The shared fake of <see cref="IViewTasksWindow"/>: counts Show and Close calls, and logs "View Tasks" and
+/// "Close View Tasks" like <see cref="FakeAddWindow"/>. Close answers <see cref="CloseAnswer"/>.
+/// </summary>
 public sealed class FakeViewTasksWindow(List<string>? shownLog = null) : IViewTasksWindow
 {
     /// <summary>How many times Show was called.</summary>
     public int ShowCount { get; private set; }
 
+    /// <summary>How many times Close was called.</summary>
+    public int CloseCount { get; private set; }
+
+    /// <summary>What Close answers; true, as when the window closed, when not set. A true answer sets IsOpen to false.</summary>
+    public bool CloseAnswer { get; set; } = true;
+
     /// <summary>What IsOpen answers; false when not set.</summary>
     public bool IsOpen { get; set; }
+
+    /// <inheritdoc />
+    public bool Close()
+    {
+        CloseCount++;
+        shownLog?.Add("Close View Tasks");
+        if (CloseAnswer)
+        {
+            IsOpen = false;
+        }
+
+        return CloseAnswer;
+    }
 
     /// <summary>The managed id of the thread of each Show call, in order.</summary>
     public List<int> ShownOnThreads { get; } = [];

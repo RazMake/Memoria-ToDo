@@ -8,12 +8,14 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     private readonly Lock gate = new();
     private readonly TaskFolder folder = new(files);
     private readonly SettingsFolder settingsFolder = new(files);
+    private readonly TagColorsFolder tagColorsFolder = new(files);
     private readonly DraftStore drafts = new(files, deviceFolder);
     private readonly EditImageStore editImages = new(files, deviceFolder);
     private readonly ImageShrinker shrinker = new(encoder);
     private string? clone;
     private TaskSet set = TaskSet.Empty;
-    private SettingsLoad settings = new(SharedSettings.Defaults, false, null);
+    private FileLoad<SharedSettings> settings = new(SharedSettings.Defaults, false, null);
+    private FileLoad<TagColorSet> tagColors = new(TagColorSet.Empty, false, null);
     private IReadOnlyList<ISkippedRepositoryFile> skipped = [];
 
     public event EventHandler? Changed;
@@ -38,13 +40,13 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             Apply(loaded);
         }
 
-        Announce(Notice.Tasks | Notice.Settings);
+        Announce(Notice.Tasks | Notice.Settings | Notice.TagColors);
     }
 
     /// <summary>Everything a reload reads, built whole so a failure leaves the current state untouched.</summary>
-    private sealed record Loaded(TaskSet Set, SettingsLoad Settings, IReadOnlyList<ISkippedRepositoryFile> Skipped)
+    private sealed record Loaded(TaskSet Set, FileLoad<SharedSettings> Settings, FileLoad<TagColorSet> TagColors, IReadOnlyList<ISkippedRepositoryFile> Skipped)
     {
-        public static readonly Loaded Empty = new(TaskSet.Empty, new SettingsLoad(SharedSettings.Defaults, false, null), []);
+        public static readonly Loaded Empty = new(TaskSet.Empty, new(SharedSettings.Defaults, false, null), new(TagColorSet.Empty, false, null), []);
     }
 
     private Loaded Load(string root)
@@ -53,13 +55,17 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         var loadedSettings = settingsFolder.Read(root);
         if (loadedSettings.Failure is not null)
             skippedTasks.Add(SkippedRepositoryFile.Of(RepositoryLayout.SettingsFileName, loadedSettings.Failure));
-        return new Loaded(new TaskSet(tasks), loadedSettings, skippedTasks);
+        var loadedColors = tagColorsFolder.Read(root);
+        if (loadedColors.Failure is not null)
+            skippedTasks.Add(SkippedRepositoryFile.Of(RepositoryLayout.TagColorsFileName, loadedColors.Failure));
+        return new Loaded(new TaskSet(tasks), loadedSettings, loadedColors, skippedTasks);
     }
 
     private void Apply(Loaded loaded)
     {
         set = loaded.Set;
         settings = loaded.Settings;
+        tagColors = loaded.TagColors;
         skipped = loaded.Skipped;
     }
 
@@ -70,6 +76,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         Tasks = 1,
         Settings = 2,
         LocalSaved = 4,
+        TagColors = 8,
     }
 
     /// <summary>Raises the events for what changed. Call it after leaving the lock, so handlers never run inside it.</summary>
@@ -79,11 +86,14 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             Changed?.Invoke(this, EventArgs.Empty);
         if (notice.HasFlag(Notice.Settings))
             settingsChanged?.Invoke(this, EventArgs.Empty);
+        if (notice.HasFlag(Notice.TagColors))
+            tagColorsChanged?.Invoke(this, EventArgs.Empty);
         if (notice.HasFlag(Notice.LocalSaved))
             localSaved?.Invoke(this, EventArgs.Empty);
     }
 
     private EventHandler? settingsChanged;
+    private EventHandler? tagColorsChanged;
     private EventHandler? localSaved;
 
     public TaskItem Add(TaskDraft draft)

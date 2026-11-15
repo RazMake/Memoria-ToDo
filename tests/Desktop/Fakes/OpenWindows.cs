@@ -71,6 +71,13 @@ public sealed class OpenWindows : IDisposable
         button.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
+    /// <summary>Toggles the button, as the automation tools do. Returns after the toggle has been handled.</summary>
+    public static void Click(System.Windows.Controls.Primitives.ToggleButton button)
+    {
+        ((IToggleProvider)new ToggleButtonAutomationPeer(button).GetPattern(PatternInterface.Toggle)).Toggle();
+        button.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
     /// <summary>Presses and releases Esc on the window, as the keyboard does: the tunneling event, then the bubbling one.</summary>
     public static void PressEscape(Window window)
     {

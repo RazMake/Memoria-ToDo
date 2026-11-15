@@ -117,16 +117,15 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - name: Take the version from the tag, or fail on a tag that isn't v<major>.<minor>.<patch>
-        run: |
-          if ($env:GITHUB_REF_NAME -notmatch '^v((0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))$') {
-            throw "The tag '$env:GITHUB_REF_NAME' isn't v<major>.<minor>.<patch>, such as v1.2.3."
-          }
-          "VERSION=$($Matches[1])" >> $env:GITHUB_ENV
       - uses: actions/checkout@v7
         with:
-          # The full history, so the next step can tell whether the tag's commit is on the default branch.
+          # The full history, so a later step can tell whether the tag's commit is on the default branch.
           fetch-depth: 0
+      - name: Take the version from the tag, or fail on a tag that isn't a version tag
+        run: |
+          $version = node .agents/version-tag.mjs --check $env:GITHUB_REF_NAME
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "VERSION=$version" >> $env:GITHUB_ENV
       - name: Fail unless the tag's commit is on the default branch
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}

@@ -59,7 +59,14 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(sync);
         ArgumentNullException.ThrowIfNull(uiThread);
 
-        bool AnyWindowOpen() => add.IsOpen || viewTasks.IsOpen || configure.IsOpen;
+        bool ConfigureOpen() => configure.IsOpen;
+        bool AddOpen() => add.IsOpen;
+        bool ViewTasksOpen() => viewTasks.IsOpen;
+        bool CloseAdd()
+        {
+            add.Close();
+            return true;
+        }
 
         var redirect = new SetupRedirect(sync, configure);
         var showAdd = redirect.Through(add.Show);
@@ -74,8 +81,8 @@ public static class TrayApp
             showViewTasks,
             configure,
             oneInstance,
-            new ActiveShortcut(shortcut, () => { if (!AnyWindowOpen()) { addByUser(); } }),
-            new ActiveShortcut(shortcut, () => { if (!AnyWindowOpen()) { viewTasksByUser(); } }),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, AddOpen, ViewTasksOpen, viewTasks.Close, addByUser).Press),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, AddOpen, CloseAdd, viewTasksByUser).Press),
             startup,
             new UpdateSchedule(updates, time),
             sync);

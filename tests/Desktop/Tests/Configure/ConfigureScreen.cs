@@ -84,7 +84,18 @@ internal sealed class ConfigureScreen : IDisposable
     public Window Window => Assert.Single(windows.Visible());
 
     /// <summary>Whether the window is showing.</summary>
-    public bool IsShowing => windows.Visible().Count == 1;
+    public bool IsShowing => windows.Visible().Count > 0;
+
+    /// <summary>Opens the Configure button's menu, as a click on the button does, and returns it.</summary>
+    public ContextMenu OpenRepositoryMenu()
+    {
+        ClickTitle("Sync settings");
+        Window.UpdateLayout();
+        var button = OpenWindows.Descendants(Window).OfType<Button>().Single(b => b.Content as string == "Configure");
+        OpenWindows.Click(button);
+        Assert.True(button.ContextMenu.IsOpen, "The Configure button didn't open its menu.");
+        return button.ContextMenu;
+    }
 
     /// <summary>The Add new task row's shortcut box, the first of the three.</summary>
     public TextBox AddField => ShortcutFields[0];

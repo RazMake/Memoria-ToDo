@@ -5,18 +5,30 @@ using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
-/// <summary>What <see cref="ViewTasksWindow.Create"/> requires: every part, the platform's Close window keys included.</summary>
+/// <summary>What View Tasks refuses when it is created, before it makes a window. No window is made, so these run with no screen.</summary>
 [Unit]
 public class ViewTasksWindowCreateTests
 {
-    [Fact]
-    public void Rejects_missing_Close_window_keys()
-    {
-        var services = new ListServices();
+    private readonly ListServices _services = new();
 
+    [Fact]
+    public void Create_rejects_missing_tag_colors_by_name()
+    {
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
-            services.Tasks, Palette.Colors, services.Theme, services.Time, services.Clipboard, new FakeImageFileChooser(),
-            services.Files, () => new FakeDescriptionWebView(), services.Browser, services.Sync, null!));
+            _services.Tasks, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
+            _services.Browser, _services.Sync, _services.CloseWindowKeys));
+
+        Assert.Equal("tagColors", failure.ParamName);
+    }
+
+    [Fact]
+    public void Create_rejects_missing_Close_window_keys_by_name()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
+            _services.Tasks, _services.TagColors, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
+            _services.Browser, _services.Sync, null!));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
     }

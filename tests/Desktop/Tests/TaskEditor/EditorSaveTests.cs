@@ -10,6 +10,7 @@ public class EditorSaveTests
 {
     private readonly List<string> _events = [];
     private TaskDraft _draft = new("id", "Buy milk", "", []);
+    private bool _tagsAdded = true;
     private readonly EditorSave _save;
 
     public EditorSaveTests() =>
@@ -17,7 +18,12 @@ public class EditorSaveTests
             addTypedTags: () =>
             {
                 _events.Add("tags");
-                _draft = _draft with { Tags = [.. _draft.Tags, "typed"] };
+                if (_tagsAdded)
+                {
+                    _draft = _draft with { Tags = [.. _draft.Tags, "typed"] };
+                }
+
+                return _tagsAdded;
             },
             value: () => _draft,
             markTitleMissing: () => _events.Add("mark"),
@@ -90,9 +96,32 @@ public class EditorSaveTests
     }
 
     [Fact]
+    public void Saves_nothing_when_the_typed_tag_cant_be_added()
+    {
+        _tagsAdded = false;
+        var called = false;
+
+        var result = _save.Run(_ => called = true);
+
+        Assert.False(result);
+        Assert.False(called);
+    }
+
+    [Fact]
+    public void A_typed_tag_that_cant_be_added_leaves_the_Title_and_the_message_alone()
+    {
+        _tagsAdded = false;
+        _draft = _draft with { Title = "" };
+
+        _save.Run(_ => { });
+
+        Assert.Equal(["tags"], _events);
+    }
+
+    [Fact]
     public void A_missing_message_action_is_rejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new EditorSave(() => { }, () => _draft, () => { }, () => { }, null!));
+        Assert.Throws<ArgumentNullException>(() => new EditorSave(() => true, () => _draft, () => { }, () => { }, null!));
     }
 
     [Fact]

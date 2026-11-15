@@ -54,7 +54,7 @@ internal sealed partial class TaskService
                 if (owner.settings.Present)
                     return;
                 owner.settingsFolder.Write(root, current);
-                owner.settings = new SettingsLoad(current, true, null);
+                owner.settings = new FileLoad<SharedSettings>(current, true, null);
             }
         }
 
@@ -111,7 +111,7 @@ internal sealed partial class TaskService
             }
 
             if (reloaded)
-                owner.Announce(Notice.Tasks | Notice.Settings);
+                owner.Announce(Notice.Tasks | Notice.Settings | Notice.TagColors);
             Rethrow(updateFailure, reloadFailure);
         }
 

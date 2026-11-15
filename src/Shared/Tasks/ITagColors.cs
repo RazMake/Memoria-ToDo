@@ -1,0 +1,29 @@
+namespace Memoria.ToDo.Shared.Tasks;
+
+/// <summary>
+/// Each tag's color, kept in tags.json and shared by every device. Safe to call from any thread;
+/// uses the task store's lock. Tags match with case ignored. A color's name is kept without interpreting it.
+/// </summary>
+public interface ITagColors
+{
+    /// <summary>
+    /// The color name kept for tag, or null when there's none: no entry, no selected repository,
+    /// or a tags.json that can't be read or has a newer version, which SkippedFiles names.
+    /// </summary>
+    string? ColorOf(string tag);
+
+    /// <summary>
+    /// Keeps colorName for tag, with the current UTC time, creating tags.json when it's missing, then raises
+    /// LocalSaved and Changed. The same color as kept writes and raises nothing. Throws, before writing:
+    /// ArgumentException for an invalid tag, or a colorName that isn't one non-empty line;
+    /// NoRepositoryFolderException when no repository is selected; and InvalidDataException when
+    /// tags.json can't be read or has a newer version.
+    /// </summary>
+    void SetColor(string tag, string colorName);
+
+    /// <summary>
+    /// Raised on the calling thread, outside the store's lock, after a color is kept here,
+    /// on repository selection, and on every reload.
+    /// </summary>
+    event EventHandler? Changed;
+}

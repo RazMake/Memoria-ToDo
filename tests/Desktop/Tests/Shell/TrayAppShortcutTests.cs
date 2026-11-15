@@ -33,21 +33,14 @@ public class TrayAppShortcutTests
         Assert.Equal(0, app.Configure.ShowCount);
     }
 
-    public static TheoryData<ShortcutKind, string> KindsAndOpenWindows() => new()
-    {
-        { ShortcutKind.AddNewTask, "Add" }, { ShortcutKind.AddNewTask, "View Tasks" }, { ShortcutKind.AddNewTask, "Configure" },
-        { ShortcutKind.ManageTasks, "Add" }, { ShortcutKind.ManageTasks, "View Tasks" }, { ShortcutKind.ManageTasks, "Configure" },
-    };
-
     [Theory]
-    [MemberData(nameof(KindsAndOpenWindows))]
-    public void A_press_while_a_window_is_open_shows_no_window(ShortcutKind kind, string openWindow)
+    [InlineData(ShortcutKind.AddNewTask)]
+    [InlineData(ShortcutKind.ManageTasks)]
+    public void A_press_while_Configure_is_open_shows_and_closes_no_window(ShortcutKind kind)
     {
         var app = Started();
         app.ActionOf(kind).Register(TestShortcut.A);
-        app.Add.IsOpen = openWindow == "Add";
-        app.ViewTasks.IsOpen = openWindow == "View Tasks";
-        app.Configure.IsOpen = openWindow == "Configure";
+        app.Configure.IsOpen = true;
 
         app.GlobalShortcut.Press(TestShortcut.A);
 

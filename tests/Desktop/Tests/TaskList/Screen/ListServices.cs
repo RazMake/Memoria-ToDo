@@ -29,7 +29,7 @@ internal sealed class ListServices : ListTasks
 
     /// <summary>Opens View Tasks on these services. It shows only after <c>Show</c>. Each web view it asks for is kept in <see cref="WebViews"/>.</summary>
     public IViewTasksWindow CreateWindow() => ViewTasksWindow.Create(
-        Tasks, Palette.Colors, Theme, Time, Clipboard, new FakeImageFileChooser(), Files,
+        Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, new FakeImageFileChooser(), Files,
         () =>
         {
             var view = new FakeDescriptionWebView();

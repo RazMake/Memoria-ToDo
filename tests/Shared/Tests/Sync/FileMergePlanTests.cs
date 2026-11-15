@@ -14,6 +14,7 @@ public sealed class FileMergePlanTests
 {
     private const string Task = "tasks/t1.json";
     private const string Image = "images/t1/a.png";
+    private const string TagColors = "tags.json";
 
     [Fact]
     public void Writes_the_merged_task_when_only_the_local_side_edited_it()
@@ -104,6 +105,39 @@ public sealed class FileMergePlanTests
     }
 
     [Fact]
+    public void Merges_a_tag_colors_file_both_sides_changed_through_the_tag_colors_merge()
+    {
+        var plan = Decide((TagColors, "b", "l", "r"));
+
+        Assert.Equal("b|l|r", WrittenText(plan, TagColors));
+        Assert.Empty(plan.Skipped);
+    }
+
+    [Fact]
+    public void Leaves_a_tag_colors_file_both_sides_have_identically_as_it_is()
+    {
+        Assert.Empty(Decide((TagColors, "b", "same", "same")).Actions);
+    }
+
+    [Fact]
+    public void Keeps_an_unreadable_local_tag_colors_file_and_reports_it_when_the_remote_changed_it()
+    {
+        var plan = Decide((TagColors, "v1", Rules.Unreadable, "v2"));
+
+        Assert.Equal(Rules.Unreadable, WrittenText(plan, TagColors));
+        Assert.Equal(TagColors, Assert.Single(plan.Skipped).RelativePath);
+    }
+
+    [Fact]
+    public void Keeps_a_local_tag_colors_edit_and_reports_it_when_the_remote_made_the_file_unreadable()
+    {
+        var plan = Decide((TagColors, "v1", "v2", Rules.Unreadable));
+
+        Assert.Equal("v2", WrittenText(plan, TagColors));
+        Assert.Equal(TagColors, Assert.Single(plan.Skipped).RelativePath);
+    }
+
+    [Fact]
     public void Ends_unmanaged_files_as_the_remote_has_them_whatever_the_local_side_did()
     {
         var plan = Decide(("notes.txt", "x", "local", "remote"), ("local-only.txt", null, "local", null), ("gone.txt", "x", "local", null));
@@ -139,10 +173,13 @@ public sealed class FileMergePlanTests
 
         public string SettingsFileName => "settings.json";
 
+        public string TagColorsFileName => "tags.json";
+
         public RepositoryFileKind Classify(string relativePath) =>
             relativePath.StartsWith("tasks/", StringComparison.Ordinal) ? RepositoryFileKind.Task
             : relativePath.StartsWith("images/", StringComparison.Ordinal) ? RepositoryFileKind.Image
             : relativePath == SettingsFileName ? RepositoryFileKind.Settings
+            : relativePath == TagColorsFileName ? RepositoryFileKind.TagColors
             : RepositoryFileKind.Unmanaged;
 
         public string? TaskIdInPath(string relativePath) => relativePath.Split('/') is [_, var id, ..] ? Path.GetFileNameWithoutExtension(id) : null;
@@ -162,5 +199,16 @@ public sealed class FileMergePlanTests
         }
 
         public byte[]? MergeSettings(byte[]? basis, byte[]? local, byte[]? remote) => throw new NotSupportedException();
+
+        /// <summary>Joins the three versions, so a test sees that the plan used this merge and with which inputs.</summary>
+        public byte[]? MergeTagColors(byte[]? basis, byte[]? local, byte[]? remote)
+        {
+            if (new[] { basis, local, remote }.Any(file => file is not null && Encoding.UTF8.GetString(file) == Unreadable))
+                throw new InvalidDataException("The tag colors can't be read.");
+
+            return basis is null && local is null && remote is null
+                ? null
+                : Encoding.UTF8.GetBytes(string.Join('|', new[] { basis, local, remote }.Select(file => file is null ? "-" : Encoding.UTF8.GetString(file))));
+        }
     }
 }

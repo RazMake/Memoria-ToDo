@@ -47,6 +47,8 @@ Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.Classify(string! relativePath) ->
 Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.ImagesFolderName.get -> string!
 Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.MergeSettings(byte[]? basis, byte[]? local, byte[]? remote) -> byte[]?
 Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.MergeTask(string! expectedTaskId, byte[]? basis, byte[]? local, byte[]? remote) -> byte[]?
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.MergeTagColors(byte[]? basis, byte[]? local, byte[]? remote) -> byte[]?
+Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.TagColorsFileName.get -> string!
 Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.SettingsFileName.get -> string!
 Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.TaskIdInPath(string! relativePath) -> string?
 Memoria.ToDo.Shared.Tasks.IRepositoryFileRules.TasksFolderName.get -> string!
@@ -67,6 +69,11 @@ Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile.RequiresUpdate.get -> bool
 Memoria.ToDo.Shared.Tasks.ITaskStore
 Memoria.ToDo.Shared.Tasks.ITaskStore.Settings.get -> Memoria.ToDo.Shared.Tasks.ISharedTaskSettings!
 Memoria.ToDo.Shared.Tasks.ITaskStore.Synchronization.get -> Memoria.ToDo.Shared.Tasks.ITaskSynchronization!
+Memoria.ToDo.Shared.Tasks.ITaskStore.TagColors.get -> Memoria.ToDo.Shared.Tasks.ITagColors!
+Memoria.ToDo.Shared.Tasks.ITagColors
+Memoria.ToDo.Shared.Tasks.ITagColors.Changed -> System.EventHandler?
+Memoria.ToDo.Shared.Tasks.ITagColors.ColorOf(string! tag) -> string?
+Memoria.ToDo.Shared.Tasks.ITagColors.SetColor(string! tag, string! colorName) -> void
 Memoria.ToDo.Shared.Tasks.ITaskSynchronization
 Memoria.ToDo.Shared.Tasks.ITaskSynchronization.DeleteExpiredTasks() -> void
 Memoria.ToDo.Shared.Tasks.ITaskSynchronization.EnsureSettings() -> void
@@ -78,6 +85,7 @@ Memoria.ToDo.Shared.Tasks.ITaskSynchronization.UpdateRepository(string! expected
 Memoria.ToDo.Shared.Tasks.RepositoryFileKind
 Memoria.ToDo.Shared.Tasks.RepositoryFileKind.Image = 2 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
 Memoria.ToDo.Shared.Tasks.RepositoryFileKind.Settings = 3 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
+Memoria.ToDo.Shared.Tasks.RepositoryFileKind.TagColors = 4 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
 Memoria.ToDo.Shared.Tasks.RepositoryFileKind.Task = 1 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
 Memoria.ToDo.Shared.Tasks.RepositoryFileKind.Unmanaged = 0 -> Memoria.ToDo.Shared.Tasks.RepositoryFileKind
 Memoria.ToDo.Shared.Tasks.NoRepositoryFolderException

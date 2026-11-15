@@ -2,13 +2,13 @@
 
 Status: Decided
 
-Tasks is the shared module that owns every task: its file, ID, and rank, how two devices' versions of it merge, automatic deletion, images, the draft each device keeps, and the settings every device shares. Both apps change tasks only through Tasks.
+Tasks is the shared module that owns every task: its file, ID, and rank, how two devices' versions of it merge, automatic deletion, images, the draft each device keeps, and the settings and tag colors every device shares. Both apps change tasks only through Tasks.
 
 ## Behavior
 
 [Purpose and scope](purpose.md#each-task-is-a-json-file-with-a-few-properties) decides what a task holds, and [Sync through git](sync.md) decides when changes travel.
 
-### The repository holds task files, image folders, and one settings file
+### The repository holds task files, image folders, settings, and tag colors
 
 The table lists what Tasks keeps in the task repository:
 
@@ -17,6 +17,7 @@ The table lists what Tasks keeps in the task repository:
 | `tasks/<id>.json` | One task, in a file named by the task's ID |
 | `images/<id>/` | That task's images, one file each |
 | `settings.json` | The deletion delay and the desktop app's two shortcut texts, whose validation belongs to [Configure](desktop/configure.md#each-setting-has-one-owner) |
+| `tags.json` | The color the user picked for each tag, as [below](#each-tags-color-is-kept-in-one-synced-file) |
 
 Deleting a task removes its file and its image folder.
 
@@ -161,17 +162,18 @@ callback under Tasks' existing lock. A changed selection fails before the callba
 use this operation; fetch, push, and every other network wait stay outside it. Sync rechecks and commits intervening
 local edits before applying a fetched merge.
 
-The operation reloads tasks, settings, and skipped-file diagnostics while still holding the lock, including after a
+The operation reloads tasks, settings, tag colors, and skipped-file diagnostics while still holding the lock, including after a
 failed callback. It then releases the lock before raising notices. A callback failure propagates; a reload failure too
 is kept with it in `AggregateException`. This is local coordination, not a transaction that undoes a failed Git update.
 
-`LocalSaved` reports durable local repository changes, including settings and automatic deletion. It excludes repository
+`LocalSaved` reports durable local repository changes, including settings, tag colors, and automatic deletion. It excludes repository
 selection, imported updates, sync's settings initialization, drafts, and images still waiting outside the clone. The existing task `Changed` notice
-continues to refresh screens; settings have their own notice. A reload never starts another sync by pretending to be
+continues to refresh screens; settings and tag colors each have their own notice. A reload never starts another sync by pretending to be
 a local save. Skipped-file snapshots name corrupt, unreadable, and newer-version files without deleting them.
 
 Decisions to confirm: a reload always raises the settings-change notice, even when values are unchanged;
-`EnsureSettings` raises no `LocalSaved` notice because initialization is already part of a sync pass.
+`EnsureSettings` raises no `LocalSaved` notice because initialization is already part of a sync pass. Proposed: a reload
+always raises the tag-color notice too, the same way. This is a decision to confirm.
 
 ### Images are at most 1 MB and live beside their task
 
@@ -225,6 +227,33 @@ Proposed, each a decision to confirm:
 - Search matches a task when every word typed appears in its title, description, or tags. Empty search text matches every task, and matches come in rank order.
 - The tag filter shows the tasks that have the tag.
 
+### Each tag's color is kept in one synced file
+
+The user decided that each tag's color is kept in `tags.json`, a file in the clone that syncs like `settings.json`, so a tag looks the same on every device. It holds one entry per tag: the color's name and when the user picked it. Tasks keeps the name as text without interpreting it, as it keeps shortcut text, since Tasks uses no other module. [Rendering](rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the colors, and picks the color of a tag with no entry.
+
+The file is one object with these fields, in this order:
+
+| Field | Value |
+| --- | --- |
+| `version` | `1` |
+| `tags` | A list of entries, each an object with `tag`, the tag as spelled when its color was picked; `color`, the color's name; and `updated`, a UTC timestamp |
+
+Two versions of the file merge one entry at a time, matching tags with case ignored:
+
+- **An entry on one side only is kept.** A missing entry or an absent file never deletes one.
+- **An entry on both sides takes the one with the later `updated` time**, spelling included. Equal times take the remote's.
+- **Three absent files merge to no file.** A present file that can't be read fails the merge, as a settings file does.
+
+Sync carries `tags.json` as it carries `settings.json`: Tasks' [file rules](#tag-colors-are-a-capability-of-their-own) classify the file and merge its versions, and Sync commits, merges, and pushes it. An older app doesn't know the file, so it [leaves it as the remote has it](sync.md#each-sync-commits-fetches-merges-and-pushes-one-branch), and the colors survive.
+
+Proposed, each a decision to confirm:
+
+- The file uses the [task file's JSON style](#each-task-file-holds-nine-fields), with its entries sorted by tag, ignoring case, so a recolor shows as a few changed lines.
+- An entry is written only when the user picks a color, and is never deleted, so a tag that goes out of use and comes back keeps its color. A clone has no `tags.json` until the first pick; settings initialization doesn't create one.
+- Picking a color writes the tag as spelled in the call, the color, and the current time. Picking the color a tag already has writes nothing.
+- A present file is unreadable when an entry's tag breaks the [tag rules](#tags-and-search-ignore-case), its color isn't one non-empty line, or its time isn't valid, or when two entries name the same tag. A newer app reads every older `version`, and an app that finds a newer one skips the file, as for task files.
+- While `tags.json` can't be read, every tag shows its default color, and picking a color fails without writing, as [failure modes](#failure-modes) say. Showing colors never stops the task list from loading.
+
 ## Public interface
 
 Each app's modules and Sync use these parts:
@@ -236,6 +265,7 @@ Each app's modules and Sync use these parts:
 - **Drafts**: start, load, keep, and discard this device's draft of a new task, with its images.
 - **Images**: save an image for a draft or an open edit and get its Markdown, and discard an open edit's images.
 - **[Shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs)**: the typed settings capability used by Configure.
+- **[Tag colors](#tag-colors-are-a-capability-of-their-own)**: the color name kept for a tag, and keeping a new one.
 - **[Synchronization](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs)**: Sync's separate capability, including its [pure file rules](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs). The source contracts define initialization, automatic deletion, coordinated updates, reloads, and diagnostics.
 
 The same three versions always merge to the same result, on every device. Tasks reads and writes files through the shared platform's [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files), takes the time from .NET's TimeProvider, and publishes an interface for image shrinking. Each app implements the interfaces and passes the system's time, as [How the apps fit together](overview.md#two-apps-share-one-c-library) says.
@@ -395,7 +425,7 @@ Sync receives only `Synchronization`. No caller casts a concrete implementation 
 
 `IRepositoryFileRules` is the only public home of the managed directory/file names and their classification.
 Its implementation reuses `RepositoryLayout` and the existing codecs. A Git-relative path uses `/`, is never rooted,
-and contains no `.` or `..` segment. Task and settings merges do no I/O and reject unreadable inputs rather than
+and contains no `.` or `..` segment. Task, settings, and tag-color merges do no I/O and reject unreadable inputs rather than
 returning a success-shaped fallback. Sync catches that failure per file, reports it, and leaves its bytes intact,
 except for the user-approved [bounded Sync discard policy](sync.md#each-sync-commits-fetches-merges-and-pushes-one-branch).
 
@@ -421,6 +451,80 @@ Also proposed for step 4, each a decision to confirm:
 - `Delete` stops at the first step that fails and throws its error, with no new exception type. Deleting the file is the step that deletes the task: if it fails, the task and its images stay as they were; once it succeeds, the task is deleted even when removing its images then fails, and those images stay in the clone. A caller tells the two apart by whether the task is still in `All`. Like every call, `Delete` does all its file work while no other call's file work runs, so its last step can't delete an image saved after the file was deleted, such as for a task with the same ID in another repository. Then it raises `Changed`, including when a step after the file's deletion failed. As with every call, `Changed` is raised once other calls can run again, so another call may run before the handlers do; Tasks never holds other calls back while handlers run.
 - `Resolve` and `Reopen` raise `Changed` only when they change the task, and `Move` and `SaveEdit` likewise.
 
+### Tag colors are a capability of their own
+
+Row 8 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) adds [tag colors](#each-tags-color-is-kept-in-one-synced-file) the way step 5 added settings: a property of the store, a small interface, and two file rules Sync uses. The composition root passes `TagColors` to the window modules that show tags. The declarations below add to the existing contracts:
+
+```csharp
+namespace Memoria.ToDo.Shared.Tasks;
+
+public interface ITaskStore : ITasks
+{
+    // Settings and Synchronization stay as they are.
+
+    /// <summary>Each tag's color in this store's selected repository.</summary>
+    ITagColors TagColors { get; }
+}
+
+/// <summary>
+/// Each tag's color, kept in tags.json and shared by every device. Safe to call from any thread;
+/// uses the task store's lock. Tags match with case ignored. A color's name is kept without interpreting it.
+/// </summary>
+public interface ITagColors
+{
+    /// <summary>
+    /// The color name kept for tag, or null when there's none: no entry, no selected repository,
+    /// or a tags.json that can't be read or has a newer version, which SkippedFiles names.
+    /// </summary>
+    string? ColorOf(string tag);
+
+    /// <summary>
+    /// Keeps colorName for tag, with the current UTC time, creating tags.json when it's missing, then raises
+    /// LocalSaved and Changed. The same color as kept writes and raises nothing. Throws, before writing:
+    /// ArgumentException for an invalid tag, or a colorName that isn't one non-empty line;
+    /// NoRepositoryFolderException when no repository is selected; and InvalidDataException when
+    /// tags.json can't be read or has a newer version.
+    /// </summary>
+    void SetColor(string tag, string colorName);
+
+    /// <summary>
+    /// Raised on the calling thread, outside the store's lock, after a color is kept here,
+    /// on repository selection, and on every reload.
+    /// </summary>
+    event EventHandler? Changed;
+}
+
+public interface IRepositoryFileRules
+{
+    // The existing members stay as they are.
+
+    /// <summary>The tag colors file's name, relative to the repository root.</summary>
+    string TagColorsFileName { get; }
+
+    /// <summary>
+    /// Merges each tag's entry by its own Updated time, remote winning ties, matching tags with case ignored.
+    /// Null means an absent file; an absent side or a missing entry never removes an entry. Three absent
+    /// files return null. Throws InvalidDataException for any present file that cannot be read; never alters input arrays.
+    /// </summary>
+    byte[]? MergeTagColors(byte[]? basis, byte[]? local, byte[]? remote);
+}
+
+public enum RepositoryFileKind
+{
+    Unmanaged,
+    Task,
+    Image,
+    Settings,
+    TagColors,
+}
+```
+
+The other contracts keep their members and cover the new file too: `SkippedFiles` names a `tags.json` that can't be read or has a newer version, and `UpdateRepository` reloads tag colors with tasks and settings.
+
+Proposed: `ColorOf` answers null while `tags.json` can't be read, rather than failing, so every badge shows its default color and the sync status names the file. A failure there would stop every screen that shows a tag, and a tag's default color is always a valid color. This is a decision to confirm.
+
+Proposed: `SetColor` checks its arguments before anything else, so an invalid tag or color name throws `ArgumentException` even when no repository is selected or `tags.json` can't be read. A caller's mistake then shows the same way whatever the repository's state. This is a decision to confirm.
+
 ## Failure modes
 
 - **No clone folder is set**: adding a task fails before any file is written, and the screen that asked keeps the text and points to where the folder is set.
@@ -431,6 +535,7 @@ Also proposed for step 4, each a decision to confirm:
 - **The kept draft can't be read**: loading it fails with `InvalidDataException` (a read failure keeps its cause inside), and the file stays as it is until the next keep or discard. The Add window then opens empty and says so.
 - **Adding a task fails after its file is written**, while moving images or deleting the draft: Tasks undoes what it did, moving the images back and deleting the new task file, and rethrows the original error, so the draft stays whole, nothing is left in the repository, and a retry works. The draft's images folder is deleted before its file, so a failed draft delete is undone the same way. If the undo itself fails, Tasks throws an `AggregateException` with both errors. Adding never overwrites: if the task file's path is already occupied, even by a file that was skipped on load, it throws `ArgumentException`.
 - **The top task's rank isn't a valid key**: adding fails with `InvalidDataException` rather than guess an order.
+- **`tags.json` can't be read, or has a newer `version`**: Tasks leaves it unchanged, and the sync status names it, or asks the user to update the app. Every tag shows its default color, and picking a color fails without writing, so the screen that asked says why. Tasks still load.
 
 Proposed, each a decision to confirm: `Add` refuses a draft whose ID is already a task or whose task file path is occupied (`ArgumentException`); the `AggregateException` when an undo also fails; task and draft files with an ID that isn't a lowercase UUID are unreadable; a description's line breaks are stored as `\n`; times are stored to the millisecond; draft images are deleted on discard for the kept draft and for every ID that got an image since the app started, including a draft never kept; images left by an earlier run for a draft that was never kept, or whose draft file is unreadable, aren't cleaned up, because the file system can't list folders. Known limitation, not fixed: `Add` checks that the task file path is free and then writes, so another process creating that file in between could be overwritten; this is a single-user local app, and closing the gap needs a create-only `IFileSystem` operation, a public interface change.
 
@@ -468,3 +573,9 @@ The options below were considered and rejected, grouped by decision.
 - Images for an open edit:
   - **The editor says whether it holds a draft or a task, and calls a separate image part for edits**: an extra setting on the editor, and two image parts that shrink images the same way.
   - **Images added during an edit go straight into the clone**: a sync during the edit could push images that a discard then deletes, and git history would keep them.
+- Where a tag's color is kept:
+  - **In each task file, beside each tag**: one tag could carry different colors on different tasks, a recolor rewrites every task with the tag, and task files would need version 2, which older apps skip entirely.
+  - **On each device only**, outside the clone: colors wouldn't travel, so a tag colored on the PC would show its default color on the phone.
+  - **A new field in `settings.json`**: it needs a new version, which makes an older app's settings reads and writes fail; without one, an older app drops the colors when it writes a setting.
+- How Sync merges `tags.json`:
+  - **One merge method in the file rules that takes any managed path**: it would replace two published methods to add one file.

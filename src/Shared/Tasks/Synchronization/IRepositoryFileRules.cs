@@ -15,6 +15,9 @@ public interface IRepositoryFileRules
     /// <summary>The shared settings file's name, relative to the repository root.</summary>
     string SettingsFileName { get; }
 
+    /// <summary>The tag colors file's name, relative to the repository root.</summary>
+    string TagColorsFileName { get; }
+
     /// <summary>The kind of file Tasks owns, or Unmanaged for another repository file.</summary>
     RepositoryFileKind Classify(string relativePath);
 
@@ -38,6 +41,13 @@ public interface IRepositoryFileRules
     /// Throws InvalidDataException for any present file that cannot be read; never alters input arrays.
     /// </summary>
     byte[]? MergeSettings(byte[]? basis, byte[]? local, byte[]? remote);
+
+    /// <summary>
+    /// Merges each tag's entry by its own Updated time, remote winning ties, matching tags with case ignored.
+    /// Null means an absent file; an absent side or a missing entry never removes an entry. Three absent
+    /// files return null. Throws InvalidDataException for any present file that cannot be read; never alters input arrays.
+    /// </summary>
+    byte[]? MergeTagColors(byte[]? basis, byte[]? local, byte[]? remote);
 }
 
 /// <summary>A repository file's role, as Tasks defines it.</summary>
@@ -47,4 +57,5 @@ public enum RepositoryFileKind
     Task,
     Image,
     Settings,
+    TagColors,
 }

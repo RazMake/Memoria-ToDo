@@ -21,7 +21,13 @@ internal static class ClickableItems
 
     /// <summary>Makes an existing items control behave as <see cref="Create"/> describes, for a control that is itself the list.</summary>
     public static void Attach(ItemsControl items, FrameworkElementFactory itemVisual, Action<string> clicked) =>
-        AttachByPosition(items, itemVisual, position => clicked((string)items.Items[position]));
+        AttachByPosition(items, itemVisual, position =>
+        {
+            if (items.Items[position] is string item)
+            {
+                clicked(item);
+            }
+        });
 
     /// <summary>
     /// Like <see cref="Attach"/>, but calls <paramref name="clicked"/> with the clicked item's position, which tells apart

@@ -20,7 +20,6 @@ public class AddWindowDraftTests
         using var screen = new AddScreen();
         screen.Show();
         screen.Fill("Buy milk", "Two litres", "home", "shop");
-        screen.TypeTag("hom");
         screen.Focus(EditorFields.Description);
 
         screen.PressEscape();
@@ -30,8 +29,26 @@ public class AddWindowDraftTests
         screen.Show();
 
         AssertFields(screen, "Buy milk", "Two litres", ["home", "shop"]);
-        Assert.Equal("hom", screen.TypedTag);
         Assert.Equal(EditorFields.Title, screen.FocusedField);
+    }
+
+    [WpfFact]
+    public void The_first_Esc_drops_the_text_typed_in_the_tag_box_and_the_second_keeps_the_draft()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Fill("Buy milk", "Two litres", "home");
+        screen.TypeTag("hom");
+        screen.Focus(EditorFields.Description);
+
+        screen.PressEscape();
+        Assert.Null(screen.KeptDraft);
+
+        screen.PressEscape();
+
+        AssertKept(screen, "Buy milk", "Two litres", ["home"]);
+        screen.Show();
+        Assert.True(string.IsNullOrEmpty(screen.TypedTag));
     }
 
     [WpfFact]

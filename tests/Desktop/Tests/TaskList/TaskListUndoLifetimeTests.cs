@@ -16,8 +16,8 @@ public class TaskListUndoLifetimeTests
 {
     private static byte[] Png() => FakeImageEncoder.Image(ImageFormat.Png, 100, 80);
 
-    // Opens the task's editor, pastes an image and types tag text, and returns the files the paste added.
-    private static IReadOnlyList<string> EditWithImageAndPendingTag(ListServices services, TaskListScreen screen, string title, string pendingTag)
+    // Opens the task's editor and pastes an image, and returns the files the paste added.
+    private static IReadOnlyList<string> EditWithImage(ListServices services, TaskListScreen screen, string title)
     {
         screen.PressOn(title, Key.F2);
         var before = services.AllFiles;
@@ -25,20 +25,19 @@ public class TaskListUndoLifetimeTests
         screen.PasteImageIntoDescription();
         var added = services.AllFiles.Except(before).ToList();
         Assert.NotEmpty(added);
-        screen.TypeTags(pendingTag);
         return added;
     }
 
     [WpfTheory]
     [InlineData("search")]
     [InlineData("tag")]
-    public void Undo_restores_the_edit_with_its_pending_tag_and_images_even_when_a_filter_hides_the_task(string filter)
+    public void Undo_restores_the_edit_with_its_images_even_when_a_filter_hides_the_task(string filter)
     {
         var services = new ListServices();
         services.Add("Other", "", "work");
         services.Add("Buy milk", "", "home");
         using var screen = new TaskListScreen(services);
-        var images = EditWithImageAndPendingTag(services, screen, "Buy milk", "pend");
+        var images = EditWithImage(services, screen, "Buy milk");
         var typed = screen.EditedDescriptionText;
         screen.Press(Key.Escape);
         if (filter == "search")
@@ -56,7 +55,6 @@ public class TaskListUndoLifetimeTests
         screen.Click("Undo");
 
         Assert.True(screen.IsEditing("Buy milk"));
-        Assert.Equal("pend", screen.EditedTagsText);
         Assert.Equal(typed, screen.EditedDescriptionText);
         Assert.All(images, image => Assert.True(services.Files.FileExists(image)));
     }

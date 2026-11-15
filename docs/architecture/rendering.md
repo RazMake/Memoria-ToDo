@@ -2,7 +2,7 @@
 
 Status: Decided
 
-Rendering is the shared module that turns a task's Markdown into what the user sees: an HTML page for a description in the web view, and styled text for titles and the editor. It also owns the color palette and decides which links may open in the browser. Both apps use it, so a task looks the same on the desktop and the phone.
+Rendering is the shared module that turns a task's Markdown into what the user sees: an HTML page for a description in the web view, and styled text for titles and the editor. It also owns the color palette and the tag colors, and decides which links may open in the browser. Both apps use it, so a task looks the same on the desktop and the phone.
 
 ## Behavior
 
@@ -53,6 +53,45 @@ Proposed: the palette below. Each color has a value for the light theme and one 
 
 Rendering accepts only these names; there are no hex colors in task text. The editor, titles, and descriptions all take a color's value from this table, for the current theme.
 
+Tags don't use these six. A tag's badge takes one of [30 colors of its own](#thirty-tag-colors-stay-distinct-in-both-themes).
+
+### Thirty tag colors stay distinct in both themes
+
+The user decided that a tag's color is one of 30: ten hues, three shades each, from [Tailwind CSS v3's colors](https://github.com/tailwindlabs/tailwindcss/blob/v3.4.17/src/public/colors.js), a published set whose shades of one hue keep it. Each color has a value for each theme, with the same hue and a darker shade in the dark theme. Rendering keeps them beside the palette, so both apps show the same colors. Each color's name is its hue and shade, such as `red-1`, with 1 the palest. The table lists each hue's three values in each theme, palest first:
+
+| Hue | Light theme | Dark theme |
+| --- | --- | --- |
+| red | `#fca5a5` `#ef4444` `#b91c1c` | `#f87171` `#dc2626` `#7f1d1d` |
+| orange | `#fdba74` `#f97316` `#c2410c` | `#fb923c` `#ea580c` `#9a3412` |
+| yellow | `#fde047` `#eab308` `#a16207` | `#facc15` `#ca8a04` `#854d0e` |
+| lime | `#bef264` `#84cc16` `#4d7c0f` | `#a3e635` `#65a30d` `#3f6212` |
+| green | `#86efac` `#22c55e` `#15803d` | `#4ade80` `#16a34a` `#166534` |
+| teal | `#5eead4` `#14b8a6` `#0f766e` | `#2dd4bf` `#0d9488` `#115e59` |
+| blue | `#93c5fd` `#3b82f6` `#1d4ed8` | `#60a5fa` `#2563eb` `#1e40af` |
+| purple | `#c4b5fd` `#8b5cf6` `#6d28d9` | `#a78bfa` `#7c3aed` `#5b21b6` |
+| pink | `#f9a8d4` `#ec4899` `#be185d` | `#f472b6` `#db2777` `#9d174d` |
+| gray | `#d6d3d1` `#78716c` `#44403c` | `#a8a29e` `#78716c` `#44403c` |
+
+The light theme uses Tailwind's shades 300, 500, and 700, and the dark theme 400, 600, and 800, except red's darkest, 900, and gray's 400, 500, and 700. Purple is Tailwind's violet, and gray its stone.
+
+Three rules keep the colors apart and readable. They're measured with CIEDE2000, the standard formula for how different two colors look, where 1 is barely visible ([color difference](https://en.wikipedia.org/wiki/Color_difference#CIEDE2000)). Rendering's unit tests check all three, so a changed value can't break them:
+
+- **Any two colors of one theme are at least 10 apart.** The closest pairs measure 10.2.
+- **Black or white text reads at least 4.5:1 on every color**, the minimum for normal text in [WCAG 2.2](https://www.w3.org/TR/WCAG22/#contrast-minimum). The lowest measures 4.6:1.
+- **Every color is at least 7 apart from its theme's window backgrounds**, the [palette's](#six-colors-read-well-in-light-and-dark-themes) `#ffffff` and `#f3f3f3` in the light theme, and `#1f1f1f` and `#2b2b2b` in the dark. So no badge fades into the window. The closest measures 7.1.
+
+[Tasks](tasks.md#each-tags-color-is-kept-in-one-synced-file) stores a tag's color by its name, so names never change once released, while a value can be retuned within the rules.
+
+Proposed, each a decision to confirm:
+
+- **A badge's text is black or white, whichever has the higher contrast on its color**, and Rendering gives it with each value.
+- **Names are lowercase only**, like the palette's: `Red-1` names no color.
+- **A tag with no color kept gets a default from its text.** Rendering takes the tag in invariant uppercase, hashes its UTF-8 bytes with 32-bit FNV-1a ([FNV](https://datatracker.ietf.org/doc/html/draft-eastlake-fnv)), and picks the color at that hash modulo 30, counting through the table row by row: `red-1`, `red-2`, `red-3`, `orange-1`, and so on.
+  - Uppercase makes `Home` and `home` look the same, as [Tasks treats them as one tag](tasks.md#tags-and-search-ignore-case).
+  - .NET's own string hash isn't used, since it changes with each run of the app ([String.GetHashCode](https://learn.microsoft.com/en-us/dotnet/api/system.string.gethashcode)).
+  - All 30 colors are used, so two of seven tags share a default about 53% of the time, against 94% with one shade per hue.
+  - Changing the rule after release would recolor every tag with no color kept, so a unit test pins the default of a few fixed tags.
+
 ### The web view runs no scripts and loads only images from the clone
 
 These rules apply to the description's web view in both apps:
@@ -84,6 +123,7 @@ Both apps use these parts:
 - **The description page**: from the Markdown, the theme, and the clone's base address, a full HTML page for the web view.
 - **Styled spans**: from a title's or the editor's Markdown, the styled stretches of text.
 - **The palette**: each color's name and its values for the light and dark themes.
+- **The tag colors**: the 30 colors, each with its value and text color for each theme; finding one by name; and a tag's default color.
 - **The browser check**: whether an address may open in the default browser.
 
 Rendering promises that the page holds no script and no raw HTML from the task, and that the same input always gives the same output. It reads no files and knows no task formats.
@@ -141,6 +181,32 @@ Also proposed for step 4, each a decision to confirm:
 - The page's text is `#1f1f1f` in the light theme and `#f3f3f3` in the dark theme, and the page sets no background, so the window's own background shows through the web view. Each text color is the other theme's darkest or lightest background in the [palette's](#six-colors-read-well-in-light-and-dark-themes) contrast check, so it reads well on its own theme's backgrounds.
 - `MayOpen` ignores the case of the scheme, so `HTTPS://` opens too.
 
+Row 8 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) adds the [tag colors](#thirty-tag-colors-stay-distinct-in-both-themes), also pure functions:
+
+```csharp
+namespace Memoria.ToDo.Shared.Rendering;
+
+/// A tag color's value in one theme, such as #fca5a5, and its text color: #000000 or #ffffff.
+public sealed record TagFill(string Background, string Text);
+
+/// A tag color's name, such as red-1, and its fill in each theme.
+public sealed record TagColor(string Name, TagFill Light, TagFill Dark);
+
+public static class TagColors
+{
+    /// The 30 tag colors, in the table's order: each hue's three shades, palest first.
+    public static IReadOnlyList<TagColor> All { get; }
+
+    /// The color with exactly this name, or null when no tag color has it.
+    public static TagColor? Find(string name);
+
+    /// A tag's default color, from its text with case ignored; the same tag always gets the same color.
+    public static TagColor DefaultFor(string tag);
+}
+```
+
+Proposed: `Find` and `DefaultFor` throw `ArgumentNullException` for a null name or tag, rather than answer no color, since a null is the caller's mistake, not a tag without a color. This is a decision to confirm.
+
 ## Failure modes
 
 - **There's no invalid Markdown**: any text renders, and what Markdown can't read shows as text.
@@ -162,3 +228,9 @@ The options below were considered and rejected, grouped by decision.
   - **Basic HTML through a sanitizer**: a new dependency to maintain.
   - **Any HTML**: pasted content would run with the app's rights.
 - Which renderer: a JavaScript renderer in the web view is ruled out in [How the apps fit together](overview.md#ruled-out).
+- Tag colors:
+  - **The six text colors' hues, five shades each**: five shades of one hue come close, with the closest pairs only 4.1 to 6.8 apart, so the user would confuse them.
+  - **One set of 30 for both themes**: one value per color, and it passes every check in both themes, but the user asked for a set per theme.
+- A tag's default color:
+  - **One shade per hue, from 10 colors**: two of seven tags would share a default far more often.
+  - **A color picked at random and kept in `tags.json` when a tag is first used**: every new tag would write the file, and tags from before the file would still need a default.

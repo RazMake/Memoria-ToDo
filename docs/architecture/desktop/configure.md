@@ -18,7 +18,7 @@ The table lists every setting in Configure, the module that owns it, where it's 
 | Days before a resolved task is deleted | Tasks | In the repository, shared by every device | One week, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides |
 | The repository's SSH address, the device name, the device's SSH key, and the accepted host keys | Sync | On this device | The device name starts as the machine's name; the rest is set up as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says |
 
-**Every device uses the same shortcuts.** Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-and-one-settings-file) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
+**Every device uses the same shortcuts.** Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-settings-and-tag-colors) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
 
 Tasks keeps the shortcuts as shared text settings without interpreting them. Windows Configure checks their values against its [shortcut rules](#a-new-shortcut-is-checked-at-once). Android preserves them through merges but neither displays nor uses them.
 
@@ -51,6 +51,7 @@ The window shows each shortcut with the name of what it does, Add new task, Mana
 Esc closes Configure, and the Close window shortcut closes any of the app's windows, Configure included. Both close a window exactly as its close button does, so nothing is saved or lost that the close button wouldn't save or lose.
 
 - **Esc closes Configure unless a control uses it first.** An open menu, such as the Configure button's, closes first. In a shortcut field, Esc keeps the current shortcut and moves the focus out of the fields, so the shortcuts register again; a second Esc closes the window. Add [closes an open list first](task-editor.md#keys-save-close-and-move-between-fields) the same way.
+- **Esc closes through the platform's [Esc part](README.md#window-modules-read-keys-through-the-platform)**, as View Tasks does. Anything typed and not yet applied, such as a repository address, is dropped, and a running sync goes on, as [below](#configure-shows-how-sync-is-doing) says.
 - **The Close window shortcut closes the window whatever has the focus in it**: a shortcut field, a text box, or an open menu. It acts before any control sees the keys, so it also wins over a key a window uses for something else.
 - **It never registers with Windows.** It works only while one of the app's windows has the focus, so it takes no keys from other apps.
 - **It closes Add, View Tasks, and Configure**, through one [platform part](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows), so the key handling has one home.

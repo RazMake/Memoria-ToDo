@@ -25,6 +25,8 @@ internal sealed class EditorServices
 
     public FakeTheme Theme { get; } = new();
 
+    public FakeTagColors TagColors { get; } = new();
+
     public FakeClipboard Clipboard { get; } = new();
 
     public FakeImageFileChooser ImageFiles { get; } = new();
@@ -87,9 +89,16 @@ internal sealed class EditorServices
     /// <summary>The Close window keys the Add window is attached to; a test sets them as Configure does.</summary>
     public CloseWindowKeys CloseWindowKeys { get; } = new();
 
-    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys);
+    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys);
 
-    public TaskEditorControl CreateEditor() => new(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
+    public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files);
+
+    /// <summary>The tag control over this Tasks, these tag colors, and this theme.</summary>
+    public TagEditor CreateTagEditor() => new(Tasks, TagColors, Theme);
+
+    public TagBadges CreateTagBadges() => new(TagColors, Theme);
+
+    public TopTags CreateTopTags() => new(Tasks, TagColors, Theme);
 
     /// <summary>Puts an image file where the user "chooses" or "drops" it, and returns its path. The fake image tools read its bytes.</summary>
     public string PutImageFile(string name, byte[] image)

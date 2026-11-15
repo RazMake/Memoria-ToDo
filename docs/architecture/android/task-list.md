@@ -32,6 +32,8 @@ Proposed: the task's file is deleted when the Undo bar goes away or View Tasks c
 
 Proposed: tag chips and search work as on the [desktop](../desktop/task-list.md#tags-and-search-narrow-the-list), and search opens from a button in the top app bar. This is a decision to confirm.
 
+Deferred: the desktop shows tags as [colored badges](../desktop/task-list.md#tags-show-as-colored-badges-and-change-without-edit) on rows and in the filter, and changes them on an expanded task without Edit. Whether the phone's chips take each tag's color, and whether a tag changes without Edit, follows the [Task editor's](task-editor.md#tags-sit-as-chips-under-the-title) answer when the Android app is built.
+
 ### Resolved tasks wait behind a count at the bottom
 
 Resolved tasks are hidden, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides. Proposed: "N resolved" at the bottom of the list shows them, as on the [desktop](../desktop/task-list.md#resolved-tasks-wait-behind-a-count-at-the-bottom), and the resolve swipe reopens a resolved task. This is a decision to confirm.

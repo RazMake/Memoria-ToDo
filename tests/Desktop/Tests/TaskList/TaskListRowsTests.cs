@@ -29,8 +29,7 @@ public class TaskListRowsTests
         services.Add("Buy milk", "", "home", "errand");
         using var screen = new TaskListScreen(services);
 
-        Assert.True(screen.ShowsText("home", screen.Row("Buy milk")));
-        Assert.True(screen.ShowsText("errand", screen.Row("Buy milk")));
+        Assert.Equal(["home", "errand"], screen.BadgeTags("Buy milk"));
     }
 
     [WpfFact]

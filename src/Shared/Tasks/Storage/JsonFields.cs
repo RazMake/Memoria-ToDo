@@ -83,6 +83,13 @@ internal static class JsonFields
 
     public static JsonElement Object(JsonElement obj, string name) => Field(obj, name, JsonValueKind.Object);
 
+    /// <summary>The objects of an array field. Throws <see cref="InvalidDataException"/> when the field isn't an array of objects.</summary>
+    public static IEnumerable<JsonElement> Objects(JsonElement obj, string name)
+    {
+        foreach (var item in Field(obj, name, JsonValueKind.Array).EnumerateArray())
+            yield return item.ValueKind == JsonValueKind.Object ? item : throw new InvalidDataException($"'{name}' must hold objects.");
+    }
+
     public static int Int32(JsonElement obj, string name) =>
         Field(obj, name, JsonValueKind.Number).TryGetInt32(out var value) ? value : throw new InvalidDataException($"'{name}' isn't a whole number.");
 

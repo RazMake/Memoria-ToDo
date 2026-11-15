@@ -8,13 +8,13 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// </summary>
 internal sealed class EditorSave
 {
-    private readonly Action _addTypedTags;
+    private readonly Func<bool> _addTypedTags;
     private readonly Func<TaskDraft> _value;
     private readonly Action _markTitleMissing;
     private readonly Action _focusTitle;
     private readonly Action<string> _showMessage;
 
-    public EditorSave(Action addTypedTags, Func<TaskDraft> value, Action markTitleMissing, Action focusTitle,
+    public EditorSave(Func<bool> addTypedTags, Func<TaskDraft> value, Action markTitleMissing, Action focusTitle,
         Action<string> showMessage)
     {
         ArgumentNullException.ThrowIfNull(addTypedTags);
@@ -31,13 +31,18 @@ internal sealed class EditorSave
 
     /// <summary>
     /// Adds typed tag text as a tag, then calls <paramref name="save"/> with the value, unless the Title is empty, which
-    /// it marks and puts the cursor in. Returns false when the Title is empty or <paramref name="save"/> threw a failure
-    /// Tasks' saves are known to throw, which it shows. Other failures propagate.
+    /// it marks and puts the cursor in. Returns false, saving nothing, when the typed tag couldn't be added, the Title is
+    /// empty, or <paramref name="save"/> threw a failure Tasks' saves are known to throw, which it shows. Other failures
+    /// propagate.
     /// </summary>
     public bool Run(Action<TaskDraft> save)
     {
         ArgumentNullException.ThrowIfNull(save);
-        _addTypedTags();
+        if (!_addTypedTags())
+        {
+            return false;
+        }
+
         var draft = _value();
         if (string.IsNullOrWhiteSpace(draft.Title))
         {

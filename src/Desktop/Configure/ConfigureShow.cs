@@ -74,28 +74,32 @@ internal sealed class ConfigureShow : IConfigureWindow
     {
         _addNewTask.SettingsChanged();
         _manageTasks.SettingsChanged();
-        _closeWindow.SettingsChanged();?.Invoke();
+        _closeWindow.SettingsChanged();
+        _refreshOpen?.Invoke();
     });
 
     private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)
     {
-        var shortcuts = new ShortcutSection(_addNewTask, _manageTasks);
+        var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _closeWindow);
         var delay = new DeletionDelayRow(_settings);
         var ui = new SyncUi(sync, setupActions, _notices.Post);
         var syncSettings = new SyncSettingsSection(ui, delay);
-        var sections = new Accordion { Margin = new Thickness(24) };
-        sections.Add("Shortcuts", shortcuts);
-        sections.Add("Startup", new StartWithWindowsRow(startWithWindows));
-        sections.Add("Sync settings", syncSettings);
+        var sections = new Accordion(
+            ("Shortcuts", shortcuts),
+            ("Startup", new StartWithWindowsRow(startWithWindows)),
+            ("Sync settings", syncSettings))
+        { Margin = new Thickness(24) };
         var window = new Window
         {
             Title = "Configure",
             Width = 800,
-            Height = 850,
+            Height = Math.Min(850, SystemParameters.MaximumWindowTrackHeight),
             SizeToContent = SizeToContent.Manual,
             ResizeMode = ResizeMode.NoResize,
             Content = sections,
         };
+        _closeWindowKeys.Attach(window);
+        EscCloses.Attach(window);
         _open = window;
         _refreshOpen = () =>
         {

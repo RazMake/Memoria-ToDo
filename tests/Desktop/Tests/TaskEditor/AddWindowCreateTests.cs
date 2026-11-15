@@ -14,7 +14,7 @@ public class AddWindowCreateTests
         var services = new EditorServices();
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
-            services.Tasks, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
+            services.Tasks, services.TagColors, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
             services.Files, null!));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);

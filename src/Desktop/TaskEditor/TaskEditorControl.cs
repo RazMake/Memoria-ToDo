@@ -22,6 +22,7 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
     private readonly StyledTextEditor _title;
     private readonly StyledTextEditor _description;
     private readonly TagsModel _tagsModel;
+    private readonly TagEditor _tags;
     private readonly HeldModifierKeys _held = new();
     private readonly KeyMap _editorKeys = new();
     private readonly KeyMap _titleKeys = new();
@@ -40,11 +41,19 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
     };
     private string _taskId = "";
 
-    public TaskEditorControl(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    public TaskEditorControl(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files)
+        : this(new TagsModel(tasks, tagColors), tasks, tagColors, palette, theme, time, clipboard, imageFiles, files)
     {
-        _tagsModel = new TagsModel(tasks);
-        var tags = new TagsLine(_tagsModel, tasks);
+    }
+
+    // The model is made in the first constructor's arguments, so a missing tasks or tagColors is rejected before any control exists.
+    private TaskEditorControl(TagsModel tagsModel, ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme,
+        TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files)
+    {
+        _tagsModel = tagsModel;
+        _tags = new TagEditor(tasks, _tagsModel, new TagLook(tagColors, theme));
+        var tags = _tags;
         _title = Field("Title", MarkdownField.Title, palette, theme);
         _title.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
         _title.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
@@ -101,7 +110,7 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
         FormattingKeys.AddHeadings(_descriptionKeys, _description);
         SnippetKeys.AddTo(_titleKeys, _title, isTitle: true, snippets);
         SnippetKeys.AddTo(_descriptionKeys, _description, isTitle: false, snippets);
-        ListKeys.AddTo(_descriptionKeys, _description, tags.FocusInput, () => Focus(_title));
+        ListKeys.AddTo(_descriptionKeys, _description, tags.FocusFirst, () => Focus(_title));
         _descriptionKeys.Try(ModifierKeys.Control, Key.V, () => images.PasteClipboardImage(_description));
 
         _title.PreviewKeyDown += (_, e) => Handle(_listKeys, _titleKeys, e);
@@ -188,8 +197,8 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
     /// <summary>Whether the image file dialog is open.</summary>
     internal bool IsChoosingImageFile => _images.IsChoosingFile;
 
-    /// <summary>Closes the open list: colors, snippets, tasks, or the tag suggestions. Returns false, doing nothing, when none was open.</summary>
-    internal bool CloseOpenList() => _popups.CloseOpen() || _tagsModel.CloseSuggestions();
+    /// <summary>Closes the open list or tag part: colors, snippets, tasks, the tag suggestions, the + menu, or Custom. Returns false, doing nothing, when none was open.</summary>
+    internal bool CloseOpenList() => _popups.CloseOpen() || _tags.CloseOpen();
 
     private void ShowMessage(string text)
     {
@@ -218,7 +227,11 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
     // Typed tag text becomes a tag first, so saving loses none of what the user typed.
     private void RequestSave(EventHandler? requested)
     {
-        _tagsModel.AddTypedText();
+        if (!_tagsModel.AddTypedText())
+        {
+            return;
+        }
+
         requested?.Invoke(this, EventArgs.Empty);
     }
 

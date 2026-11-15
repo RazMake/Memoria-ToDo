@@ -31,7 +31,7 @@ public class AddWindowSaveTests
 
     [WpfTheory]
     [InlineData(EditorFields.Description)]
-    [InlineData(EditorFields.Tags)]
+    [InlineData(EditorFields.AddTag)]
     public void Ctrl_Enter_saves_from_any_field(string field)
     {
         using var screen = new AddScreen();
@@ -50,7 +50,7 @@ public class AddWindowSaveTests
         using var screen = new AddScreen();
         screen.Show();
         screen.Fill("Buy milk", "Two litres", "home");
-        screen.Focus(EditorFields.Tags);
+        screen.Focus(EditorFields.AddTag);
 
         screen.SaveAndClear();
 
