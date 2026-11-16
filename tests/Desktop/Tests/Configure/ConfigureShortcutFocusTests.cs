@@ -25,15 +25,36 @@ public class ConfigureShortcutFocusTests
 
         Assert.Equal([ShortcutCall.Unregister()], screen.AddNewTask.Calls);
         Assert.Equal([ShortcutCall.Unregister()], screen.ManageTasks.Calls);
+        Assert.Equal([ShortcutCall.Unregister()], screen.ConfigureAction.Calls);
 
         screen.FocusStartWithWindowsBox();
 
         Assert.Equal(ShortcutCall.Register(TestShortcut.AddNewTaskDefault), screen.AddNewTask.Calls[^1]);
         Assert.Equal(ShortcutCall.Register(TestShortcut.ManageTasksDefault), screen.ManageTasks.Calls[^1]);
+        Assert.Equal(ShortcutCall.Register(TestShortcut.ConfigureDefault), screen.ConfigureAction.Calls[^1]);
     }
 
     [WpfFact]
-    public void Focus_entering_the_Close_window_box_releases_both_global_shortcuts()
+    public void Focus_entering_the_Configure_box_releases_all_three_global_shortcuts_and_leaving_registers_them_again()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+
+        ConfigureScreen.Focus(screen.ConfigureField);
+
+        Assert.Equal([ShortcutCall.Unregister()], screen.AddNewTask.Calls);
+        Assert.Equal([ShortcutCall.Unregister()], screen.ManageTasks.Calls);
+        Assert.Equal([ShortcutCall.Unregister()], screen.ConfigureAction.Calls);
+
+        screen.FocusStartWithWindowsBox();
+
+        Assert.Equal(ShortcutCall.Register(TestShortcut.AddNewTaskDefault), screen.AddNewTask.Calls[^1]);
+        Assert.Equal(ShortcutCall.Register(TestShortcut.ManageTasksDefault), screen.ManageTasks.Calls[^1]);
+        Assert.Equal(ShortcutCall.Register(TestShortcut.ConfigureDefault), screen.ConfigureAction.Calls[^1]);
+    }
+
+    [WpfFact]
+    public void Focus_entering_the_Close_window_box_releases_all_three_global_shortcuts()
     {
         using var screen = new ConfigureScreen();
         screen.Open();
@@ -42,10 +63,12 @@ public class ConfigureShortcutFocusTests
 
         Assert.Equal([ShortcutCall.Unregister()], screen.AddNewTask.Calls);
         Assert.Equal([ShortcutCall.Unregister()], screen.ManageTasks.Calls);
+        Assert.Equal([ShortcutCall.Unregister()], screen.ConfigureAction.Calls);
 
         screen.FocusStartWithWindowsBox();
 
         Assert.Equal(ShortcutCall.Register(TestShortcut.AddNewTaskDefault), screen.AddNewTask.Calls[^1]);
         Assert.Equal(ShortcutCall.Register(TestShortcut.ManageTasksDefault), screen.ManageTasks.Calls[^1]);
+        Assert.Equal(ShortcutCall.Register(TestShortcut.ConfigureDefault), screen.ConfigureAction.Calls[^1]);
     }
 }

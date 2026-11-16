@@ -15,7 +15,7 @@ public static class ConfigureWindow
     /// <param name="setupActions">The app's clipboard and add-key-page actions.</param>
     /// <param name="closeWindowKeys">The platform's Close window keys; Configure sets them and attaches its window.</param>
     /// <param name="theme">The app's theme; the section titles show in heading 1's color for it and follow its switches.</param>
-    /// <param name="updates">The update status; the card above the sections shows it and calls it for each control.</param>
+    /// <param name="updates">The update status; the Update card in Application shows it and calls it for each control.</param>
     /// <param name="saveKeys">The platform's Save keys; Configure sets them from the stored or default Save shortcut.</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static IConfigureWindow Create(IStartWithWindows startWithWindows, ISharedTaskSettings settings,
@@ -34,11 +34,11 @@ public interface IConfigureWindow : IDisposable
     bool IsOpen { get; }
 
     /// <summary>
-    /// Connects the two shortcut settings. Configure applies each stored shortcut, or its default, then each
-    /// valid pick on that row, on the UI thread. Returns true only when both initial shortcuts registered; an action that
+    /// Connects the three shortcut settings. Configure applies each stored shortcut, or its default, then each
+    /// valid pick on that row, on the UI thread. Returns true only when all three initial shortcuts registered; an action that
     /// returns false or throws counts as not registered. Dispose detaches service notices and closes Configure;
     /// Shell owns unregistering the actions and disposing Sync.
     /// </summary>
-    /// <exception cref="ArgumentNullException">Either action is null.</exception>
-    bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks);
+    /// <exception cref="ArgumentNullException">Any action is null.</exception>
+    bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure);
 }

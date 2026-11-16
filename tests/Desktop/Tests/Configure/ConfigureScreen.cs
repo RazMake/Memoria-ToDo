@@ -14,7 +14,7 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 
 /// <summary>
 /// The Configure window as a UX test uses it: built on the shared fake of the Start with Windows port, connected
-/// to two shared fake shortcut actions that record each call, and driven as a user would. Keys go to a shortcut
+/// to three shared fake shortcut actions that record each call, and driven as a user would. Keys go to a shortcut
 /// field as key-down and key-up events, so a field must work out the modifiers from those events: a test can't set
 /// the keyboard's real state. Shared test setup, not a fake of a port. Dispose it to close the window.
 /// </summary>
@@ -27,21 +27,25 @@ internal sealed partial class ConfigureScreen : IDisposable
     /// <param name="startWithWindows">The port the window gets; a new fake, off, when null.</param>
     /// <param name="addNewTask">The Add new task action; a new fake that accepts every shortcut when null.</param>
     /// <param name="manageTasks">The Task View action; a new fake that accepts every shortcut when null.</param>
+    /// <param name="configure">The Configure action; a new fake that accepts every shortcut when null.</param>
     public ConfigureScreen(
         FakeStartWithWindows? startWithWindows = null,
         FakeShortcutAction? addNewTask = null,
         FakeShortcutAction? manageTasks = null,
         FakeSyncService? sync = null,
-        Action<ISharedTaskSettings>? initialSettings = null)
+        Action<ISharedTaskSettings>? initialSettings = null,
+        FakeShortcutAction? configure = null)
     {
         services = new ConfigureServices(startWithWindows, sync);
         AddNewTask = addNewTask ?? new FakeShortcutAction();
         ManageTasks = manageTasks ?? new FakeShortcutAction();
+        ConfigureAction = configure ?? new FakeShortcutAction();
         initialSettings?.Invoke(Store.Settings);
-        configure = services.Create();
-        Connected = configure.ConnectShortcuts(AddNewTask, ManageTasks);
+        this.configure = services.Create();
+        Connected = this.configure.ConnectShortcuts(AddNewTask, ManageTasks, ConfigureAction);
         AddNewTask.ClearCalls();
         ManageTasks.ClearCalls();
+        ConfigureAction.ClearCalls();
     }
 
     /// <summary>The theme the window follows; starts light.</summary>
@@ -52,7 +56,7 @@ internal sealed partial class ConfigureScreen : IDisposable
     public ITaskStore Store => services.Store;
 
     /// <summary>The headings of Configure's three sections, in order.</summary>
-    public static readonly string[] SectionHeadings = ["Shortcuts", "Startup", "Sync settings"];
+    public static readonly string[] SectionHeadings = ["Application", "Startup", "Sync settings"];
 
     /// <summary>
     /// The section titles, in order. A title is a content control (such as a button) whose content is the heading's
@@ -88,6 +92,9 @@ internal sealed partial class ConfigureScreen : IDisposable
     /// <summary>The Task View action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction ManageTasks { get; }
 
+    /// <summary>The Configure action. Its calls are those since the connection, which registered the default.</summary>
+    public FakeShortcutAction ConfigureAction { get; }
+
     /// <summary>What connecting the shortcuts answered.</summary>
     public bool Connected { get; }
 
@@ -107,17 +114,20 @@ internal sealed partial class ConfigureScreen : IDisposable
         return button.ContextMenu;
     }
 
-    /// <summary>The Add new task row's shortcut box, the first of the four.</summary>
+    /// <summary>The Add new task row's shortcut box, the first of the five.</summary>
     public TextBox AddField => ShortcutFields[0];
 
-    /// <summary>The Task View row's shortcut box, the second of the four.</summary>
+    /// <summary>The Task View row's shortcut box, the second of the five.</summary>
     public TextBox ManageField => ShortcutFields[1];
 
-    /// <summary>The Close window row's shortcut box, the third of the four.</summary>
-    public TextBox CloseField => ShortcutFields[2];
+    /// <summary>The Configure row's shortcut box, the third of the five.</summary>
+    public TextBox ConfigureField => ShortcutFields[2];
 
-    /// <summary>The Save row's shortcut box, the fourth of the four.</summary>
-    public TextBox SaveField => ShortcutFields[3];
+    /// <summary>The Close window row's shortcut box, the fourth of the five.</summary>
+    public TextBox CloseField => ShortcutFields[3];
+
+    /// <summary>The Save row's shortcut box, the fifth of the five.</summary>
+    public TextBox SaveField => ShortcutFields[4];
 
     /// <summary>The Close window keys the window was given.</summary>
     public CloseWindowKeys CloseWindowKeys => services.CloseWindowKeys;
@@ -133,6 +143,9 @@ internal sealed partial class ConfigureScreen : IDisposable
 
     /// <summary>The message under the Task View row's box; empty when none.</summary>
     public string ManageMessage => MessageUnder(ManageField);
+
+    /// <summary>The message under the Configure row's box; empty when none.</summary>
+    public string ConfigureMessage => MessageUnder(ConfigureField);
 
     /// <summary>The message under the Close window row's box; empty when none.</summary>
     public string CloseMessage => MessageUnder(CloseField);
@@ -156,7 +169,7 @@ internal sealed partial class ConfigureScreen : IDisposable
         }
     }
 
-    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(4)];
+    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(5)];
 
     /// <summary>Opens the window, as the tray's Configure item does.</summary>
     public void Open() => configure.Show();
@@ -243,7 +256,7 @@ internal sealed partial class ConfigureScreen : IDisposable
     // A control that shows only while its section is open.
     private UIElement ContentMarker(string heading) => heading switch
     {
-        "Shortcuts" => AddField,
+        "Application" => AddField,
         "Startup" => StartWithWindowsBox,
         _ => Box("Device name"),
     };

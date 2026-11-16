@@ -50,14 +50,39 @@ public class ConfigureWindowTests
     }
 
     [WpfFact]
-    public void Shows_three_section_titles_in_order_with_only_Shortcuts_open()
+    public void Shows_three_section_titles_in_order_with_only_Application_open_and_none_called_Shortcuts()
     {
         using var screen = new ConfigureScreen();
 
         screen.Open();
 
-        Assert.Equal(["Shortcuts", "Startup", "Sync settings"], screen.Titles.Select(ScreenTitle));
-        Assert.Equal(["Shortcuts"], screen.OpenSections);
+        Assert.Equal(["Application", "Startup", "Sync settings"], screen.Titles.Select(ScreenTitle));
+        Assert.Equal(["Application"], screen.OpenSections);
+    }
+
+    [WpfFact]
+    public void Application_holds_the_Update_card_then_the_Shortcuts_card_each_in_a_rounded_box()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+
+        Assert.True(screen.TextTop("Update") < screen.TextTop("Shortcuts"));
+        Assert.True(RoundedBoxes(screen.Card) >= 1, "The Update card sits in the section's box.");
+        Assert.True(RoundedBoxes(screen.AddField) >= 2, "The shortcut rows sit in the Shortcuts card inside the section.");
+    }
+
+    [WpfFact]
+    public void Application_scrolls_when_its_content_is_taller_than_the_window_and_the_window_keeps_its_size()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+        var before = screen.WindowSize;
+
+        var scroller = ScrollerOf(screen.SaveField);
+
+        Assert.NotEqual(ScrollBarVisibility.Disabled, scroller.VerticalScrollBarVisibility);
+        Assert.True(scroller.ViewportHeight <= before.Height);
+        Assert.Equal(before, screen.WindowSize);
     }
 
     [WpfTheory]
@@ -74,7 +99,7 @@ public class ConfigureWindowTests
     }
 
     [WpfTheory]
-    [InlineData("Shortcuts")]
+    [InlineData("Application")]
     [InlineData("Startup")]
     [InlineData("Sync settings")]
     public void Clicking_the_open_sections_title_does_nothing(string heading)
@@ -103,7 +128,7 @@ public class ConfigureWindowTests
     {
         using var screen = new ConfigureScreen();
         screen.Open();
-        var shortcuts = screen.Title("Shortcuts");
+        var shortcuts = screen.Title("Application");
         var startup = screen.Title("Startup");
         ConfigureScreen.Focus(shortcuts);
 
@@ -131,7 +156,7 @@ public class ConfigureWindowTests
     }
 
     [WpfTheory]
-    [InlineData("Shortcuts")]
+    [InlineData("Application")]
     [InlineData("Startup")]
     [InlineData("Sync settings")]
     public void The_open_sections_content_starts_right_under_its_title(string heading)
@@ -145,7 +170,7 @@ public class ConfigureWindowTests
         var title = screen.Title(heading);
         UIElement first = heading switch
         {
-            "Shortcuts" => OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b).StartsWith("Click a box")),
+            "Application" => OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b) == "Update"),
             "Startup" => screen.StartWithWindowsBox,
             _ => OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b) == "Repository"),
         };
@@ -157,10 +182,10 @@ public class ConfigureWindowTests
     }
 
     [WpfTheory]
-    [InlineData("Shortcuts", false)]
+    [InlineData("Application", false)]
     [InlineData("Startup", false)]
     [InlineData("Sync settings", false)]
-    [InlineData("Shortcuts", true)]
+    [InlineData("Application", true)]
     [InlineData("Startup", true)]
     [InlineData("Sync settings", true)]
     public void Shows_each_section_title_in_heading_1s_color_bold_and_size_for_the_theme(string heading, bool dark)
@@ -202,8 +227,8 @@ public class ConfigureWindowTests
         screen.Window.UpdateLayout();
 
         Assert.True(RoundedBoxes(screen.Box("Device name")) >= 2, "Git Access sits in a card inside the section.");
-        screen.ClickTitle("Shortcuts");
-        Assert.True(RoundedBoxes(screen.AddField) >= 1, "The shortcut rows sit in a section box.");
+        screen.ClickTitle("Application");
+        Assert.True(RoundedBoxes(screen.AddField) >= 2, "The shortcut rows sit in a card inside the section box.");
     }
 
     [WpfFact]
@@ -280,6 +305,42 @@ public class ConfigureWindowTests
         Assert.True(section.FontSize > card.FontSize);
     }
 
+    [WpfTheory]
+    [InlineData("Update", false)]
+    [InlineData("Shortcuts", false)]
+    [InlineData("Update", true)]
+    [InlineData("Shortcuts", true)]
+    public void Shows_each_Application_card_title_in_heading_2s_color_bold_and_size_for_the_theme(string title, bool dark)
+    {
+        using var screen = new ConfigureScreen();
+        screen.Theme.IsDark = dark;
+        screen.Open();
+        _ = screen.WindowSize;
+
+        var text = CardTitle(screen, title);
+
+        Assert.Equal(HeadingColor(2, dark), ((SolidColorBrush)text.Foreground).Color);
+        Assert.Equal(FontWeights.Bold, text.FontWeight);
+        Assert.Equal(TextLooks.HeadingScale(2) * NormalTextSize(screen), text.FontSize);
+    }
+
+    [WpfFact]
+    public void Switches_the_Application_card_titles_to_the_new_themes_heading_2_color_when_the_theme_changes()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+        _ = screen.WindowSize;
+        string[] cards = ["Update", "Shortcuts"];
+
+        screen.Theme.Switch(isDark: true);
+        var dark = cards.Select(c => ((SolidColorBrush)CardTitle(screen, c).Foreground).Color).ToList();
+        screen.Theme.Switch(isDark: false);
+        var light = cards.Select(c => ((SolidColorBrush)CardTitle(screen, c).Foreground).Color).ToList();
+
+        Assert.All(dark, color => Assert.Equal(HeadingColor(2, true), color));
+        Assert.All(light, color => Assert.Equal(HeadingColor(2, false), color));
+    }
+
     [WpfFact]
     public void Shows_each_shortcut_box_in_the_themes_text_box_style()
     {
@@ -291,6 +352,7 @@ public class ConfigureWindowTests
 
         Assert.Same(themeTextBox, screen.AddField.Style);
         Assert.Same(themeTextBox, screen.ManageField.Style);
+        Assert.Same(themeTextBox, screen.ConfigureField.Style);
         Assert.Same(themeTextBox, screen.CloseField.Style);
         Assert.Same(themeTextBox, screen.SaveField.Style);
     }
@@ -328,7 +390,7 @@ public class ConfigureWindowTests
     }
 
     [WpfTheory]
-    [InlineData("Shortcuts")]
+    [InlineData("Application")]
     [InlineData("Startup")]
     public void Keeps_the_titles_below_the_open_section_at_the_bottom(string heading)
     {
@@ -361,6 +423,18 @@ public class ConfigureWindowTests
 
         Assert.True(screen.ShowsText(twoLineError));
         Assert.Equal(before, screen.WindowSize);
+    }
+
+    // The scroll viewer that holds the element's section.
+    private static ScrollViewer ScrollerOf(DependencyObject element)
+    {
+        var parent = VisualTreeHelper.GetParent(element);
+        while (parent is not ScrollViewer)
+        {
+            parent = VisualTreeHelper.GetParent(parent);
+        }
+
+        return (ScrollViewer)parent;
     }
 
     private static string ScreenTitle(ContentControl title) =>

@@ -22,8 +22,14 @@ internal static class ThemedBox
         heading.Margin = new Thickness(0, 0, 0, 6);
         inside.Children.Add(heading);
         inside.Children.Add(content);
-        return Make(inside, "CardBackgroundFillColorSecondaryBrush");
+        return Make(inside, CardBackground);
     }
+
+    /// <summary>Gives a card the theme's caution background while <paramref name="on"/>, and the other cards' background otherwise.</summary>
+    public static void ShowCaution(Border card, bool on) =>
+        card.SetResourceReference(Border.BackgroundProperty, on ? "SystemFillColorCautionBackgroundBrush" : CardBackground);
+
+    private const string CardBackground = "CardBackgroundFillColorSecondaryBrush";
 
     private static Border Make(UIElement child, string background)
     {

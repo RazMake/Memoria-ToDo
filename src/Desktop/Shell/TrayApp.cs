@@ -13,13 +13,13 @@ public static class TrayApp
     /// <summary>
     /// Creates the app's lifetime. Start first claims the sign-in session; when another instance runs, it ends the app
     /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Task View, Configure,
-    /// Exit; a left click shows Task View), connects Configure's two shortcuts (a press shows Add or Task View, and does
-    /// nothing while any of the app's windows is open), begins Updates with the app's exit, and starts the shared sync
+    /// Exit; a left click shows Task View), connects Configure's three shortcuts (a press shows Add, Task View, or
+    /// Configure, and does nothing while Configure is open), begins Updates with the app's exit, and starts the shared sync
     /// service. Startup and later actions open Configure until setup is complete;
     /// otherwise startup shows Task View when <paramref name="startedAtSignIn"/> is false.
     /// Configure also opens when an initial shortcut could not be registered, after Task View on a configured
     /// start by hand. These startup windows wait for local initialization.
-    /// StopAsync joins sync, then Updates' stop, without blocking the UI, unregisters both shortcuts,
+    /// StopAsync joins sync, then Updates' stop, without blocking the UI, unregisters the three shortcuts,
     /// removes the icon, and releases the claim. Cleanup still completes when one step fails.
     /// </summary>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
@@ -66,12 +66,16 @@ public static class TrayApp
             return true;
         }
 
+        OtherWindow addWindow = new(AddOpen, CloseAdd);
+        OtherWindow viewTasksWindow = new(ViewTasksOpen, viewTasks.Close);
+
         var redirect = new SetupRedirect(sync, configure);
         var showAdd = redirect.Through(add.Show);
         var showViewTasks = redirect.Through(viewTasks.Show);
         var startup = new StartupNavigation(sync.Setup, configure.Show, showViewTasks, startedAtSignIn, uiThread);
         var addByUser = startup.ByUser(showAdd);
         var viewTasksByUser = startup.ByUser(showViewTasks);
+        var configureByUser = startup.ByUser(configure.Show);
 
         return new ShellLifetime(
             trayIcon,
@@ -79,8 +83,9 @@ public static class TrayApp
             showViewTasks,
             configure,
             oneInstance,
-            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, AddOpen, ViewTasksOpen, viewTasks.Close, addByUser).Press),
-            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, AddOpen, CloseAdd, viewTasksByUser).Press),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, AddOpen, [viewTasksWindow], addByUser).Press),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, [addWindow], viewTasksByUser).Press),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ConfigureOpen, [addWindow, viewTasksWindow], configureByUser).Press),
             startup,
             updates,
             endApp => new ShellExit(add, viewTasks, configure, endApp),

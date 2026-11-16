@@ -8,7 +8,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.Configure.Tests;
 
 /// <summary>
-/// The Shortcuts section's four rows and how Configure closes: the Close window keys from anywhere in the window, and
+/// The Shortcuts card's five rows and how Configure closes: the Close window keys from anywhere in the window, and
 /// Esc. The rules are unit-tested on CloseWindowSetting, ShortcutKeyInput and DeviceActions; this checks the wiring.
 /// </summary>
 [UX]
@@ -16,12 +16,12 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 public class ConfigureCloseWindowTests
 {
     [WpfFact]
-    public void Shows_four_shortcut_rows_Add_new_task_Task_View_Close_window_and_Save_in_order()
+    public void Shows_five_shortcut_rows_Add_new_task_Task_View_Configure_Close_window_and_Save_in_order()
     {
         using var screen = new ConfigureScreen();
         screen.Open();
 
-        string[] labels = ["Add new task", "Task View", "Close window", "Save"];
+        string[] labels = ["Add new task", "Task View", "Configure", "Close window", "Save"];
 
         Assert.Equal(labels, screen.Texts.Where(text => labels.Contains(text)));
         Assert.Equal("Shift+Escape", screen.CloseField.Text);
@@ -35,6 +35,7 @@ public class ConfigureCloseWindowTests
 
         Assert.Equal("Opens the Add window from any app.", OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.AddField)));
         Assert.Equal("Opens Task View from any app.", OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.ManageField)));
+        Assert.Equal("Opens Configure from any app.", OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.ConfigureField)));
         Assert.Equal(
             "Closes the app's window you're in, whatever has the focus.",
             OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.CloseField)));
@@ -42,7 +43,7 @@ public class ConfigureCloseWindowTests
             "Saves the task you're editing, in Add and Task View.",
             OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.SaveField)));
         Assert.All(
-            new[] { screen.AddField, screen.ManageField, screen.CloseField, screen.SaveField },
+            new[] { screen.AddField, screen.ManageField, screen.ConfigureField, screen.CloseField, screen.SaveField },
             field => Assert.Equal(FontStyles.Italic, ConfigureScreen.DescriptionUnder(field).FontStyle));
     }
 
@@ -92,6 +93,17 @@ public class ConfigureCloseWindowTests
 
         Assert.Equal(ShortcutCall.Register(TestShortcut.AddNewTaskDefault), screen.AddNewTask.Calls[^1]);
         Assert.Equal(ShortcutCall.Register(TestShortcut.ManageTasksDefault), screen.ManageTasks.Calls[^1]);
+        Assert.Equal(ShortcutCall.Register(TestShortcut.ConfigureDefault), screen.ConfigureAction.Calls[^1]);
+    }
+
+    [WpfFact]
+    public void The_Shortcuts_card_starts_with_the_instruction_line_before_its_first_row()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+
+        Assert.True(screen.TextTop("Click a box, then press the new shortcut. Esc keeps the current one:") < screen.TextTop("Add new task"));
+        Assert.True(screen.TextTop("Shortcuts") < screen.TextTop("Click a box, then press the new shortcut. Esc keeps the current one:"));
     }
 
     [WpfFact]

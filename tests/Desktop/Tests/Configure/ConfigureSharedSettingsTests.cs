@@ -28,6 +28,53 @@ public class ConfigureSharedSettingsTests
     }
 
     [WpfFact]
+    public void Stored_Configure_text_is_applied_when_shortcut_actions_connect()
+    {
+        using var screen = new ConfigureScreen(
+            initialSettings: settings => settings.SetConfigureShortcut("Ctrl+Alt+K"));
+        screen.Open();
+
+        Assert.Equal("Ctrl+Alt+K", screen.ConfigureField.Text);
+        Assert.Equal(TestShortcut.Of(ModifierKeys.Control | ModifierKeys.Alt, Key.K), screen.ConfigureAction.Registered);
+    }
+
+    [WpfFact]
+    public void Invalid_stored_Configure_text_keeps_the_default_says_why_and_is_not_repaired()
+    {
+        using var screen = new ConfigureScreen(
+            initialSettings: settings => settings.SetConfigureShortcut("not a Windows shortcut"));
+        screen.Open();
+
+        Assert.Equal("Win+Alt+C", screen.ConfigureField.Text);
+        Assert.Contains("not a Windows shortcut", screen.ConfigureMessage);
+        Assert.Equal("not a Windows shortcut", screen.Store.Settings.ConfigureShortcut);
+    }
+
+    [WpfFact]
+    public void A_valid_Configure_pick_is_saved_in_shared_settings()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+
+        screen.Chord(screen.ConfigureField, Key.LeftCtrl, Key.LeftShift, Key.K);
+        screen.FocusStartWithWindowsBox();
+
+        Assert.Equal("Ctrl+Shift+K", screen.Store.Settings.ConfigureShortcut);
+    }
+
+    [WpfFact]
+    public async Task A_Configure_change_from_a_worker_thread_updates_the_registration_even_while_the_window_is_closed()
+    {
+        using var screen = new ConfigureScreen();
+
+        await Task.Run(() => screen.Store.Settings.SetConfigureShortcut("Ctrl+Alt+K"));
+        await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+
+        Assert.Equal(ShortcutCall.Register(TestShortcut.Of(ModifierKeys.Control | ModifierKeys.Alt, Key.K)),
+            screen.ConfigureAction.Calls.Last());
+    }
+
+    [WpfFact]
     public void A_valid_local_shortcut_pick_is_saved_in_shared_settings()
     {
         using var screen = new ConfigureScreen();
