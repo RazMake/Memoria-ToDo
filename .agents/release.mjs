@@ -6,6 +6,7 @@ import { dirname, join, basename } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { styleText } from 'node:util';
 import { approvalOf, createFiles, createGit, defaultPart, parts, run as tagCommand } from './version-tag.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -17,13 +18,13 @@ const liveTimeoutMs = 30 * 60_000;
 const messageOf = (error) => String(error.message).trim().replace(/\s*\n\s*/g, ' ');
 
 export async function run(args, services) {
-  const { interactive, ask, write, git, files, github, testTooling } = services;
+  const { interactive, ask, write, waitForGitHub, git, files, github, testTooling, testApp } = services;
   let publishedTag;
   let attemptedTag;
   let repository;
   try {
     if (args.length === 1 && args[0] === '--help') {
-      write(`${usage}\nChecks tooling and GitHub builds, asks before publishing, downloads the installer, and guides manual checks.\n`);
+      write(`${usage}\nRuns the tooling tests and every app test, checks GitHub builds, asks before publishing, downloads the installer, and guides manual checks.\n`);
       return { code: 0, stderr: '' };
     }
     if (args.length > 1 || (args.length === 1 && !parts.includes(args[0]))) throw new Error(usage);
@@ -31,9 +32,9 @@ export async function run(args, services) {
     const part = args[0] ?? ((await ask(`Version part (${parts.join('/')}; Enter for ${defaultPart}): `)).trim() || defaultPart);
     if (!parts.includes(part)) throw new Error(usage);
 
-    write('Checking GitHub access. If sign-in is needed, run gh auth login in another terminal.\n');
+    waitForGitHub('Waiting for GitHub to check your sign-in and origin repository. If sign-in is needed, run gh auth login in another terminal.\n');
     repository = await github.connect();
-    write('Running the Node tooling tests. The release workflow will build and test the app.\n');
+    write('Running the Node tooling tests.\n');
     await testTooling();
 
     let preview;
@@ -49,18 +50,31 @@ export async function run(args, services) {
     }
 
     write(preview.stdout);
+    // After a passing preview the working tree is clean at the commit the tag will name, so these tests check exactly it.
+    write('Building the app and running every test kind, as the release workflow does before publishing.\n');
+    await testApp();
     const approval = approvalOf(preview.stdout);
     const branch = await git.defaultBranch();
-    write(`Waiting for the branch checks on ${approval.commit}.\n`);
+    waitForGitHub(`Waiting for GitHub to find the branch checks on ${approval.commit}.\n`);
     const check = await github.waitForRun(branch, approval.commit);
     write(`${check.url}\n`);
+    const alreadyPassed = check.status === 'completed' && check.conclusion === 'success';
+    if (check.status === 'completed' && !alreadyPassed) {
+      throw new Error(`The branch checks finished with ${check.conclusion}, not success; inspect ${check.url}. Nothing was tagged.`);
+    }
+    waitForGitHub('Waiting for GitHub to confirm the branch checks.\n');
     await github.watch(check);
+    waitForGitHub(`Waiting for GitHub to list earlier workflows for ${approval.tag}.\n`);
     const previous = (await github.runs(approval.tag, approval.commit)).map((job) => job.databaseId);
 
-    const yes = await ask(`Publishing ${approval.tag} pushes its tag and makes an installer available on GitHub. Type exactly yes to publish: `);
-    if (yes !== 'yes') {
-      write('Cancelled. No version tag was pushed.\n');
-      return { code: 0, stderr: '' };
+    if (alreadyPassed) {
+      write('The branch checks already passed, so publishing happens automatically.\n');
+    } else {
+      const yes = await ask(`Publishing ${approval.tag} pushes its tag and makes an installer available on GitHub. Type exactly yes to publish: `);
+      if (yes !== 'yes') {
+        write('Cancelled. No version tag was pushed.\n');
+        return { code: 0, stderr: '' };
+      }
     }
     write(`Publishing the approved tag. If interrupted, inspect ${repository.url}/actions before trying again.\n`);
     await github.ensureOrigin();
@@ -72,11 +86,15 @@ export async function run(args, services) {
     write(made.stdout);
     write(`${repository.url}/releases/tag/${publishedTag}\n`);
 
+    waitForGitHub(`Waiting for GitHub to start the workflow for ${publishedTag}.\n`);
     const job = await github.waitForRun(publishedTag, approval.commit, previous);
     write(`${job.url}\n`);
+    waitForGitHub(`Waiting for GitHub to finish the workflow for ${publishedTag}.\n`);
     await github.watch(job);
+    waitForGitHub(`Waiting for GitHub to fetch the release for ${publishedTag}.\n`);
     const release = await github.release(publishedTag);
     const installer = installerOf(release.assets);
+    waitForGitHub(`Waiting for GitHub to download the installer ${installer.name}.\n`);
     const path = await github.download(publishedTag, installer.name);
     write(`Published: ${release.url}\nInstaller: ${path}\n`);
     write('Manual step: the installer is unsigned, so Windows may warn. Inspect the downloaded file before running it. The command never launches it.\n');
@@ -92,6 +110,14 @@ export async function run(args, services) {
       : '';
     return { code: 1, stderr: `${messageOf(error)}${recovery}\n` };
   }
+}
+
+export function createTerminalOutput(terminal, output, signal) {
+  return {
+    ask: (question) => terminal.question(styleText('yellow', question, { stream: output }), { signal }),
+    write: (text) => output.write(text),
+    waitForGitHub: (text) => output.write(styleText('cyan', text, { stream: output })),
+  };
 }
 
 export function createCommands(cwd, signal) {
@@ -235,8 +261,7 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
   try {
     const result = await run(process.argv.slice(2), {
       interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
-      ask: (question) => terminal.question(question, { signal: controller.signal }),
-      write: (text) => process.stdout.write(text),
+      ...createTerminalOutput(terminal, process.stdout, controller.signal),
       git: createGit(root, execute),
       files: createFiles(root),
       github: createGitHub(execute),
@@ -246,6 +271,7 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
         if (!tests.length) throw new Error('No Node tooling tests were found.');
         await execute(process.execPath, ['--test', ...tests], { live: true });
       },
+      testApp: () => execute('dotnet', ['test', '-p:MemoriaAllTestKinds=true'], { live: true }),
     });
     if (result.stderr) process.stderr.write(result.stderr);
     process.exitCode = result.code;

@@ -2,7 +2,7 @@
 
 Status: Decided
 
-Run `node .agents\release.mjs`, or choose **Tasks: Run Task > release a version** in VS Code. The [release command](../../.agents/release.mjs) checks the code, asks before publishing, follows GitHub Actions, downloads the installer, and guides your manual checks.
+Run `node .agents\release.mjs`, or choose **Tasks: Run Task > release a version** in VS Code. The [release command](../../.agents/release.mjs) checks the code, publishes after a passing branch build, follows GitHub Actions, downloads the installer, and guides your manual checks.
 
 ## Behavior
 
@@ -16,17 +16,27 @@ The [version tag rules](version-tags.md) own choosing the version, checking comm
 
 Before any publishing, the command checks GitHub access and runs the Node tooling tests. A preview then checks the repository and committed changelog.
 
+After a passing preview, the working tree is clean at the commit the tag will name. The command then runs the [full run of every test kind](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test) on your PC, the same tests the workflow runs before publishing. A failure stops the command before any tag. You decided this on November 16, 2026, after a release failed on UX tests that only branch builds' unit runs had covered. A pass on your PC can't prove the runner passes too, so tests must not depend on the machine, such as where the mouse pointer rests.
+
 When a preview refuses, the command shows its error. You fix the named problem in another terminal, including any changelog edit, commit, or branch push. Enter retries the preview; any other answer cancels. The command never edits files, commits, pulls, switches branches, stashes, discards changes, or pushes a branch.
 
 It works on the repository beside the script, regardless of the current directory. Origin must fetch from and push to one GitHub repository. A different push destination fails before GitHub access or tagging.
 
 The command checks origin again after your publishing confirmation. The tag push uses the validated endpoint explicitly, so a later git configuration change cannot redirect it to another repository.
 
-### Publishing needs a passing branch build and your confirmation
+### Publishing needs a passing branch build, and your yes unless it had already passed
 
 The command follows the workflow for the previewed commit on origin's default branch. It does not accept a passing build of another commit.
 
-After that build passes, the command asks you to type exactly `yes`. Any other answer cancels without making a tag. It runs the preview's guarded command arguments unchanged, without a shell. A changed plan refuses and stops; another attempt needs a new preview and confirmation.
+What happens next depends on that workflow's state when the command first finds it:
+
+| Branch workflow when first found | What the command does |
+| --- | --- |
+| Finished and passed | Says the branch checks already passed, then publishes without asking. |
+| Queued or running | Waits for it. If it passes, asks you to type exactly `yes`; any other answer cancels without making a tag. |
+| Finished and failed, or ended any other way | Stops with an error. Nothing is tagged. |
+
+You decided this: a build that passed before you started is approval enough, but a build you waited for still needs your yes. Either way, the command runs the preview's guarded command arguments unchanged, without a shell. A changed plan refuses and stops; another attempt needs a new preview and, when asked, a new confirmation.
 
 Proposed, a decision to confirm: the command requires an interactive terminal. Redirected input cannot supply release approval. AI tools keep using the [version-tag skill](version-tags.md#the-skill-previews-asks-you-then-runs-the-script).
 
@@ -39,6 +49,10 @@ Proposed, a decision to confirm: waiting for a workflow to appear and waiting fo
 Git operations use the same bounded, cancellable executor as GitHub CLI. If a push is interrupted, its outcome may be uncertain; the command prints recovery links instead of claiming nothing reached GitHub.
 
 After the tag's workflow passes, the command checks that the release is published, is not a prerelease, and contains exactly one nonempty Windows setup executable.
+
+### Questions and GitHub waits stand out
+
+Every question the command asks you appears in yellow. Before each wait on GitHub, such as checking sign-in, finding or watching a workflow, or fetching the release, one cyan message names what it waits for. Proposed, a decision to confirm: these two colors, and plain text with no color codes when the terminal can't show color or `NO_COLOR` is set. The command uses Node.js's own [terminal color support](https://nodejs.org/api/util.html#utilstyletextformat-text-options), so it adds no dependency.
 
 ### Installation and the smoke check stay manual
 
@@ -71,7 +85,10 @@ Exit code zero means either an explicitly reported cancellation before tagging, 
 
 - **Automatic commits, branch changes, or changelog edits:** release preparation belongs to the developer.
 - **Automatic installation or deletion of a published release:** these need separate human judgment.
+- **Publishing without your yes after waiting for the branch build:** you chose to skip the question only for a build that had already passed.
+- **Skipping the manual installer checks:** the command can't see the installed app.
 - **Selecting the latest Actions run:** it could belong to another commit, branch, or an earlier use of the tag.
+- **Every test kind on each push to the default branch, so the runner checks them before tagging:** you chose the run on your PC, which adds no workflow time to each push.
 - **New dependencies or another version parser:** the existing Node.js modules, GitHub CLI, and tag script suffice.
 
 ## Open questions

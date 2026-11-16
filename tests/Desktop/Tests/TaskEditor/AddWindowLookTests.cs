@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
+using Memoria.ToDo.Desktop.Platform.Tests;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -11,7 +13,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 /// Title and Description look like the Tags line, a WPF text box the theme styles, in the light and the dark theme, and
 /// they follow the theme while Add is open. A Title marked as missing paints its border in the theme's error color. A
 /// test sees a look only as the properties of the field and of the border its template draws. The look under the pointer
-/// can't be reached without a mouse, so no test covers it.
+/// can't be reached without a mouse, so no test covers it, and each test moves the pointer off the window first.
 /// </summary>
 [UX]
 [Collection(ScreenTests.Collection)]
@@ -87,7 +89,26 @@ public class AddWindowLookTests
     {
         screen.OpenCustom();
         Keyboard.Focus(screen.SaveButton);
+        MovePointerOff(screen.Window);
         Look.Of(screen, field).AssertSameAs(Look.Of(screen, EditorFields.Tags));
+    }
+
+    // A field under the pointer looks different too, and the pointer is wherever the machine or an earlier test left it,
+    // such as the screen's center, where the window opens. So it moves to a corner of the screen the window doesn't cover.
+    private static void MovePointerOff(Window window)
+    {
+        var frame = Win32.WindowRect(new WindowInteropHelper(window).Handle);
+        var work = Win32.WorkAreaOfScreenWith(new Win32.Point { X = frame.Left + frame.Width / 2, Y = frame.Top + frame.Height / 2 });
+        Win32.Point[] corners =
+        [
+            new() { X = work.Left, Y = work.Top },
+            new() { X = work.Right - 1, Y = work.Top },
+            new() { X = work.Left, Y = work.Bottom - 1 },
+            new() { X = work.Right - 1, Y = work.Bottom - 1 },
+        ];
+        Win32.MoveCursor(corners.First(p => p.X < frame.Left || p.X >= frame.Right || p.Y < frame.Top || p.Y >= frame.Bottom));
+        Mouse.Synchronize();
+        Assert.False(window.IsMouseOver, "The pointer is still over the window.");
     }
 
     /// <summary>What a reader sees of a field: its own properties and those of the border its template draws.</summary>

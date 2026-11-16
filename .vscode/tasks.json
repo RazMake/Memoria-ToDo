@@ -20,7 +20,11 @@
       "command": "node",
       "args": ["${workspaceFolder}\\.agents\\release.mjs"],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "DOTNET_ROOT": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet",
+          "PATH": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet;${env:PATH}"
+        }
       },
       "presentation": {
         "reveal": "always",

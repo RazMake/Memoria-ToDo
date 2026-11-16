@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { Writable } from 'node:stream';
+import * as release from './release.mjs';
 import { createCommands, createGitHub, run } from './release.mjs';
 import { createGit } from './version-tag.mjs';
 import { changelogWith, commitA, commitB, createFakeFiles, createFakeGit } from './version-tag.fake-git.mjs';
@@ -17,17 +19,23 @@ const branchRun = { databaseId: 10, headBranch: 'main', headSha: commitA, status
 const tagRun = { ...branchRun, databaseId: 20, headBranch: 'v1.0.0' };
 const published = { tagName: 'v1.0.0', isDraft: false, isPrerelease: false, url: `${repository.url}/releases/tag/v1.0.0`, assets: [{ name: 'MemoriaToDo-win-Setup.exe', size: 123 }] };
 
+const runningBranchRun = { ...branchRun, status: 'in_progress', conclusion: null };
+
 function session(options = {}) {
   const git = createFakeGit({ originHead: commitA, changelog: changelogWith('1.0.0'), ...options.git });
   const output = [];
+  const githubWaits = [];
   const questions = [];
+  const firstBranchRun = options.branchRun ?? runningBranchRun;
   const answers = [...(options.answers ?? ['yes', 'yes'])];
   let tested = false;
+  let appTestedAfterQuestions;
   const services = {
     interactive: true,
     git,
     files: createFakeFiles(),
     write: (text) => output.push(text),
+    waitForGitHub: (text) => { githubWaits.push(text); output.push(text); },
     ask: async (question) => {
       if (question.startsWith('Version part')) return '';
       questions.push(question);
@@ -36,11 +44,12 @@ function session(options = {}) {
       return typeof answer === 'function' ? answer(git) : answer;
     },
     testTooling: async () => { tested = true; },
+    testApp: async () => { appTestedAfterQuestions = questions.length; },
     github: {
       connect: async () => repository,
       ensureOrigin: async () => {},
       runs: async () => [],
-      waitForRun: async (ref) => ref === 'main' ? branchRun : tagRun,
+      waitForRun: async (ref) => ref === 'main' ? firstBranchRun : tagRun,
       watch: async (job) => {
         if (job.headBranch === 'main') assert.deepEqual(git.snapshot().remote, {});
         else assert.equal(git.snapshot().remote['v1.0.0'], commitA);
@@ -51,8 +60,10 @@ function session(options = {}) {
     },
     ...options.services,
   };
-  return { git, services, questions, output, tested: () => tested };
+  return { git, services, questions, output, githubWaits, tested: () => tested, appTestedAfterQuestions: () => appTestedAfterQuestions };
 }
+
+const finishedBranchRun = (conclusion, status = 'completed') => ({ ...branchRun, status, conclusion });
 
 describe('guided release (unit)', () => {
   test('tests the tooling, publishes the previewed commit, and guides installation and smoke checks', async () => {
@@ -119,11 +130,18 @@ describe('guided release (unit)', () => {
     assert.match(s.output.join('\n'), /cancel/i);
   });
 
-  for (const stage of ['connect', 'tests', 'branch']) {
+  test('runs every app test only once the preview passes, so it tests the commit it tags', async () => {
+    const s = session({ git: { clean: false }, answers: [(git) => { git.configure({ clean: true }); return ''; }, 'yes', 'yes'] });
+    assert.equal((await run([], s.services)).code, 0);
+    assert.equal(s.appTestedAfterQuestions(), 1);
+    assert.equal(s.git.snapshot().remote['v1.0.0'], commitA);
+  });
+
+  for (const stage of ['connect', 'tests', 'app tests', 'branch']) {
     test(`reports a ${stage} failure before publishing any tag`, async () => {
       const failure = async () => { throw new Error(`${stage} failed`); };
       const s = session({
-        services: stage === 'tests' ? { testTooling: failure } : {},
+        services: stage === 'tests' ? { testTooling: failure } : stage === 'app tests' ? { testApp: failure } : {},
         github: stage === 'connect' ? { connect: failure } : stage === 'branch' ? { watch: failure } : {},
       });
       const result = await run([], s.services);
@@ -163,6 +181,196 @@ describe('guided release (unit)', () => {
     assert.match(result.stderr, /already published|already public/i);
     assert.match(result.stderr, /manual|install/i);
     assert.equal(s.git.snapshot().remote['v1.0.0'], commitA);
+  });
+});
+
+describe('release publishing approval (unit)', () => {
+  const finalQuestion = /tray|Task View/i;
+
+  test('publishes without a publishing question when the first branch run had already passed, but still asks for the manual checks', async () => {
+    const s = session({ branchRun, answers: ['yes'] });
+    const result = await run([], s.services);
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(s.git.snapshot(), { local: { 'v1.0.0': commitA }, remote: { 'v1.0.0': commitA } });
+    assert.equal(s.questions.length, 1);
+    assert.match(s.questions[0], finalQuestion);
+    assert.match(s.output.join('\n'), /already passed/i);
+  });
+
+  test('still fails when the manual installer checks are not confirmed after an automatic publish', async () => {
+    const s = session({ branchRun, answers: ['no'] });
+    const result = await run([], s.services);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /already published|already public/i);
+    assert.equal(s.git.snapshot().remote['v1.0.0'], commitA);
+  });
+
+  for (const [status, conclusion] of [['queued', null], ['in_progress', null], ['waiting', null], ['requested', null], ['pending', null], ['in_progress', 'success']]) {
+    test(`asks before publishing when the first branch run was ${status} with conclusion ${conclusion}, even though watching succeeds`, async () => {
+      const watched = [];
+      const s = session({
+        branchRun: finishedBranchRun(conclusion, status),
+        answers: ['no'],
+        github: { watch: async (job) => { watched.push(job.databaseId); } },
+      });
+      const result = await run([], s.services);
+      assert.equal(result.code, 0, result.stderr);
+      assert.deepEqual(watched, [branchRun.databaseId]);
+      assert.equal(s.questions.length, 1);
+      assert.match(s.questions[0], /publish/i);
+      assert.deepEqual(s.git.snapshot(), { local: {}, remote: {} });
+      assert.match(s.output.join('\n'), /cancel/i);
+    });
+  }
+
+  test('publishes a build that was waited for once the user types yes', async () => {
+    const s = session({ branchRun: finishedBranchRun(null, 'queued') });
+    const result = await run([], s.services);
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(s.questions.length, 2);
+    assert.match(s.questions[0], /publish/i);
+    assert.equal(s.git.snapshot().remote['v1.0.0'], commitA);
+  });
+
+  for (const conclusion of ['failure', 'cancelled', 'timed_out', 'skipped', null]) {
+    test(`stops without asking or tagging when the first branch run finished with ${conclusion}`, async () => {
+      const s = session({ branchRun: finishedBranchRun(conclusion), answers: [] });
+      const result = await run([], s.services);
+      assert.equal(result.code, 1);
+      assert.match(result.stderr, /branch checks/i);
+      assert.deepEqual(s.questions, []);
+      assert.deepEqual(s.git.snapshot(), { local: {}, remote: {} });
+    });
+  }
+
+  test('refuses a plan that changed after an already passed build, without asking or tagging', async () => {
+    const s = session({ branchRun, answers: [] });
+    s.services.github.waitForRun = async (ref) => {
+      if (ref === 'main') s.git.configure({ originHead: commitB });
+      return ref === 'main' ? branchRun : tagRun;
+    };
+    const result = await run([], s.services);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /approved|preview|behind/i);
+    assert.deepEqual(s.questions, []);
+    assert.deepEqual(s.git.snapshot().remote, {});
+  });
+
+  test('refuses a destination changed after an already passed build, without asking or tagging', async () => {
+    const s = session({ branchRun, answers: [], github: { ensureOrigin: async () => { throw new Error('origin push destination changed'); } } });
+    const result = await run([], s.services);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /destination changed/);
+    assert.deepEqual(s.questions, []);
+    assert.deepEqual(s.git.snapshot(), { local: {}, remote: {} });
+  });
+
+  test('pins the tag push to the validated endpoint after an already passed build', async () => {
+    const s = session({ branchRun, answers: ['yes'] });
+    const push = s.git.pushTag;
+    const destinations = [];
+    s.git.pushTag = async (name, id, destination) => {
+      destinations.push(destination);
+      return push(name, id);
+    };
+    const result = await run([], s.services);
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(destinations, [repository.pushUrl]);
+  });
+});
+
+describe('release waits on GitHub (unit)', () => {
+  test('announces each GitHub wait before starting it, separately from questions', async () => {
+    const seen = [];
+    const s = session({ answers: ['yes', 'yes'] });
+    const github = s.services.github;
+    for (const name of ['connect', 'waitForRun', 'watch', 'release']) {
+      const original = github[name];
+      github[name] = async (...args) => {
+        seen.push(s.githubWaits.length);
+        return original(...args);
+      };
+    }
+    const result = await run([], s.services);
+    assert.equal(result.code, 0, result.stderr);
+    // connect, branch find, branch watch, tag find, tag watch, release fetch
+    assert.equal(seen.length, 6);
+    assert.ok(seen[0] >= 1);
+    for (let i = 1; i < seen.length; i++) assert.ok(seen[i] > seen[i - 1], `wait ${i} was not announced before its GitHub call: ${seen}`);
+    assert.ok(s.githubWaits.every((text) => !s.questions.includes(text)));
+  });
+});
+
+const colorVariables = ['NO_COLOR', 'FORCE_COLOR', 'NODE_DISABLE_COLORS'];
+const yellow = (text) => `\u001b[33m${text}\u001b[39m`;
+const cyan = (text) => `\u001b[36m${text}\u001b[39m`;
+
+function isolateColorEnvironment(t, changes) {
+  const saved = Object.fromEntries(colorVariables.map((name) => [name, process.env[name]]));
+  t.after(() => {
+    for (const name of colorVariables) {
+      if (saved[name] === undefined) delete process.env[name];
+      else process.env[name] = saved[name];
+    }
+  });
+  for (const name of colorVariables) delete process.env[name];
+  Object.assign(process.env, changes);
+}
+
+function terminalFixture(supportsTerminalColor) {
+  const writes = [];
+  const output = new Writable();
+  output.write = (text) => { writes.push(text); return true; };
+  if (supportsTerminalColor) {
+    output.isTTY = true;
+    output.getColorDepth = (env = process.env) => ('NO_COLOR' in env || env.FORCE_COLOR === '0' ? 1 : 8);
+  }
+  const prompts = [];
+  const answers = [];
+  const terminal = { question: (text, options) => new Promise((resolve) => { prompts.push({ text, options }); answers.push(resolve); }) };
+  const controller = new AbortController();
+  assert.equal(typeof release.createTerminalOutput, 'function', 'release.mjs must export createTerminalOutput(terminal, output, signal)');
+  return { services: release.createTerminalOutput(terminal, output, controller.signal), writes, prompts, answers, signal: controller.signal };
+}
+
+describe('release terminal output (unit)', () => {
+  for (const [label, environment, supportsTerminalColor, colored] of [
+    ['a color terminal', {}, true, true],
+    ['color forced on a stream without a terminal', { FORCE_COLOR: '1' }, false, true],
+    ['a stream that is not a terminal', {}, false, false],
+    ['NO_COLOR on a color terminal', { NO_COLOR: '1' }, true, false],
+  ]) {
+    test(`${colored ? 'shows' : 'does not show'} colors on ${label}`, async (t) => {
+      isolateColorEnvironment(t, environment);
+      const f = terminalFixture(supportsTerminalColor);
+      const answer = f.services.ask('Type yes: ');
+      assert.equal(f.prompts.length, 1, 'the question must reach the terminal before it is answered');
+      assert.equal(f.prompts[0].text, colored ? yellow('Type yes: ') : 'Type yes: ');
+      assert.equal(f.prompts[0].options.signal, f.signal);
+      f.answers[0]('yes');
+      assert.equal(await answer, 'yes');
+
+      f.services.waitForGitHub('Waiting for the branch checks.\n');
+      assert.equal(f.writes.length, 1);
+      if (colored) assert.match(f.writes[0], /^\u001b\[36m[^\u001b]*Waiting for the branch checks\.[^\u001b]*\u001b\[39m\n?$/);
+      else assert.equal(f.writes[0], 'Waiting for the branch checks.\n');
+    });
+  }
+
+  test('writes ordinary output unchanged even when the terminal shows colors', (t) => {
+    isolateColorEnvironment(t, {});
+    const f = terminalFixture(true);
+    f.services.write('Published.\n');
+    assert.deepEqual(f.writes, ['Published.\n']);
+  });
+
+  test('uses different colors for questions and GitHub waits', (t) => {
+    isolateColorEnvironment(t, { FORCE_COLOR: '1' });
+    const f = terminalFixture(false);
+    f.services.ask('Same words');
+    f.services.waitForGitHub('Same words');
+    assert.equal(f.prompts[0].text, yellow('Same words'));
+    assert.equal(f.writes[0], cyan('Same words'));
   });
 });
 

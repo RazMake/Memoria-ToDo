@@ -177,7 +177,7 @@ Proposed, each a decision to confirm:
   | Run | Command |
   | --- | --- |
   | A red run of new integration tests, and each group of the closing failure proof | `dotnet test --project <test project> -p:MemoriaAllTestKinds=true --filter-method "<full method name>"`, narrowed with the filters above |
-  | The full run, at final validation and on each version tag in the [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | `dotnet test -p:MemoriaAllTestKinds=true` |
+  | The full run, at final validation, in the [release command](releasing.md#manual-preparation-stays-with-you) before it tags, and on each version tag in the [workflow](#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) | `dotnet test -p:MemoriaAllTestKinds=true` |
 
   The full run is the one command that builds the code and runs every test, which the [design backlog](README.md#design-backlog) asks for.
 - **Proposed: setting `TestingPlatformCommandLineArguments` yourself fails the build of a test project**, with an error that names `MemoriaAllTestKinds`. A property given with `-p:` replaces every value `Directory.Build.props` sets ([global properties](https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-properties#global-properties)), so emptying it, as runs of every test did before, would also drop the hang dump. This is a decision to confirm.
