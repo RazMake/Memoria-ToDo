@@ -286,7 +286,7 @@ describe('clearing a version tag (unit)', () => {
 
   for (const [what, args, options] of [
     ['a name that is not a version tag', ['--clear', 'proof-1'], onBoth({ 'proof-1': 'c1', 'v1.0.0': 'c1' })],
-    ['a name that nearly looks like a version tag', ['--clear', 'v1.2'], onBoth({ 'v1.0.0': 'c1' })],
+    ['a name that nearly looks like a version tag', ['--clear', 'v1.2.3.4'], onBoth({ 'v1.0.0': 'c1' })],
     ['a version tag that is in neither place', ['--clear', 'v7.0.0'], onBoth({ 'v1.0.0': 'c1' })],
     ['--clear alone when there is no version tag', ['--clear'], onBoth({ 'proof-1': 'c1' })],
   ]) {
@@ -303,6 +303,42 @@ describe('clearing a version tag (unit)', () => {
     const { result } = await runWith(['--clear', 'v7.0.0']);
     assert.match(result.stderr, /v7\.0\.0/);
   });
+});
+
+describe('clearing a version tag named in short form (unit)', () => {
+  for (const [input, tag] of [['1.0', 'v1.0.0'], ['v1.0', 'v1.0.0'], ['1.0.0', 'v1.0.0'], ['1.2.3', 'v1.2.3']]) {
+    test(`${input} deletes ${tag} in both places and keeps other tags`, async () => {
+      const { git, result } = await runWith(['--clear', input], onBoth({ [tag]: commitA, 'v9.0.0': commitA, 'v1.0': commitA }));
+      assert.deepEqual(result, { code: 0, stdout: `Deleted ${tag} on origin.\nDeleted ${tag} here.\n`, stderr: '' });
+      assert.deepEqual(git.snapshot(), onBoth({ 'v9.0.0': commitA, 'v1.0': commitA }));
+    });
+
+    test(`a preview of ${input} names ${tag} in its guarded command and changes no tag`, async () => {
+      const state = onBoth({ [tag]: commitA });
+      const { git, result } = await runWith(['--clear', input, '--dry-run'], state);
+      assert.equal(result.code, 0, result.stderr);
+      assert.equal(lines(result.stdout).at(-1), `node .agents/version-tag.mjs --clear ${tag} --here ${commitA} --origin ${commitA}`);
+      assert.deepEqual(git.snapshot(), state);
+    });
+  }
+
+  test('filling in the patch keeps every digit of large version numbers', async () => {
+    const tag = 'v9007199254740993.9007199254740995.0';
+    const other = 'v9007199254740992.9007199254740995.0';
+    const { git, result } = await runWith(['--clear', '9007199254740993.9007199254740995'], onBoth({ [tag]: commitA, [other]: commitA }));
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(git.snapshot(), onBoth({ [other]: commitA }));
+  });
+
+  for (const input of ['', '1', 'V1.0', '01.0', '1.00', '1.0.00', '1.0.0.0', ' 1.0', '1.0-rc1']) {
+    test(`refuses ${JSON.stringify(input)} before git rather than clearing the latest tag`, async () => {
+      const state = onBoth({ 'v1.0.0': commitA });
+      const { git, result } = await runWith(['--clear', input], state);
+      assertRefusal(result, /version tag/);
+      assert.deepEqual(git.calls, []);
+      assert.deepEqual(git.snapshot(), state);
+    });
+  }
 });
 
 describe('a preview with --dry-run (unit)', () => {

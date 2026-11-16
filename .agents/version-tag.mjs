@@ -23,6 +23,13 @@ class Refusal extends Error {}
 const refuse = (message) => { throw new Refusal(message); };
 
 const versionOf = (tag) => versionTag.exec(tag)?.slice(1).map(BigInt);
+function clearTagOf(input) {
+  let tag = input.startsWith('v') ? input : `v${input}`;
+  if (tag.split('.').length === 2) tag += '.0';
+  if (versionTag.exec(tag)?.[0] !== tag) refuse(`"${input}" is not a version tag; use [v]<major>.<minor>[.<patch>], such as 1.0 or v1.0.0`);
+  return tag;
+}
+
 const compare = (a, b) => {
   for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
   return 0;
@@ -67,9 +74,9 @@ function parseArguments(args) {
   if (flags.has('--clear')) {
     if (expect !== undefined) refuse(`--expect and --commit are for making a tag; ${usage}`);
     if (words.length > 1 || parts.includes(words[0])) refuse(`--clear takes at most one tag; ${usage}`);
-    if (words[0] !== undefined && !versionTag.test(words[0])) refuse(`"${words[0]}" is not a version tag; use the form v<major>.<minor>.<patch>`);
+    const tag = words[0] === undefined ? undefined : clearTagOf(words[0]);
     if ((here !== undefined || origin !== undefined) && words.length === 0) refuse(`--here and --origin need the tag to clear; ${usage}`);
-    return { command: 'clear', tag: words[0], dryRun, here, origin };
+    return { command: 'clear', tag, dryRun, here, origin };
   }
   if (here !== undefined || origin !== undefined) refuse(`--here and --origin are for --clear; ${usage}`);
   if (words.length > 1 || (words.length === 1 && !parts.includes(words[0]))) refuse(`give at most one of major, minor, patch; ${usage}`);

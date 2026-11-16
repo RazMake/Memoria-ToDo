@@ -32,6 +32,32 @@
         "panel": "dedicated"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "clear a version tag",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}\\.agents\\version-tag.mjs",
+        "--clear",
+        "${input:versionTag}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "versionTag",
+      "type": "promptString",
+      "description": "Tag to delete locally and on origin (e.g. 1.0 or v1.0.0; keeps the GitHub release)"
     }
   ]
 }

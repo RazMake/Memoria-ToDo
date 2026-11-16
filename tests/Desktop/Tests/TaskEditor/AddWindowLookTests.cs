@@ -26,24 +26,24 @@ public class AddWindowLookTests
     [InlineData(true, EditorFields.Title)]
     [InlineData(false, EditorFields.Description)]
     [InlineData(true, EditorFields.Description)]
-    public void A_field_has_the_Tags_line_background_text_color_border_and_padding(bool dark, string field)
+    public async Task A_field_has_the_Tags_line_background_text_color_border_and_padding(bool dark, string field)
     {
         using var screen = Open(dark);
 
-        AssertSameLook(screen, field);
+        await AssertSameLook(screen, field);
     }
 
     [WpfTheory]
     [InlineData(EditorFields.Title)]
     [InlineData(EditorFields.Description)]
-    public void A_field_follows_the_theme_while_Add_is_open(string field)
+    public async Task A_field_follows_the_theme_while_Add_is_open(string field)
     {
         using var screen = Open(dark: false);
         var lightBackground = ((Control)EditorFields.Field(screen.Window, field)).Background;
 
         screen.UseTheme(dark: true);
 
-        AssertSameLook(screen, field);
+        await AssertSameLook(screen, field);
         Assert.False(
             Looks.BrushesAreEqual(lightBackground, ((Control)EditorFields.Field(screen.Window, field)).Background),
             "The background didn't change with the theme.");
@@ -85,17 +85,17 @@ public class AddWindowLookTests
 
     // Add opens with the Title focused, and a focused field looks different, so the focus goes to a button first.
     // The tag box shows only in Custom, so Custom opens first.
-    private static void AssertSameLook(AddScreen screen, string field)
+    private static async Task AssertSameLook(AddScreen screen, string field)
     {
         screen.OpenCustom();
         Keyboard.Focus(screen.SaveButton);
-        MovePointerOff(screen.Window);
+        await MovePointerOff(screen.Window);
         Look.Of(screen, field).AssertSameAs(Look.Of(screen, EditorFields.Tags));
     }
 
     // A field under the pointer looks different too, and the pointer is wherever the machine or an earlier test left it,
     // such as the screen's center, where the window opens. So it moves to a corner of the screen the window doesn't cover.
-    private static void MovePointerOff(Window window)
+    private static async Task MovePointerOff(Window window)
     {
         var frame = Win32.WindowRect(new WindowInteropHelper(window).Handle);
         var work = Win32.WorkAreaOfScreenWith(new Win32.Point { X = frame.Left + frame.Width / 2, Y = frame.Top + frame.Height / 2 });
@@ -107,7 +107,9 @@ public class AddWindowLookTests
             new() { X = work.Right - 1, Y = work.Bottom - 1 },
         ];
         Win32.MoveCursor(corners.First(p => p.X < frame.Left || p.X >= frame.Right || p.Y < frame.Top || p.Y >= frame.Bottom));
-        Mouse.Synchronize();
+        // Moving the pointer queues native input; let WPF process it before checking its hover state.
+        await window.Dispatcher.InvokeAsync(
+            Mouse.Synchronize, System.Windows.Threading.DispatcherPriority.ApplicationIdle, TestContext.Current.CancellationToken);
         Assert.False(window.IsMouseOver, "The pointer is still over the window.");
     }
 

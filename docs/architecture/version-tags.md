@@ -80,6 +80,16 @@ Proposed, each a decision to confirm:
 
 `--clear` deletes the latest version tag, or the one you name, both here and on origin. It doesn't delete the GitHub release made from that tag; delete that on GitHub yourself.
 
+The user decided that **a named tag for `--clear` accepts an optional lowercase `v` and an omitted patch number**.
+The [script](../../.agents/version-tag.mjs) fills in the prefix and a missing patch as zero, so `1.0` means `v1.0.0`.
+It keeps every digit exact and rejects malformed versions before running git.
+Other commands and the rule for recognizing existing version tags stay strict.
+
+The **clear a version tag** task in [VS Code](../../.vscode/tasks.json) asks for the tag and runs the script.
+The user chose **immediate deletion, without a preview or confirmation prompt**.
+The task runs Node directly, not through a shell, and uses the script's normalization rather than copying it.
+An empty answer fails; it never falls back to clearing the latest tag.
+
 The user decided: **the delete on origin is guarded, so it never deletes a tag that changed after the check.** The script runs `git push --force-with-lease=refs/tags/<tag>:<ID> origin :refs/tags/<tag>`, where `<ID>` is the tag's own ID as origin listed it for the run's check. Git deletes the tag only if origin's tag still has that ID ([`--force-with-lease`](https://git-scm.com/docs/git-push#Documentation/git-push.txt---force-with-leaserefnameexpect)). When the tag changed or is gone, git refuses, and the script fails without deleting the tag here. To tell this refusal from others whatever git's language, the script lists origin's tags again after any refused delete: if the tag changed or is gone, it says the tag changed on origin; otherwise it shows git's message.
 
 For an annotated tag, origin lists two IDs: the tag's own, and its commit's. The checks, the preview, and `--origin` compare commits. The guard must use the tag's own ID, since git compares the guard with that, and refuses every annotated tag given its commit's ID. So the script keeps both IDs from the one listing of origin's tags its check reads. For a lightweight tag, the two are the same.
@@ -157,7 +167,7 @@ Proposed, each a decision to confirm:
 
 ## Public interface
 
-None for modules; no module uses the script. The skill, the [README](../../README.md), and the release job use its [command line](#one-command-makes-clears-or-checks-a-tag). The skill also reads a preview's last line, the [command that does the plan](#the-approved-run-does-only-what-the-preview-showed). The release job reads what `--check` prints. The user decided that it prints the version or fails; proposed, a decision to confirm, is its exact form:
+None for modules; no module uses the script. The skill, the [README](../../README.md), the [VS Code task](../../.vscode/tasks.json), and the release job use its [command line](#one-command-makes-clears-or-checks-a-tag). The skill also reads a preview's last line, the [command that does the plan](#the-approved-run-does-only-what-the-preview-showed). The release job reads what `--check` prints. The user decided that it prints the version or fails; proposed, a decision to confirm, is its exact form:
 
 | Tag | Standard output | Error output | Exit code |
 | --- | --- | --- | --- |
@@ -198,6 +208,8 @@ The release job also reads what `--notes` prints. Proposed, a decision to confir
 - **Using the current folder's repository, as `repo-map.mjs` does**: run from another repository, it would tag that one.
 - **An unguarded delete on origin**: a tag someone pushed again after the check would be deleted unseen. You chose the guard.
 - **Deleting the tag here first**: when origin then refused, the tag would be left only on origin.
+- **A preview-only task or an extra confirmation prompt**: you chose immediate deletion after entering the tag.
+- **Normalizing tags only in the task**: the script owns tag handling; terminal commands must accept the same clear input.
 
 ### Approving a preview
 
