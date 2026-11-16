@@ -276,10 +276,24 @@ internal sealed partial class TaskListScreen : IDisposable
 
     // The window's own focused element. Keyboard.FocusedElement is the process-wide keyboard focus, which isn't this window's
     // while the operating system has another window active, so it counts only when it is in this window.
-    private IInputElement? FocusedElement =>
-        Keyboard.FocusedElement is DependencyObject keyboard && PresentationSource.FromDependencyObject(keyboard) == PresentationSource.FromVisual(Window)
-            ? Keyboard.FocusedElement
-            : FocusManager.GetFocusedElement(Window);
+    private IInputElement? FocusedElement
+    {
+        get
+        {
+            var source = PresentationSource.FromVisual(Window);
+            var keyboard = Keyboard.FocusedElement;
+            if (InWindow(keyboard))
+            {
+                return keyboard;
+            }
+
+            var logical = FocusManager.GetFocusedElement(Window);
+            return InWindow(logical) ? logical : null;
+
+            bool InWindow(IInputElement? element) =>
+                source is not null && element is DependencyObject target && PresentationSource.FromDependencyObject(target) == source;
+        }
+    }
 
     /// <summary>
     /// Clicks the link in the row's title: the left mouse button goes down and up on the link and the events travel up through

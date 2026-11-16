@@ -220,7 +220,7 @@ public class WpfDescriptionWebViewImageResizeTests
     // test's drag, which is sent to the browser alone, goes on.
     private static HeldButton HoldButton(DescriptionWebViewHarness harness)
     {
-        harness.Window.Activate();
+        KeyboardInput.BringToFront(new System.Windows.Interop.WindowInteropHelper(harness.Window).Handle);
         MouseInput.Press(harness.Control.PointToScreen(new System.Windows.Point(harness.Control.ActualWidth - 6, 4)));
         return new HeldButton();
     }

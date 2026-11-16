@@ -96,7 +96,7 @@ public class WpfDescriptionWebViewKeyHandOffTests
         harness.Window.PreviewKeyDown += (_, e) =>
         {
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
-            if (key is not (Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt))
+            if (key is not (Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.F24))
             {
                 keys.Writer.TryWrite((key, e.KeyboardDevice.Modifiers));
                 e.Handled = true;
@@ -116,7 +116,7 @@ public class WpfDescriptionWebViewKeyHandOffTests
     {
         var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         harness.Window.PreviewMouseLeftButtonUp += (_, _) => released.TrySetResult();
-        harness.Window.Activate();
+        KeyboardInput.BringToFront(new System.Windows.Interop.WindowInteropHelper(harness.Window).Handle);
         try
         {
             MouseInput.Press(harness.Control.PointToScreen(new System.Windows.Point(harness.Control.ActualWidth - 6, 4)));

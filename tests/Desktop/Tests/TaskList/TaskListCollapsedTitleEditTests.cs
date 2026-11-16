@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Input;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -64,6 +65,13 @@ public class TaskListCollapsedTitleEditTests
     {
         var services = HomeAndPlain();
         using var screen = CollapsedEdit(services);
+        var detached = new System.Windows.Controls.TextBox();
+        Keyboard.ClearFocus();
+        FocusManager.SetFocusedElement(screen.Window, detached);
+        Assert.Same(detached, FocusManager.GetFocusedElement(screen.Window));
+        Assert.Null(PresentationSource.FromVisual(detached));
+        Assert.False(Keyboard.FocusedElement is DependencyObject focused
+            && PresentationSource.FromDependencyObject(focused) == PresentationSource.FromVisual(screen.Window));
 
         screen.Press(Key.Escape);
 
