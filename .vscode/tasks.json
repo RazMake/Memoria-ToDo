@@ -16,7 +16,7 @@
     },
     {
       "label": "release a version",
-      "type": "process",
+      "type": "shell",
       "command": "node",
       "args": ["${workspaceFolder}\\.agents\\release.mjs"],
       "options": {
