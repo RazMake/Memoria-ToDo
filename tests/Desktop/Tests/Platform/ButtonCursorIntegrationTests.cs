@@ -5,6 +5,7 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>The hand pointer over buttons, in a run of the platform's test program after Run the app's setup.</summary>
 [Integration]
+[Collection(ScreenTests.Collection)]
 public class ButtonCursorIntegrationTests
 {
     [Fact]
