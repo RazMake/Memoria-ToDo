@@ -31,12 +31,12 @@ internal sealed class SyncRequests : IDisposable
     public string FailureText { get; private set; } = "";
 
     /// <summary>
-    /// Requests a pass and waits for it, or does nothing while a pass this window requested is still running.
+    /// Requests a pass and waits for it, or does nothing while a pass is running, whether this window requested it or not.
     /// A failure is kept in <see cref="FailureText"/>, never thrown, so callers may await or observe it freely.
     /// </summary>
     public async Task SyncAsync()
     {
-        if (_closed || _wait is not null)
+        if (_closed || IsWorking)
         {
             return;
         }

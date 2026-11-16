@@ -10,6 +10,9 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 [Collection(ScreenTests.Collection)]
 public class TaskListEditTests
 {
+    // Tall enough for the editor with a 140-tall Description, too short for one 400 tall.
+    private const double MidHeight = 520;
+
     [WpfFact]
     public void F2_turns_the_right_side_of_the_selected_task_into_the_editor_with_its_text()
     {
@@ -211,5 +214,163 @@ public class TaskListEditTests
         Assert.False(screen.CheckBoxIsTicked("Buy milk"));
         Assert.True(screen.IsEditing("Buy milk"));
         Assert.True(screen.EditedTitleIsMarked);
+    }
+
+    // The editor's Save button, at the bottom right of the right side.
+
+    [WpfFact]
+    public void No_Save_button_shows_on_the_right_side_while_no_edit_is_open()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", "Oat milk");
+        using var screen = new TaskListScreen(services);
+        screen.ClickRow("Buy milk");
+
+        Assert.False(screen.ShowsSave);
+    }
+
+    [WpfFact]
+    public void While_an_edit_is_open_Save_shows_at_the_bottom_right_of_the_right_side_below_the_Tags()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", "Oat milk");
+        using var screen = new TaskListScreen(services);
+
+        screen.PressOn("Buy milk", Key.F2);
+
+        var save = screen.SaveButton;
+        var details = screen.Details;
+        Assert.True(screen.TopOf(save) >= screen.BottomOf(screen.TagsPlus) - 0.5, "Save isn't below the Tags.");
+        Assert.True(screen.BottomOf(save) <= screen.BottomOf(details) + 0.5, "Save is cut off at the bottom.");
+        Assert.True(screen.BottomOf(details) - screen.BottomOf(save) < 40, "Save isn't at the bottom of the right side.");
+        Assert.True(screen.RightOf(details) - screen.RightOf(save) < 40, "Save isn't at the right of the right side.");
+        Assert.True(screen.LeftOf(save) > screen.LeftOf(details) + details.ActualWidth / 2, "Save isn't on the right half.");
+    }
+
+    [WpfFact]
+    public void Clicking_Save_saves_the_edit_and_leaves_it_with_the_task_selected_and_its_description_formatted()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", "Oat milk");
+        using var screen = new TaskListScreen(services);
+        screen.PressOn("Buy milk", Key.F2);
+        screen.TypeTitle("Buy milk", "Buy oat milk");
+
+        screen.Click("Save");
+
+        Assert.Equal("Buy oat milk", services.Tasks.All.Single().Title);
+        Assert.False(screen.IsEditingAny);
+        Assert.False(screen.ShowsSave);
+        Assert.Equal(["Buy oat milk"], screen.SelectedTitles);
+        Assert.Contains("Oat milk", screen.Web.Page);
+        Assert.False(screen.HasButton("Undo"));
+    }
+
+    [WpfFact]
+    public void Clicking_Save_with_an_empty_Title_saves_nothing_and_keeps_the_editor_open_with_the_Title_marked()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", "Oat milk");
+        using var screen = new TaskListScreen(services);
+        screen.PressOn("Buy milk", Key.F2);
+        screen.TypeTitle("Buy milk", "");
+
+        screen.Click("Save");
+
+        Assert.Equal("Buy milk", services.Tasks.All.Single().Title);
+        Assert.True(screen.IsEditing("Buy milk"));
+        Assert.True(screen.EditedTitleIsMarked);
+    }
+
+    [WpfFact]
+    public void Clicking_Save_when_the_save_fails_keeps_the_editor_open_with_the_text_and_the_message()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", "Oat milk");
+        using var screen = new TaskListScreen(services);
+        screen.PressOn("Buy milk", Key.F2);
+        screen.TypeTitle("Buy milk", "Buy oat milk");
+        services.Files.FailWritesUnder(services.TaskFolder);
+
+        screen.Click("Save");
+
+        Assert.True(screen.IsEditing("Buy milk"));
+        Assert.Equal("Buy oat milk", screen.EditedTitleText);
+        Assert.Equal("Buy milk", services.Tasks.All.Single().Title);
+        Assert.True(screen.ShowsText("Writing is not allowed here"));
+    }
+
+    // The editor fills the right side's height.
+
+    [WpfFact]
+    public void The_Description_stretches_down_to_the_Tags_row_above_Save()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", "Oat milk");
+        using var screen = new TaskListScreen(services);
+
+        screen.PressOn("Buy milk", Key.F2);
+
+        var description = screen.EditedDescription;
+        var plus = screen.TagsPlus;
+        Assert.True(screen.BottomOf(description) <= screen.TopOf(plus) + 0.5, "The Description overlaps the Tags.");
+        Assert.True(screen.TopOf(plus) - screen.BottomOf(description) <= 56, "The Description stops short of the Tags.");
+        Assert.True(description.ActualHeight > 250, $"The Description is only {description.ActualHeight} tall.");
+    }
+
+    [WpfFact]
+    public void The_right_side_does_not_scroll_as_a_whole_while_a_long_Description_scrolls_inside_itself()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", string.Join("\n", Enumerable.Range(1, 200).Select(n => $"Line {n}")));
+        using var screen = new TaskListScreen(services);
+
+        screen.PressOn("Buy milk", Key.F2);
+
+        Assert.True(screen.ShowsSave);
+        Assert.Equal(0, screen.EditorOuterScrollRange, 0.5);
+        Assert.True(screen.DescriptionScrollsItself);
+        Assert.True(screen.BottomOf(screen.SaveButton) <= screen.BottomOf(screen.Details) + 0.5, "Save is cut off at the bottom.");
+    }
+
+    [WpfFact]
+    public void When_the_window_fits_the_editors_smallest_height_but_not_its_tallest_the_right_side_does_not_scroll_as_a_whole()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", string.Join("\n", Enumerable.Range(1, 200).Select(n => $"Line {n}")));
+        using var screen = new TaskListScreen(services);
+        screen.ResizeToHeight(MidHeight);
+
+        screen.PressOn("Buy milk", Key.F2);
+
+        Assert.True(screen.ShowsSave);
+        Assert.Equal(0, screen.EditorOuterScrollRange, 0.5);
+        Assert.True(screen.DescriptionScrollsItself);
+        Assert.True(screen.BottomOf(screen.SaveButton) <= screen.BottomOf(screen.Details) + 0.5, "Save is cut off at the bottom.");
+    }
+
+    [WpfFact]
+    public void No_focus_outline_frames_the_right_side_when_the_keyboard_moves_the_focus_while_editing()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", "Oat milk");
+        using var screen = new TaskListScreen(services);
+        screen.PressOn("Buy milk", Key.F2);
+
+        Assert.False(screen.OutlineFramesTheRightSideAfterTheKeyboardMovesTheFocus(), "An outline frames the right side.");
+    }
+
+    [WpfFact]
+    public void When_the_window_is_shorter_than_the_editors_smallest_height_the_right_side_scrolls()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk", "Oat milk");
+        using var screen = new TaskListScreen(services);
+        screen.ResizeToHeight(300);
+
+        screen.PressOn("Buy milk", Key.F2);
+
+        Assert.True(screen.ShowsSave);
+        Assert.True(screen.EditorOuterScrollRange > 0, "The right side doesn't scroll.");
     }
 }

@@ -140,19 +140,55 @@ internal sealed class EditorHost : IDisposable
     private int saveAndClear;
     private int cancel;
 
-    public EditorHost()
+    /// <param name="height">The height the window gives the editor, as a container with a set height does.</param>
+    public EditorHost(double height = 300)
     {
         Services = new EditorServices();
         Editor = Services.CreateEditor();
         Editor.SaveRequested += (_, _) => save++;
         Editor.SaveAndClearRequested += (_, _) => saveAndClear++;
         Editor.CancelRequested += (_, _) => cancel++;
-        window = new Window { Content = Editor, Width = 480, Height = 300 };
+        window = new Window { Content = Editor, Width = 480 };
+        if (double.IsNaN(height))
+        {
+            window.SizeToContent = SizeToContent.Height; // As the Add window, which grows with its content.
+        }
+        else
+        {
+            window.Height = height;
+        }
+
         window.Show();
         EditorFields.Field(Editor, EditorFields.Title).Focus();
     }
 
     public EditorServices Services { get; }
+
+    /// <summary>The editor's Save button.</summary>
+    public System.Windows.Controls.Button SaveButton =>
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Descendants(Editor).OfType<System.Windows.Controls.Button>().Single(b => b.Content as string == "Save");
+
+    /// <summary>Gives the window the theme the platform gives the app's windows, so the theme's resources resolve.</summary>
+    public void UseTheme(bool dark) => Memoria.ToDo.Desktop.Fakes.OpenWindows.UseTheme(window, dark);
+
+    /// <summary>Lays the window out, as on screen, where the tags are laid out before a key reaches them.</summary>
+    public void Layout() => window.UpdateLayout();
+
+    /// <summary>Where the element is in the editor after layout, and how tall the editor is.</summary>
+    public (Rect Place, double EditorHeight) PlaceOf(FrameworkElement element)
+    {
+        window.UpdateLayout();
+        var place = new Rect(element.TranslatePoint(new Point(0, 0), Editor), new Size(element.ActualWidth, element.ActualHeight));
+        return (place, Editor.ActualHeight);
+    }
+
+    /// <summary>Shows the text on the editor's message line.</summary>
+    public void ShowMessage(string text) => ((IDraftEditor)Editor).ShowMessage(text);
+
+    /// <summary>The visible text block with the text, such as the message line.</summary>
+    public FrameworkElement TextBlockShowing(string text) =>
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Descendants(Editor).OfType<System.Windows.Controls.TextBlock>()
+            .Single(block => block.IsVisible && block.Text == text);
 
     public TaskEditorControl Editor { get; }
 

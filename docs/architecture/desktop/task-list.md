@@ -57,6 +57,11 @@ The user decided that the cursor starts at the end of the Description, which the
 - Selecting another task also leaves the edit, as Esc does.
 - **Checking the task being edited saves the edit first**, as Ctrl+Enter does, then resolves the task, which hides at once. The user decided this. Proposed: when the save fails, or the Title is empty, the task isn't resolved, its checkbox clears, and the editor stays open with its message or the marked Title. This is a decision to confirm.
 - Ctrl+Enter and Ctrl+Shift+Enter both save and leave the edit, since there's no next task to start. A saved edit shows the task's description again, formatted.
+
+The user asked for a Save button in the edit, at the bottom right, with the Description reaching down to it. Proposed, each a decision to confirm:
+
+- **A Save button sits at the bottom right of the right side while an edit is open.** It saves as Ctrl+Enter does: a saved edit shows the formatted description again, and a failed save keeps the editor open with its message or the marked Title. It's the same Save button Add shows, which the user decided lives in the [Task editor](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title), not a second one.
+- **The editor fills the right side's height.** The Description stretches down to the row above Save, and the right side doesn't scroll as a whole while an edit is open; the Description scrolls inside itself. When the window is too short for the editor's smallest height, which the editor reports as its `MinHeight`, the right side scrolls. The right side never takes the keyboard focus itself, so Ctrl+Tab draws no focus outline around it; the mouse wheel still scrolls it. The user decided that the Tags and the message line sit between the Description and Save, as in Add, so the Description reaches the Tags just above Save.
 - Changes from other devices show in the list at once. An open edit keeps the user's text, and saving it merges with those changes as [Tasks](../tasks.md#two-versions-of-a-task-merge-field-by-field) decides.
 
 Which discarded edits show that Undo bar, and what Undo keeps of the editor, follow the user's decision on the [editor's report of changes](task-editor.md#public-interface). Since Undo puts the edit back with its images, as the user decided below, the edit's images are deleted only when its Undo bar goes away or Task View closes.
@@ -155,6 +160,17 @@ Proposed, each a decision to confirm:
 - Ctrl+F searches titles, descriptions, and tags, and search combines with the tag filter. Each group shows only its tasks that match, and a group with none is hidden.
 - The resolved count, below, counts only the resolved tasks that match the search and the tag filter.
 
+### The search bar spans the window in its own shade
+
+The user asked for a shorter search bar that stretches across the whole window, in a color slightly different from the window's, and decided the search bar is the whole band below. Proposed, each a decision to confirm:
+
+- **The search bar is the band at Task View's top that holds the search box and the tag filter.** It runs from the window's left edge to its right edge.
+- **Its background is the same theme resource as the [status bar's](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar)**, so the two bars match and follow the theme.
+- **The search box takes the band's free width** beside the tag filter, and grows and shrinks with the window. It keeps a smallest width for typing; below that, the tag filter wraps to the next line.
+- **The band is one row of controls tall** when the window is wide enough, with small padding.
+- **The message line and the Undo bar stay under the band**, outside it. The Undo bar keeps its own card look.
+- Proposed, each a decision to confirm: the band's height is the search box's plus at most 12 pixels of padding, and the search box keeps its smallest width of 200 pixels.
+
 ### Resolved tasks wait behind a count at the bottom
 
 Resolved tasks are hidden by default, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides. Proposed, each a decision to confirm:
@@ -184,8 +200,13 @@ queued requests: service disposal is not a user-facing sync failure.
 Proposed, each a decision to confirm:
 
 - F5 also starts a sync.
-- While a sync runs, the button shows it's working, and pressing it again starts no second sync.
 - When a sync started from Task View fails, Task View shows the error next to the button. Other failures show only as [Shell](shell.md#sync-stays-quiet-unless-something-is-wrong) decides.
+
+The user asked how the button looks while a sync runs. Proposed, each a decision to confirm:
+
+- **The Sync button is compact**, with little padding around what it shows, so it fits the [one-line status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar). The user decided it shows a sync icon, with the tooltip "Sync (F5)" and the name "Sync" for assistive tools. The icon comes from the icon font Windows ships, Segoe Fluent Icons on Windows 11 and Segoe MDL2 Assets on Windows 10, which share its code point ([Segoe Fluent Icons](https://learn.microsoft.com/en-us/windows/apps/design/style/segoe-fluent-icons-font)), so it needs no new dependency. Proposed: the icon is U+E895, and the button pads it by at most 8 pixels at each side and 3 above and below. This is a decision to confirm.
+- **While any sync runs, the button turns green and is turned off.** That includes the sync Task View starts when it opens, the button's and F5's, and one Sync starts on its own, such as after a save. The green is the theme's success color, `SystemFillColorSuccessBrush`, so it suits the light and dark themes. The button keeps that bright green while it's off, instead of the theme's greyed-out look, and still tells assistive tools it's unavailable. Pressing it, or F5, starts no second sync.
+- **"Syncing…" shows right after the button, left-aligned, while a sync runs**, in the place of the failure line. When the sync ends, the button turns back to its normal look, and the line shows why a sync this window requested failed, or nothing.
 - **The Sync button and its failure line sit at the start of [Updates' status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar)**, which runs along Task View's bottom edge and always shows, so the bar Add shows is the same one. The bar's end shows a new version while one is available or updating; a click on it starts the update, which closes Task View as its close button does, asking first about a changed edit.
 
 ## Public interface
@@ -298,5 +319,13 @@ The options below were considered and rejected, grouped by decision.
   - **In the Title, as in Add**: the user would have to move to the Description first.
 - The order of the tag groups:
   - **Most-used tag first**: groups would move as tasks are added and resolved.
+- What the Sync button shows:
+  - **The word "Sync", alone or beside the icon**: a wider button in a one-line bar.
+- What the search bar covers:
+  - **The search box alone, on its own full-width row**: it adds a row, against a shorter bar.
+  - **Only the band's width and shade, with the search box keeping its size**: the box stays small.
+- What sits between the Description and Save during an edit:
+  - **The Tags and Save on one bottom row**: Add's layout changes too, and many tags wrap the row taller.
+  - **The Tags above the Description**: Tab's order through the fields changes, in Add too.
 
 Who shows formatted Markdown, and who opens links, is decided in the [Formatted view](formatted-view.md#ruled-out).

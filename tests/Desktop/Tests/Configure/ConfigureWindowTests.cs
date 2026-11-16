@@ -250,8 +250,9 @@ public class ConfigureWindowTests
         // Windows caps a window's size at the largest it allows on the screen.
         var width = Math.Min(800, SystemParameters.MaximumWindowTrackWidth);
         var height = Math.Min(850, SystemParameters.MaximumWindowTrackHeight);
-        Assert.Equal(width, screen.Window.Width, 0.01);
-        Assert.Equal(height, screen.Window.Height, 0.01);
+        // Windows rounds the size to whole device pixels, up to one device-independent unit off at 100% scaling.
+        Assert.Equal(width, screen.Window.Width, 1.0);
+        Assert.Equal(height, screen.Window.Height, 1.0);
     }
 
     [WpfTheory]

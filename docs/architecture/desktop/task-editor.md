@@ -11,7 +11,7 @@ The Task editor is the desktop app's Add window, built so one key press puts the
 The Add window is created when the app starts and stays hidden until needed, so showing it loads nothing. It opens centered on the active screen, on top of other windows, with three fields:
 
 1. **Title**: one line, where the cursor starts.
-2. **Description**: grows with its content, then scrolls. Proposed: it is at least 140 and at most 400 device-independent pixels tall, so the window stays on screen. This is a decision to confirm.
+2. **Description**: grows with its content, then scrolls. Proposed: it is at least 140 and at most 400 device-independent pixels tall, so the window stays on screen. This is a decision to confirm. Proposed, a decision to confirm: where the window gives the editor a set height, as Task View's [right side](task-list.md#edit-description-turns-the-right-side-into-the-editor) does, the Description fills that height instead, with no upper limit, and scrolls inside itself. The editor then sets its `MinHeight` to its height with the Description at its smallest, so the container can tell when it must scroll.
 3. **Tags**: the task's tags as colored badges, with a + button that [adds one](#tags-show-as-colored-badges-and-the-plus-button-adds-one).
 
 Above the fields, a small **Clear** button empties Add and deletes its [draft](#closing-without-saving-keeps-a-draft-on-this-device). Below them, a **Save** button saves the task, exactly as [Ctrl+Enter](#keys-save-close-and-move-between-fields) does. Clear is smaller than Save and sits apart from it, so it isn't clicked by mistake.
@@ -33,7 +33,7 @@ Proposed, each a decision to confirm:
 - Save's tooltip names its key, Ctrl+Enter, so the user learns it.
 - Save isn't the window's default button, so Enter keeps its meaning in each field.
 - The keyboard reaches both buttons with Tab, in the order they show.
-- Both buttons belong to the Add window, not to the editor the Task list reuses, so the [public interface](#public-interface) doesn't change.
+- **Save lives inside the editor, under the Tags and the message line**, so Add and Task View's [edit](task-list.md#edit-description-turns-the-right-side-into-the-editor) show the same button, and the [public interface](#public-interface) doesn't change. The user decided this. Clear belongs to the Add window.
 - **While a new version is available or updating, Add shows [Updates' status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) along its bottom edge**, below Save, and grows taller by the bar's height, as it grows with what it holds. Otherwise the bar is hidden. A click on the bar's update text starts the update, which closes Add and keeps its draft.
 
 ### Keys save, close, and move between fields
@@ -62,6 +62,7 @@ Proposed, each a decision to confirm:
 - The snippet list's Image entry does what Ctrl+Shift+I does, in place of the "/" and what was typed after it. When the dialog is cancelled, the typed text stays.
 - An image that can't be read, isn't an image, can't be shrunk to 1 MB, or can't be kept shows an error on the [editor's message line](#add-and-task-view-save-the-same-way-through-the-editor). The error mentions the image, nothing is inserted, and the text, cursor, and focus stay as they were. The next image that is added clears the message.
 - Opening the file dialog doesn't hide Add, though the dialog takes the focus.
+- **No focus outline frames the editor or its Title and Description.** WPF draws a control's focus outline only when the keyboard moves the focus to it ([focus visual style](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/styling-for-focus-in-controls-and-focusvisualstyle)), so a key such as Ctrl+Tab can frame a field, or the whole editor in Task View, in a light outline. The user asked that it never show. The fields show the focus with their own focused border and caret, as the tag box does. Buttons and badges keep their outline, so keyboard users still see which one has the focus. Proposed: Ctrl+Tab keeps WPF's move to the next control. This is a decision to confirm.
 
 ### Every formatting command and snippet has a key
 
@@ -330,7 +331,8 @@ The options below were considered and rejected, grouped by decision.
   - **Clear beside Save at the bottom**: a slip of the mouse would clear the task instead of saving it.
   - **Save as the default button, pressed by Enter**: Enter already moves to the Description, breaks lines, and adds tags.
   - **A button for Ctrl+Shift+Enter too**: one more button in a compact window, for a key the user can learn.
-  - **Clear and Save inside the editor the Task list reuses**: the Task list's edit has [its own design](task-list.md#edit-description-turns-the-right-side-into-the-editor).
+  - **Clear inside the editor the Task list reuses**: the Task list's edit has [its own design](task-list.md#edit-description-turns-the-right-side-into-the-editor), with no Clear.
+  - **A Save button class the Task editor publishes, which each window places**: a new public class, when both windows put Save in the same place.
   - **Renaming Tasks' `DiscardDraft` to match Clear**: it would change a public interface only for the name on a button.
 - Which part of saving the editor owns:
   - **The editor publishes its save steps, and each screen runs them and shows its own messages**: Add and the Task list would repeat the same steps and messages, which the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) forbids.
@@ -360,3 +362,6 @@ The options below were considered and rejected, grouped by decision.
   - **WPF's Clipboard and OpenFileDialog, used directly in the Task editor**: its tests would touch the real clipboard and open real dialogs.
 - Choosing the task to reference:
   - **A search dialog**: a second window for what a list at the cursor does, as the snippet picker already does.
+- What Ctrl+Tab does in the editor:
+  - **Moving the focus between Task View's list and its editor**: a new key, and Add has nothing to switch to.
+  - **Ignoring it**: the key would do nothing.

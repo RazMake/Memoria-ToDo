@@ -96,6 +96,20 @@ public sealed class OpenWindows : IDisposable
         SimulatedKey.Raise(window, Key.Escape, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
     }
 
+    /// <summary>
+    /// Makes the keyboard the last input device, as it is after the user presses Tab; WPF draws a focus outline only then. A test
+    /// can't press a real key, and input sent through the input manager doesn't set the device, so this sets it as WPF does.
+    /// </summary>
+    public static void UseTheKeyboard() =>
+        typeof(InputManager).GetProperty(nameof(InputManager.MostRecentInputDevice))!.SetValue(InputManager.Current, Keyboard.PrimaryDevice);
+
+    /// <summary>Whether WPF draws a focus outline, an adorner over the element, as it does for a focused element after the keyboard moves the focus. Lay the window out first.</summary>
+    public static bool DrawsFocusOutline(UIElement element)
+    {
+        var adorners = AdornerLayer.GetAdornerLayer(element)?.GetAdorners(element);
+        return adorners is not null && adorners.Any(a => a.GetType().Name.Contains("FocusVisual", StringComparison.Ordinal));
+    }
+
     /// <summary>Closes every window on this thread, even one that hides instead of closing.</summary>
     public void Dispose()
     {

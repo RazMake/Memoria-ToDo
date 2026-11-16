@@ -65,6 +65,37 @@ public class TaskListStatusBarTests
     }
 
     [WpfFact]
+    public void The_Sync_button_is_compact_with_small_padding_the_sync_icon_and_its_tooltip()
+    {
+        using var screen = new TaskListScreen(new ListServices());
+        screen.UseTheme();
+
+        var sync = screen.SyncButton;
+
+        Assert.True(sync.Padding.Left <= 8 && sync.Padding.Right <= 8, $"Too much padding at the sides: {sync.Padding}.");
+        Assert.True(sync.Padding.Top <= 3 && sync.Padding.Bottom <= 3, $"Too much padding above and below: {sync.Padding}.");
+        Assert.Equal("Sync (F5)", sync.ToolTip is ToolTip { Content: var tip } ? tip?.ToString() : sync.ToolTip?.ToString());
+        Assert.DoesNotContain("Sync", screen.StatusBarTexts);
+        Assert.Contains("\uE895", screen.StatusBarTexts);
+    }
+
+    [WpfFact]
+    public void The_Sync_button_stays_bright_green_while_it_is_off_not_greyed_out()
+    {
+        var services = new ListServices();
+        using var screen = new TaskListScreen(services);
+        screen.UseTheme();
+
+        screen.PublishSync(SyncState.Working);
+
+        Assert.False(screen.SyncButton.IsEnabled);
+        var fill = screen.SyncButtonFill;
+        var green = screen.ThemeColor("SystemFillColorSuccessBrush");
+        Assert.True(Math.Abs(fill.R - green.R) <= 6 && Math.Abs(fill.G - green.G) <= 6 && Math.Abs(fill.B - green.B) <= 6,
+            $"The button is {fill}, not the theme's green {green}.");
+    }
+
+    [WpfFact]
     public void A_failed_sync_shows_its_details_in_the_bar_after_the_Sync_button()
     {
         var services = new ListServices();

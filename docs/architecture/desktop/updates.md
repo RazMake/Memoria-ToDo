@@ -45,6 +45,12 @@ Add and Task View show the same status bar along their bottom edge. Updates owns
 - **The bar follows the state as it changes**, while the window is open.
 - **The click works whether or not Auto update is on.** With Auto update on, a version found during the day waits for the night run, and the click starts it sooner.
 
+The user asked for a shorter bar in a color of its own. Proposed, each a decision to confirm:
+
+- **The bar is one line tall.** Its padding is small, so it's no taller than a line of text and the compact controls it holds, such as Task View's [Sync button](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button). Proposed: 2 device-independent pixels of padding above and below its tallest content. This is a decision to confirm.
+- **The bar's background is slightly different from the window's**, so it reads as a strip of its own. The color is a theme resource, not a color of ours, so it follows the light and dark themes. Proposed: the Fluent theme's `CardBackgroundFillColorDefaultBrush`, which Task View's [search bar](task-list.md#the-search-bar-spans-the-window-in-its-own-shade) uses too. This is a decision to confirm.
+- **Add's bar looks the same**, since it's the same component.
+
 Proposed: the bar runs along the windows' bottom edge, as a status bar does, so Task View's Sync button and its failure line move there from the window's top. This is a decision to confirm.
 
 ### An update downloads the version, then restarts the app into it

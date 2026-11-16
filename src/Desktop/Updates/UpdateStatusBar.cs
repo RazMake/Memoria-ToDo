@@ -20,7 +20,8 @@ public sealed class UpdateStatusBar : Border
         ArgumentNullException.ThrowIfNull(updates);
         _updates = updates;
         _start = start;
-        Padding = new Thickness(8, 4, 8, 4);
+        Padding = new Thickness(8, 2, 8, 2);
+        SetResourceReference(BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
         Child = _panel;
         if (start is not null)
         {

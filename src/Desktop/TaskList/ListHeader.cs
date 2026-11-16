@@ -9,7 +9,8 @@ using Memoria.ToDo.Shared.Tasks;
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
-/// The top of the list: the search box, the tag filter, the message line, and the Undo bar. It shows the
+/// The top of the list: the search band (the search box and the tag filter, edge to edge in the status bar's shade), and under
+/// it the message line and the Undo bar. It shows the
 /// <see cref="ListFilter"/> and puts what the user types or chooses into it.
 /// </summary>
 internal sealed class ListHeader : StackPanel
@@ -17,9 +18,9 @@ internal sealed class ListHeader : StackPanel
     private readonly TextBox _search = new() { Margin = new Thickness(0, 0, 8, 0), MinWidth = 200 };
     private readonly ComboBox _allTags = new() { MinWidth = 140, Margin = new Thickness(0, 0, 8, 0) };
     private readonly Button _clearTag = new() { Content = "Clear tag", Visibility = Visibility.Collapsed };
-    private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
+    private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed, Margin = new Thickness(8, 8, 8, 0) };
     private readonly TextBlock _undoLabel = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
-    private readonly Border _undoBar = new() { Visibility = Visibility.Collapsed, Padding = new Thickness(8) };
+    private readonly Border _undoBar = new() { Visibility = Visibility.Collapsed, Padding = new Thickness(8), Margin = new Thickness(8, 8, 8, 0) };
     private readonly ListFilter _filter;
     private bool _syncing;
     private string? _reChosen;
@@ -77,11 +78,12 @@ internal sealed class ListHeader : StackPanel
         _search.TextChanged += (_, _) => _filter.SearchText = _search.Text;
         _filter.Changed += (_, _) => ShowFilter();
 
-        var filters = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
-        filters.Children.Add(_search);
-        filters.Children.Add(chips);
-        filters.Children.Add(_allTags);
-        filters.Children.Add(_clearTag);
+        var tagFilter = new WrapPanel();
+        tagFilter.Children.Add(chips);
+        tagFilter.Children.Add(_allTags);
+        tagFilter.Children.Add(_clearTag);
+        var band = new Border { Padding = new Thickness(8, 4, 8, 4), Child = new SearchRow(_search, tagFilter) };
+        band.SetResourceReference(Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
 
         var undo = new Button { Content = "Undo" };
         AutomationProperties.SetName(undo, "Undo");
@@ -91,8 +93,7 @@ internal sealed class ListHeader : StackPanel
         bar.Children.Add(undo);
         _undoBar.Child = bar;
 
-        Margin = new Thickness(8);
-        Children.Add(filters);
+        Children.Add(band);
         Children.Add(_message);
         Children.Add(_undoBar);
     }
@@ -133,7 +134,7 @@ internal sealed class ListHeader : StackPanel
         _message.Visibility = string.IsNullOrEmpty(message) ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    /// <summary>Shows the Undo bar with what it undoes, or hides it when <paramref name="label"/> is null.</summary>
+            /// <summary>Shows the Undo bar with what it undoes, or hides it when <paramref name="label"/> is null.</summary>
     public void ShowUndo(string? label)
     {
         _undoLabel.Text = label ?? "";

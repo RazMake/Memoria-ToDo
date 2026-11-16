@@ -92,6 +92,21 @@ public class SyncRequestsTests
     }
 
     [Fact]
+    public async Task Requests_no_pass_while_the_shared_service_is_working_on_one_it_did_not_request_and_requests_again_when_it_ends()
+    {
+        _service.Publish(new FakeSyncStatus { State = SyncState.Working });
+
+        await _requests.SyncAsync();
+
+        Assert.Equal(0, _service.SyncCount);
+
+        _service.Publish(new FakeSyncStatus { State = SyncState.Idle });
+        await _requests.SyncAsync();
+
+        Assert.Equal(1, _service.SyncCount);
+    }
+
+    [Fact]
     public void Tells_the_window_to_change_when_the_shared_status_changes()
     {
         _service.Publish(new FakeSyncStatus { State = SyncState.Working });

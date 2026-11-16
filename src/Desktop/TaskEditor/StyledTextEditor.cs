@@ -40,6 +40,10 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
         ShowInvalid(false);
         Template = TextBoxFrame();
 
+        // The frame's border shows the focus, so no outline is drawn on the editor or on the text area that takes the focus.
+        FocusVisualStyle = null;
+        TextArea.FocusVisualStyle = null;
+
         // The text is Markdown source, so a link is only styled, never made clickable.
         Options.EnableHyperlinks = false;
         Options.EnableEmailHyperlinks = false;

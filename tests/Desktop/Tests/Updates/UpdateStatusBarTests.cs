@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -141,6 +142,18 @@ public class UpdateStatusBarTests
 
         screen.Publish(UpdateStage.NoUpdate, null);
         Assert.Equal(Visibility.Collapsed, screen.Bar.Visibility);
+    }
+
+    [WpfTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Has_a_background_of_the_theme_that_differs_from_the_windows(bool dark)
+    {
+        using var screen = new StatusBarScreen(start: new Button { Content = "Sync" }, dark: dark);
+
+        var bar = ((SolidColorBrush)screen.Bar.Background).Color;
+        Assert.Equal(screen.ThemeColor("CardBackgroundFillColorDefaultBrush"), bar);
+        Assert.NotEqual(((SolidColorBrush)screen.Window.Background).Color, bar);
     }
 
     [WpfFact]

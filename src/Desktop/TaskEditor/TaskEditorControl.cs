@@ -59,7 +59,6 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
         _title.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
         _description = Field("Description", MarkdownField.Description, theme);
         _description.MinHeight = DescriptionMinHeight;
-        _description.MaxHeight = DescriptionMaxHeight;
         _description.WordWrap = true;
         _description.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
         _description.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
@@ -78,15 +77,31 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
         taskReferences.Watch(_description);
         _save = new EditorSave(_tagsModel.AddTypedText, () => Value, MarkTitleMissing, FocusTitle, ShowMessage);
 
-        var panel = new StackPanel { Margin = new Thickness(16) };
+        var save = new Button
+        {
+            Content = "Save",
+            ToolTip = "Save the task (Ctrl+Enter)",
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 16, 0, 0),
+        };
+        save.SetResourceReference(StyleProperty, "AccentButtonStyle");
+        save.Click += (_, _) => RequestSave(SaveRequested);
+
+        var lists = new StackPanel();
+        lists.Children.Add(new PopupList("ColorList", colorChoices));
+        lists.Children.Add(new PopupList("SnippetList", snippetChoices));
+        lists.Children.Add(new PopupList("TaskReferenceList", taskChoices));
+
+        // Every row takes its content's height but the Description's, which takes the rest when the height is set.
+        var panel = new Grid { Margin = new Thickness(16) };
         Add(panel, "Title", _title);
-        Add(panel, "Description", _description);
-        panel.Children.Add(new PopupList("ColorList", colorChoices));
-        panel.Children.Add(new PopupList("SnippetList", snippetChoices));
-        panel.Children.Add(new PopupList("TaskReferenceList", taskChoices));
+        Add(panel, "Description", _description, fillsRest: true);
+        Add(panel, lists);
         Add(panel, "Tags", tags);
-        panel.Children.Add(_message);
+        Add(panel, _message);
+        Add(panel, save);
         Content = panel;
+        FocusVisualStyle = null;
 
         _editorKeys
             .On(ModifierKeys.Control, Key.Enter, () => RequestSave(SaveRequested))
@@ -128,8 +143,28 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
     /// <summary>Makes the keys that work across the editor work while <paramref name="element"/>, outside it, has the focus.</summary>
     internal void ShareKeysWith(UIElement element) => Listen(element);
 
-    /// <summary>Asks to save, as Ctrl+Enter does: typed tag text becomes a tag first.</summary>
-    internal void RequestSave() => RequestSave(SaveRequested);
+    // With no set height the Description grows with its text up to a cap; with a set height it fills what the other parts leave,
+    // and the control's MinHeight is its smallest height, the Description at its minimum, so a host that measures it with
+    // less knows how much it needs. A window that sizes to its content measures with the room it may grow into, so that counts
+    // as no set height too.
+    protected override Size MeasureOverride(Size constraint)
+    {
+        var sizesToContent = double.IsInfinity(constraint.Height) || Window.GetWindow(this)?.SizeToContent is SizeToContent.Height or SizeToContent.WidthAndHeight;
+        var smallest = 0.0;
+        if (!sizesToContent)
+        {
+            _description.MaxHeight = DescriptionMinHeight;
+            smallest = base.MeasureOverride(new Size(constraint.Width, double.PositiveInfinity)).Height;
+        }
+
+        if (MinHeight != smallest)
+        {
+            MinHeight = smallest; // A host reads it after this measure, and measures again if it is more than the height it gave.
+        }
+
+        _description.MaxHeight = sizesToContent ? DescriptionMaxHeight : double.PositiveInfinity;
+        return base.MeasureOverride(constraint);
+    }
 
     private void Listen(UIElement element)
     {
@@ -224,10 +259,17 @@ public sealed class TaskEditorControl : UserControl, IDraftEditor
     private static StyledTextEditor Field(string automationId, MarkdownField field, ITheme theme) =>
         new(automationId, field, theme) { Margin = new Thickness(0, 0, 0, 12) };
 
-    private static void Add(Panel panel, string caption, UIElement field)
+    private static void Add(Grid grid, string caption, UIElement field, bool fillsRest = false)
     {
-        panel.Children.Add(new TextBlock { Text = caption, Margin = new Thickness(0, 0, 0, 4) });
-        panel.Children.Add(field);
+        Add(grid, new TextBlock { Text = caption, Margin = new Thickness(0, 0, 0, 4) });
+        Add(grid, field, fillsRest);
+    }
+
+    private static void Add(Grid grid, UIElement row, bool fillsRest = false)
+    {
+        grid.RowDefinitions.Add(new RowDefinition { Height = fillsRest ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
+        Grid.SetRow(row, grid.RowDefinitions.Count - 1);
+        grid.Children.Add(row);
     }
 
     private static void Focus(UIElement field) => KeyboardFocus.MoveTo(field);

@@ -11,26 +11,30 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// </summary>
 internal sealed class DetailsPane : ScrollViewer
 {
+    private static readonly Thickness ContentMargin = new(16);
+
     private readonly FormattedDescription _description;
     private readonly TextBlock _prompt = Note("Select a task to see its description.");
     private readonly TextBlock _empty = Note("No description.");
     private readonly Border _tagSlot = new() { Margin = new Thickness(0, 12, 0, 0) };
-    private readonly Border _editorSlot = new();
+    private readonly EditorSlot _editorSlot = new();
 
     /// <param name="description">The one description view, which the window releases when it closes.</param>
     public DetailsPane(FormattedDescription description)
     {
         _description = description;
+        Focusable = false; // So that Ctrl+Tab doesn't stop on the pane and frame it; the mouse wheel scrolls it without focus.
         VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
         AutomationProperties.SetAutomationId(this, "Details");
-        var content = new StackPanel { Margin = new Thickness(16) };
+        var content = new StackPanel { Margin = ContentMargin };
         content.Children.Add(_prompt);
         content.Children.Add(_empty);
         content.Children.Add(description);
         content.Children.Add(_tagSlot);
         content.Children.Add(_editorSlot);
         Content = content;
+        SizeChanged += (_, _) => FillEditorSlot();
         ShowNothing();
     }
 
@@ -53,8 +57,12 @@ internal sealed class DetailsPane : ScrollViewer
         _tagSlot.Visibility = Visible(tags is not null);
         _editorSlot.Child = editor;
         _editorSlot.Visibility = Visible(editor is not null);
+        FillEditorSlot();
         SetDescription(description);
     }
+
+    // The editor gets the height of the pane, so its Description stretches and the pane doesn't scroll.
+    private void FillEditorSlot() => _editorSlot.FillHeight = Math.Max(0, ActualHeight - 2 * ContentMargin.Top);
 
     private void SetDescription(string? description)
     {
@@ -74,4 +82,39 @@ internal sealed class DetailsPane : ScrollViewer
     private static Visibility Visible(bool visible) => visible ? Visibility.Visible : Visibility.Collapsed;
 
     private static TextBlock Note(string text) => new() { Text = text, TextWrapping = TextWrapping.Wrap };
+
+    // Measures its child at a set height, which an element in a scroll viewer is never given otherwise. When the child's MinHeight,
+    // known once it has measured, is more than that, the slot gives it that height and takes it, so the pane scrolls instead of
+    // clipping the child.
+    private sealed class EditorSlot : Decorator
+    {
+        private double _fillHeight;
+
+        public double FillHeight
+        {
+            set
+            {
+                _fillHeight = value;
+                InvalidateMeasure();
+            }
+        }
+
+        protected override Size MeasureOverride(Size available)
+        {
+            if (Child is not FrameworkElement child)
+            {
+                return default;
+            }
+
+            var height = _fillHeight;
+            child.Measure(new Size(available.Width, height));
+            if (child.MinHeight > height)
+            {
+                height = child.MinHeight;
+                child.Measure(new Size(available.Width, height));
+            }
+
+            return new Size(child.DesiredSize.Width, height);
+        }
+    }
 }

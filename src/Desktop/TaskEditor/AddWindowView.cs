@@ -38,22 +38,11 @@ internal sealed class AddWindowView : Window, IAddWindow
             FontSize = 11,
         };
         clear.Click += (_, _) => _draft.Clear();
-        var save = new Button
-        {
-            Content = "Save",
-            ToolTip = "Save the task (Ctrl+Enter)",
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(16, 0, 16, 16),
-        };
-        save.SetResourceReference(StyleProperty, "AccentButtonStyle");
-        save.Click += (_, _) => editor.RequestSave();
         editor.ShareKeysWith(clear);
-        editor.ShareKeysWith(save);
 
         var panel = new StackPanel();
         panel.Children.Add(clear);
         panel.Children.Add(editor);
-        panel.Children.Add(save);
         panel.Children.Add(new UpdateStatusBar(updates, null));
         Content = panel;
 
