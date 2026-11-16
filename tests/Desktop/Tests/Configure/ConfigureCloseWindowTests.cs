@@ -23,7 +23,8 @@ public class ConfigureCloseWindowTests
 
         string[] labels = ["Add new task", "Task View", "Configure", "Close window", "Save"];
 
-        Assert.Equal(labels, screen.Texts.Where(text => labels.Contains(text)));
+        // Take only the first five: the Repository card's "Configure" button repeats one label further down.
+        Assert.Equal(labels, screen.Texts.Where(text => labels.Contains(text)).Take(labels.Length));
         Assert.Equal("Shift+Escape", screen.CloseField.Text);
     }
 

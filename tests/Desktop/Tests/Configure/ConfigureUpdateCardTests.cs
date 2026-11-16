@@ -278,7 +278,7 @@ public class ConfigureUpdateCardTests
         Assert.Contains("Updating to: 2.2.0", screen.CardTexts);
         Assert.DoesNotContain("Available new version: 2.2.0", screen.CardTexts);
         Assert.False(screen.CardButton("Update Now")!.IsEnabled);
-        Assert.Null(screen.CardBackground);
+        Assert.Equal(screen.ThemeColor(CardBackgroundKey), screen.CardBackground);
 
         screen.PublishUpdate(UpdateStage.NoUpdate, null);
         Assert.False(screen.CardShowsButton("Update Now"));

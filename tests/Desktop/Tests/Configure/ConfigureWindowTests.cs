@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -76,13 +77,24 @@ public class ConfigureWindowTests
     {
         using var screen = new ConfigureScreen();
         screen.Open();
+        // A long failure line in the Update card makes the Application content far taller than the window.
+        var longFailure = string.Join("\n", Enumerable.Repeat("The update failed: the installer could not replace the files it needs.", 60));
+        screen.PublishUpdate(UpdateStage.Available, "2.2.0", longFailure);
         var before = screen.WindowSize;
-
         var scroller = ScrollerOf(screen.SaveField);
+        var titlesBefore = (screen.TitleTop("Startup"), screen.TitleTop("Sync settings"));
 
-        Assert.NotEqual(ScrollBarVisibility.Disabled, scroller.VerticalScrollBarVisibility);
-        Assert.True(scroller.ViewportHeight <= before.Height);
+        Assert.True(YInside(screen.SaveField, scroller) >= scroller.ActualHeight, "The last shortcut starts out of view.");
+
+        scroller.ScrollToEnd();
+        _ = screen.WindowSize;
+
+        var top = YInside(screen.SaveField, scroller);
+        Assert.True(top >= 0 && top + screen.SaveField.ActualHeight <= scroller.ActualHeight, "The last shortcut scrolls into the section's visible area.");
         Assert.Equal(before, screen.WindowSize);
+        Assert.Equal(titlesBefore, (screen.TitleTop("Startup"), screen.TitleTop("Sync settings")));
+        var sectionBottom = scroller.TranslatePoint(new Point(0, scroller.ActualHeight), screen.Window).Y;
+        Assert.True(sectionBottom <= screen.TitleTop("Startup") + 0.5, "The section ends where the other titles begin.");
     }
 
     [WpfTheory]
@@ -436,6 +448,10 @@ public class ConfigureWindowTests
 
         return (ScrollViewer)parent;
     }
+
+    // The element's top edge, in the scroll viewer's own coordinates: 0 is the top of what the viewer shows.
+    private static double YInside(UIElement element, ScrollViewer scroller) =>
+        element.TranslatePoint(new Point(0, 0), scroller).Y;
 
     private static string ScreenTitle(ContentControl title) =>
         title.Content as string ?? OpenWindows.TextOf((TextBlock)title.Content);
