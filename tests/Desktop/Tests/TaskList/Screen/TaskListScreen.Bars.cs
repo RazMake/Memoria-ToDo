@@ -89,6 +89,68 @@ internal sealed partial class TaskListScreen
         return string.Join(" ", TextsWithin(heading));
     }
 
+    /// <summary>
+    /// What the group's collapsed heading shows as its count, such as "(3)", piece by piece: each piece's text, the weight it
+    /// is drawn in, and the color it is drawn in. The count is the one text in the heading that reads as a number in parentheses.
+    /// </summary>
+    public IReadOnlyList<(string Text, FontWeight Weight, System.Windows.Media.Color Color)> HeadingCountPieces(string group) =>
+        [.. Pieces(HeadingCount(group).Inlines)];
+
+    /// <summary>How far below the middle of the group's badge (of the "No tag" words, for that heading) the middle of its count lies; negative when above.</summary>
+    public double HeadingCountOffsetFromBadgeCenter(string group)
+    {
+        var count = HeadingCount(group);
+        return CenterY(count) - CenterY(HeadingMark(group));
+    }
+
+    /// <summary>How much taller the count's box is than its text needs, which is more than 0 when it is stretched to the heading's height, so its text sits at the top.</summary>
+    public double HeadingCountExtraHeight(string group)
+    {
+        var count = HeadingCount(group);
+        return count.ActualHeight - count.DesiredSize.Height;
+    }
+
+    private TextBlock HeadingCount(string group)
+    {
+        Refresh();
+        var heading = Headings().Single(h => AutomationProperties.GetName(h) == group);
+        return Visuals(heading).OfType<TextBlock>()
+            .Single(block => block.IsVisible && System.Text.RegularExpressions.Regex.IsMatch(OpenWindows.TextOf(block), @"^\(\d+\)$"));
+    }
+
+    // The badge of a tag's heading, or the words of the "No tag" heading.
+    private FrameworkElement HeadingMark(string group)
+    {
+        var heading = Headings().Single(h => AutomationProperties.GetName(h) == group);
+        return Visuals(heading).OfType<FrameworkElement>()
+                .FirstOrDefault(e => AutomationProperties.GetAutomationId(e).StartsWith("Badge ", StringComparison.Ordinal))
+            ?? Visuals(heading).OfType<TextBlock>().First(block => block.IsVisible && OpenWindows.TextOf(block) == group);
+    }
+
+    private double CenterY(FrameworkElement element) =>
+        element.TranslatePoint(new Point(0, element.ActualHeight / 2), Window).Y;
+
+    private static IEnumerable<(string Text, FontWeight Weight, System.Windows.Media.Color Color)> Pieces(System.Windows.Documents.InlineCollection inlines)
+    {
+        foreach (var inline in inlines)
+        {
+            if (inline is System.Windows.Documents.Span span)
+            {
+                foreach (var piece in Pieces(span.Inlines))
+                {
+                    yield return piece;
+                }
+            }
+            else if (inline is System.Windows.Documents.Run run)
+            {
+                var color = run.Foreground is System.Windows.Media.SolidColorBrush solid
+                    ? solid.Color
+                    : throw new InvalidOperationException("The count isn't drawn in one solid color.");
+                yield return (run.Text, run.FontWeight, color);
+            }
+        }
+    }
+
     /// <summary>How far the row's left edge lies right of its group heading's left edge.</summary>
     public double RowIndent(string title, string group)
     {

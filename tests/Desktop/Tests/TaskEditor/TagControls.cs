@@ -11,20 +11,28 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 /// <summary>
 /// How tests find and read the tag parts, by automation id, so they don't depend on the controls the parts are built from.
 /// A badge is the element with id <c>Badge {tag}</c>: its background is the color's value and the text block in it has the
-/// color's text color. A badge's remove button has id <c>Remove {tag}</c>. The + button has id <c>AddTag</c>. The menu has
-/// id <c>TagMenu</c> and is showing only while open; its items are buttons with ids <c>MenuTag {tag}</c> and <c>MenuCustom</c>.
-/// The 30 colors are toggle buttons in <c>TagColorGrid</c> with ids <c>Color {name}</c>, checked when picked. Shared test setup.
+/// color's text color. A badge's remove button has id <c>Remove {tag}</c>. The + button has id <c>AddTag</c>. The menu is a
+/// popup whose content has id <c>TagMenu</c> and is showing only while open; its items are buttons with ids <c>MenuTag {tag}</c>
+/// and <c>MenuCustom</c>, and the Search box, a text box labeled "Search:", has id <c>MenuSearch</c>. The matches submenu is a
+/// popup whose content has id <c>SearchMatches</c>, showing only while Search holds text; its items are buttons with ids
+/// <c>SearchMatch {tag}</c>, or one dimmed text block with id <c>SearchNoMatch</c> and no button. The 30 colors are toggle
+/// buttons in <c>TagColorGrid</c> with ids <c>Color {name}</c>, checked when marked, and the grid shows only while the New
+/// tag box (id <c>Tags</c>) holds text. Shared test setup.
 /// </summary>
 internal static class TagControls
 {
     public const string AddTag = EditorFields.AddTag;
     public const string Menu = "TagMenu";
     public const string MenuCustom = "MenuCustom";
+    public const string MenuSearch = "MenuSearch";
+    public const string SearchMatchesList = "SearchMatches";
+    public const string SearchNoMatch = "SearchNoMatch";
     public const string ColorGrid = "TagColorGrid";
 
     private const string BadgePrefix = "Badge ";
     private const string RemovePrefix = "Remove ";
     private const string MenuTagPrefix = "MenuTag ";
+    private const string SearchMatchPrefix = "SearchMatch ";
     private const string ColorPrefix = "Color ";
 
     /// <summary>The tags of the badges below <paramref name="root"/>, in the order they show.</summary>
@@ -67,6 +75,14 @@ internal static class TagControls
     /// <summary>Whether the menu is showing.</summary>
     public static bool MenuIsOpen(DependencyObject root) => TextFields.FindShowing(root, Menu) is not null;
 
+    /// <summary>
+    /// Whether the popup under the + button is open. A popup WPF closed itself, when its + left the window, keeps its content
+    /// showing, so <see cref="MenuIsOpen"/> still says true; this reads the popup's own state.
+    /// </summary>
+    public static bool MenuPopupIsOpen(DependencyObject root) =>
+        OpenWindows.Descendants(root).OfType<Popup>()
+            .Single(popup => popup.PlacementTarget is { } target && AutomationProperties.GetAutomationId(target) == AddTag).IsOpen;
+
     /// <summary>The tags the open menu lists, in order; empty while it is closed.</summary>
     public static IReadOnlyList<string> MenuTags(DependencyObject root) =>
         MenuIsOpen(root)
@@ -91,6 +107,58 @@ internal static class TagControls
     /// <summary>The menu's Custom button.</summary>
     public static Button CustomItem(DependencyObject root) => (Button)Part(root, MenuCustom);
 
+    /// <summary>The Search text box in the open menu.</summary>
+    public static TextBox SearchBox(DependencyObject root) => (TextBox)Part(root, MenuSearch);
+
+    /// <summary>Whether the matches submenu is showing.</summary>
+    public static bool SearchMatchesAreOpen(DependencyObject root) => TextFields.FindShowing(root, SearchMatchesList) is not null;
+
+    /// <summary>The tags the open submenu lists as clickable matches, in order; empty while it is closed or shows no match.</summary>
+    public static IReadOnlyList<string> SearchMatches(DependencyObject root) =>
+        SearchMatchesAreOpen(root)
+            ? [.. WithIdPrefix(Part(root, SearchMatchesList), SearchMatchPrefix).Select(element => IdOf(element)[SearchMatchPrefix.Length..])]
+            : [];
+
+    /// <summary>The submenu's button for the matching tag.</summary>
+    public static Button SearchMatch(DependencyObject root, string tag) => (Button)Part(root, SearchMatchPrefix + tag);
+
+    /// <summary>The tag of the match the keys highlighted, or null when none is. A highlighted match has the system highlight color as its border.</summary>
+    public static string? HighlightedSearchMatch(DependencyObject root) =>
+        WithIdPrefix(Part(root, SearchMatchesList), SearchMatchPrefix).OfType<Button>()
+            .SingleOrDefault(button => button.BorderBrush is SolidColorBrush { Color: var c } && c == SystemColors.HighlightColor) is { } match
+            ? IdOf(match)[SearchMatchPrefix.Length..]
+            : null;
+
+    /// <summary>Whether the submenu's list is taller than the space it has, so it scrolls.</summary>
+    public static bool SearchMatchesScroll(DependencyObject root) => ScrollerOf(Part(root, SearchMatchesList)).ScrollableHeight > 0;
+
+    /// <summary>Whether the whole button of the matching tag is inside the part of the submenu's list that shows.</summary>
+    public static bool SearchMatchIsInView(DependencyObject root, string tag)
+    {
+        var button = SearchMatch(root, tag);
+        var scroller = ScrollerOf(button);
+        scroller.UpdateLayout();
+        var top = button.TranslatePoint(new Point(0, 0), scroller).Y;
+        return top >= -0.5 && top + button.ActualHeight <= scroller.ViewportHeight + 0.5;
+    }
+
+    private static ScrollViewer ScrollerOf(DependencyObject element)
+    {
+        for (var parent = element; parent is not null; parent = VisualTreeHelper.GetParent(parent))
+        {
+            if (parent is ScrollViewer scroller)
+            {
+                return scroller;
+            }
+        }
+
+        throw new InvalidOperationException("The element is not in a scroll viewer.");
+    }
+
+    /// <summary>The submenu's dimmed "No matching tags" line while it shows, or null. It is not a button, so it can't be clicked.</summary>
+    public static TextBlock? NoMatchLine(DependencyObject root) =>
+        TextFields.FindShowing(root, SearchNoMatch) as TextBlock;
+
     /// <summary>Whether the tag box, which only Custom shows, is showing.</summary>
     public static bool CustomIsOpen(DependencyObject root) => TextFields.FindShowing(root, EditorFields.Tags) is not null;
 
@@ -105,8 +173,11 @@ internal static class TagControls
     /// <summary>The value the color's button paints, as "#rrggbb".</summary>
     public static string SwatchOf(DependencyObject root, string name) => Hex(ColorButton(root, name).Background);
 
-    /// <summary>The name of the picked color, or null when none is picked.</summary>
-    public static string? PickedColor(DependencyObject root) =>
+    /// <summary>Whether the colors are showing, which they do only while the New tag box holds text.</summary>
+    public static bool ColorsAreShowing(DependencyObject root) => TextFields.FindShowing(root, ColorGrid) is not null;
+
+    /// <summary>The name of the marked color, the one the typed tag would get with Enter, or null when none is marked.</summary>
+    public static string? MarkedColor(DependencyObject root) =>
         ColorButtons(root).SingleOrDefault(color => color.Button.IsChecked == true).Name;
 
     /// <summary>Where the color's button sits in the grid, as its top-left corner relative to the grid.</summary>

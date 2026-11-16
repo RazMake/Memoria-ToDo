@@ -88,16 +88,13 @@ public class TagBoxTextTests
     }
 
     [WpfFact]
-    public void An_existing_tag_keeps_its_spelling_in_the_badges_and_the_suggestions()
+    public void An_existing_tag_keeps_its_spelling_in_the_badges_and_the_menu()
     {
         using var window = new TagEditorWindow("Work");
         window.Services.UseTag("Errand");
-        window.OpenCustom();
-        window.Focus(EditorFields.Tags);
-
-        EditorFields.TypeOnFocused("err");
+        window.ClickPlus();
 
         Assert.Equal(["Work"], EditorFields.ShownTags(window.Editor));
-        Assert.Equal(["Errand"], EditorFields.ShownSuggestions(window.Editor));
+        Assert.Equal(["Errand"], TagControls.MenuTags(window.Editor));
     }
 }

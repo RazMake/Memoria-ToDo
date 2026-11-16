@@ -55,7 +55,7 @@ Proposed, each a decision to confirm:
 - A chosen tag shows as a checked chip, and tapping it again removes it.
 - A "+" chip opens a field that suggests the tags in use, for a tag that isn't among the five.
 
-Deferred: the desktop now shows tags as [colored badges with a + menu](../desktop/task-editor.md#tags-show-as-colored-badges-and-the-plus-button-adds-one). [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color in the clone, so it reaches the phone, and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the 30 colors and picks a tag's default. When the Android app is built, this section decides whether the chips take each tag's color, show seven tags as the desktop's menu does, and let the user pick a color.
+Deferred: the desktop now shows tags as [colored badges with a + menu](../desktop/task-editor.md#tags-show-as-colored-badges-and-the-plus-button-adds-one). [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color in the clone, so it reaches the phone, and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the 30 colors and picks a tag's default. When the Android app is built, this section decides whether the chips take each tag's color, show eight tags as the desktop's menu does, and let the user pick a color.
 
 ### Back keeps a draft on this phone
 

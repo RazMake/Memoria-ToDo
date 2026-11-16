@@ -27,8 +27,7 @@ internal sealed class TagLook
     }
 
     /// <summary>The tag's kept color, or its default when none is kept or the kept name isn't one this app knows, in the current theme.</summary>
-    public TagFill FillOf(string tag) =>
-        FillOf((_tagColors.ColorOf(tag) is { } name ? TagColors.Find(name) : null) ?? TagColors.DefaultFor(tag));
+    public TagFill FillOf(string tag) => FillOf(TagColorOf.Of(_tagColors, tag));
 
     /// <summary>The color's fill in the current theme.</summary>
     public TagFill FillOf(TagColor color) => _theme.IsDark ? color.Dark : color.Light;

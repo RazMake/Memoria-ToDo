@@ -10,7 +10,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 
 /// <summary>
 /// The 30 tag colors as a grid of 10 columns by 3 rows, a hue to a column and its shades down it, of which at most one is
-/// picked. Arrow keys move between them, and a click or Space picks an unpicked color and unpicks the picked one.
+/// marked. Arrow keys move between them, and a click, Space, or Enter on a color reports it.
 /// </summary>
 internal sealed class ColorGrid : Grid
 {
@@ -18,7 +18,6 @@ internal sealed class ColorGrid : Grid
 
     private readonly TagLook _look;
     private readonly List<ToggleButton> _buttons = [];
-    private bool _showing;
 
     public ColorGrid(TagLook look)
     {
@@ -47,20 +46,20 @@ internal sealed class ColorGrid : Grid
         look.Follow(this, Repaint);
     }
 
-    /// <summary>Raised with the name of the color the user picked, or null when they unpicked it.</summary>
-    public event Action<string?>? Picked;
+    /// <summary>Raised with the name of the color the user chose.</summary>
+    public event Action<string>? Chosen;
 
-    /// <summary>Shows which color is picked, or none.</summary>
-    public void Show(string? picked)
+    /// <summary>Puts the cursor in the first color.</summary>
+    public void FocusFirst() => KeyboardFocus.MoveTo(_buttons[0]);
+
+    /// <summary>Marks the color, or none.</summary>
+    public void Show(string? marked)
     {
-        _showing = true;
         for (var i = 0; i < _buttons.Count; i++)
         {
-            _buttons[i].IsChecked = TagColors.All[i].Name == picked;
+            _buttons[i].IsChecked = TagColors.All[i].Name == marked;
             Outline(_buttons[i]);
         }
-
-        _showing = false;
     }
 
     private ToggleButton Swatch(TagColor color)
@@ -83,17 +82,8 @@ internal sealed class ColorGrid : Grid
         AutomationProperties.SetAutomationId(button, $"Color {color.Name}");
         AutomationProperties.SetName(button, color.Name);
         Outline(button);
-        button.Checked += (_, _) => OnToggled(color.Name);
-        button.Unchecked += (_, _) => OnToggled(null);
+        button.Click += (_, _) => Chosen?.Invoke(color.Name);
         return button;
-    }
-
-    private void OnToggled(string? name)
-    {
-        if (!_showing)
-        {
-            Picked?.Invoke(name);
-        }
     }
 
     private void Repaint()
@@ -118,6 +108,13 @@ internal sealed class ColorGrid : Grid
             return;
         }
 
+        if (e.Key is Key.Space or Key.Enter)
+        {
+            e.Handled = true;
+            Chosen?.Invoke(color.Name);
+            return;
+        }
+
         var at = _buttons.IndexOf(button);
         var target = e.Key switch
         {
@@ -125,7 +122,6 @@ internal sealed class ColorGrid : Grid
             Key.Right => at + Rows,
             Key.Up => at % Rows > 0 ? at - 1 : at,
             Key.Down => at % Rows < Rows - 1 ? at + 1 : at,
-            Key.Space => -2,
             _ => -1,
         };
         if (target == -1)
@@ -134,11 +130,7 @@ internal sealed class ColorGrid : Grid
         }
 
         e.Handled = true;
-        if (target == -2)
-        {
-            Picked?.Invoke(button.IsChecked == true ? null : color.Name);
-        }
-        else if (target >= 0 && target < _buttons.Count)
+        if (target >= 0 && target < _buttons.Count)
         {
             KeyboardFocus.MoveTo(_buttons[target]);
         }

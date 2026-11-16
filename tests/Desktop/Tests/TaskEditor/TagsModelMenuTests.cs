@@ -4,8 +4,8 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 /// <summary>
-/// What the + menu lists: the tags in use that the task doesn't have, most-used first, up to seven. The Custom item
-/// the menu always ends with, and how the menu looks and moves, are the tag control's, in its UX tests.
+/// What the + menu lists at its top: the tags in use that the task doesn't have, most-used first, up to eight. Search,
+/// Custom…, and the menu's keys are the menu model's; how the menu looks is the tag control's, in its UX tests.
 /// </summary>
 [Unit]
 public class TagsModelMenuTests
@@ -31,27 +31,27 @@ public class TagsModelMenuTests
     }
 
     [Fact]
-    public void Lists_only_the_seven_most_used()
+    public void Lists_only_the_eight_most_used()
     {
-        for (var i = 1; i <= 9; i++)
+        for (var i = 1; i <= 10; i++)
         {
             _services.UseTag($"tag{i}", i);
         }
 
-        Assert.Equal(["tag9", "tag8", "tag7", "tag6", "tag5", "tag4", "tag3"], _model.MenuTags);
+        Assert.Equal(["tag10", "tag9", "tag8", "tag7", "tag6", "tag5", "tag4", "tag3"], _model.MenuTags);
     }
 
     [Fact]
-    public void Leaves_out_the_tags_the_task_has_ignoring_case_and_still_lists_seven()
+    public void Leaves_out_the_tags_the_task_has_ignoring_case_and_still_lists_eight()
     {
-        for (var i = 1; i <= 9; i++)
+        for (var i = 1; i <= 10; i++)
         {
             _services.UseTag($"tag{i}", i);
         }
 
-        _model.Tags = ["TAG9"];
+        _model.Tags = ["TAG10"];
 
-        Assert.Equal(["tag8", "tag7", "tag6", "tag5", "tag4", "tag3", "tag2"], _model.MenuTags);
+        Assert.Equal(["tag9", "tag8", "tag7", "tag6", "tag5", "tag4", "tag3", "tag2"], _model.MenuTags);
     }
 
     [Fact]
@@ -79,12 +79,11 @@ public class TagsModelMenuTests
     }
 
     [Fact]
-    public void Follows_the_tags_in_use_after_a_refresh()
+    public void Follows_the_tags_in_use_as_they_change()
     {
         _services.UseTag("home");
 
         _services.UseTag("work", 2);
-        _model.Refresh();
 
         Assert.Equal(["work", "home"], _model.MenuTags);
     }

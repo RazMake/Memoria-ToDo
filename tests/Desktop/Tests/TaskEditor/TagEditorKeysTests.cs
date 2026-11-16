@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -80,7 +81,7 @@ public class TagEditorKeysTests
         TagEditorWindow.Focus(TagControls.Plus(host.Editor));
         host.Press(Key.Enter);
 
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < 5; i++)
         {
             host.Press(Key.Down);
         }
@@ -93,10 +94,70 @@ public class TagEditorKeysTests
     }
 
     [WpfFact]
-    public void In_the_colors_the_arrow_keys_move_and_Space_picks()
+    public void Down_to_Search_puts_the_cursor_in_its_box_and_Enter_adds_the_first_match()
+    {
+        using var host = ThreeTagsInUse();
+        TagEditorWindow.Focus(TagControls.Plus(host.Editor));
+        host.Press(Key.Enter);
+        for (var i = 0; i < 4; i++)
+        {
+            host.Press(Key.Down);
+        }
+
+        Assert.True(TagControls.SearchBox(host.Editor).IsKeyboardFocused);
+        TextFields.Type(TagControls.SearchBox(host.Editor), "b");
+        host.Press(Key.Enter);
+
+        Assert.Equal(["b"], host.Editor.Tags);
+        Assert.False(TagControls.MenuIsOpen(host.Editor));
+    }
+
+    [WpfFact]
+    public void A_letter_typed_in_the_menu_outside_Search_goes_into_the_Search_box()
+    {
+        using var host = ThreeTagsInUse();
+        TagEditorWindow.Focus(TagControls.Plus(host.Editor));
+        host.Press(Key.Enter);
+        host.Press(Key.Down);
+
+        EditorFields.TypeOnFocused("c");
+
+        Assert.Equal("c", TagControls.SearchBox(host.Editor).Text);
+        Assert.True(TagControls.SearchBox(host.Editor).IsKeyboardFocused);
+    }
+
+    [WpfFact]
+    public void A_word_typed_on_the_plus_with_the_menu_open_goes_into_the_Search_box_in_the_order_typed()
+    {
+        using var host = ThreeTagsInUse();
+        TagEditorWindow.Focus(TagControls.Plus(host.Editor));
+        host.Press(Key.Enter);
+
+        EditorFields.TypeOnFocused("work");
+
+        Assert.Equal("work", TagControls.SearchBox(host.Editor).Text);
+        Assert.True(TagControls.SearchBox(host.Editor).IsKeyboardFocused);
+    }
+
+    [WpfFact]
+    public void Tab_moves_from_the_New_tag_box_to_the_colors()
     {
         using var host = new TagEditorWindow();
         host.OpenCustom();
+        host.Type("errand");
+        host.Focus(EditorFields.Tags);
+
+        host.Press(Key.Tab);
+
+        Assert.StartsWith("Color ", TagControls.FocusedId());
+    }
+
+    [WpfFact]
+    public void In_the_colors_the_arrow_keys_move_and_Space_adds_the_tag_in_the_color_moved_to()
+    {
+        using var host = new TagEditorWindow();
+        host.OpenCustom();
+        host.Type("errand");
         TagEditorWindow.Focus(TagControls.ColorButton(host.Editor, "red-1"));
 
         host.Press(Key.Right);
@@ -115,24 +176,22 @@ public class TagEditorKeysTests
         host.Press(Key.Down);
         host.Press(Key.Space);
 
-        Assert.Equal("orange-2", TagControls.PickedColor(host.Editor));
+        Assert.Equal(["errand"], host.Editor.Tags);
+        Assert.Equal([("errand", "orange-2")], host.Services.TagColors.Kept);
     }
 
     [WpfFact]
-    public void Space_on_the_picked_color_unpicks_it_and_on_an_unpicked_color_picks_it()
+    public void Enter_on_a_color_adds_the_tag_in_that_color()
     {
         using var host = new TagEditorWindow();
         host.OpenCustom();
-        TagEditorWindow.Focus(TagControls.ColorButton(host.Editor, "red-1"));
+        host.Type("errand");
+        TagEditorWindow.Focus(TagControls.ColorButton(host.Editor, "blue-3"));
 
-        host.Press(Key.Space);
-        Assert.Equal("red-1", TagControls.PickedColor(host.Editor));
+        host.Press(Key.Enter);
 
-        host.Press(Key.Space);
-        Assert.Null(TagControls.PickedColor(host.Editor));
-
-        host.Press(Key.Space);
-        Assert.Equal("red-1", TagControls.PickedColor(host.Editor));
+        Assert.Equal(["errand"], host.Editor.Tags);
+        Assert.Equal([("errand", "blue-3")], host.Services.TagColors.Kept);
     }
 
     private static TagEditorWindow ThreeTagsInUse()

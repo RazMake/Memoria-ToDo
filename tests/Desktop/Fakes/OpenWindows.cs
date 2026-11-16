@@ -83,10 +83,11 @@ public sealed class OpenWindows : IDisposable
         button.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
-    /// <summary>Toggles the button, as the automation tools do. Returns after the toggle has been handled.</summary>
+    /// <summary>Clicks the toggle button, as the mouse does: it toggles, then raises Click. (The automation Toggle pattern only toggles.) Returns after the click has been handled.</summary>
     public static void Click(System.Windows.Controls.Primitives.ToggleButton button)
     {
         ((IToggleProvider)new ToggleButtonAutomationPeer(button).GetPattern(PatternInterface.Toggle)).Toggle();
+        button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, button));
         button.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
     }
 

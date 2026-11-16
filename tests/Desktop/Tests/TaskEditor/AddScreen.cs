@@ -121,24 +121,14 @@ internal sealed class AddScreen : IDisposable
     /// <summary>The tags of the + menu's items, in order; empty while it is closed.</summary>
     public IReadOnlyList<string> MenuTags => TagControls.MenuTags(Window);
 
-    /// <summary>The name of the color picked in Custom, or null.</summary>
-    public string? PickedColor => TagControls.PickedColor(Window);
-
-    /// <summary>Clicks the color in Custom's grid.</summary>
-    public void PickColor(string name) => OpenWindows.Click(TagControls.ColorButton(Window, name));
-
+    /// <summary>Clicks the color in Custom's grid, which adds the typed tag in that color.</summary>
+    public void ClickTagColor(string name) => OpenWindows.Click(TagControls.ColorButton(Window, name));
 
     /// <summary>What the Tags line holds, typed and not yet added.</summary>
     public string TypedTag => EditorFields.TextOf(Window, EditorFields.Tags);
 
     /// <summary>The tags the task shows, in order.</summary>
     public IReadOnlyList<string> ShownTags => EditorFields.ShownTags(Window);
-
-    /// <summary>The suggestions on offer; empty while the list is closed.</summary>
-    public IReadOnlyList<string> Suggestions => EditorFields.ShownSuggestions(Window);
-
-    /// <summary>Clicks the tag in the open suggestion list: the left mouse button goes up on its row.</summary>
-    public void ClickSuggestion(string tag) => EditorFields.ClickSuggestion(Window, tag);
 
     /// <summary>Puts the text in the field, selects <paramref name="length"/> characters from <paramref name="start"/>, and gives the field the keyboard focus.</summary>
     public void Edit(string field, string text, int start, int length = 0)

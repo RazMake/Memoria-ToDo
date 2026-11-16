@@ -116,7 +116,7 @@ Proposed, each a decision to confirm:
 - **A tag with no color kept gets a default from its text.** Rendering takes the tag in invariant uppercase, hashes its UTF-8 bytes with 32-bit FNV-1a ([FNV](https://datatracker.ietf.org/doc/html/draft-eastlake-fnv)), and picks the color at that hash modulo 30, counting through the table row by row: `red-1`, `red-2`, `red-3`, `orange-1`, and so on.
   - Uppercase makes `Home` and `home` look the same, as [Tasks treats them as one tag](tasks.md#tags-and-search-ignore-case).
   - .NET's own string hash isn't used, since it changes with each run of the app ([String.GetHashCode](https://learn.microsoft.com/en-us/dotnet/api/system.string.gethashcode)).
-  - All 30 colors are used, so two of seven tags share a default about 53% of the time, against 94% with one shade per hue.
+  - All 30 colors are used, so two of eight tags share a default about 64% of the time, against 98% with one shade per hue.
   - Changing the rule after release would recolor every tag with no color kept, so a unit test pins the default of a few fixed tags.
 
 ### The web view runs no scripts and loads images only from the clone's address
@@ -346,7 +346,7 @@ The options below were considered and rejected, grouped by decision.
   - **The six text colors' hues, five shades each**: five shades of one hue come close, with the closest pairs only 4.1 to 6.8 apart, so the user would confuse them.
   - **One set of 30 for both themes**: one value per color, and it passes every check in both themes, but the user asked for a set per theme.
 - A tag's default color:
-  - **One shade per hue, from 10 colors**: two of seven tags would share a default far more often.
+  - **One shade per hue, from 10 colors**: two of eight tags would share a default far more often.
   - **A color picked at random and kept in `tags.json` when a tag is first used**: every new tag would write the file, and tags from before the file would still need a default.
 - The text look:
   - **Heading 1 follows the Windows accent color**: Rendering is shared with Android and can't read Windows, and no test could promise its contrast.

@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -44,15 +45,17 @@ public class AddWindowCloseKeysTests
     }
 
     [WpfFact]
-    public void The_keys_close_Add_while_the_tag_suggestions_are_open()
+    public void The_keys_close_Add_while_the_tag_menu_is_open()
     {
         using var screen = new AddScreen();
         screen.Services.CloseWindowKeys.Set(ModifierKeys.Shift, Key.F9);
         screen.Services.UseTag("hobby");
         screen.Show();
         screen.Fill("Buy milk", "Two litres", "home");
-        screen.TypeTag("ho");
-        Assert.NotEmpty(screen.Suggestions);
+        OpenWindows.Click(TagControls.Plus(screen.Window));
+        Assert.True(TagControls.MenuIsOpen(screen.Window));
+        TagEditorWindow.Focus(TagControls.SearchBox(screen.Window));
+        Assert.Equal(TagControls.MenuSearch, TagControls.FocusedId());
 
         screen.Press(Key.LeftShift, Key.F9);
 

@@ -128,11 +128,35 @@ public sealed class TagTests
     }
 
     [Fact]
-    public void Suggests_the_tags_in_use_that_start_with_the_typed_text_ignoring_case()
+    public void Suggests_the_tags_in_use_that_contain_the_typed_text_ignoring_case()
     {
         f.SeedTagsAndUse(["Work", "wonder"], ["Work"], ["home"]);
 
         Assert.Equal(["Work", "wonder"], f.Tasks.SuggestTags("WO", []));
+    }
+
+    [Fact]
+    public void Suggests_a_tag_when_the_typed_text_matches_the_middle_of_it()
+    {
+        f.SeedTagsAndUse(["Work"], ["home"]);
+
+        Assert.Equal(["Work"], f.Tasks.SuggestTags("ork", []));
+    }
+
+    [Fact]
+    public void Suggests_tags_that_contain_the_text_most_used_first_then_alphabetically()
+    {
+        f.SeedTagsAndUse(["network", "artwork"], ["artwork"], ["work"], ["work"], ["work"]);
+
+        Assert.Equal(["work", "artwork", "network"], f.Tasks.SuggestTags("WORK", []));
+    }
+
+    [Fact]
+    public void Leaves_out_the_task_tags_when_the_typed_text_matches_the_middle_of_them()
+    {
+        f.SeedTagsAndUse(["Work", "network"]);
+
+        Assert.Equal(["network"], f.Tasks.SuggestTags("ork", ["WORK"]));
     }
 
     [Theory]
@@ -151,14 +175,6 @@ public sealed class TagTests
         f.SeedTagsAndUse(["Work"]);
 
         Assert.Equal(["Work"], f.Tasks.SuggestTags("  wo ", []));
-    }
-
-    [Fact]
-    public void Suggests_only_tags_that_start_with_the_text_not_ones_that_contain_it()
-    {
-        f.SeedTagsAndUse(["network"]);
-
-        Assert.Empty(f.Tasks.SuggestTags("work", []));
     }
 
     [Fact]

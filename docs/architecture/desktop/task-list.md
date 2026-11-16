@@ -49,6 +49,7 @@ The user asked for these rules:
 
 - **A group's rows sit indented under its heading**, so the heading reads as the group's title.
 - **A click on a group's tag badge collapses the group**, hiding its rows, and another click expands it. The badge shows the hand pointer. The "No tag" heading works the same way.
+- **A collapsed heading's count is discreet**: "(3)" sits centered vertically on the badge, in the theme's secondary text color, with only the number bold. So it reads as a note beside the tag, not a second title.
 
 Proposed, each a decision to confirm:
 
@@ -224,7 +225,7 @@ Proposed, each a decision to confirm:
 - **An Undo bar follows each change**, saying "Tag added" or "Tag removed": the same bar as Delete, for the same time. Undo saves the opposite change the same way, so a removed tag comes back at the end of the task's tags. One bar shows at a time, so a new tag change, a delete, or a discarded edit finishes the earlier bar and keeps its change.
 - **Starting an edit of the task finishes its tag-change bar** and keeps the change, so the editor starts from the saved tags. A bar for another task stays, as for a discarded edit.
 - **A tag change first cleans up the task's earlier edit**, as starting an edit does: it finishes that task's discarded-edit bar, then deletes images an earlier edit left, since saving would otherwise move them into the clone. If deleting fails, the tag doesn't change, and the message line says why.
-- **A picked color is kept by the tag control when its tag is added**, as in Add, so it stays with the tag even when saving the task then fails.
+- **A clicked color is kept by the tag control when its tag is added**, as in Add, so it stays with the tag even when saving the task then fails.
 
 ### Search narrows the list
 

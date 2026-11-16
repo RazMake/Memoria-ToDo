@@ -50,17 +50,17 @@ internal sealed class TagCatalog
         return Has(tags, tag) ? tags : [.. tags, spelling.GetValueOrDefault(tag, tag)];
     }
 
-    /// <summary>The tags in use that start with the typed text, ignoring case, except <paramref name="tags"/>.</summary>
+    /// <summary>The tags in use that contain the typed text anywhere, ignoring case, except <paramref name="tags"/>.</summary>
     public IReadOnlyList<string> Suggest(string typed, IReadOnlyList<string> tags)
     {
         ArgumentNullException.ThrowIfNull(typed);
         ArgumentNullException.ThrowIfNull(tags);
-        var prefix = typed.Trim();
-        if (prefix.Length == 0)
+        var text = typed.Trim();
+        if (text.Length == 0)
             return [];
         return InUse
             .Select(use => use.Tag)
-            .Where(tag => tag.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && !Has(tags, tag))
+            .Where(tag => tag.Contains(text, StringComparison.OrdinalIgnoreCase) && !Has(tags, tag))
             .ToList();
     }
 

@@ -20,17 +20,37 @@ public class EditorLifecycleTests
     private const string DarkRed = "#ff7b72";
 
     [WpfFact]
-    public void An_editor_put_back_in_a_window_suggests_the_tags_in_use_now()
+    public void An_editor_put_back_in_a_window_lists_the_tags_in_use_now_in_its_menu()
     {
         using var host = new EditorWindow();
         host.Services.UseTag("home");
-        host.OpenCustom();
-        EditorFields.Type(host.Editor, EditorFields.Tags, "ho");
         host.Remove();
         host.Services.UseTag("hobby", 2);
         host.Put();
 
-        Assert.Equal(["hobby", "home"], EditorFields.ShownSuggestions(host.Editor));
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.Plus(host.Editor));
+
+        Assert.Equal(["hobby", "home"], TagControls.MenuTags(host.Editor));
+    }
+
+    [WpfFact]
+    public void A_tag_editor_taken_out_of_its_window_with_the_plus_menu_open_opens_the_default_menu_with_one_click_when_put_back()
+    {
+        using var host = new TagEditorWindow("work");
+        host.Services.UseTag("home");
+        host.ClickPlus();
+        TextFields.Type(TagControls.SearchBox(host.Editor), "ho");
+        host.Remove();
+        host.Put();
+        Assert.False(TagControls.MenuPopupIsOpen(host.Editor));
+
+        host.ClickPlus();
+
+        Assert.True(TagControls.MenuPopupIsOpen(host.Editor));
+        Assert.Equal(["home"], TagControls.MenuTags(host.Editor));
+        Assert.Equal("", TagControls.SearchBox(host.Editor).Text);
+        Assert.False(TagControls.SearchMatchesAreOpen(host.Editor));
+        Assert.False(TagControls.CustomIsOpen(host.Editor));
     }
 
     [WpfFact]

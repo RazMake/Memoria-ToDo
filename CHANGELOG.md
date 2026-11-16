@@ -4,14 +4,16 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 <!-- How to write entries, and when: docs/contributing/changelog.md -->
 
-## Unreleased
+## 1.0.0
 
 - The app now tells you when a new version is available. Task View, the window that lists your tasks, and Add, the window for a new task, show it along their bottom edge, and Configure shows it in a card at its top. Click What is new to read what each newer version brings, and Update Now to install it; the app restarts into the new version. Turn on Auto update in Configure and the app checks each night around 3 AM and installs the new version for you, once none of its windows is open.
 - The window that lists your tasks is now called Task View: in the tray menu, in its title bar, and in its shortcut's name in Configure, the settings window. It used to be Manage tasks in the menu and View Tasks in the title bar.
 - Headings in descriptions have new colors in both themes: orange, yellow, dark yellow, then blue for smaller headings. The card titles in Configure use the same look.
 - Task View's status bar is now one short line in its own shade, slightly different from the window's. It has a Sync button, a small blue sync icon, and the app's version at its right end. Point at the button to see "Sync (F5)". While a sync runs, whether you started it or the app did, the button turns green and can't be pressed, and "Syncing…" shows beside it. When a sync fails, the error shows beside the button.
 - Task View's search bar now stretches across the whole window, is shorter, and has its own shade like the status bar. The search box has a "Search:" label, uses the free width, and has a magnifier button after it; Enter still searches. The tag filter is gone: click a tag's name above its group to collapse or expand that group instead. Tasks are indented under their tag.
+- The task count beside a collapsed group's name is now quieter: it uses the secondary text color, only its number is bold, and it lines up with the middle of the tag.
 - Tags are always lowercase and have no spaces.
+- In the task editor, the + button now opens a drop-down menu with your 8 most-used tags, a Search box, and Custom. Search lists the tags that contain what you type, anywhere in the tag, in a menu beside it. Custom opens a "New tag:" box below the tags; type a name and 30 colors appear, and a click on a color adds the tag in that color. Enter adds it with no color change. Esc closes the menu first, then Custom, then the window.
 - Edit Description now edits only the description. Ctrl+Enter saves, and you can change that shortcut in Configure; Esc drops your changes. A Save button sits at the bottom right, and the Description grows to fill the space above it; the right side no longer scrolls as a whole, unless the window is very short. A Preview tab shows how the description will look, and there you can drag an image's corner to resize it. The size is kept with the task.
 - A new Edit Title item in a task's right-click menu edits its title right in the list.
 - In Task View, Enter, F2, Shift+F2, Ctrl+D, Delete, Alt+Up and Alt+Down now also work on the selected task after you click its description on the right side. They used to do nothing there.

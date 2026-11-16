@@ -28,7 +28,7 @@ public interface ITasks
     /// </summary>
     IReadOnlyList<string> WithTag(IReadOnlyList<string> tags, string typed);
 
-    /// <summary>Tags in use that start with <paramref name="typed"/>, ignoring case, except those in <paramref name="tags"/>, most-used first.</summary>
+    /// <summary>Tags in use that contain <paramref name="typed"/> anywhere, ignoring case, except those in <paramref name="tags"/>, most-used first.</summary>
     IReadOnlyList<string> SuggestTags(string typed, IReadOnlyList<string> tags);
 
     /// <summary>Tasks whose title, description, or tags hold every typed word, ignoring case, in rank order.</summary>

@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Input;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -65,6 +66,48 @@ public class TaskListGroupCollapseTests
         screen.ToggleGroup("work");
 
         Assert.Contains("(2)", screen.HeadingText("work"));
+    }
+
+    [WpfTheory]
+    [InlineData("work")]
+    [InlineData("No tag")]
+    public void A_collapsed_headings_count_has_only_its_number_bold(string group)
+    {
+        using var screen = new TaskListScreen(HomeAndWork());
+
+        screen.ToggleGroup(group);
+
+        var pieces = screen.HeadingCountPieces(group);
+        Assert.Equal(group == "work" ? "2" : "1", string.Concat(pieces.Where(p => p.Weight >= FontWeights.Bold).Select(p => p.Text)));
+        Assert.Equal("()", string.Concat(pieces.Where(p => p.Weight < FontWeights.Bold).Select(p => p.Text)));
+    }
+
+    [WpfTheory]
+    [InlineData("work", false)]
+    [InlineData("No tag", false)]
+    [InlineData("work", true)]
+    public void A_collapsed_headings_count_is_in_the_themes_secondary_text_color(string group, bool dark)
+    {
+        using var screen = new TaskListScreen(HomeAndWork());
+        screen.UseTheme(dark);
+
+        screen.ToggleGroup(group);
+
+        var secondary = screen.ThemeColor("TextFillColorSecondaryBrush");
+        Assert.All(screen.HeadingCountPieces(group), piece => Assert.Equal(secondary, piece.Color));
+    }
+
+    [WpfTheory]
+    [InlineData("work")]
+    [InlineData("No tag")]
+    public void A_collapsed_headings_count_is_centered_vertically_on_the_badge(string group)
+    {
+        using var screen = new TaskListScreen(HomeAndWork());
+
+        screen.ToggleGroup(group);
+
+        Assert.InRange(screen.HeadingCountOffsetFromBadgeCenter(group), -1, 1);
+        Assert.InRange(screen.HeadingCountExtraHeight(group), -1, 1);
     }
 
     [WpfFact]

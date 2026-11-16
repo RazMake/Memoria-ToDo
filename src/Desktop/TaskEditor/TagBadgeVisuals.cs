@@ -52,20 +52,6 @@ internal static class TagBadgeVisuals
         return badge;
     }
 
-    /// <summary>A badge that is a button, so a click on it reports its tag.</summary>
-    public static FrameworkElementFactory Clickable(TagLook look)
-    {
-        var button = new FrameworkElementFactory(typeof(Button));
-        button.SetValue(Control.TemplateProperty, FlatButton);
-        button.SetValue(Control.PaddingProperty, new Thickness(8, 2, 8, 2));
-        button.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 6, 6));
-        button.SetBinding(ContentControl.ContentProperty, new Binding("."));
-        button.SetBinding(AutomationProperties.AutomationIdProperty, new Binding(".") { StringFormat = "Badge {0}" });
-        button.SetBinding(Control.BackgroundProperty, BackgroundOf(look));
-        button.SetBinding(Control.ForegroundProperty, TextOf(look));
-        return button;
-    }
-
     /// <summary>A badge button for the tag, outside a list, in the fill.</summary>
     public static Button ButtonFor(string tag, TagFill fill)
     {

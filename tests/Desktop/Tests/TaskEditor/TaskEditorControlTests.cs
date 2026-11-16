@@ -93,7 +93,7 @@ public class TaskEditorControlTests
     }
 
     [WpfFact]
-    public void Esc_closes_an_open_suggestion_list_first_then_Custom_and_only_a_third_Esc_asks_to_cancel()
+    public void Esc_closes_an_open_tag_menu_first_then_Custom_and_only_a_third_Esc_asks_to_cancel()
     {
         using var host = new EditorHost();
         host.Services.UseRepository();
@@ -101,11 +101,13 @@ public class TaskEditorControlTests
         host.OpenCustom();
         host.Focus(EditorFields.Tags);
         host.Type(EditorFields.Tags, "ho");
-        Assert.NotEmpty(EditorFields.ShownSuggestions(host.Editor));
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.Plus(host.Editor));
+        Assert.True(TagControls.MenuIsOpen(host.Editor));
 
         host.Press(Key.Escape);
 
-        Assert.Empty(EditorFields.ShownSuggestions(host.Editor));
+        Assert.False(TagControls.MenuIsOpen(host.Editor));
+        Assert.True(TagControls.CustomIsOpen(host.Editor));
         Assert.Equal((0, 0, 0), host.Counts);
 
         host.Press(Key.Escape);

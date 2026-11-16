@@ -45,7 +45,7 @@ The table lists the keys that work across the window, and which are still propos
 | --- | --- | --- | --- |
 | Enter or Tab | Title | Moves to the Description | Decided |
 | Tab | Description, outside a list item | Moves to the tags | Proposed |
-| Enter | Tag box | Adds the chosen suggestion, or the typed tag | Proposed |
+| Enter | Tag box | Adds the typed tag, keeping its color | Proposed |
 | [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window), Ctrl+Enter at first | Anywhere | Saves the task, as the Save button does. Proposed: and closes Add. The user decided the key can be changed, in Configure. | Decided |
 | Ctrl+Shift+Enter | Anywhere | Saves the task and clears Add for another one. Proposed: these keys stay fixed when the Save shortcut changes, and the Save shortcut wins if the user picks them for it. | Proposed |
 | Esc | Anywhere | Closes Add and keeps a draft. Proposed: closes an open list, such as the snippet picker or the tag menu, first. | Decided |
@@ -93,7 +93,7 @@ No key uses Ctrl+Alt, which [Shell rules out](shell.md#ruled-out). The stamp key
 
 Proposed, each a decision to confirm:
 
-- The color list opens under the Description, not at the cursor, and shows only while open. Click a color, or press Down to move through them and Enter to choose, as with tag suggestions. Esc closes it first. The cursor stays in the field, and the chosen color wraps the field's selection.
+- The color list opens under the Description, not at the cursor, and shows only while open. Click a color, or press Down to move through them and Enter to choose, as with Search's matches in the [tag menu](#the--menu-adds-a-top-tag-or-one-found-by-search). Esc closes it first. The cursor stays in the field, and the chosen color wraps the field's selection.
 - Each formatting and heading key runs on the field with the cursor. Each key's result replaces only the text that changed, as one undo step, and keeps the selection Editing returns.
 - Editing sees every line break as "\n". If the text holds any "\r\n" or "\r", the key converts them first.
 - In the Description, Enter, Tab, and Shift+Tab run Editing's list commands in a list item. Tab on a first item that can't move is swallowed: the cursor stays in the Description. Outside a list item, Enter breaks the line as usual, Tab moves to the tags, and Shift+Tab moves back to the Title.
@@ -125,15 +125,23 @@ Proposed, each a decision to confirm:
 
 ### Tags show as colored badges, and the plus button adds one
 
-The user decided how tags look and are added. The task's tags show as badges, each in its own color, followed by a **+** button. The + opens a menu with the seven most-used tags, which add with one click, and a **Custom** item. Custom shows a text box for any tag and a picker of Rendering's 30 [tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes), in the current theme's set. [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color, so every device shows it.
+The user decided how tags look and are added. The task's tags show as badges, each in its own color, followed by a **+** drop-down button. The + opens a menu with three parts:
+
+1. **The eight most-used tags**, which add with one click.
+2. **Search**: a text box. The tags that match what is typed show in a submenu beside it, and a click on one adds it.
+3. **Custom**: a text box labeled **New tag:**, with no spaces, and Rendering's 30 [tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes), in the current theme's set. The colors show only while the box holds text, and a click on a color adds the typed tag in that color.
+
+[Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color, so every device shows it. [The menu](#the--menu-adds-a-top-tag-or-one-found-by-search) and [Custom](#custom-adds-a-new-tag-in-the-color-clicked) are described below.
 
 The badges and the + button make up the tag control. It's part of the editor, so Add gets it, and the Task list shows it under the [selected task's](task-list.md#tags-show-as-colored-badges-and-change-without-edit) description. Tags still follow [Tasks' tag rules](../tasks.md#tags-and-search-ignore-case): case is ignored, and a typed tag takes the spelling of a matching tag in use.
 
-The user decided that tags typed in the tag box are lowercase and have no spaces, and that tags already in use stay as they are. So in the tag box:
+The user decided that tags typed in the tag box, Custom's **New tag:** box, are lowercase and have no spaces, and that tags already in use stay as they are. So in the tag box:
 
 - **Typed letters show lowercase**, whatever the Shift or Caps Lock state, and so do pasted ones, by the invariant culture's rules, so a tag reads the same on every PC.
 - **A typed space does nothing**, and spaces in pasted text are removed, so "to do" pastes as "todo".
-- **Only typed and pasted text changes.** Existing tags, the suggestions, the + menu's tags, and a typed tag that matches a tag in use, which takes that tag's spelling as Tasks decides, keep their spelling, so `Work` stays `Work` on every task that has it.
+- **Only typed and pasted text changes.** Existing tags, the + menu's tags, Search's matches, and a typed tag that matches a tag in use, which takes that tag's spelling as Tasks decides, keep their spelling, so `Work` stays `Work` on every task that has it.
+
+Proposed: **the Search box keeps what is typed as it is.** It only finds tags in use, and matching ignores case, so it needs no lowercase rule; keeping spaces lets it find an older tag that has one. This is a decision to confirm.
 
 Proposed, each a decision to confirm:
 
@@ -142,20 +150,54 @@ Proposed, each a decision to confirm:
 
 Proposed, each a decision to confirm:
 
-- **The + menu replaces the five chips that showed under the Tags line.** It lists the tags in use that the task doesn't have yet, in Tasks' most-used order, up to seven, each as a badge in its color. A line separates them from Custom. With no such tag, the menu shows only Custom.
 - **Each badge has a button that removes its tag.** Badges wrap onto more lines when a task has many.
 - **The + button follows the last badge, in the same row**, and wraps with the badges, so it always sits where the next tag will go. With no tags, it starts the row.
-- **Custom shows the tag box and the colors below the badges**, with the cursor in the tag box. The tag box suggests tags in use as the user types. A suggestion is chosen with Down, repeated to move on, then Enter, or with a click; Enter with no suggestion chosen adds the typed text. Tab doesn't accept a suggestion. Adding a tag hides the box and the colors.
-- **Choosing a suggestion adds it as Enter adds typed text**: its picked color is kept first, then the box and the colors hide.
-- **Adding a tag from the + menu while Custom shows leaves Custom as it is**, with its typed text and picked color, so no typing is lost.
-- **The colors show as a grid, one column per hue and one row per shade.** A click picks one. Clicking the picked color again unpicks it, as Space on it does, so the user can always go back to no color picked. Typing a tag already in use shows its kept color as picked; a tag with no kept color shows none picked, so adding it doesn't turn its default into a kept color. A tag added with no color picked keeps the color it has: its kept color, or its default.
-- **A color belongs to the tag, not to one task.** Picking a color for a tag already in use changes it on every task, and on every device after a sync.
+- **A color belongs to the tag, not to one task.** Choosing a color for a tag already in use changes it on every task, and on every device after a sync.
 - **A tag with no color kept shows its default color**, which [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) picks from the tag's text with case ignored, so a tag looks the same in every window and on every device. A color name this app doesn't know, such as one a newer app wrote, shows the default and is kept as it is.
 - **A badge takes its color's value and text color for the current theme**, from Rendering, and changes when the theme or a tag's color does.
-- **Keys**: Tab reaches each badge's remove button, then the +. Enter, Space, or Down on the + opens the menu, Up and Down move through it, and Enter adds the tag moved to, or opens Custom. In the colors, the arrow keys move, and Space picks the color moved to, or unpicks it when it's the picked one. Backspace in the empty tag box removes the last tag, as it does in today's Tags line. Esc closes the menu, or hides the tag box and the colors and drops what was typed there, before it closes Add.
-- **The Save button, the Save shortcut, and Ctrl+Shift+Enter add any text still in the tag box**, with its picked color, before they save, so no typing is lost. That text counts as a change, as typed tag text does today.
-- **A picked color is kept when its tag is added**, not when the task is saved, so the [draft](#closing-without-saving-keeps-a-draft-on-this-device) keeps its format. The color stays with the tag even if the task is never saved.
-- **When the picked color can't be kept, the tag isn't added.** Custom stays open with the typed text and the picked color, and says why under the colors. With no clone folder, it says to choose the repository folder in Configure, then add the tag again. Otherwise it says the tag wasn't added because its color couldn't be kept, followed by the reason, such as the file error. (Decision to confirm: the wording.) A save that was adding that text saves nothing.
+- **Tab reaches each badge's remove button, then the +.**
+- **A clicked color is kept when its tag is added**, not when the task is saved, so the [draft](#closing-without-saving-keeps-a-draft-on-this-device) keeps its format. The color stays with the tag even if the task is never saved.
+
+### The + menu adds a top tag or one found by search
+
+The + is a drop-down button: a click on it, or Enter, Space, or Down while it has the focus, opens the menu under it, over the window, and a second click closes it. The menu is drawn in the theme's menu colors, copying none. The user decided it's a WPF [Popup](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/popup) under the +, holding the Task editor's own items, with a second Popup beside Search for the matches. Keys pressed inside a popup still travel up to the window, since a popup's root passes routed events to the popup's parent ([PopupRoot.cs](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Controls/Primitives/PopupRoot.cs)). So Esc, the [Close window shortcut](#keys-save-close-and-move-between-fields), and the Save shortcut keep working with the menu open.
+
+Proposed, each a decision to confirm:
+
+- **The top of the menu lists up to eight tags**: the tags in use that the task doesn't have yet, in Tasks' most-used order, each as a badge in its color. A line separates them from Search. With no such tag, the menu starts with Search. Eight has one home in the Task editor's code.
+- **Search is a text box labeled "Search:"**. Typing in it shows the tags that match in a submenu to the right of the Search item, or to its left when the screen has no room. The user decided which tags match: the tags in use that contain the typed text anywhere, case ignored, that the task doesn't have yet, so `ork` finds `work`. They're [Tasks' tag suggestions](../tasks.md#tags-and-search-ignore-case). Matches show as badges in their colors, most-used first, and may include the top eight.
+- **The submenu lists every match**, and scrolls when it's taller than the screen allows. With an empty Search box, no submenu shows. When nothing matches, it shows one dimmed line, "No matching tags", that can't be clicked.
+- **Custom… closes the menu and opens [Custom](#custom-adds-a-new-tag-in-the-color-clicked).**
+- **Adding a tag from the menu or its submenu closes both**, and the focus goes back to the +. Search's text is never part of the task, the draft, or the editor's changes, and closing the menu drops it.
+- **A click outside the menu closes it**, as Esc does. Opening the menu doesn't take the window's focus away, so it never counts as [clicking elsewhere](#closing-without-saving-keeps-a-draft-on-this-device).
+- **Adding a tag from the menu while Custom shows leaves Custom as it is**, with its typed text, so no typing is lost.
+
+Keys in the menu, proposed, each a decision to confirm:
+
+| Key | Where | What it does |
+| --- | --- | --- |
+| Up, Down | The menu | Move through the tags, Search, and Custom… Moving onto Search puts the cursor in its box. |
+| Enter | A tag, or Custom… | Adds the tag, or opens Custom |
+| A letter or digit | The menu, outside Search | Goes into the Search box, so typing starts a search at once |
+| Down, Up | The Search box, with matches | Move a highlight through the matches, while the cursor stays in the box; Up from the first match leaves none highlighted |
+| Down, Up | The Search box, with no matches | Move to Custom…, or to the last tag |
+| Enter | The Search box | Adds the highlighted match, or the first match when none is; with no match, does nothing |
+| Esc | Anywhere in the menu | Closes the menu and drops Search's text |
+
+### Custom adds a new tag in the color clicked
+
+Custom shows below the badges, with the cursor in its text box, labeled **New tag:**. The user decided that the box takes no spaces, that the colors show only while the box holds text, and that a click on a color adds the typed tag with that color. The user also decided that Custom opens below the badges, as today, and stays until a tag is added or Esc. So a click elsewhere can't lose the typed tag, and the Save button and shortcuts can add its text.
+
+Proposed, each a decision to confirm:
+
+- **The box suggests nothing.** Search finds the tags in use, so two lists would offer the same tags.
+- **The colors show as a grid, one column per hue and one row per shade**, below the box. They hide again when the box is emptied.
+- **The grid marks the color the typed tag would get with Enter**: its kept color, or its default. So typing `work` shows what `work` looks like now.
+- **A click on a color keeps that color for the tag, then adds it**, spelled as a tag in use when one matches. A tag already in use is recolored on every task, as [a color belongs to the tag](#tags-show-as-colored-badges-and-the-plus-button-adds-one). Custom then hides, the box empties, and the focus goes to the +.
+- **Enter in the box adds the typed tag with no new color**, so it keeps its kept color, or its default. That keeps adding a tag fast from the keyboard and never writes `tags.json`.
+- **Keys**: Tab moves from the box to the colors. In the colors, the arrow keys move, and Space or Enter adds the tag in the color moved to. Backspace in the empty box removes the task's last tag. Esc hides Custom and drops what was typed there, before it closes Add.
+- **The Save button, the Save shortcut, and Ctrl+Shift+Enter add any text still in the box**, as Enter does, before they save, so no typing is lost. That text counts as a change, as typed tag text does today.
+- **When a clicked color can't be kept, the tag isn't added.** Custom stays open with the typed text, and says why under the colors. With no clone folder, it says to choose the repository folder in Configure, then add the tag again. Otherwise it says the tag wasn't added because its color couldn't be kept, followed by the reason, such as the file error. (Decision to confirm: the wording.) The message clears when the text changes or Custom hides.
 
 ### The editor styles Markdown in place, with no preview
 
@@ -196,7 +238,7 @@ The composition root, Shell, and the Task list use these parts:
 - **The editor**: Add's Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-task-view-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. Only Add uses it, so it's internal to the Task editor.
 - **The Title editor and the Description editor**: the user decided that the Task list edits a title or a description alone through two public controls, each one field with the same keys, styling, paste rules, and save steps as Add's field, its own message line, and the same report of changes and requests to save or cancel. Add's editor is built from the same Title and Description parts, so each rule keeps one home. The Task list uses one at a time: the Title editor in a row, for [Edit Title](task-list.md#edit-title-edits-the-title-in-its-row), and the Description editor on the right side, for [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor). The user decided that an editor tells what changed, so the Task list shows its Undo bar only for an edit with changes. The Description editor also sets an image's width in its text, for an image resized in the [edit's Preview](task-list.md#an-image-resizes-by-dragging-its-corner-in-the-edits-preview): it writes the width with Rendering's [width function](../rendering.md#public-interface), as a change the user made, so the edit then has changes, and Ctrl+Z in the editor takes it back as one step.
 - **The Save keys**: Add's editor and both field editors save on the platform's [Save keys](README.md#the-save-shortcut-saves-in-any-window-that-edits), so a new Save shortcut applies at once.
-- **The tag control**: a task's tags as badges with remove buttons, then the + and its menu, as [above](#tags-show-as-colored-badges-and-the-plus-button-adds-one). It reports each tag the user adds or removes, and keeps a picked color through Tasks, but never saves the task. The editor holds one, and the Task list shows one under the selected task's description.
+- **The tag control**: a task's tags as badges with remove buttons, then the + and its menu, as [above](#tags-show-as-colored-badges-and-the-plus-button-adds-one). It reports each tag the user adds or removes, and keeps a clicked color through Tasks, but never saves the task. The editor holds one, and the Task list shows one under the selected task's description.
 - **Tag badges**: tags as read-only badges in their colors. The Task list shows one as each tag group's heading, and in place of the tag control during an edit.
 - **Two ports**, the clipboard and the image file dialog, which the desktop app implements beside its composition root, so the Task editor's tests run on [fakes](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test).
 
@@ -204,7 +246,7 @@ Proposed: the editor and the two tag parts follow Tasks' changes, the tag colors
 
 [Rendering](../rendering.md#public-interface) and [Editing](../editing.md#public-interface) are plain functions, so the Task editor calls them directly. The Task editor reads a dropped or chosen image file through Shared's `IFileSystem`, which `Create` and the editor's constructor take last (decision to confirm), and keeps each image through [Tasks' `SaveImage`](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task), for a draft or an open edit alike.
 
-Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) adds the editor's `Save`, `FocusTitle`, and `HasChanges`, which the Task list needs. Row 7 adds `IAddWindow.Close`. Row 8 adds Tasks' [tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own) to `Create` and the editor's constructor, right after `tasks`, and replaces `TagChips` with `TagEditor`, `TagBadges`, and `TopTags`. Row 11 removes `TopTags`, since the Task list dropped the tag filter that used it; the + menu keeps the seven most-used tags inside the Task editor, so the count still has one home. Row 11 also adds `TitleEditor` and `DescriptionEditor`, with `DescriptionEditor.SetImageWidth`, makes `TaskEditorControl` internal, and adds the platform's Save keys to `AddWindow.Create` as its new last argument, after the update status. Proposed: the two editors' members below. This is a decision to confirm.
+Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) adds the editor's `Save`, `FocusTitle`, and `HasChanges`, which the Task list needs. Row 7 adds `IAddWindow.Close`. Row 8 adds Tasks' [tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own) to `Create` and the editor's constructor, right after `tasks`, and replaces `TagChips` with `TagEditor`, `TagBadges`, and `TopTags`. Row 11 removes `TopTags`, since the Task list dropped the tag filter that used it; the + menu keeps the eight most-used tags inside the Task editor, so the count still has one home. Row 11 also adds `TitleEditor` and `DescriptionEditor`, with `DescriptionEditor.SetImageWidth`, makes `TaskEditorControl` internal, and adds the platform's Save keys to `AddWindow.Create` as its new last argument, after the update status. Proposed: the two editors' members below. This is a decision to confirm.
 
 ```csharp
 namespace Memoria.ToDo.Desktop.TaskEditor;
@@ -295,9 +337,10 @@ public sealed class DescriptionEditor : UserControl
     public event EventHandler? CancelRequested; // Esc, with no list open
 }
 
-/// A task's tags as colored badges, each with a button that removes it, then the + button. Its menu adds one
-/// of the top tags the task doesn't have, or opens Custom: the tag box and the 30 tag colors. Keeps a picked
-/// color through tagColors when its tag is added, but never saves the task.
+/// A task's tags as colored badges, each with a button that removes it, then the + drop-down button. Its menu adds
+/// one of the top tags the task doesn't have, adds a tag in use found by Search, or opens Custom: the New tag box
+/// and the 30 tag colors, where a click on a color keeps that color through tagColors and adds the tag. It never
+/// saves the task.
 public sealed class TagEditor : UserControl
 {
     public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme);
@@ -347,7 +390,7 @@ public interface IImageFileChooser
 - **Saving fails and Tasks can't undo it** (it throws an `AggregateException`): Add stays open with the text and the draft, and the editor says the save was incomplete, so the user checks the repository folder before saving again. The Task list's edit gets the same message. (Decision to confirm: the wording.)
 - **The edited task was deleted**, on this device or another (Tasks throws `TaskNotFoundException`): the edit stays open with the text, and the editor says "This task no longer exists. Copy your changes before leaving the editor." (Decision to confirm: the wording.)
 - **An image can't be read or saved**: nothing is inserted, and Add says why.
-- **A picked color can't be kept**, because there's no clone folder, `tags.json` can't be read or is newer, or the file can't be written: the tag isn't added, and Custom keeps the text and says why, as [above](#tags-show-as-colored-badges-and-the-plus-button-adds-one).
+- **A clicked color can't be kept**, because there's no clone folder, `tags.json` can't be read or is newer, or the file can't be written: the tag isn't added, and Custom keeps the text and says why, as [above](#custom-adds-a-new-tag-in-the-color-clicked).
 - **`tags.json` can't be read**: every badge shows its tag's default color, and the editor still opens and saves tasks.
 - **The draft can't be read**: Add opens empty, says the draft couldn't be loaded, and leaves the draft file as it is.
 
@@ -386,8 +429,15 @@ The options below were considered and rejected, grouped by decision.
   - **Keeping a picked color only when the task is saved**: the draft would need a new format to carry it.
   - **Adding the tag when its color can't be kept, in its default color**: the user would see a color other than the one picked, with no sign until another device shows it.
   - **One tag control with a flag that turns its + off for the rows**: rows need only colored badges, so a separate read-only part is smaller than a flag no other user needs.
-  - **A click on the picked color keeps it picked, as Space on it does**: once picked, no color could be unpicked short of closing Custom and losing the typed text.
+  - **Picking a color, which a second click unpicks, then adding the tag with Enter**: the user asked that a click on a color add the tag at once.
+  - **Colors that show while Custom's box is empty**: the user asked that they show only once a tag is typed.
+  - **Seven tags in the + menu**: the user asked for eight.
+  - **Suggestions under Custom's box, as it is typed**: Search finds the same tags in use, so the window would hold two lists of them.
   - **The + button on its own row, under the badges**: it would sit away from the tags it adds to, and take a row of its own.
+  - **A WPF ContextMenu for the + menu**, with Search's matches as child items: the window's keys, such as the Close window and Save shortcuts, wouldn't reach it, and items take the focus as the pointer passes, pulling the cursor out of the Search box.
+  - **Today's inline panel for the + menu**: it isn't a drop-down, and opening it grows Add and pushes the Task list's description down.
+  - **Search finds only tags that start with the typed text**: the user asked that a tag containing the text anywhere match.
+  - **Custom inside the drop-down, in place of the menu's items**: a stray click outside would close it and drop the typed tag, and Save couldn't add text from a closed menu.
 - Where a new task goes:
   - **The bottom**: it can scroll out of sight.
   - **A setting**: one more option to test.

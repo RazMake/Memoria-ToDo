@@ -244,7 +244,7 @@ Proposed, each a decision to confirm:
 
 ### Tags and search ignore case
 
-A tag is one trimmed, non-empty line. Tags that differ only in case are the same tag, and a new tag takes the spelling of a matching tag in use. A tag suggestion is a tag in use that starts with the text typed so far, ignoring case, so both apps suggest the same tags.
+A tag is one trimmed, non-empty line. Tags that differ only in case are the same tag, and a new tag takes the spelling of a matching tag in use. A tag suggestion is a tag in use that contains the text typed so far anywhere, ignoring case, so `ork` suggests `work`, and both apps suggest the same tags. The user decided it matches anywhere, not only at the start, for the desktop's tag [Search](desktop/task-editor.md#the--menu-adds-a-top-tag-or-one-found-by-search).
 
 Proposed, each a decision to confirm:
 
@@ -332,7 +332,7 @@ public interface ITasks
     /// Throws ArgumentException for an empty or multi-line tag.
     IReadOnlyList<string> WithTag(IReadOnlyList<string> tags, string typed);
 
-    /// Tags in use that start with typed, ignoring case, except those in tags, most-used first.
+    /// Tags in use that contain typed anywhere, ignoring case, except those in tags, most-used first.
     IReadOnlyList<string> SuggestTags(string typed, IReadOnlyList<string> tags);
 
     /// Tasks whose title, description, or tags hold every typed word, ignoring case, in rank order.
@@ -598,6 +598,8 @@ The options below were considered and rejected, grouped by decision.
   - **A device store in the platform**: no second module needs one.
 - Tag suggestions:
   - **A matching rule in the shared platform**: only Tasks matches tags and tasks, so the rule stays in Tasks.
+  - **Suggestions that only start with the typed text**: the user asked that a tag containing it anywhere match.
+  - **A second rule beside the suggestions, for the desktop's Search**: two near-identical rules, one with no caller.
 - Images for an open edit:
   - **The editor says whether it holds a draft or a task, and calls a separate image part for edits**: an extra setting on the editor, and two image parts that shrink images the same way.
   - **Images added during an edit go straight into the clone**: a sync during the edit could push images that a discard then deletes, and git history would keep them.

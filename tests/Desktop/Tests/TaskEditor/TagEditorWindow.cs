@@ -11,6 +11,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 internal sealed class TagEditorWindow : IDisposable
 {
     private readonly Window window;
+    private Window? other;
 
     public TagEditorWindow(params string[] tags)
     {
@@ -75,5 +76,22 @@ internal sealed class TagEditorWindow : IDisposable
     /// <summary>The texts the user can see beside the controls, such as the message under the colors.</summary>
     public IReadOnlyList<string> Texts => EditorFields.VisibleTexts(Editor);
 
-    public void Dispose() => window.Close();
+    /// <summary>Makes another window the active one, as clicking another application does, so the editor's window deactivates.</summary>
+    public void Deactivate()
+    {
+        other = new Window { Width = 100, Height = 100 };
+        other.Show();
+        other.Activate();
+        window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+        if (window.IsActive)
+        {
+            throw new InvalidOperationException("The editor's window is still active.");
+        }
+    }
+
+    public void Dispose()
+    {
+        other?.Close();
+        window.Close();
+    }
 }

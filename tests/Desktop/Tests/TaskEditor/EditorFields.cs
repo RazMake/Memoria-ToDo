@@ -27,9 +27,6 @@ internal static class EditorFields
     /// <summary>The element that lists the task's tags, in order, as the items of an items control.</summary>
     public const string TagList = "TagList";
 
-    /// <summary>The element that lists the suggestions for the typed text, as the items of an items control.</summary>
-    public const string Suggestions = "Suggestions";
-
     /// <summary>Sets what the user has typed in the field, as typing does.</summary>
     public static void Type(DependencyObject root, string name, string text) => TextFields.Type(Field(root, name), text);
 
@@ -86,12 +83,12 @@ internal static class EditorFields
         return VisualButtons(list).Single(button => (string)button.Content == item);
     }
 
-    /// <summary>Types the text into the element that has the keyboard focus, one character at a time, as the keyboard does: the preview event, then the event itself unless a handler took it.</summary>
+    /// <summary>Types the text into the element that has the keyboard focus, one character at a time, as the keyboard does: the preview event, then the event itself unless a handler took it. Each character goes to the element that has the focus then, so a handler that moves the focus gets the rest of the text.</summary>
     public static void TypeOnFocused(string text)
     {
-        var element = (UIElement)Keyboard.FocusedElement;
         foreach (var character in text)
         {
+            var element = (UIElement)Keyboard.FocusedElement;
             var composition = new TextComposition(InputManager.Current, element, character.ToString());
             var preview = new TextCompositionEventArgs(Keyboard.PrimaryDevice, composition)
             {
@@ -121,23 +118,6 @@ internal static class EditorFields
 
     /// <summary>The tags the task shows, in order.</summary>
     public static IReadOnlyList<string> ShownTags(DependencyObject root) => TagControls.BadgeTags(Field(root, TagList));
-
-    /// <summary>The suggestions on offer: empty while the list is closed.</summary>
-    public static IReadOnlyList<string> ShownSuggestions(DependencyObject root) =>
-        Field(root, Suggestions).IsVisible ? ItemsOf(root, Suggestions) : [];
-
-    /// <summary>Clicks the tag in the open suggestion list: the left mouse button goes up on its row.</summary>
-    public static void ClickSuggestion(DependencyObject root, string tag)
-    {
-        var list = (System.Windows.Controls.ListBox)Field(root, Suggestions);
-        list.UpdateLayout();
-        var row = (UIElement)list.ItemContainerGenerator.ContainerFromIndex(ShownSuggestions(root).ToList().IndexOf(tag));
-        row.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
-        {
-            RoutedEvent = Mouse.PreviewMouseUpEvent,
-            Source = row,
-        });
-    }
 
     /// <summary>The texts of the text blocks the user can see below <paramref name="root"/>, such as the message line when it is shown.</summary>
     public static IReadOnlyList<string> VisibleTexts(DependencyObject root) =>

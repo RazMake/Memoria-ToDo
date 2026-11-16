@@ -1,4 +1,5 @@
 using System.IO;
+using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -6,8 +7,8 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 /// <summary>
-/// Adding and removing tags with the Custom box and its picked color: when the color is kept, what is reported, and what
-/// is left alone when keeping the color fails.
+/// Custom, the New tag box and its colors: when the colors show, which color is marked, how Enter and a click on a color
+/// add the tag, and what a color that can't be kept leaves alone.
 /// </summary>
 [Unit]
 public class TagsModelCustomTests
@@ -38,12 +39,31 @@ public class TagsModelCustomTests
     }
 
     [Fact]
+    public void Closing_Custom_when_it_is_closed_says_so_and_changes_nothing()
+    {
+        Assert.False(_model.CloseCustom());
+    }
+
+    [Fact]
+    public void Closing_Custom_drops_the_typed_text_and_the_message()
+    {
+        _services.TagColors.Failure = new NoRepositoryFolderException();
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+        _model.AddTypedTextInColor("red-1");
+
+        _model.CloseCustom();
+
+        Assert.Equal("", _model.TypedText);
+        Assert.Equal("", _model.ColorMessage);
+    }
+
+    [Fact]
     public void Adding_a_menu_tag_while_Custom_is_open_adds_it_and_leaves_Custom_as_it_was()
     {
         _services.UseTag("home");
         _model.OpenCustom();
         _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
 
         _model.Add("home");
 
@@ -51,33 +71,66 @@ public class TagsModelCustomTests
         Assert.Equal(["home"], _added);
         Assert.True(_model.IsCustomOpen);
         Assert.Equal("errand", _model.TypedText);
-        Assert.Equal("red-1", _model.PickedColor);
     }
 
     [Fact]
-    public void Closing_Custom_when_it_is_closed_says_so_and_changes_nothing()
+    public void Replacing_the_tags_leaves_Custom_open_with_its_text()
     {
-        Assert.False(_model.CloseCustom());
-    }
-
-    [Fact]
-    public void Closing_Custom_drops_the_typed_text_the_picked_color_and_the_message()
-    {
-        _services.TagColors.Failure = new NoRepositoryFolderException();
         _model.OpenCustom();
         _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
-        _model.AddTypedText();
+
+        _model.ReplaceTags(["x"]);
+
+        Assert.True(_model.IsCustomOpen);
+        Assert.Equal("errand", _model.TypedText);
+    }
+
+    // The colors.
+
+    [Fact]
+    public void The_colors_show_only_while_the_box_holds_text()
+    {
+        _model.OpenCustom();
+        Assert.False(_model.ColorsShown);
+
+        _model.TypedText = "e";
+        Assert.True(_model.ColorsShown);
+
+        _model.TypedText = "";
+        Assert.False(_model.ColorsShown);
+    }
+
+    [Fact]
+    public void The_colors_hide_when_Custom_closes()
+    {
+        _model.OpenCustom();
+        _model.TypedText = "errand";
 
         _model.CloseCustom();
 
-        Assert.Equal("", _model.TypedText);
-        Assert.Null(_model.PickedColor);
-        Assert.Equal("", _model.ColorMessage);
+        Assert.False(_model.ColorsShown);
     }
 
     [Fact]
-    public void Typing_a_tag_in_use_shows_its_kept_color_as_picked_ignoring_case()
+    public void Marks_no_color_while_nothing_is_typed()
+    {
+        _model.OpenCustom();
+
+        Assert.Null(_model.MarkedColor);
+    }
+
+    [Fact]
+    public void Marks_the_default_color_of_a_new_tag()
+    {
+        _model.OpenCustom();
+
+        _model.TypedText = "errand";
+
+        Assert.Equal(TagColors.DefaultFor("errand").Name, _model.MarkedColor);
+    }
+
+    [Fact]
+    public void Marks_the_kept_color_of_a_tag_in_use_ignoring_case()
     {
         _services.UseTag("home");
         _services.TagColors.Seed("home", "teal-2");
@@ -85,103 +138,49 @@ public class TagsModelCustomTests
 
         _model.TypedText = "HOME";
 
-        Assert.Equal("teal-2", _model.PickedColor);
+        Assert.Equal("teal-2", _model.MarkedColor);
     }
 
     [Fact]
-    public void Typing_a_tag_in_use_with_no_kept_color_picks_none()
+    public void Marks_the_default_color_of_a_tag_in_use_that_has_no_kept_color()
     {
         _services.UseTag("home");
         _model.OpenCustom();
 
         _model.TypedText = "home";
 
-        Assert.Null(_model.PickedColor);
+        Assert.Equal(TagColors.DefaultFor("home").Name, _model.MarkedColor);
     }
 
     [Fact]
-    public void Typing_a_tag_in_use_with_no_kept_color_clears_a_color_picked_before()
+    public void The_mark_follows_the_text_as_it_changes()
     {
-        _services.UseTag("home");
+        _services.TagColors.Seed("home", "teal-2");
         _model.OpenCustom();
-        _model.PickedColor = "blue-3";
-
         _model.TypedText = "home";
 
-        Assert.Null(_model.PickedColor);
-    }
-
-    [Fact]
-    public void Typing_a_new_tag_leaves_the_picked_color_alone()
-    {
-        _model.OpenCustom();
-        _model.PickedColor = "blue-3";
-
         _model.TypedText = "errand";
 
-        Assert.Equal("blue-3", _model.PickedColor);
+        Assert.Equal(TagColors.DefaultFor("errand").Name, _model.MarkedColor);
     }
 
     [Fact]
-    public void Adding_with_a_picked_color_keeps_it_for_the_tag_before_TagAdded_is_raised()
-    {
-        var keptWhenRaised = new List<(string Tag, string Color)>();
-        _model.TagAdded += _ => keptWhenRaised.AddRange(_services.TagColors.Kept);
-        _model.OpenCustom();
-        _model.TypedText = "errand";
-        _model.PickedColor = "purple-2";
-
-        var result = _model.AddTypedText();
-
-        Assert.True(result);
-        Assert.Equal([("errand", "purple-2")], keptWhenRaised);
-        Assert.Equal(["errand"], _added);
-        Assert.Equal(["errand"], _model.Tags);
-    }
-
-    [Fact]
-    public void Adding_keeps_the_color_for_the_tag_as_Tasks_spells_it()
+    public void The_mark_follows_the_kept_color_when_it_changes_after_the_text_was_typed()
     {
         _services.UseTag("home");
+        _services.TagColors.Seed("home", "teal-2");
         _model.OpenCustom();
-        _model.TypedText = "HOME";
-        _model.PickedColor = "red-1";
+        _model.TypedText = "home";
 
-        _model.AddTypedText();
+        _services.TagColors.SetColor("home", "pink-1");
 
-        Assert.Equal([("home", "red-1")], _services.TagColors.Kept);
-        Assert.Equal(["home"], _model.Tags);
+        Assert.Equal("pink-1", _model.MarkedColor);
     }
 
-    [Fact]
-    public void Adding_hides_Custom_and_clears_the_typed_text_and_the_picked_color()
-    {
-        _model.OpenCustom();
-        _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
-
-        _model.AddTypedText();
-
-        Assert.False(_model.IsCustomOpen);
-        Assert.Equal("", _model.TypedText);
-        Assert.Null(_model.PickedColor);
-    }
+    // Enter.
 
     [Fact]
-    public void Enter_adds_the_typed_text_with_the_picked_color()
-    {
-        _model.OpenCustom();
-        _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
-
-        _model.AddChosenOrTyped();
-
-        Assert.Equal(["errand"], _model.Tags);
-        Assert.Equal([("errand", "red-1")], _services.TagColors.Kept);
-    }
-
-    [Fact]
-    public void A_tag_added_with_no_color_picked_writes_no_color()
+    public void Enter_adds_the_typed_tag_hides_Custom_and_empties_the_box()
     {
         _model.OpenCustom();
         _model.TypedText = "errand";
@@ -189,11 +188,63 @@ public class TagsModelCustomTests
         Assert.True(_model.AddTypedText());
 
         Assert.Equal(["errand"], _model.Tags);
+        Assert.Equal(["errand"], _added);
+        Assert.False(_model.IsCustomOpen);
+        Assert.Equal("", _model.TypedText);
+    }
+
+    [Fact]
+    public void Enter_keeps_no_color_for_a_new_tag()
+    {
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+
+        _model.AddTypedText();
+
         Assert.Empty(_services.TagColors.Kept);
     }
 
     [Fact]
-    public void Adding_a_tag_the_task_already_has_raises_nothing_and_changes_no_tags()
+    public void Enter_keeps_no_color_for_a_tag_that_has_one()
+    {
+        _services.UseTag("home");
+        _services.TagColors.Seed("home", "teal-2");
+        _model.OpenCustom();
+        _model.TypedText = "home";
+
+        _model.AddTypedText();
+
+        Assert.Empty(_services.TagColors.Kept);
+        Assert.Equal(["home"], _model.Tags);
+    }
+
+    [Fact]
+    public void Enter_adds_the_tag_even_when_colors_cant_be_kept_since_it_writes_none()
+    {
+        _services.TagColors.Failure = new NoRepositoryFolderException();
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+
+        Assert.True(_model.AddTypedText());
+
+        Assert.Equal(["errand"], _model.Tags);
+        Assert.Equal("", _model.ColorMessage);
+    }
+
+    [Fact]
+    public void Enter_spells_the_tag_as_the_tag_in_use()
+    {
+        _services.UseTag("Work");
+        _model.OpenCustom();
+        _model.TypedText = "work";
+
+        _model.AddTypedText();
+
+        Assert.Equal(["Work"], _model.Tags);
+    }
+
+    [Fact]
+    public void Enter_with_a_tag_the_task_already_has_raises_nothing_changes_no_tags_and_hides_Custom()
     {
         _model.Tags = ["Home"];
         _model.OpenCustom();
@@ -203,28 +254,93 @@ public class TagsModelCustomTests
 
         Assert.Empty(_added);
         Assert.Equal(["Home"], _model.Tags);
+        Assert.False(_model.IsCustomOpen);
     }
 
     [Fact]
-    public void Adding_a_tag_the_task_already_has_still_keeps_a_new_color_for_it()
+    public void Enter_with_nothing_typed_adds_no_tag_and_says_it_worked()
+    {
+        _model.OpenCustom();
+
+        Assert.True(_model.AddTypedText());
+
+        Assert.Empty(_model.Tags);
+        Assert.Empty(_services.TagColors.Kept);
+    }
+
+    // A click on a color, or Space or Enter on it.
+
+    [Fact]
+    public void A_color_is_kept_for_the_tag_before_TagAdded_is_raised()
+    {
+        var keptWhenRaised = new List<(string Tag, string Color)>();
+        _model.TagAdded += _ => keptWhenRaised.AddRange(_services.TagColors.Kept);
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+
+        var result = _model.AddTypedTextInColor("purple-2");
+
+        Assert.True(result);
+        Assert.Equal([("errand", "purple-2")], keptWhenRaised);
+        Assert.Equal(["errand"], _added);
+        Assert.Equal(["errand"], _model.Tags);
+    }
+
+    [Fact]
+    public void A_color_is_kept_for_the_tag_as_Tasks_spells_it()
+    {
+        _services.UseTag("home");
+        _model.OpenCustom();
+        _model.TypedText = "HOME";
+
+        _model.AddTypedTextInColor("red-1");
+
+        Assert.Equal([("home", "red-1")], _services.TagColors.Kept);
+        Assert.Equal(["home"], _model.Tags);
+    }
+
+    [Fact]
+    public void A_color_even_the_marked_one_is_kept_when_clicked()
+    {
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+
+        _model.AddTypedTextInColor(_model.MarkedColor!);
+
+        Assert.Equal([("errand", TagColors.DefaultFor("errand").Name)], _services.TagColors.Kept);
+    }
+
+    [Fact]
+    public void A_color_hides_Custom_and_empties_the_box()
+    {
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+
+        _model.AddTypedTextInColor("red-1");
+
+        Assert.False(_model.IsCustomOpen);
+        Assert.Equal("", _model.TypedText);
+        Assert.False(_model.ColorsShown);
+    }
+
+    [Fact]
+    public void A_color_for_a_tag_the_task_already_has_is_kept_and_raises_nothing()
     {
         _model.Tags = ["Home"];
         _model.OpenCustom();
         _model.TypedText = "home";
-        _model.PickedColor = "green-3";
 
-        _model.AddTypedText();
+        _model.AddTypedTextInColor("green-3");
 
         Assert.Empty(_added);
         Assert.Equal("green-3", _services.TagColors.ColorOf("Home"));
+        Assert.Equal(["Home"], _model.Tags);
     }
 
     [Fact]
-    public void Adding_nothing_typed_adds_no_tag_and_keeps_no_color_and_says_it_worked()
+    public void A_color_with_nothing_typed_adds_no_tag_and_keeps_no_color()
     {
-        _model.PickedColor = "red-1";
-
-        Assert.True(_model.AddTypedText());
+        Assert.True(_model.AddTypedTextInColor("red-1"));
 
         Assert.Empty(_model.Tags);
         Assert.Empty(_services.TagColors.Kept);
@@ -236,9 +352,8 @@ public class TagsModelCustomTests
         _services.TagColors.Failure = new NoRepositoryFolderException();
         _model.OpenCustom();
         _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
 
-        var result = _model.AddTypedText();
+        var result = _model.AddTypedTextInColor("red-1");
 
         Assert.False(result);
         Assert.Empty(_model.Tags);
@@ -247,18 +362,17 @@ public class TagsModelCustomTests
     }
 
     [Fact]
-    public void A_failed_add_keeps_Custom_open_with_the_text_and_the_picked_color()
+    public void A_color_that_cant_be_kept_leaves_Custom_open_with_its_text_and_colors()
     {
         _services.TagColors.Failure = new NoRepositoryFolderException();
         _model.OpenCustom();
         _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
 
-        _model.AddTypedText();
+        _model.AddTypedTextInColor("red-1");
 
         Assert.True(_model.IsCustomOpen);
         Assert.Equal("errand", _model.TypedText);
-        Assert.Equal("red-1", _model.PickedColor);
+        Assert.True(_model.ColorsShown);
     }
 
     [Theory]
@@ -270,9 +384,8 @@ public class TagsModelCustomTests
         _services.TagColors.Failure = (Exception)Activator.CreateInstance(failure, "disk trouble")!;
         _model.OpenCustom();
         _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
 
-        var result = _model.AddTypedText();
+        var result = _model.AddTypedTextInColor("red-1");
 
         Assert.False(result);
         Assert.Empty(_model.Tags);
@@ -285,96 +398,41 @@ public class TagsModelCustomTests
     public void A_failure_that_isnt_a_known_one_is_not_swallowed()
     {
         _services.TagColors.Failure = new InvalidOperationException("a bug");
+        _model.OpenCustom();
         _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
 
-        Assert.Throws<InvalidOperationException>(() => _model.AddTypedText());
+        Assert.Throws<InvalidOperationException>(() => _model.AddTypedTextInColor("red-1"));
     }
 
     [Fact]
-    public void A_later_add_that_works_clears_the_message()
+    public void The_message_clears_when_the_text_changes()
     {
         _services.TagColors.Failure = new NoRepositoryFolderException();
         _model.OpenCustom();
         _model.TypedText = "errand";
-        _model.PickedColor = "red-1";
-        _model.AddTypedText();
+        _model.AddTypedTextInColor("red-1");
+
+        _model.TypedText = "errands";
+
+        Assert.Equal("", _model.ColorMessage);
+    }
+
+    [Fact]
+    public void A_later_color_that_works_clears_the_message_and_adds_the_tag()
+    {
+        _services.TagColors.Failure = new NoRepositoryFolderException();
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+        _model.AddTypedTextInColor("red-1");
         _services.TagColors.Failure = null;
 
-        Assert.True(_model.AddTypedText());
+        Assert.True(_model.AddTypedTextInColor("red-1"));
 
         Assert.Equal("", _model.ColorMessage);
         Assert.Equal(["errand"], _model.Tags);
     }
 
-    [Fact]
-    public void Choosing_a_suggestion_in_Custom_keeps_the_picked_color_before_TagAdded_then_closes_Custom()
-    {
-        _services.UseTag("home");
-        var keptWhenRaised = new List<(string Tag, string Color)>();
-        _model.TagAdded += _ => keptWhenRaised.AddRange(_services.TagColors.Kept);
-        _model.OpenCustom();
-        _model.TypedText = "ho";
-        _model.PickedColor = "red-1";
-
-        _model.AddSuggestion(0);
-
-        Assert.Equal([("home", "red-1")], keptWhenRaised);
-        Assert.Equal(["home"], _added);
-        Assert.Equal(["home"], _model.Tags);
-        Assert.False(_model.IsCustomOpen);
-        Assert.Equal("", _model.TypedText);
-        Assert.Null(_model.PickedColor);
-    }
-
-    [Fact]
-    public void Down_then_Enter_in_Custom_accepts_the_suggestion_with_the_picked_color_and_closes_Custom()
-    {
-        _services.UseTag("home");
-        _model.OpenCustom();
-        _model.TypedText = "ho";
-        _model.PickedColor = "red-1";
-
-        _model.MoveDown();
-        _model.AddChosenOrTyped();
-
-        Assert.Equal(["home"], _model.Tags);
-        Assert.Equal([("home", "red-1")], _services.TagColors.Kept);
-        Assert.False(_model.IsCustomOpen);
-    }
-
-    [Fact]
-    public void Choosing_a_suggestion_in_Custom_with_no_color_picked_writes_no_color()
-    {
-        _services.UseTag("home");
-        _model.OpenCustom();
-        _model.TypedText = "ho";
-
-        _model.AddSuggestion(0);
-
-        Assert.Equal(["home"], _model.Tags);
-        Assert.Empty(_services.TagColors.Kept);
-        Assert.False(_model.IsCustomOpen);
-    }
-
-    [Fact]
-    public void A_suggestion_whose_color_cant_be_kept_isnt_added_and_Custom_stays_open_with_the_reason()
-    {
-        _services.UseTag("home");
-        _services.TagColors.Failure = new NoRepositoryFolderException();
-        _model.OpenCustom();
-        _model.TypedText = "ho";
-        _model.PickedColor = "red-1";
-
-        _model.AddSuggestion(0);
-
-        Assert.Empty(_model.Tags);
-        Assert.Empty(_added);
-        Assert.True(_model.IsCustomOpen);
-        Assert.Equal("ho", _model.TypedText);
-        Assert.Equal("red-1", _model.PickedColor);
-        Assert.Contains("Configure", _model.ColorMessage);
-    }
+    // Removing.
 
     [Fact]
     public void Removing_a_tag_raises_TagRemoved_after_Tags_no_longer_holds_it()

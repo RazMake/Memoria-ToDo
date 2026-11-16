@@ -16,103 +16,26 @@ public class TagsModelTests
     }
 
     [Fact]
-    public void Typing_lists_the_tags_in_use_that_start_with_it_most_used_first()
-    {
-        _services.UseTag("hobby");
-        _services.UseTag("home", 2);
-        _services.UseTag("work", 3);
-
-        _model.TypedText = "ho";
-
-        Assert.Equal(["home", "hobby"], _model.Suggestions.Items);
-    }
-
-    [Fact]
-    public void Suggestions_narrow_as_more_is_typed()
-    {
-        _services.UseTag("home", 2);
-        _services.UseTag("hobby");
-        _model.TypedText = "ho";
-
-        _model.TypedText = "hom";
-
-        Assert.Equal(["home"], _model.Suggestions.Items);
-    }
-
-    [Fact]
-    public void A_tag_the_task_already_has_is_not_suggested()
-    {
-        _services.UseTag("home", 2);
-        _services.UseTag("hobby");
-        _model.Tags = ["home"];
-
-        _model.TypedText = "ho";
-
-        Assert.Equal(["hobby"], _model.Suggestions.Items);
-    }
-
-    [Fact]
-    public void Suggestions_close_when_no_tag_matches_or_the_typed_text_is_erased()
-    {
-        _services.UseTag("home");
-        _model.TypedText = "ho";
-        Assert.True(_model.Suggestions.IsOpen);
-
-        _model.TypedText = "zzz";
-        Assert.False(_model.Suggestions.IsOpen);
-
-        _model.TypedText = "ho";
-        _model.TypedText = "";
-        Assert.False(_model.Suggestions.IsOpen);
-    }
-
-    [Fact]
-    public void Suggestions_are_refreshed_on_request_after_the_tags_in_use_change()
-    {
-        _services.UseTag("home");
-        _model.TypedText = "ho";
-
-        _services.UseTag("hobby", 2);
-        _model.Refresh();
-
-        Assert.Equal(["hobby", "home"], _model.Suggestions.Items);
-    }
-
-    [Fact]
-    public void Enter_adds_the_suggestion_that_Down_moved_to()
-    {
-        _services.UseTag("home", 2);
-        _services.UseTag("hobby");
-        _model.TypedText = "ho";
-        _model.MoveDown();
-        _model.MoveDown();
-
-        _model.AddChosenOrTyped();
-
-        Assert.Equal(["hobby"], _model.Tags);
-        Assert.Equal("", _model.TypedText);
-    }
-
-    [Fact]
-    public void Enter_with_no_suggestion_chosen_adds_the_typed_text_spelled_as_the_tag_in_use()
+    public void Adding_the_typed_text_spells_it_as_the_tag_in_use()
     {
         _services.UseTag("home");
         _model.TypedText = "HOME";
 
-        _model.AddChosenOrTyped();
+        _model.AddTypedText();
 
         Assert.Equal(["home"], _model.Tags);
     }
 
     [Fact]
-    public void Enter_on_a_blank_line_adds_no_tag()
+    public void Adding_a_blank_typed_text_adds_no_tag()
     {
         _model.TypedText = "   ";
 
-        _model.AddChosenOrTyped();
+        _model.AddTypedText();
 
         Assert.Empty(_model.Tags);
     }
+
 
     [Fact]
     public void Adding_the_typed_text_adds_a_new_tag_and_clears_the_line()
@@ -132,18 +55,6 @@ public class TagsModelTests
         _model.Add("a");
 
         Assert.Equal(["b", "a"], _model.Tags);
-    }
-
-    [Fact]
-    public void Clicking_a_suggestion_adds_that_tag()
-    {
-        _services.UseTag("home", 2);
-        _services.UseTag("hobby");
-        _model.TypedText = "ho";
-
-        _model.AddSuggestion(1);
-
-        Assert.Equal(["hobby"], _model.Tags);
     }
 
     [Fact]
@@ -213,17 +124,6 @@ public class TagsModelTests
     }
 
     [Fact]
-    public void Suggestions_keep_the_spelling_of_the_tags_in_use()
-    {
-        _services.UseTag("Work", 2);
-        _services.UseTag("WiFi");
-
-        _model.TypedText = "w";
-
-        Assert.Equal(["Work", "WiFi"], _model.Suggestions.Items);
-    }
-
-    [Fact]
     public void The_plus_menu_lists_the_tags_in_use_with_the_spelling_in_use()
     {
         _services.UseTag("Work", 2);
@@ -272,25 +172,5 @@ public class TagsModelTests
         _model.Tags = ["a"];
 
         Assert.Equal(2, raised);
-    }
-
-    [Fact]
-    public void Closing_the_suggestions_says_whether_any_were_open()
-    {
-        _services.UseTag("home");
-        Assert.False(_model.CloseSuggestions());
-
-        _model.TypedText = "ho";
-
-        Assert.True(_model.CloseSuggestions());
-        Assert.False(_model.Suggestions.IsOpen);
-    }
-
-    [Fact]
-    public void Moving_down_with_no_suggestions_open_opens_nothing()
-    {
-        _model.MoveDown();
-
-        Assert.False(_model.Suggestions.IsOpen);
     }
 }

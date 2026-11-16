@@ -1,69 +1,29 @@
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
-using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 /// <summary>
-/// The Tags line in the Add window, on the common path. Which suggestions show, their order, and what Enter, Down, and
-/// Backspace do to the tags are in the unit tests of the tags model; these check the line is wired to it.
+/// The New tag box in the Add window, on the common path. What Enter and Backspace do to the tags is in the unit tests of
+/// the tags model; these check the box is wired to it.
 /// </summary>
 [UX]
 [Collection(ScreenTests.Collection)]
-public class AddWindowTagSuggestionsTests
+public class AddWindowTagBoxTests
 {
     [WpfFact]
-    public void Typing_lists_the_tags_in_use_that_start_with_it_most_used_first()
+    public void The_box_suggests_nothing_while_typing()
     {
         using var screen = new AddScreen();
         screen.Services.UseTag("hobby");
-        screen.Services.UseTag("home", 2);
-        screen.Services.UseTag("work", 3);
         screen.Show();
 
         screen.TypeTag("ho");
 
-        Assert.Equal(["home", "hobby"], screen.Suggestions);
-    }
-
-    [WpfFact]
-    public async Task Suggestions_refresh_when_Tasks_changes_on_a_worker_thread()
-    {
-        using var screen = new AddScreen();
-        screen.Services.UseTag("home");
-        screen.Show();
-        screen.TypeTag("ho");
-
-        await screen.Services.UseTagOnWorkerThread("hobby", 2);
-        await RenderedField.Settled();
-
-        Assert.Equal(["hobby", "home"], screen.Suggestions);
-    }
-
-    [WpfFact]
-    public void Esc_closes_the_suggestions_first_then_Custom_and_a_third_Esc_hides_Add()
-    {
-        using var screen = new AddScreen();
-        screen.Services.UseTag("home");
-        screen.Show();
-        screen.TypeTag("ho");
-
-        screen.Press(Key.Escape);
-
-        Assert.Empty(screen.Suggestions);
-        Assert.True(screen.IsShowing);
-        Assert.True(TagControls.CustomIsOpen(screen.Window));
-
-        screen.Press(Key.Escape);
-
-        Assert.False(TagControls.CustomIsOpen(screen.Window));
-        Assert.True(screen.IsShowing);
-
-        screen.Press(Key.Escape);
-
-        Assert.False(screen.IsShowing);
+        Assert.DoesNotContain(EditorFields.VisibleTexts(screen.Window), text => text == "hobby");
+        Assert.Empty(screen.ShownTags);
     }
 
     [WpfFact]
@@ -80,39 +40,6 @@ public class AddWindowTagSuggestionsTests
         Assert.Equal(["urgent"], screen.ShownTags);
         Assert.Equal("", screen.TypedTag);
         Assert.Empty(screen.Saved);
-    }
-
-    [WpfFact]
-    public void Down_then_Enter_adds_the_chosen_suggestion_instead_of_the_typed_text()
-    {
-        using var screen = new AddScreen();
-        screen.Services.UseTag("home", 2);
-        screen.Services.UseTag("hobby");
-        screen.Show();
-        screen.TypeTag("ho");
-
-        screen.Press(Key.Down);
-        screen.Press(Key.Enter);
-
-        Assert.Equal(["home"], screen.Editor.Value.Tags);
-        Assert.Equal("", screen.TypedTag);
-    }
-
-    [WpfFact]
-    public void Clicking_a_suggestion_adds_that_tag_and_hides_Custom()
-    {
-        using var screen = new AddScreen();
-        screen.Services.UseTag("home", 2);
-        screen.Services.UseTag("hobby");
-        screen.Show();
-        screen.TypeTag("ho");
-        screen.Focus(EditorFields.Title);
-
-        screen.ClickSuggestion("hobby");
-
-        Assert.Equal(["hobby"], screen.Editor.Value.Tags);
-        Assert.Equal("", screen.TypedTag);
-        Assert.False(TagControls.CustomIsOpen(screen.Window));
     }
 
     [WpfFact]
@@ -260,34 +187,47 @@ public class AddWindowTagMenuTests
     }
 
     [WpfFact]
-    public void Save_with_a_typed_tag_whose_color_cant_be_kept_saves_nothing_and_keeps_Custom_open_with_the_reason()
-    {
-        using var screen = new AddScreen();
-        screen.Services.TagColors.Failure = new NoRepositoryFolderException();
-        screen.Show();
-        screen.Fill("Buy milk");
-        screen.TypeTag("urgent");
-        screen.PickColor("red-2");
-
-        screen.Save();
-
-        Assert.Empty(screen.Saved);
-        Assert.True(TagControls.CustomIsOpen(screen.Window));
-        Assert.Contains(EditorFields.VisibleTexts(screen.Window), text => text.Contains("Configure", StringComparison.Ordinal));
-    }
-
-    [WpfFact]
-    public void Save_with_a_typed_tag_keeps_its_picked_color_and_saves_the_tag()
+    public void Save_with_a_typed_tag_adds_it_without_writing_a_color_and_saves_the_tag()
     {
         using var screen = new AddScreen();
         screen.Show();
         screen.Fill("Buy milk");
         screen.TypeTag("urgent");
-        screen.PickColor("red-2");
 
         screen.Save();
 
         Assert.Equal(["urgent"], Assert.Single(screen.Saved).Tags);
+        Assert.Empty(screen.Services.TagColors.Kept);
+    }
+
+    [WpfFact]
+    public void A_color_clicked_in_Custom_keeps_it_and_adds_the_tag_to_the_task()
+    {
+        using var screen = new AddScreen();
+        screen.Show();
+        screen.Fill("Buy milk");
+        screen.TypeTag("urgent");
+
+        screen.ClickTagColor("red-2");
+
+        Assert.Equal(["urgent"], screen.Editor.Value.Tags);
         Assert.Equal([("urgent", "red-2")], screen.Services.TagColors.Kept);
+        Assert.False(TagControls.CustomIsOpen(screen.Window));
+    }
+
+    [WpfFact]
+    public void Searching_in_the_plus_menu_and_clicking_a_match_adds_it_to_the_task()
+    {
+        using var screen = new AddScreen();
+        screen.Services.UseTag("hobby");
+        screen.Show();
+        screen.Fill("Buy milk");
+
+        OpenWindows.Click(TagControls.Plus(screen.Window));
+        TextFields.Type(TagControls.SearchBox(screen.Window), "hob");
+        OpenWindows.Click(TagControls.SearchMatch(screen.Window, "hobby"));
+
+        Assert.Equal(["hobby"], screen.Editor.Value.Tags);
+        Assert.False(TagControls.MenuIsOpen(screen.Window));
     }
 }
