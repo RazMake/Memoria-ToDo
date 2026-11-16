@@ -133,7 +133,8 @@ public class TaskListStatusBarTests
             pending.TrySetResult(new FakeSyncStatus());
         }
 
-        await System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+        await services.Sync.LastSync!;
+        screen.Settle();
         Assert.Equal("Sync (F5)", screen.SyncTooltip);
     }
 
