@@ -14,6 +14,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - Tags are always lowercase and have no spaces.
 - Edit Description now edits only the description. Ctrl+Enter saves, and you can change that shortcut in Configure; Esc drops your changes. A Save button sits at the bottom right, and the Description grows to fill the space above it; the right side no longer scrolls as a whole, unless the window is very short. A Preview tab shows how the description will look, and there you can drag an image's corner to resize it. The size is kept with the task.
 - A new Edit Title item in a task's right-click menu edits its title right in the list.
+- In Task View, Enter, F2, Shift+F2, Ctrl+D, Delete, Alt+Up and Alt+Down now also work on the selected task after you click its description on the right side. They used to do nothing there.
 - Tab no longer stops on the bar between Task View's two sides, or on the list as a whole.
 - Configure's Shortcuts section is now called Application. It holds two cards: Update, which shows the app's version and updates and used to sit above the sections, and Shortcuts.
 - A new shortcut opens Configure from any app: Win+Alt+C at first. Change it in Configure, beside the other shortcuts. Like those, it closes Add or Task View first if one is open.
