@@ -128,14 +128,14 @@ public sealed class SharedTaskSettingsTests
     }
 
     [Fact]
-    public void Writes_the_close_window_and_save_shortcuts_last_in_the_file_in_that_order()
+    public void Writes_the_close_window_save_and_configure_shortcuts_last_in_the_file_in_that_order()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         Settings.SetSaveShortcut("Ctrl+S");
 
         using var json = f.ReadJson(f.SettingsFile);
-        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut", "saveShortcut"],
+        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut", "saveShortcut", "configureShortcut"],
             json.RootElement.EnumerateObject().Select(p => p.Name).ToArray());
     }
 

@@ -16,4 +16,6 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - A new Edit Title item in a task's right-click menu edits its title right in the list.
 - In Task View, Enter, F2, Shift+F2, Ctrl+D, Delete, Alt+Up and Alt+Down now also work on the selected task after you click its description on the right side. They used to do nothing there.
 - Tab no longer stops on the bar between Task View's two sides, or on the list as a whole.
+- Configure's Shortcuts section is now called Application. It holds two cards: Update, which shows the app's version and updates and used to sit above the sections, and Shortcuts.
+- A new shortcut opens Configure from any app: Win+Alt+C at first. Change it in Configure, beside the other shortcuts. Like those, it closes Add or Task View first if one is open.
 - Pressing Ctrl+Tab while you edit a task no longer draws a light outline around Task View's right side or the editor's fields.

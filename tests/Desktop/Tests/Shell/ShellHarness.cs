@@ -6,24 +6,34 @@ using Memoria.ToDo.Shared.Fakes;
 
 namespace Memoria.ToDo.Desktop.Shell.Tests;
 
-/// <summary>The two global shortcuts: the one that opens Add and the one that opens Task View.</summary>
+/// <summary>The three global shortcuts: the one that opens Add, the one that opens Task View, and the one that opens Configure.</summary>
 public enum ShortcutKind
 {
     AddNewTask,
     ManageTasks,
+    Configure,
 }
 
 /// <summary>A tray app built on the shared fakes, the setup every Shell test shares.</summary>
 internal sealed class ShellHarness
 {
     /// <summary>The action Shell gave Configure for the shortcut. Shell must have started.</summary>
-    public IShortcutAction ActionOf(ShortcutKind kind) =>
-        kind == ShortcutKind.AddNewTask ? Configure.AddNewTask : Configure.ManageTasks;
+    public IShortcutAction ActionOf(ShortcutKind kind) => kind switch
+    {
+        ShortcutKind.AddNewTask => Configure.AddNewTask,
+        ShortcutKind.ManageTasks => Configure.ManageTasks,
+        _ => Configure.ConfigureAction,
+    };
 
     /// <summary>How many times the window the shortcut opens was shown.</summary>
-    public int ShownBy(ShortcutKind kind) => kind == ShortcutKind.AddNewTask ? Add.ShowCount : ViewTasks.ShowCount;
+    public int ShownBy(ShortcutKind kind) => kind switch
+    {
+        ShortcutKind.AddNewTask => Add.ShowCount,
+        ShortcutKind.ManageTasks => ViewTasks.ShowCount,
+        _ => Configure.ShowCount,
+    };
 
-    /// <summary>How many times the window the other shortcut opens was shown.</summary>
+    /// <summary>How many times the window the other shortcut opens was shown (Add and Task View only).</summary>
     public int ShownByOtherThan(ShortcutKind kind) =>
         ShownBy(kind == ShortcutKind.AddNewTask ? ShortcutKind.ManageTasks : ShortcutKind.AddNewTask);
 

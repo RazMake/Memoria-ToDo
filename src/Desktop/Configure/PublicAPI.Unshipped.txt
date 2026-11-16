@@ -1,6 +1,6 @@
 Memoria.ToDo.Desktop.Configure.ConfigureWindow
 Memoria.ToDo.Desktop.Configure.IConfigureWindow
-Memoria.ToDo.Desktop.Configure.IConfigureWindow.ConnectShortcuts(Memoria.ToDo.Desktop.Configure.IShortcutAction! addNewTask, Memoria.ToDo.Desktop.Configure.IShortcutAction! manageTasks) -> bool
+Memoria.ToDo.Desktop.Configure.IConfigureWindow.ConnectShortcuts(Memoria.ToDo.Desktop.Configure.IShortcutAction! addNewTask, Memoria.ToDo.Desktop.Configure.IShortcutAction! manageTasks, Memoria.ToDo.Desktop.Configure.IShortcutAction! configure) -> bool
 Memoria.ToDo.Desktop.Configure.IShortcutAction
 Memoria.ToDo.Desktop.Configure.IShortcutAction.Register(Memoria.ToDo.Desktop.Configure.Shortcut! shortcut) -> bool
 Memoria.ToDo.Desktop.Configure.IShortcutAction.Unregister() -> void

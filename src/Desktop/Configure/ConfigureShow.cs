@@ -15,6 +15,7 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly UiNotices _notices = new();
     private readonly ShortcutSetting _addNewTask;
     private readonly ShortcutSetting _manageTasks;
+    private readonly ShortcutSetting _configure;
     private readonly CloseWindowSetting _closeWindow;
     private readonly SaveSetting _save;
     private readonly CloseWindowKeys _closeWindowKeys;
@@ -46,6 +47,8 @@ internal sealed class ConfigureShow : IConfigureWindow
             () => settings.AddNewTaskShortcut, settings.SetAddNewTaskShortcut);
         _manageTasks = new("Task View", Shortcut.ManageTasksDefault,
             () => settings.ManageTasksShortcut, settings.SetManageTasksShortcut);
+        _configure = new("Configure", Shortcut.ConfigureDefault,
+            () => settings.ConfigureShortcut, settings.SetConfigureShortcut);
         _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions));
         settings.Changed += OnSettingsChanged;
     }
@@ -71,19 +74,22 @@ internal sealed class ConfigureShow : IConfigureWindow
 
     public bool IsOpen => _window.IsOpen;
 
-    public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks)
+    public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure)
     {
         ArgumentNullException.ThrowIfNull(addNewTask);
         ArgumentNullException.ThrowIfNull(manageTasks);
+        ArgumentNullException.ThrowIfNull(configure);
         var addConnected = _addNewTask.Connect(addNewTask);
         var manageConnected = _manageTasks.Connect(manageTasks);
-        return addConnected && manageConnected;
+        var configureConnected = _configure.Connect(configure);
+        return addConnected && manageConnected && configureConnected;
     }
 
     private void OnSettingsChanged(object? sender, EventArgs e) => _notices.Post(() =>
     {
         _addNewTask.SettingsChanged();
         _manageTasks.SettingsChanged();
+        _configure.SettingsChanged();
         _closeWindow.SettingsChanged();
         _save.SettingsChanged();
         _refreshOpen?.Invoke();
@@ -91,21 +97,17 @@ internal sealed class ConfigureShow : IConfigureWindow
 
     private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)
     {
-        var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _closeWindow, _save);
+        var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _configure, _closeWindow, _save);
+        var application = new ApplicationSection(new UpdateCard(_updates), shortcuts, _theme);
         var delay = new DeletionDelayRow(_settings);
         var ui = new SyncUi(sync, setupActions, _notices.Post);
         var syncSettings = new SyncSettingsSection(ui, delay, _theme);
         var sections = new Accordion(
             _theme,
-            ("Shortcuts", shortcuts),
+            ("Application", application),
             ("Startup", new StartWithWindowsRow(startWithWindows)),
             ("Sync settings", syncSettings))
-        { Margin = new Thickness(24, 12, 24, 24) };
-        var layout = new DockPanel();
-        var card = new UpdateCard(_updates) { Margin = new Thickness(24, 24, 24, 0) };
-        DockPanel.SetDock(card, Dock.Top);
-        layout.Children.Add(card);
-        layout.Children.Add(sections);
+        { Margin = new Thickness(24, 24, 24, 24) };
         var window = new Window
         {
             Title = "Configure",
@@ -113,7 +115,7 @@ internal sealed class ConfigureShow : IConfigureWindow
             Height = Math.Min(850, SystemParameters.MaximumWindowTrackHeight),
             SizeToContent = SizeToContent.Manual,
             ResizeMode = ResizeMode.NoResize,
-            Content = layout,
+            Content = sections,
         };
         _closeWindowKeys.Attach(window);
         EscCloses.Attach(window);

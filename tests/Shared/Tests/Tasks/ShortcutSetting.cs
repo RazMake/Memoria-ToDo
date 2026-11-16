@@ -20,8 +20,11 @@ public sealed class ShortcutSetting
     public static readonly ShortcutSetting Save = new("saveShortcut",
         settings => settings.SaveShortcut, (settings, shortcut) => settings.SetSaveShortcut(shortcut));
 
+    public static readonly ShortcutSetting Configure = new("configureShortcut",
+        settings => settings.ConfigureShortcut, (settings, shortcut) => settings.SetConfigureShortcut(shortcut));
+
     /// <summary>The settings in file order.</summary>
-    public static readonly IReadOnlyList<ShortcutSetting> All = [CloseWindow, Save];
+    public static readonly IReadOnlyList<ShortcutSetting> All = [CloseWindow, Save, Configure];
 
     /// <summary>Every setting as a file that has never changed it writes it.</summary>
     public static IEnumerable<ShortcutEntry> AllDefault => All.Select(s => s.Entry(null));

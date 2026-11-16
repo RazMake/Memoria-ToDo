@@ -14,7 +14,7 @@ The app always knows one of four things about updates, and every part that shows
 | --- | --- | --- |
 | Not installed | The app runs from a build folder, which [Velopack](https://docs.velopack.io/reference/cs/Velopack/UpdateManager) can't update | The running version, and that updates need an installed copy |
 | No update | No check has found a newer version yet | The running version |
-| Available | A check found a newer version | The new version, in the [status bar](#add-and-task-view-show-an-update-in-a-shared-status-bar) and on Configure's [update card](configure.md#an-update-card-sits-above-the-sections) |
+| Available | A check found a newer version | The new version, in the [status bar](#add-and-task-view-show-an-update-in-a-shared-status-bar) and on Configure's [Update card](configure.md#the-update-card-leads-the-application-section) |
 | Updating | An update to the new version is under way | "Updating to" the new version, with the update controls turned off |
 
 Proposed, each a decision to confirm:
@@ -55,7 +55,7 @@ Proposed: the bar runs along the windows' bottom edge, as a status bar does, so 
 
 ### An update downloads the version, then restarts the app into it
 
-Update Now on the [update card](configure.md#an-update-card-sits-above-the-sections), a click on the status bar, and the [night run](#auto-update-updates-each-night-once-no-window-is-open) all start the same update. It does nothing unless a version is available. In order, it:
+Update Now on the [Update card](configure.md#the-update-card-leads-the-application-section), a click on the status bar, and the [night run](#auto-update-updates-each-night-once-no-window-is-open) all start the same update. It does nothing unless a version is available. In order, it:
 
 1. turns the state to Updating, so the status bar, the card, and every other start of an update show it;
 2. downloads the version, in the background, while the app keeps working;
@@ -73,7 +73,7 @@ Proposed, each a decision to confirm:
 
 ### Auto update updates each night, once no window is open
 
-Auto update is a check box on the [update card](configure.md#an-update-card-sits-above-the-sections). While it's on, each night run that finds a newer version starts the update by itself, and the card hides Update Now.
+Auto update is a check box on the [Update card](configure.md#the-update-card-leads-the-application-section). While it's on, each night run that finds a newer version starts the update by itself, and the card hides Update Now.
 
 Proposed, each a decision to confirm:
 

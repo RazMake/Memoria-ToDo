@@ -6,11 +6,12 @@ using Memoria.ToDo.Desktop.Updates;
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// The card above Configure's sections: the app's version, the new version while there is one, What is new, Update Now,
+/// The content of Application's Update card: the app's version, the new version while there is one, What is new, Update Now,
 /// the Auto update check box, and the failure of an update. It shows what <see cref="IUpdateStatus"/> says, follows its
-/// changes while the window is open, and calls it for each control.
+/// changes while the window is open, and calls it for each control. It has no box of its own: it says through
+/// <see cref="CautionChanged"/> when its card should show the caution background.
 /// </summary>
-internal sealed class UpdateCard : Border
+internal sealed class UpdateCard : StackPanel
 {
     private readonly IUpdateStatus _updates;
     private readonly TextBlock _current = new() { TextWrapping = TextWrapping.Wrap };
@@ -23,6 +24,12 @@ internal sealed class UpdateCard : Border
     private readonly TextBlock _problem = ThemedText.Message();
     private bool _refreshing;
 
+    /// <summary>Whether the card should stand out: a new version is available and not yet being installed.</summary>
+    public bool Cautioned => _updates.State.Stage == UpdateStage.Available;
+
+    /// <summary>Raised after each refresh, when <see cref="Cautioned"/> may have changed.</summary>
+    public event Action? CautionChanged;
+
     public UpdateCard(IUpdateStatus updates)
     {
         _updates = updates;
@@ -34,22 +41,15 @@ internal sealed class UpdateCard : Border
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         buttons.Children.Add(_whatIsNew);
         buttons.Children.Add(_updateNow);
-        var inside = new StackPanel();
-        inside.Children.Add(_current);
-        inside.Children.Add(_newVersion);
-        inside.Children.Add(_failure);
-        inside.Children.Add(buttons);
-        inside.Children.Add(_autoUpdate);
-        inside.Children.Add(ThemedText.Help(
+        Children.Add(_current);
+        Children.Add(_newVersion);
+        Children.Add(_failure);
+        Children.Add(buttons);
+        Children.Add(_autoUpdate);
+        Children.Add(ThemedText.Help(
             "Checks for a new version each night around 3 AM, and installs it.", new Thickness(28, 2, 0, 0)));
-        inside.Children.Add(_installedOnly);
-        inside.Children.Add(_problem);
-
-        Child = inside;
-        CornerRadius = new CornerRadius(8);
-        BorderThickness = new Thickness(1);
-        Padding = new Thickness(12);
-        this.SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
+        Children.Add(_installedOnly);
+        Children.Add(_problem);
 
         Refresh();
         Loaded += (_, _) =>
@@ -83,14 +83,7 @@ internal sealed class UpdateCard : Border
         _refreshing = false;
         _autoUpdate.IsEnabled = installed && !updating;
 
-        if (state.Stage == UpdateStage.Available)
-        {
-            this.SetResourceReference(BackgroundProperty, "SystemFillColorCautionBackgroundBrush");
-        }
-        else
-        {
-            ClearValue(BackgroundProperty);
-        }
+        CautionChanged?.Invoke();
     }
 
     private void ShowVersionLine(UpdateState state, bool newer)

@@ -407,7 +407,7 @@ public sealed class RepositoryFileRulesTests
 
         var merged = MergedSettings(without, without, without);
 
-        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut", "saveShortcut"],
+        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut", "saveShortcut", "configureShortcut"],
             merged.EnumerateObject().Select(p => p.Name).ToArray());
         foreach (var s in ShortcutSetting.All)
         {

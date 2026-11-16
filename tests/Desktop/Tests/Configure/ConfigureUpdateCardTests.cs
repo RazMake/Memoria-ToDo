@@ -8,7 +8,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.Configure.Tests;
 
 /// <summary>
-/// The update card above Configure's sections, as a user sees it in each state of the update: its box, its lines, and its
+/// The Update card in Configure's Application section, as a user sees it in each state of the update: its box, its lines, and its
 /// buttons. What each control does is Updates' business; these tests check that the card shows the state and calls the
 /// update status.
 /// </summary>
@@ -18,17 +18,45 @@ public class ConfigureUpdateCardTests
 {
     private const string CardEdgeKey = "CardStrokeColorDefaultBrush";
     private const string CautionBackgroundKey = "SystemFillColorCautionBackgroundBrush";
+    private const string CardBackgroundKey = "CardBackgroundFillColorSecondaryBrush";
     private const string ErrorKey = "SystemFillColorCriticalBrush";
 
     [WpfFact]
-    public void The_card_sits_above_the_three_sections()
+    public void The_card_is_the_first_card_in_Application_under_its_title_and_above_the_Shortcuts_card()
     {
         using var screen = Open(UpdateStage.NoUpdate);
 
-        foreach (var heading in ConfigureScreen.SectionHeadings)
-        {
-            Assert.True(screen.CardBottom <= screen.TitleTop(heading) + 0.5, $"The card isn't above {heading}.");
-        }
+        Assert.True(screen.CardTop >= screen.TitleBottom("Application") - 0.5, "The card isn't under Application's title.");
+        Assert.True(screen.TextTop("Update") < screen.TextTop("Shortcuts"), "The card isn't above the Shortcuts card.");
+        Assert.True(screen.TextTop("Shortcuts") < screen.TitleTop("Startup"), "The Shortcuts card isn't above Startup's title.");
+    }
+
+    [WpfTheory]
+    [InlineData("Startup")]
+    [InlineData("Sync settings")]
+    public void Opening_another_section_hides_the_card(string heading)
+    {
+        using var screen = Open(UpdateStage.Available);
+
+        screen.ClickTitle(heading);
+
+        Assert.False(screen.Card.IsVisible);
+    }
+
+    [WpfTheory]
+    [InlineData(UpdateStage.NotInstalled)]
+    [InlineData(UpdateStage.NoUpdate)]
+    [InlineData(UpdateStage.Available)]
+    [InlineData(UpdateStage.Updating)]
+    public void The_card_shows_again_when_Application_is_opened_again(UpdateStage stage)
+    {
+        using var screen = Open(stage);
+        screen.ClickTitle("Startup");
+
+        screen.ClickTitle("Application");
+
+        Assert.True(screen.Card.IsVisible);
+        Assert.Contains("Current version: 2.1.0", screen.CardTexts);
     }
 
     [WpfTheory]
@@ -58,11 +86,24 @@ public class ConfigureUpdateCardTests
     [InlineData(UpdateStage.NotInstalled)]
     [InlineData(UpdateStage.NoUpdate)]
     [InlineData(UpdateStage.Updating)]
-    public void The_card_has_no_background_unless_a_version_is_available(UpdateStage stage)
+    public void The_card_has_the_other_cards_background_unless_a_version_is_available(UpdateStage stage)
     {
         using var screen = Open(stage);
 
-        Assert.Null(screen.CardBackground);
+        Assert.Equal(screen.ThemeColor(CardBackgroundKey), screen.CardBackground);
+    }
+
+    [WpfFact]
+    public void The_card_turns_to_the_caution_background_when_a_version_becomes_available_and_back_when_it_is_gone()
+    {
+        using var screen = Open(UpdateStage.NoUpdate);
+
+        screen.PublishUpdate(UpdateStage.Available, "2.2.0");
+        var whileAvailable = screen.CardBackground;
+        screen.PublishUpdate(UpdateStage.NoUpdate, null);
+
+        Assert.Equal(screen.ThemeColor(CautionBackgroundKey), whileAvailable);
+        Assert.Equal(screen.ThemeColor(CardBackgroundKey), screen.CardBackground);
     }
 
     [WpfTheory]

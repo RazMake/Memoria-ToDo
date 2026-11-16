@@ -2,7 +2,7 @@
 
 Status: Drafting
 
-Configure is the desktop app's settings window. It changes the two global shortcuts, the shortcut that closes the app's windows, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns. At its top, a card shows the app's version and updates, which [Updates](updates.md) owns.
+Configure is the desktop app's settings window. It changes the three global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
 
 ## Behavior
 
@@ -12,13 +12,13 @@ The table lists every setting in Configure, the module that owns it, where it's 
 
 | Setting | Owner | Kept | Default |
 | --- | --- | --- | --- |
-| Global shortcuts for Add new task and Task View | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device | As [Shell](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
+| Global shortcuts for Add new task, Task View, and Configure | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device | As [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
 | The Close window shortcut, which closes the app's windows, as [below](#esc-and-the-close-window-shortcut-close-the-window) | Tasks stores the value; Configure checks it | In the repository's `settings.json`, shared by every device, like the global shortcuts | **Shift+Esc** |
 | The Save shortcut, which saves the task being edited in Add and Task View, as [below](#the-save-shortcut-saves-an-edit-in-any-window) | Tasks stores the value; Configure checks it | In the repository's `settings.json`, shared by every device, like the Close window shortcut | **Ctrl+Enter** |
 | Start with Windows | Configure | In the current user's `Run` registry key, on this device, as [below](#start-with-windows-is-the-run-key-itself) | On |
 | Days before a resolved task is deleted | Tasks | In the repository, shared by every device | One week, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides |
 | The repository's SSH address, the device name, the device's SSH key, and the accepted host keys | Sync | On this device | The device name starts as the machine's name; the rest is set up as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says |
-| Auto update, on the [update card](#an-update-card-sits-above-the-sections) | Updates | In a file on this device, as [Updates](updates.md#auto-update-updates-each-night-once-no-window-is-open) proposes | Off, proposed |
+| Auto update, on the [Update card](#the-update-card-leads-the-application-section) | Updates | In a file on this device, as [Updates](updates.md#auto-update-updates-each-night-once-no-window-is-open) proposes | Off, proposed |
 
 **Every device uses the same shortcuts.** Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-settings-and-tag-colors) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
 
@@ -32,19 +32,20 @@ Proposed: the deletion delay shows in days. This is a decision to confirm.
 
 ### The window shows its settings in labeled sections
 
-The window shows each shortcut with the name of what it does, Add new task, Task View, Close window, and Save, and it's wide enough to read at a glance.
+The window shows each shortcut with the name of what it does, Add new task, Task View, Configure, Close window, and Save, and it's wide enough to read at a glance.
 
-The user decided the rules on sections below: only a click on another section's title closes the open one, sections have rounded corners and no expand or collapse arrow, an open section's content starts at its top rather than centered in the window's height, titles look like heading 1, and titles show the hand pointer. The rest are proposed, each a decision to confirm:
+The user decided the rules on sections below: only a click on another section's title closes the open one, sections have rounded corners and no expand or collapse arrow, an open section's content starts at its top rather than centered in the window's height, titles look like heading 1, and titles show the hand pointer. The user also decided that the section once called Shortcuts is named Application and holds two cards, Update and then Shortcuts. The rest are proposed, each a decision to confirm:
 
-- **Three sections, in order: Shortcuts, Startup, and Sync settings, and exactly one is always open.** The window opens with Shortcuts open. Clicking a closed section's title opens it and closes the open one; clicking the open section's title does nothing. No section can be closed on its own, so titles show no expand or collapse arrow.
+- **Three sections, in order: Application, Startup, and Sync settings, and exactly one is always open.** The window opens with Application open. Clicking a closed section's title opens it and closes the open one; clicking the open section's title does nothing. No section can be closed on its own, so titles show no expand or collapse arrow.
+- **Application shows two cards, in order: Update and Shortcuts.** Update is the [Update card](#the-update-card-leads-the-application-section). Shortcuts holds the line on how to change a shortcut and every shortcut row, below.
 - **A title works from the keyboard too**: Tab reaches it, and Enter or Space opens its section.
-- **Each section is a box with rounded corners**, and so is each [card](#the-sync-settings-section-sets-the-devices-clone) inside Sync settings. Their colors and corners come from the theme, and a card stands out from the section around it.
+- **Each section is a box with rounded corners**, and so is each card inside Application and [Sync settings](#the-sync-settings-section-sets-the-devices-clone). Their colors and corners come from the theme, and a card stands out from the section around it. One Configure part makes every card, so the Update card and the Sync settings cards look alike.
 - **Everything in a section starts at its top.** The open section's content starts right under its title, and space the content doesn't need stays at the section's bottom. Inside a section or a card, each label lines up with the top of the control beside it, not with its middle, and nothing is centered in the height around it.
 - **Section titles look like a description's heading 1**: in heading 1's color for the theme, bold, at heading 1's size, all from Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme). They follow the theme when Windows switches between light and dark.
 - **Card titles look like a description's heading 2**, the user decided: in heading 2's color for the theme, bold, at heading 2's size, from the same text look, and they follow the theme the same way. One Configure part applies a heading level's look to a title and follows the theme, and both section and card titles use it, so neither holds a color or size of its own.
 - **Section titles are buttons, so they show the hand pointer**, as [every button in the app](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does.
-- **Shortcuts starts with a line saying how to change one**, in the window's normal text size and color and ending with a colon: "Click a box, then press the new shortcut. Esc keeps the current one:". Then each shortcut has a row, Add new task first, then Task View, Close window, and Save: its name on the left and its field on the right. Under the field, a short description says what the shortcut does, in the help style and in italics, then the row's message. The names share one column, so the fields line up.
-- **The descriptions are**: Add new task, "Opens the Add window from any app."; Task View, "Opens Task View from any app."; Close window, "Closes the app's window you're in, whatever has the focus."; Save, "Saves the task you're editing, in Add and Task View."
+- **The Shortcuts card starts with a line saying how to change one**, in the window's normal text size and color and ending with a colon: "Click a box, then press the new shortcut. Esc keeps the current one:". Then each shortcut has a row, Add new task first, then Task View, Configure, Close window, and Save: its name on the left and its field on the right. Under the field, a short description says what the shortcut does, in the help style and in italics, then the row's message. The names share one column, so the fields line up. The user decided the Configure row's name and place.
+- **The descriptions are**: Add new task, "Opens the Add window from any app."; Task View, "Opens Task View from any app."; Configure, "Opens Configure from any app."; Close window, "Closes the app's window you're in, whatever has the focus."; Save, "Saves the task you're editing, in Add and Task View."
 - **Startup holds the Start with Windows check box**, a line of help under it, and its message.
 - **Sync settings shows its settings on three cards**: Repository, Git Access, and Auto, as [below](#the-sync-settings-section-sets-the-devices-clone) says.
 - **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
@@ -52,13 +53,14 @@ The user decided the rules on sections below: only a click on another section's 
 - **The window opens with no field focused**, so the shortcuts keep working until the user clicks a field, as [below](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) explains.
 - **Esc and the Close window shortcut close the window**, as [below](#esc-and-the-close-window-shortcut-close-the-window) says.
 
-### An update card sits above the sections
+### The Update card leads the Application section
 
-A card at the window's top shows the app's version and whether a newer one is available, and holds the update controls. [Updates](updates.md#updates-tells-you-about-a-new-version-and-installs-it-only-when-you-agree) owns the state the card shows and what each control does; Configure only shows them. Proposed, each a decision to confirm:
+The Update card shows the app's version and whether a newer one is available, and holds the update controls. The user decided it's the first card in the [Application section](#the-window-shows-its-settings-in-labeled-sections), above Shortcuts, and no longer sits above the sections. [Updates](updates.md#updates-tells-you-about-a-new-version-and-installs-it-only-when-you-agree) owns the state the card shows and what each control does; Configure only shows them. Proposed, each a decision to confirm:
 
-- **The card is always there, above the three sections**, and the window keeps its size: the open section gives up the card's height and scrolls when it needs to.
-- **It looks like the other cards**: a box with rounded corners and a 1-pixel edge in the theme's card edge color.
-- **While a version is available, the card has a highlighted background**, the theme's caution background, which goes with the status bar's [caution color](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar). Otherwise it has no background, only its edge, so it draws the eye only when there's something to do.
+- **Its title is "Update", in [heading 2's look](#the-window-shows-its-settings-in-labeled-sections)**, like every card's.
+- **It shows while Application is open**, which it is each time the window opens. Opening Startup or Sync settings hides it, as it hides Shortcuts; the status bar in Add and Task View still shows an available version.
+- **It looks like the other cards**: the same box, background, and edge as the Sync settings cards.
+- **While a version is available, the card has a highlighted background** instead, the theme's caution background, which goes with the status bar's [caution color](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar). So it draws the eye only when there's something to do.
 - **It shows, in order**:
   - "Current version: 2.1.0".
   - While a version is available, "Available new version: **2.2.0**"; while updating, "Updating to: **2.2.0**" instead. With no update, there's no second line.
@@ -82,7 +84,7 @@ Not confirmed by a run: that the shortcut reaches the window while the Configure
 
 ### The Save shortcut saves an edit in any window
 
-The user decided that the key that saves an edit, Ctrl+Enter at first, can be changed, and that it's a shared setting kept beside Close window's: a fourth row in Shortcuts, "Save", kept by Tasks in [`settings.json`](../tasks.md#one-versioned-file-holds-the-three-shared-settings), so every device uses the same keys.
+The user decided that the key that saves an edit, Ctrl+Enter at first, can be changed, and that it's a shared setting kept beside Close window's: a row in the Shortcuts card, "Save", kept by Tasks in [`settings.json`](../tasks.md#one-versioned-file-holds-the-three-shared-settings), so every device uses the same keys.
 
 - **It saves in Add, and in Task View's [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) and [Edit Title](task-list.md#edit-title-edits-the-title-in-its-row)**, through one [platform part](README.md#the-save-shortcut-saves-in-any-window-that-edits), Save keys, so the key handling has one home. Configure sets it; the Task editor and the Task list read it.
 - **It never registers with Windows.** It works only while one of the app's windows has the focus, so it takes no keys from other apps, and it has nothing to release while a shortcut field has the focus.
@@ -91,17 +93,17 @@ The user decided that the key that saves an edit, Ctrl+Enter at first, can be ch
 
 ### A new shortcut is checked at once
 
-The user clicks a shortcut's field and presses the new keys. The field shows them, and Configure checks them at once; Esc leaves the shortcut as it was. Configure accepts a global shortcut, Add new task's or Task View's, only if it follows all three rules:
+The user clicks a shortcut's field and presses the new keys. The field shows them, and Configure checks them at once; Esc leaves the shortcut as it was. Configure accepts a global shortcut, Add new task's, Task View's, or Configure's, only if it follows all three rules:
 
 - **Two or more of Ctrl, Alt, Shift, and Win, plus one other key.** A shortcut with one modifier key can take a common key from every app: Ctrl+C would stop copying everywhere.
 - **Never F12**, since Windows keeps it for debuggers ([RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey)).
 - **Different from the other shortcuts**, Close window's and Save's included. Two functions can't share keys: Windows would refuse whichever global shortcut registered second, and the message would wrongly blame another app; a global shortcut takes its keys before any window sees them, so Close window would never work. A pick equal to the row's own shortcut changes nothing: Configure doesn't register it again, and the row's message stays as it was.
 
-**Close window has rules of its own**, since it never registers with Windows and works only inside the app's windows: two or more modifier keys plus any other key, F12 included, or one modifier key plus Esc or a function key, such as Shift+Esc; and different from the other three shortcuts. Configure checks it the moment it's picked, saves it as it saves the others, and hands it to the app's windows at once. Invalid stored text is handled as for the global shortcuts [below](#shared-settings-refresh-even-while-configure-is-closed): the previous valid keys, or the default, stay in use. Configure can't know which keys the other windows use, so Close window wins over them; this is an accepted risk.
+**Close window has rules of its own**, since it never registers with Windows and works only inside the app's windows: two or more modifier keys plus any other key, F12 included, or one modifier key plus Esc or a function key, such as Shift+Esc; and different from the other four shortcuts. Configure checks it the moment it's picked, saves it as it saves the others, and hands it to the app's windows at once. Invalid stored text is handled as for the global shortcuts [below](#shared-settings-refresh-even-while-configure-is-closed): the previous valid keys, or the default, stay in use. Configure can't know which keys the other windows use, so Close window wins over them; this is an accepted risk.
 
-**Save has rules of its own too**, since it never registers with Windows either: one or more modifier keys plus any other key, but never Shift alone with a key that types a character, such as Shift+A, which would stop typing a capital A; and different from the other three shortcuts. The user decided these rules. Configure checks it, saves it, and hands it to the app's windows as it does Close window. Save wins over any other use of its keys in an editor, as Close window does; this is an accepted risk.
+**Save has rules of its own too**, since it never registers with Windows either: one or more modifier keys plus any other key, but never Shift alone with a key that types a character, such as Shift+A, which would stop typing a capital A; and different from the other four shortcuts. The user decided these rules. Configure checks it, saves it, and hands it to the app's windows as it does Close window. Save wins over any other use of its keys in an editor, as Close window does; this is an accepted risk.
 
-As the app starts, Configure registers each row's stored shortcut through its [shortcut action](#public-interface), or the row's default when none is stored or the stored text is [invalid](#shared-settings-refresh-even-while-configure-is-closed), then each valid shortcut the user picks on that row. If Windows or another app holds a shortcut, Configure [says why](#configure-explains-every-shortcut-it-cant-use) and lets the user pick another, and the previous shortcut stays active, as [Shell](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides.
+As the app starts, Configure registers each row's stored shortcut through its [shortcut action](#public-interface), or the row's default when none is stored or the stored text is [invalid](#shared-settings-refresh-even-while-configure-is-closed), then each valid shortcut the user picks on that row. If Windows or another app holds a shortcut, Configure [says why](#configure-explains-every-shortcut-it-cant-use) and lets the user pick another, and the previous shortcut stays active, as [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides.
 
 Proposed, each a decision to confirm:
 
@@ -115,13 +117,13 @@ Proposed, each a decision to confirm:
 
 ### While a shortcut field has focus, the app's shortcuts are released
 
-While any shortcut field has the keyboard focus, Configure unregisters both global shortcuts, so their keys reach the field instead of opening a window. The user can press a shortcut's own keys again, or another shortcut's keys and get the [message](#configure-explains-every-shortcut-it-cant-use) that it's in use. The Close window and Save shortcuts are the exception: they have nothing to release, and pressing Close window's current keys in any field closes the window, as [above](#esc-and-the-close-window-shortcut-close-the-window) says. The user picks new keys for it by pressing different ones.
-- **When neither field has the focus, Configure registers each row's shortcut again.** That happens when the user tabs or clicks away, another app takes the focus, or the window closes, also in the middle of a pick. Moving from one field to the other keeps both released.
+While any shortcut field has the keyboard focus, Configure unregisters all three global shortcuts, so their keys reach the field instead of opening a window. The user can press a shortcut's own keys again, or another shortcut's keys and get the [message](#configure-explains-every-shortcut-it-cant-use) that it's in use. The Close window and Save shortcuts are the exception: they have nothing to release, and pressing Close window's current keys in any field closes the window, as [above](#esc-and-the-close-window-shortcut-close-the-window) says. The user picks new keys for it by pressing different ones.
+- **When no shortcut field has the focus, Configure registers each row's shortcut again.** That happens when the user tabs or clicks away, another app takes the focus, or the window closes, also in the middle of a pick. Moving from one field to another keeps them all released.
 - **A valid pick registers at once**, which checks that it's free, then is released again until the focus leaves the fields.
 - **A shortcut that can't register again**, such as when another app took it meanwhile, leaves its row with no shortcut, and the row's message says why.
-- **A shortcut that can't be released when a field gets the focus** stays active, its row's message shows the error, and Configure still releases the other one. Proposed; a decision to confirm.
+- **A shortcut that can't be released when a field gets the focus** stays active, its row's message shows the error, and Configure still releases the others. Proposed; a decision to confirm.
 
-Proposed: Configure releases both shortcuts, not only the row's own, since pressing the other's keys would open its window and take the focus from the field. This is a decision to confirm.
+Proposed: Configure releases every global shortcut, not only the row's own, since pressing another's keys would open its window and take the focus from the field. This is a decision to confirm.
 
 ### Configure explains every shortcut it can't use
 
@@ -196,7 +198,7 @@ cancels and observes that window's waits, not the shared sync. These subscriptio
 ### Shared settings refresh even while Configure is closed
 
 Configure receives [`ISharedTaskSettings`](../../../src/Shared/Tasks/ISharedTaskSettings.cs), not another settings
-store. It loads the two global shortcut texts when Shell connects their actions, and the Close window and Save texts when it's
+store. It loads the three global shortcut texts when Shell connects their actions, and the Close window and Save texts when it's
 created, and keeps watching imported changes while
 the window is closed, so every shortcut updates without opening Configure. Null uses the existing defaults.
 The shortcut text form, such as `Win+Alt+N` or `Ctrl+Enter`, is written by the platform's [`ShortcutText`](README.md#the-save-shortcut-saves-in-any-window-that-edits); one internal parser reverses it, and also reads "Return" as "Enter".
@@ -228,10 +230,16 @@ The composition root and Shell use these parts:
       SaveKeys saveKeys);
   ```
 
-  The user decided that Configure may use [Updates](updates.md), for the [update card](#an-update-card-sits-above-the-sections). Proposed: `Create` takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, after `theme`, and the Save keys come last, after it. This is a decision to confirm.
-- **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) meanwhile.
+  The user decided that Configure may use [Updates](updates.md), for the [Update card](#the-update-card-leads-the-application-section). Proposed: `Create` takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, after `theme`, and the Save keys come last, after it. This is a decision to confirm.
+- **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) meanwhile.
 - **Setup and status** come directly from Sync; Configure publishes no parallel clone, Git identity, or repository-settings port. The desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show) still governs opening and closing.
-- **Connect the shortcuts**: Shell calls it once, when it starts, with one [shortcut action](#public-interface) for Add new task and one for Task View. Configure registers each row's stored shortcut, or its default, at once through its action, then each valid pick on that row, and releases and registers both as [a field's focus](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) comes and goes, always on the UI thread. It returns whether both shortcuts registered, so Shell can show Configure when one didn't. When an action fails, Configure treats it as a setting that [can't be applied](#failure-modes), and that shortcut counts as not registered.
+- **Connect the shortcuts**: Shell calls it once, when it starts, with one [shortcut action](#public-interface) for each global shortcut: Add new task, Task View, and Configure. Configure registers each row's stored shortcut, or its default, at once through its action, then each valid pick on that row, and releases and registers them all as [a field's focus](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) comes and goes, always on the UI thread. It returns whether every shortcut registered, so Shell can show Configure when one didn't. When an action fails, Configure treats it as a setting that [can't be applied](#failure-modes), and that shortcut counts as not registered. The user decided that Configure's action is a third argument, after Task View's:
+
+  ```csharp
+  /// Returns true only when all three initial shortcuts registered.
+  /// Throws ArgumentNullException when any action is null.
+  bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure);
+  ```
 - **A shortcut action**: an interface Configure publishes and Shell implements, one for each shortcut, as [Shell](shell.md#public-interface) says. It has two parts:
   - Register takes a shortcut and registers it in place of the action's previous one. It returns false, keeping the previous one, when Windows or another app holds the shortcut, and true at once when the shortcut is already the action's.
   - Unregister releases the action's shortcut, so its keys reach the focused window, and does nothing when there's none.
@@ -291,6 +299,7 @@ The options below were considered and rejected, grouped by decision.
   - **All sections collapsed at first, and the open one collapsible**: the window showed nothing but headings.
   - **Sections the user expands and collapses with an arrow**: the user wanted titles that only open, with no arrow.
   - **The sync status in a group, or a card, of its own**: the user wanted the Sync button beside the last sync time, on three cards.
+  - **The update card above the sections, outside any section**: the user asked to move it into Application, as its first card.
 - Adding the device's key at the host:
   - **An Add key at host button beside Copy public key**: the user always copies the key to add it, so one button does both.
 - Entering a shortcut:
@@ -316,5 +325,15 @@ The options below were considered and rejected, grouped by decision.
 - How section titles get heading 1's look:
   - **A heading control from the Formatted view**: a module for showing a task would also serve settings titles.
   - **Brushes in the app's resources, under platform keys**: App would update them on every theme switch, and tests could check only the key.
+- How Configure's shortcut reaches Shell:
+  - **Configure registers its own shortcut**, through a global shortcut port the composition root passes to Create: Configure would repeat Shell's registration code, and Shell's switching rule couldn't cover a press.
+- What Configure's shortcut does while another of the app's windows is open:
+  - **It always shows Configure, as the tray menu's item does**: it breaks the rule that a shortcut never opens a window beside another.
+  - **It follows the switching rule, but brings an open Configure forward**: it would act differently from Task View's shortcut in the same case.
+- The Configure row's name and place:
+  - **Last, after Save**: it splits the global shortcuts.
+  - **"Configuration window"**: it differs from the window's title and the tray menu's item.
+- How `settings.json` keeps Configure's shortcut:
+  - **Version 2, with the new field**: every older app's settings reads and writes fail until it updates, which Tasks [ruled out](../tasks.md#ruled-out) for tag colors.
 
 The other settings Configure shows were chosen elsewhere, with their rejected options: the default shortcuts in [Shell](shell.md#ruled-out), the deletion delay in [purpose and scope](../purpose.md#ruled-out), and the sync settings in [Sync through git](../sync.md#ruled-out).

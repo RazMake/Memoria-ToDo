@@ -8,13 +8,11 @@ using Memoria.ToDo.Desktop.Updates;
 namespace Memoria.ToDo.Desktop.Configure.Tests;
 
 /// <summary>
-/// How a test reads the update card above Configure's sections: the box that holds the "Current version" line, the texts,
+/// How a test reads the Update card in Configure's Application section: the box that holds its title and the "Current version" line, the texts,
 /// buttons, and check box in it, and its edge and background. The state is the shared fake of the update status.
 /// </summary>
 internal sealed partial class ConfigureScreen
 {
-    private const string CurrentVersionStart = "Current version";
-
     /// <summary>The shared fake of the update status the window shows; set its state before <see cref="Open"/>, or publish while open.</summary>
     public FakeUpdateStatus Updates => services.Updates;
 
@@ -25,13 +23,13 @@ internal sealed partial class ConfigureScreen
         Settle();
     }
 
-    /// <summary>The box that holds the update card's lines: the nearest border around the "Current version" line.</summary>
+    /// <summary>The box that holds the update card: the nearest border around its "Update" title.</summary>
     public Border Card
     {
         get
         {
             Settle();
-            DependencyObject element = CardBlocks(Window).First(block => OpenWindows.TextOf(block).StartsWith(CurrentVersionStart, StringComparison.Ordinal));
+            DependencyObject element = CardBlocks(Window).First(block => OpenWindows.TextOf(block) == "Update");
             while (element is not Border)
             {
                 element = LogicalTreeHelper.GetParent(element) ?? throw new InvalidOperationException("The card's lines sit in no box.");
@@ -41,9 +39,9 @@ internal sealed partial class ConfigureScreen
         }
     }
 
-    /// <summary>The texts the card shows, in text blocks, top to bottom.</summary>
+    /// <summary>The texts the card shows under its "Update" title, in text blocks, top to bottom.</summary>
     public IReadOnlyList<string> CardTexts =>
-        [.. CardBlocks(Card).Where(block => block.IsVisible).Select(OpenWindows.TextOf).Where(text => text.Length > 0)];
+        [.. CardBlocks(Card).Where(block => block.IsVisible).Select(OpenWindows.TextOf).Where(text => text.Length > 0).Skip(1)];
 
     /// <summary>The visible text block of the card that starts with the words.</summary>
     public TextBlock CardBlock(string start) =>
@@ -84,11 +82,19 @@ internal sealed partial class ConfigureScreen
     /// <summary>The card's background color, or null when it has none.</summary>
     public Color? CardBackground => Card.Background is SolidColorBrush { Color.A: > 0 } brush ? brush.Color : null;
 
-    /// <summary>The window's y of the card's bottom edge.</summary>
-    public double CardBottom => Card.TranslatePoint(new Point(0, Card.ActualHeight), Window).Y;
-
     /// <summary>The window's y of the title's top edge.</summary>
     public double TitleTop(string heading) => Title(heading).TranslatePoint(new Point(0, 0), Window).Y;
+
+    /// <summary>The window's y of the title's bottom edge.</summary>
+    public double TitleBottom(string heading) =>
+        Title(heading).TranslatePoint(new Point(0, Title(heading).ActualHeight), Window).Y;
+
+    /// <summary>The window's y of the card's top edge.</summary>
+    public double CardTop => Card.TranslatePoint(new Point(0, 0), Window).Y;
+
+    /// <summary>The window's y of the text block with exactly the text.</summary>
+    public double TextTop(string text) =>
+        CardBlocks(Window).First(block => OpenWindows.TextOf(block) == text).TranslatePoint(new Point(0, 0), Window).Y;
 
     private static IEnumerable<TextBlock> CardBlocks(DependencyObject root) => OpenWindows.Descendants(root).OfType<TextBlock>();
 

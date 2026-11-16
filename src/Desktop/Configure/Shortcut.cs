@@ -25,6 +25,9 @@ public sealed record Shortcut
     /// <summary>Win+Alt+V, the shortcut Task View starts with.</summary>
     internal static Shortcut ManageTasksDefault { get; } = new(ModifierKeys.Windows | ModifierKeys.Alt, Key.V);
 
+    /// <summary>Win+Alt+C, the shortcut Configure starts with.</summary>
+    internal static Shortcut ConfigureDefault { get; } = new(ModifierKeys.Windows | ModifierKeys.Alt, Key.C);
+
     /// <summary>Shift+Esc, the shortcut Close window starts with.</summary>
     internal static Shortcut CloseWindowDefault { get; } = new(ModifierKeys.Shift, Key.Escape);
 

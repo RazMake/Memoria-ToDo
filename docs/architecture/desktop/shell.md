@@ -2,22 +2,25 @@
 
 Status: Decided
 
-Shell is the desktop app's tray icon and everything around it: the two global shortcuts, one running instance, what each start shows, starting and stopping [Updates](updates.md), and sync status. It opens the [Task editor](task-editor.md), the [Task list](task-list.md), and [Configure](configure.md); the [desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists what it needs from later designs.
+Shell is the desktop app's tray icon and everything around it: the three global shortcuts, one running instance, what each start shows, starting and stopping [Updates](updates.md), and sync status. It opens the [Task editor](task-editor.md), the [Task list](task-list.md), and [Configure](configure.md); the [desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists what it needs from later designs.
 
 ## Behavior
 
-### Two global shortcuts and the tray menu open the app's three functions
+### Three global shortcuts and the tray menu open the app's three functions
 
-Two global shortcuts work from any app. The user changes either one in [Configure](configure.md#each-setting-has-one-owner), and each is the same on every device:
+Three global shortcuts work from any app. The user changes each one in [Configure](configure.md#each-setting-has-one-owner), and each is the same on every device:
 
 | Shortcut | Opens | Default |
 | --- | --- | --- |
 | Add new task | Add | **Win+Alt+N** |
 | Task View | Task View | **Win+Alt+V** |
+| Configure | Configure | **Win+Alt+C**, the user's choice |
+
+The user asked for the Configure shortcut, and decided that it reaches Shell as a third [shortcut action](configure.md#public-interface) and [switches](#a-shortcut-switches-between-add-and-task-view) like the other two.
 
 The tray icon's menu offers Add new task, Task View, Configure, and Exit, for when the mouse is closer than the keyboard.
 
-- **The defaults are the user's choice.** A RegisterHotKey probe on the user's PC found Win+Alt+T taken by Windows and Win+Alt+N free; Win+Alt+V wasn't probed. The defaults avoid Ctrl+Alt, which equals AltGr on many keyboard layouts ([WM_SYSKEYUP](https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-syskeyup)). The OneNote desktop app uses Win+Alt+N for Quick Notes ([OneNote shortcuts](https://shortcut-tools.com/en/shortcuts/onenote/)); on a PC that runs it, Add new task has no shortcut until the user picks another, and Configure says why.
+- **The defaults are the user's choice.** A RegisterHotKey probe on the user's PC found Win+Alt+T taken by Windows and Win+Alt+N free; Win+Alt+V and Win+Alt+C weren't probed. Microsoft's list gives Win+C to Copilot but lists no Win+Alt+C ([keyboard shortcuts in Windows](https://support.microsoft.com/en-au/accessibility/windows/keyboard-shortcuts-in-windows)). The defaults avoid Ctrl+Alt, which equals AltGr on many keyboard layouts ([WM_SYSKEYUP](https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-syskeyup)). The OneNote desktop app uses Win+Alt+N for Quick Notes ([OneNote shortcuts](https://shortcut-tools.com/en/shortcuts/onenote/)); on a PC that runs it, Add new task has no shortcut until the user picks another, and Configure says why.
 - **A shortcut never opens a window beside another.** It [switches between Add and Task View](#a-shortcut-switches-between-add-and-task-view) instead, and does nothing while Configure is open. Each window port says whether its window is open, and Shell checks all three before showing one.
 - **A left click on the tray icon opens Task View, and a right click opens the menu.** The user's choice: checking the tasks is what a click on the icon is for, and Add keeps its global shortcut.
 - **The tray icon uses [H.NotifyIcon.Wpf](https://www.nuget.org/packages/H.NotifyIcon.Wpf/2.4.1) 2.4.1.** Its menu is a Windows Presentation Foundation (WPF) menu, so it follows the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
@@ -26,7 +29,7 @@ The tray icon's menu offers Add new task, Task View, Configure, and Exit, for wh
 
 Proposed: a left click opens Task View at once, without waiting to tell it from a double click, since the icon has no double-click action. This is a decision to confirm.
 
-Proposed: **when either shortcut can't register at start, Shell opens Configure**, which shows the shortcut without keys and why. A shortcut that silently does nothing looked broken. After a start by hand on a configured device, Task View opens first, then Configure, so Configure is in front; after a start at sign-in, Configure is the only window that opens. An unconfigured device or failed local initialization follows the decided setup rule below instead. A later start of a running app registers nothing, so it doesn't open Configure. This is a decision to confirm.
+Proposed: **when any shortcut can't register at start, Shell opens Configure**, which shows the shortcut without keys and why. A shortcut that silently does nothing looked broken. After a start by hand on a configured device, Task View opens first, then Configure, so Configure is in front; after a start at sign-in, Configure is the only window that opens. An unconfigured device or failed local initialization follows the decided setup rule below instead. A later start of a running app registers nothing, so it doesn't open Configure. This is a decision to confirm.
 
 Proposed: the tray menu's first two items take the shortcuts' names, so the menu and Configure call each function the same. The windows keep their titles, Add new Task and Task View. This is a decision to confirm.
 
@@ -38,26 +41,28 @@ sign-in, so setup or its error is visible.
 
 The user decided that pressing the other window's shortcut closes the open window and opens the other one, and pressing the open window's own shortcut does nothing. The table lists what each shortcut does, by the window that's open:
 
-| Open window | Add new task shortcut | Task View shortcut |
-| --- | --- | --- |
-| None | Opens Add | Opens Task View |
-| Add | Nothing | Closes Add, keeping its [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Esc does, then opens Task View |
-| Task View | Closes Task View, asking first about a changed edit, then opens Add once it's closed | Nothing, even while Task View is behind other windows |
-| Configure | Nothing | Nothing |
+| Open window | Add new task shortcut | Task View shortcut | Configure shortcut |
+| --- | --- | --- | --- |
+| None | Opens Add | Opens Task View | Opens Configure |
+| Add | Nothing | Closes Add, keeping its [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Esc does, then opens Task View | Closes Add, keeping its draft, then opens Configure |
+| Task View | Closes Task View, asking first about a changed edit, then opens Add once it's closed | Nothing, even while Task View is behind other windows | Closes Task View, asking first about a changed edit, then opens Configure once it's closed |
+| Configure | Nothing | Nothing | Nothing, even while Configure is behind other windows |
+
+The user decided the Configure shortcut's column.
 
 Closing Task View this way works as its close button does: a pending Undo finishes, as the [Task list](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) says. The user decided that an [edit](task-list.md#edit-description-turns-the-right-side-into-the-editor) with changes asks first, offering Save, Discard, or Cancel, as the [Task list](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) says. Shell closes each window through its port's close part. It opens Add only when Task View's close part says the window closed, so Cancel, or a save that fails, leaves Task View open and Add closed. Add's close part hides it with its draft, then Shell opens Task View.
 
 Proposed, each a decision to confirm:
 
-- **While Configure is open, a shortcut does nothing**, as before. The user's rule names the two windows the shortcuts open, and Configure has no shortcut.
+- **While Configure is open, Add's and Task View's shortcuts do nothing**, as before, since Configure is where the shortcuts change.
 - **While both Add and Task View are open, a shortcut does nothing.** Only the tray can open the second one, and either shortcut's own window is then already open.
 - **The tray menu and a left click on the tray icon keep opening their window** without closing another, since the user's rule is about the shortcuts.
-- **Until the device is configured, both shortcuts still open Configure**, as the setup rule above decides.
+- **Until the device is configured, every shortcut opens Configure**, as the setup rule above decides.
 
 ### Only one instance runs, and a start by hand shows Task View
 
 - **One instance runs per Windows sign-in session.** Starting the app while it runs shows Task View in the running instance. The new instance lets the running one come to the front, which Windows may otherwise refuse ([AllowSetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-allowsetforegroundwindow)). Then it ends, without adding a tray icon, registering the shortcuts, or starting update checks. Every instance counts as the same app, even one run from a build folder.
-- **For a configured device, a start by hand shows Task View, and a start at sign-in shows only the tray icon.** A start from the Start menu is by hand, and so is the first start after installing. The [`Run` key's entry](configure.md#start-with-windows-is-the-run-key-itself) adds the argument `--at-sign-in`, which marks a start at sign-in, and the composition root tells Shell which kind of start it is. The [startup exceptions above](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) govern unconfigured devices, failed initialization, and shortcut-registration failures.
+- **For a configured device, a start by hand shows Task View, and a start at sign-in shows only the tray icon.** A start from the Start menu is by hand, and so is the first start after installing. The [`Run` key's entry](configure.md#start-with-windows-is-the-run-key-itself) adds the argument `--at-sign-in`, which marks a start at sign-in, and the composition root tells Shell which kind of start it is. The [startup exceptions above](#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) govern unconfigured devices, failed initialization, and shortcut-registration failures.
 - **Add is ready before it's needed.** The Add window is created hidden when the app starts, as the [Task editor](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) decides, so Shell shows it at once.
 
 Proposed, each a decision to confirm:
@@ -68,7 +73,7 @@ Proposed, each a decision to confirm:
 Not confirmed by a run:
 
 - **That Velopack's starter passes the sign-in argument on to the app**, also after an update. Its [source](https://github.com/velopack/velopack/blob/develop/src/bins/src/stub.rs) passes every argument on. No automated test can check it, since it needs an installed copy. To check it by hand:
-  1. Install a release with its `setup.exe`. Start the app by hand once and finish device setup, so the [startup exceptions](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) don't open Configure: Sync is set up and both shortcuts register. Then exit the app from the tray menu.
+  1. Install a release with its `setup.exe`. Start the app by hand once and finish device setup, so the [startup exceptions](#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) don't open Configure: Sync is set up and every shortcut registers. Then exit the app from the tray menu.
   2. Run `%LocalAppData%\MemoriaToDo\Memoria.ToDo.Desktop.App.exe --at-sign-in`, the starter the `Run` key names. Only the tray icon shows, with no window.
   3. Exit the app, then run the starter with no argument. The tray icon and Task View show.
   4. Install a newer release over it, or let the app update itself, then repeat step 2. The result is the same.
@@ -97,11 +102,11 @@ and status notices. Automatic startup navigation waits for Sync's
 [initial local publication](../sync.md#one-owned-worker-keeps-synchronous-git-and-ssh-off-the-ui-thread), not its first
 network result: the cold snapshot's false `IsConfigured` must not send an already configured device to Configure.
 The initialization result, including failure, resolves pending startup navigation under the
-[decided startup rule](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions).
+[decided startup rule](#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions).
 This uses the existing local publication, not an additional status-only startup route.
 
 This pending navigation runs at most once, on the UI thread. Shortcut-registration failure is an input to that
-startup choice, handled by the [startup rules above](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions),
+startup choice, handled by the [startup rules above](#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions),
 not a separate early navigation that consumes it. Opening a window for an explicit user action consumes the
 pending choice; shutdown cancels it. Queued notices must not open a window after either event. No polling,
 timeout, or blocking startup wait is added.
@@ -124,7 +129,7 @@ Before the first success, the time line is absent. Lines use the platform's newl
 
 [`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) replaces synchronous Stop.
 The first call detaches sync notices, cancels and observes Shell's pending waits and startup navigation, disposes Configure, and releases
-both shortcuts and the tray on the UI thread. It then awaits the shared Sync service's disposal, then Updates' stop, and only then releases the one-instance claim. Proposed by [Updates](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it): Updates stops after Sync, since Updates' stop starts Velopack's updater when an update ended the app, and the updater waits only 60 seconds for the app to end. This is a decision to confirm. Cleanup attempts every step and retains
+every shortcut and the tray on the UI thread. It then awaits the shared Sync service's disposal, then Updates' stop, and only then releases the one-instance claim. Proposed by [Updates](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it): Updates stops after Sync, since Updates' stop starts Velopack's updater when an update ended the app, and the updater waits only 60 seconds for the app to end. This is a decision to confirm. Cleanup attempts every step and retains
 all failures. Repeated calls join the same cleanup; cancelling a caller's wait does not abandon it.
 
 Updates retains its run Task instead of discarding it, and observes a check that
@@ -153,8 +158,8 @@ Proposed, each a decision to confirm:
 No module uses Shell. Only the composition root does, through one part:
 
 - **[Create the tray app](../../../src/Desktop/Shell/TrayApp.cs)** retains its existing arguments and adds the shared Sync service last. It returns the platform's async-stop lifetime; no duplicate instance starts Sync. Proposed: its updates port argument becomes Updates' lifetime, `IUpdateLifetime updates`, in the same place, and its `TimeProvider time` argument goes, since only the update checks used it. This is a decision to confirm.
-  - **Starting** first asks the one-instance port to claim the sign-in session. If another instance runs, Starting ends the app and does nothing else. Otherwise it adds the tray icon with its menu, connects Configure's shortcuts, starts [Updates](updates.md#a-check-runs-at-start-and-each-night-at-3-am) with Shell's app exit, and resolves its windows through the [startup rules](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) after local initialization. Each menu item calls its window's Show part, and Exit ends the app. A left click calls Show Task View, the two shortcuts follow the [switching rule](#a-shortcut-switches-between-add-and-task-view), and each later start calls Show Task View.
-  - **Connecting the shortcuts** hands Configure two [shortcut actions](configure.md#public-interface): Add new task's opens Add, and Task View's opens Task View, each as the [switching rule](#a-shortcut-switches-between-add-and-task-view) says. Each action has at most one shortcut registered, through the global shortcut port, and neither touches the other's.
+  - **Starting** first asks the one-instance port to claim the sign-in session. If another instance runs, Starting ends the app and does nothing else. Otherwise it adds the tray icon with its menu, connects Configure's shortcuts, starts [Updates](updates.md#a-check-runs-at-start-and-each-night-at-3-am) with Shell's app exit, and resolves its windows through the [startup rules](#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) after local initialization. Each menu item calls its window's Show part, and Exit ends the app. A left click calls Show Task View, the global shortcuts follow the [switching rule](#a-shortcut-switches-between-add-and-task-view), and each later start calls Show Task View.
+  - **Connecting the shortcuts** hands Configure three [shortcut actions](configure.md#public-interface): Add new task's opens Add, and Task View's opens Task View, each as the [switching rule](#a-shortcut-switches-between-add-and-task-view) says; Configure's opens Configure, as the switching rule says too. Each action has at most one shortcut registered, through the global shortcut port, and none touches another's.
     - **Register** registers a new shortcut; when Windows takes it, the action releases its previous one. The shortcut already registered stays, and Register returns true without registering it again.
     - **Unregister** releases the action's shortcut, so its keys reach the focused window, and does nothing when there's none. A later Register registers again.
     - Any failure of the port other than a taken shortcut passes on to Configure.
@@ -166,7 +171,7 @@ No module uses Shell. Only the composition root does, through one part:
 
 Shell publishes three ports. The composition root implements each one, and Shell's unit tests use each one's [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test); the real adapters have integration tests. Shell's former updates port, its one part that downloaded a newer version for the next start, moves to Updates as its [install port](updates.md#velopack-checks-downloads-and-applies-behind-one-port), and its update schedule and the time source it needed move with it, as the user decided.
 
-- **The tray icon port** receives the menu items and the left-click action, and removes the icon on Stop. Its implementation uses the [chosen tray library](#two-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions).
+- **The tray icon port** receives the menu items and the left-click action, and removes the icon on Stop. Its implementation uses the [chosen tray library](#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions).
 - **The global shortcut port** has two parts. Register takes a [shortcut](configure.md#public-interface) and the action its press runs, and returns whether Windows took it: false means Windows or another app holds it. Unregister releases a shortcut it registered. Both fail on any other error, and a failed Unregister leaves the shortcut registered. A press runs its action on the UI thread. Its implementation uses [RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey).
 - **The one-instance port** has two parts. Claim takes the action to run when a later instance starts, and returns whether this instance is the first in the Windows sign-in session. If it is, the action runs on the UI thread each time a later instance starts. If it isn't, the port has told the running instance and let it come to the front. Release gives up the claim, and does nothing when there's none. Its implementation uses a named Windows signal, one per sign-in session.
 

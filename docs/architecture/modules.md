@@ -107,10 +107,10 @@ The desktop app has six modules of its own:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Shell | The tray icon and its menu, the two global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Configure, Sync, Updates |
+| Shell | The tray icon and its menu, the three global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Configure, Sync, Updates |
 | Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses | [Task editor](desktop/task-editor.md) | Tasks, Editing, Rendering, Updates |
 | Task list | Task View: open tasks grouped by tag, in groups that collapse, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Formatted view, Sync, Updates |
-| Configure | The two global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates |
+| Configure | The three global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 | Updates | Checking for a new version, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
 

@@ -80,14 +80,15 @@ public sealed class FakeViewTasksWindow(List<string>? shownLog = null) : IViewTa
 
 /// <summary>
 /// The shared fake of <see cref="IConfigureWindow"/>: counts Show calls (and logs "Configure" like
-/// <see cref="FakeAddWindow"/>), keeps the two shortcut actions Shell connects, and answers
+/// <see cref="FakeAddWindow"/>), keeps the three shortcut actions Shell connects, and answers
 /// <see cref="ConnectAnswer"/>. Unlike Configure, it registers nothing at once: a test calls the kept actions as
-/// Configure does, through <see cref="AddNewTask"/> and <see cref="ManageTasks"/>.
+/// Configure does, through <see cref="AddNewTask"/>, <see cref="ManageTasks"/>, and <see cref="ConfigureAction"/>.
 /// </summary>
 public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfigureWindow
 {
     private IShortcutAction? addNewTask;
     private IShortcutAction? manageTasks;
+    private IShortcutAction? configure;
 
     /// <summary>How many times Show was called.</summary>
     public int ShowCount { get; private set; }
@@ -98,7 +99,7 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     /// <summary>How many times <see cref="ConnectShortcuts"/> was called.</summary>
     public int ConnectCount { get; private set; }
 
-    /// <summary>What <see cref="ConnectShortcuts"/> answers; true, as when both shortcuts registered, when not set.</summary>
+    /// <summary>What <see cref="ConnectShortcuts"/> answers; true, as when all three shortcuts registered, when not set.</summary>
     public bool ConnectAnswer { get; set; } = true;
 
     public int DisposeCount { get; private set; }
@@ -115,6 +116,10 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     /// <summary>The managed id of the thread of each Show call, in order.</summary>
     public List<int> ShownOnThreads { get; } = [];
 
+    /// <summary>The Configure action Shell connected.</summary>
+    /// <exception cref="InvalidOperationException">Shell hasn't connected the shortcuts.</exception>
+    public IShortcutAction ConfigureAction => configure ?? throw NotConnected();
+
     /// <inheritdoc />
     public void Show()
     {
@@ -124,11 +129,12 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     }
 
     /// <inheritdoc />
-    public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks)
+    public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure)
     {
         ConnectCount++;
         this.addNewTask = addNewTask;
         this.manageTasks = manageTasks;
+        this.configure = configure;
         return ConnectAnswer;
     }
 

@@ -18,6 +18,9 @@ public static class TestShortcut
     /// <summary>Win+Alt+V, the shortcut Task View starts with.</summary>
     public static Shortcut ManageTasksDefault { get; } = Of(ModifierKeys.Windows | ModifierKeys.Alt, Key.V);
 
+    /// <summary>Win+Alt+C, the shortcut Configure starts with.</summary>
+    public static Shortcut ConfigureDefault { get; } = Of(ModifierKeys.Windows | ModifierKeys.Alt, Key.C);
+
     /// <summary>Makes a shortcut.</summary>
     /// <exception cref="ArgumentException">The keys don't follow the rules.</exception>
     public static Shortcut Of(ModifierKeys modifiers, Key key) =>

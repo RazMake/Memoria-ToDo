@@ -16,7 +16,7 @@ The table lists what Tasks keeps in the task repository:
 | --- | --- |
 | `tasks/<id>.json` | One task, in a file named by the task's ID |
 | `images/<id>/` | That task's images, one file each |
-| `settings.json` | The deletion delay and the desktop app's two shortcut texts, whose validation belongs to [Configure](desktop/configure.md#each-setting-has-one-owner) |
+| `settings.json` | The deletion delay and the desktop app's shortcut texts, whose validation belongs to [Configure](desktop/configure.md#each-setting-has-one-owner) |
 | `tags.json` | The color the user picked for each tag, as [below](#each-tags-color-is-kept-in-one-synced-file) |
 
 Deleting a task removes its file and its image folder.
@@ -165,6 +165,19 @@ string? SaveShortcut { get; }
 /// Throws NoRepositoryFolderException when no repository is selected. An unchanged value writes nothing.
 /// </summary>
 void SetSaveShortcut(string? shortcut);
+```
+
+The user decided that a sixth setting, `configureShortcut`, after `saveShortcut`, holds the desktop's global shortcut that opens Configure, with the version still 1. It's kept, merged, read when missing, and written exactly as `saveShortcut` is, and its public parts follow the same pattern:
+
+```csharp
+/// <summary>Shortcut text Windows interprets; null means Windows' existing default.</summary>
+string? ConfigureShortcut { get; }
+
+/// <summary>
+/// Saves text without interpreting it, or null to use Windows' default, and its UTC change time.
+/// Throws NoRepositoryFolderException when no repository is selected. An unchanged value writes nothing.
+/// </summary>
+void SetConfigureShortcut(string? shortcut);
 ```
 
 ### Sync shares Tasks' local update lock, never a network wait

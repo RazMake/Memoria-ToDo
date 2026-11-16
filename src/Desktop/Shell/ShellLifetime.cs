@@ -18,6 +18,7 @@ internal sealed class ShellLifetime(
     IOneInstance oneInstance,
     ActiveShortcut addShortcut,
     ActiveShortcut manageShortcut,
+    ActiveShortcut configureShortcut,
     StartupNavigation startup,
     IUpdateLifetime updates,
     Func<Action, IAppExit> createExit,
@@ -50,7 +51,7 @@ internal sealed class ShellLifetime(
             ],
             viewTasksByUser);
         syncTray.Attach();
-        bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut);
+        bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut, configureShortcut);
 
         updates.Start(createExit(endApp));
         startup.Begin(!shortcutsReady);
@@ -77,6 +78,7 @@ internal sealed class ShellLifetime(
         Attempt(configure.Dispose, failures);
         Attempt(addShortcut.Unregister, failures);
         Attempt(manageShortcut.Unregister, failures);
+        Attempt(configureShortcut.Unregister, failures);
         Attempt(trayIcon.Remove, failures);
 
         if (claimed)

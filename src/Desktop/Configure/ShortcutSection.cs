@@ -1,11 +1,13 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// The Shortcuts section's content: how to change a shortcut, and a row for Add new task, Task View, Close
-/// window, and Save. A focused field of any row releases the two global shortcuts; Close window and Save have none to release.
+/// The content of Application's Shortcuts card: how to change a shortcut, and a row for Add new task, Task View,
+/// Configure, Close window, and Save. Each row's pick must differ from the four others. A focused field of any row
+/// releases the three global shortcuts; Close window and Save have none to release.
 /// </summary>
 internal sealed class ShortcutSection : StackPanel
 {
@@ -13,14 +15,20 @@ internal sealed class ShortcutSection : StackPanel
     private readonly ShortcutFocus _focus;
 
     public ShortcutSection(
-        ShortcutSetting addNewTask, ShortcutSetting manageTasks, CloseWindowSetting closeWindow, SaveSetting save)
+        ShortcutSetting addNewTask, ShortcutSetting manageTasks, ShortcutSetting configure,
+        CloseWindowSetting closeWindow, SaveSetting save)
     {
+        IShortcutSetting[] all = [addNewTask, manageTasks, configure, closeWindow, save];
+        ShortcutRow Row(IShortcutSetting setting, string description, Action<ModifierKeys> swallowed) =>
+            new(setting, description, [.. all.Where(other => other != setting)], swallowed);
+
         _rows =
         [
-            new ShortcutRow(addNewTask, "Opens the Add window from any app.", [manageTasks, closeWindow, save], addNewTask.KeySwallowed),
-            new ShortcutRow(manageTasks, "Opens Task View from any app.", [addNewTask, closeWindow, save], manageTasks.KeySwallowed),
-            new ShortcutRow(closeWindow, "Closes the app's window you're in, whatever has the focus.", [addNewTask, manageTasks, save], _ => { }),
-            new ShortcutRow(save, "Saves the task you're editing, in Add and Task View.", [addNewTask, manageTasks, closeWindow], _ => { }),
+            Row(addNewTask, "Opens the Add window from any app.", addNewTask.KeySwallowed),
+            Row(manageTasks, "Opens Task View from any app.", manageTasks.KeySwallowed),
+            Row(configure, "Opens Configure from any app.", configure.KeySwallowed),
+            Row(closeWindow, "Closes the app's window you're in, whatever has the focus.", _ => { }),
+            Row(save, "Saves the task you're editing, in Add and Task View.", _ => { }),
         ];
         var grid = new Grid
         {
@@ -40,7 +48,7 @@ internal sealed class ShortcutSection : StackPanel
         });
         Children.Add(grid);
 
-        _focus = new ShortcutFocus([addNewTask, manageTasks], Refresh);
+        _focus = new ShortcutFocus([addNewTask, manageTasks, configure], Refresh);
         foreach (var field in _rows.Select(row => row.Field))
         {
             field.GotKeyboardFocus += (_, _) => _focus.FieldFocused();
