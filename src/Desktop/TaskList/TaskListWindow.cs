@@ -45,7 +45,7 @@ internal sealed class TaskListWindow : Window
     private readonly ListEditing _editing;
     private readonly CloseDecision _decision;
     private readonly HeldModifierKeys _held = new();
-    private readonly Dictionary<RowAction, Action<TaskRow>> _rowActions;
+    private readonly Dictionary<RowAction, Action<TaskItem, TaskRow?>> _rowActions;
     private ListSnapshot _snapshot = new([], [], false);
     private TaskItem? _selected;
     private TagEditor? _tagEditor;
@@ -71,13 +71,13 @@ internal sealed class TaskListWindow : Window
         _carry = carry;
         _rowActions = new()
         {
-            [RowAction.Toggle] = row => SelectTask(row.Task.Id),
+            [RowAction.Toggle] = (task, _) => SelectTask(task.Id),
             [RowAction.Edit] = BeginEditOf,
             [RowAction.EditTitle] = BeginTitleEditOf,
-            [RowAction.Resolve] = row => Resolve(row, row.Task.Resolved is null),
-            [RowAction.Delete] = Delete,
-            [RowAction.MoveUp] = row => Nudge(row, -1),
-            [RowAction.MoveDown] = row => Nudge(row, 1),
+            [RowAction.Resolve] = (task, row) => Resolve(task, row, task.Resolved is null),
+            [RowAction.Delete] = (task, _) => Delete(task),
+            [RowAction.MoveUp] = (_, row) => Nudge(row, -1),
+            [RowAction.MoveDown] = (_, row) => Nudge(row, 1),
         };
 
         Title = "Task View";
@@ -331,10 +331,10 @@ internal sealed class TaskListWindow : Window
     {
         var row = new TaskRow(task, _theme, _browser);
         row.SelectRequested += (_, _) => SelectTask(row.Task.Id);
-        row.EditRequested += (_, _) => BeginEditOf(row);
-        row.EditTitleRequested += (_, _) => BeginTitleEditOf(row);
-        row.DeleteRequested += (_, _) => Delete(row);
-        row.ResolveToggled += (_, on) => Resolve(row, on);
+        row.EditRequested += (_, _) => BeginEditOf(row.Task, row);
+        row.EditTitleRequested += (_, _) => BeginTitleEditOf(row.Task, row);
+        row.DeleteRequested += (_, _) => Delete(row.Task);
+        row.ResolveToggled += (_, on) => Resolve(row.Task, row, on);
         row.LinkClicked += (_, address) => FollowLink(address);
         row.OpenFailed += (_, failure) => Report(failure.Message);
         row.TaskDropped += (_, drop) => DropOn(row, drop.Dropped, drop.LowerHalf);
@@ -378,17 +378,27 @@ internal sealed class TaskListWindow : Window
 
     // ---- Edit ----
 
-    private void BeginEditOf(TaskRow row) => Begin(row, title: false);
+    private void BeginEditOf(TaskItem task, TaskRow? row) => Begin(task, row, title: false);
 
-    private void BeginTitleEditOf(TaskRow row) => Begin(row, title: true);
+    // Without a row, as when a collapsed group hides the task, the group opens first so the title has a row to edit in.
+    private void BeginTitleEditOf(TaskItem task, TaskRow? row)
+    {
+        if (row is null)
+        {
+            _collapse.Reveal(task);
+            Refresh();
+            row = _rows.FirstRowOf(task.Id);
+        }
+
+        Begin(task, row, title: true);
+    }
 
     // Opens the title edit in the row, or the description edit on the right side. One edit is open at a time, so an edit of
     // another field or task is left first, as Esc leaves it.
-    private void Begin(TaskRow row, bool title)
+    private void Begin(TaskItem task, TaskRow? row, bool title)
     {
         _header.ShowMessage(null);
-        var task = row.Task;
-        var at = _rows.PositionOf(row) ?? new RowPosition(null, task.Id);
+        var at = (row is null ? null : _rows.PositionOf(row)) ?? new RowPosition(null, task.Id);
         if (_editing.Current is { } open && open.Started.Id == task.Id && open.ShowsInRow == title)
         {
             if (title)
@@ -561,10 +571,10 @@ internal sealed class TaskListWindow : Window
 
     // ---- Delete, resolve, reopen ----
 
-    private void Delete(TaskRow row)
+    private void Delete(TaskItem task)
     {
         _header.ShowMessage(null);
-        var id = row.Task.Id;
+        var id = task.Id;
         if (_editing.Started?.Id == id)
         {
             _editing.Forget();
@@ -573,31 +583,33 @@ internal sealed class TaskListWindow : Window
         _deletion.Start(id);
     }
 
-    private void Resolve(TaskRow row, bool resolved)
+    // The row, when one shows the task, puts its checkbox back when the task isn't resolved.
+    private void Resolve(TaskItem task, TaskRow? row, bool resolved)
     {
         _header.ShowMessage(null);
-        var id = row.Task.Id;
+        var id = task.Id;
 
         // Checking the task being edited saves the edit first, as Ctrl+Enter does. When that fails the editor stays open
         // and says why, and the task isn't resolved.
         if (_editing.Started?.Id == id && !SaveEdit())
         {
-            row.Revert();
+            row?.Revert();
             return;
         }
 
         if (!_actions.Resolve(id, resolved))
         {
-            row.Revert();
+            row?.Revert();
         }
     }
 
     // ---- Order ----
 
-    private void Nudge(TaskRow row, int step)
+    // Order is a row's place in its group, so a task no row shows doesn't move.
+    private void Nudge(TaskRow? row, int step)
     {
         _header.ShowMessage(null);
-        if (ListOrder.Nudge(row.Group, row.Task.Id, step) is { } move)
+        if (row is not null && ListOrder.Nudge(row.Group, row.Task.Id, step) is { } move)
         {
             _actions.Move(move);
         }
@@ -687,6 +699,12 @@ internal sealed class TaskListWindow : Window
         {
             e.Handled = ActOnRow(row, modifiers, key);
         }
+        else if (ReferenceEquals(e.OriginalSource, _details) && _editing.Describing is null && _selected is { } selected)
+        {
+            // The pane itself has the focus and shows the selected task, so the row keys act on that task, in its first row
+            // when one shows it. Up and Down stay with the pane, which scrolls on them.
+            e.Handled = ActOnRowKeys(selected, _rows.FirstRowOf(selected.Id), modifiers, key);
+        }
     }
 
     // While a description is edited, Ctrl+Tab and Ctrl+Shift+Tab switch between Edit and Preview, from anywhere. In Preview no
@@ -717,9 +735,8 @@ internal sealed class TaskListWindow : Window
     // Up and Down select the row above or below; the other keys are the row's actions.
     private bool ActOnRow(TaskRow row, ModifierKeys modifiers, Key key)
     {
-        if (RowKeys.ActionFor(modifiers, key) is { } action)
+        if (ActOnRowKeys(row.Task, row, modifiers, key))
         {
-            _rowActions[action](row);
             return true;
         }
 
@@ -735,6 +752,17 @@ internal sealed class TaskListWindow : Window
         }
 
         return false;
+    }
+
+    private bool ActOnRowKeys(TaskItem task, TaskRow? row, ModifierKeys modifiers, Key key)
+    {
+        if (RowKeys.ActionFor(modifiers, key) is not { } action)
+        {
+            return false;
+        }
+
+        _rowActions[action](task, row);
+        return true;
     }
 
     private async void SyncOnKey() => await _sync.SyncAsync();

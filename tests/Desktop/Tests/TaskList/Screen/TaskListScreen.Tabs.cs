@@ -51,6 +51,21 @@ internal sealed partial class TaskListScreen
         }
     }
 
+    /// <summary>
+    /// Clicks the selected task's formatted description with the left mouse button, as a user does. The description's page never
+    /// holds the focus, so the right side's pane takes it, as a ScrollViewer does on a left click; this fails when it doesn't.
+    /// </summary>
+    public void ClickDescription()
+    {
+        Refresh();
+        MouseClick(Visuals(Details).OfType<FormattedView.FormattedDescription>().Single(), MouseButton.Left);
+        Refresh();
+        if (!FocusIsInDetailsOutsideTheEditor)
+        {
+            throw new InvalidOperationException("Clicking the description didn't move the keyboard focus to the right side.");
+        }
+    }
+
     /// <summary>Puts the cursor of the edited Description at the position, with nothing selected.</summary>
     public void PutCursorInDescription(int position) => EditorFields.Select(Window, "Description", position);
 
