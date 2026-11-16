@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using Memoria.ToDo.Desktop.Platform;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -13,11 +14,13 @@ internal static class ThemedBox
     /// <summary>A rounded box for one section.</summary>
     public static Border Section(UIElement child) => Make(child, "CardBackgroundFillColorDefaultBrush");
 
-    /// <summary>A rounded box inside a section, with a small bold title above its content; it stands out from the section.</summary>
-    public static Border Card(string title, UIElement content)
+    /// <summary>A rounded box inside a section, with a heading 2 title above its content; it stands out from the section.</summary>
+    public static Border Card(string title, UIElement content, ITheme theme)
     {
         var inside = new StackPanel();
-        inside.Children.Add(ThemedText.Subheading(title, new Thickness(0, 0, 0, 6)));
+        var heading = HeadingText.Make(title, 2, theme);
+        heading.Margin = new Thickness(0, 0, 0, 6);
+        inside.Children.Add(heading);
         inside.Children.Add(content);
         return Make(inside, "CardBackgroundFillColorSecondaryBrush");
     }

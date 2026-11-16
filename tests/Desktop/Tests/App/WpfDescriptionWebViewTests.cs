@@ -38,14 +38,115 @@ public class WpfDescriptionWebViewTests
     public async Task Loads_an_image_from_the_clone_folder_at_the_clone_address()
     {
         using var harness = new DescriptionWebViewHarness();
-        File.WriteAllBytes(Path.Combine(harness.CloneFolder, "picture.png"), Png);
+        WriteImage(Path.Combine(harness.CloneFolder, "images", TaskId, "picture.png"), Png);
         var address = harness.Port.CloneAddress;
 
-        harness.Port.Show($"<title>images</title><img src=\"{address}picture.png\">");
+        harness.Port.Show($"<title>images</title><img src=\"{address}images/{TaskId}/picture.png\">");
 
         Assert.Equal(new Uri("https://clone.memoria-todo.example/"), address);
-        Assert.Equal($"{address}picture.png", await harness.NextClonedFileAddress());
+        Assert.Equal($"{address}images/{TaskId}/picture.png", await harness.NextClonedFileAddress());
     }
+
+    [WpfFact]
+    public async Task Shows_an_image_that_is_only_in_the_edit_images_folder_at_the_clone_address()
+    {
+        using var harness = new DescriptionWebViewHarness();
+        WriteImage(Path.Combine(harness.EditImagesFolder, "images", TaskId, "waiting.png"), Png);
+        var core = await harness.Started;
+
+        harness.Port.Show(Page($"<img src=\"{harness.Port.CloneAddress}images/{TaskId}/waiting.png\">"));
+        await harness.NextLoadedPageTitle();
+
+        Assert.Equal(new[] { 1 }, await ImageWidths(core));
+    }
+
+    [WpfFact]
+    public async Task Shows_the_clones_image_when_a_waiting_image_has_the_same_path()
+    {
+        using var harness = new DescriptionWebViewHarness();
+        WriteImage(Path.Combine(harness.CloneFolder, "images", TaskId, "same.png"), Png);
+        WriteImage(Path.Combine(harness.EditImagesFolder, "images", TaskId, "same.png"), PngOfWidth(3));
+        var core = await harness.Started;
+
+        harness.Port.Show(Page($"<img src=\"{harness.Port.CloneAddress}images/{TaskId}/same.png\">"));
+        await harness.NextLoadedPageTitle();
+
+        Assert.Equal(new[] { 1 }, await ImageWidths(core));
+    }
+
+    [WpfFact]
+    public async Task Does_not_serve_a_path_that_escapes_the_image_folders_though_an_image_is_there()
+    {
+        using var harness = new DescriptionWebViewHarness();
+        WriteImage(Path.Combine(harness.CloneFolder, "images", TaskId, "control.png"), Png);
+        // Three levels up from a task's image folder is the folder holding both the clone and the edit images.
+        WriteImage(Path.Combine(harness.CloneFolder, "..", "secret.png"), Png);
+        var core = await harness.Started;
+
+        harness.Port.Show(Page(
+            $"<img src=\"{harness.Port.CloneAddress}images/{TaskId}/control.png\">"
+            + $"<img src=\"{harness.Port.CloneAddress}images/{TaskId}/..%2F..%2F..%2Fsecret.png\">"));
+        await harness.NextLoadedPageTitle();
+
+        Assert.Equal(new[] { 1, 0 }, await ImageWidths(core));
+    }
+
+    [WpfFact]
+    public async Task Does_not_serve_an_image_whose_path_is_requested_with_an_escaped_character_though_the_unescaped_path_has_one()
+    {
+        using var harness = new DescriptionWebViewHarness();
+        WriteImage(Path.Combine(harness.CloneFolder, "images", TaskId, "control.png"), Png);
+        WriteImage(Path.Combine(harness.CloneFolder, "images", TaskId, "a.png"), Png);
+        var core = await harness.Started;
+
+        // The browser sends %61 as it is, and the design answers an escaped path with 404, though it names a.png.
+        harness.Port.Show(Page(
+            $"<img src=\"{harness.Port.CloneAddress}images/{TaskId}/control.png\">"
+            + $"<img src=\"{harness.Port.CloneAddress}images/{TaskId}/%61.png\">"));
+        await harness.NextLoadedPageTitle();
+
+        Assert.Equal(new[] { 1, 0 }, await ImageWidths(core));
+    }
+
+    [WpfFact]
+    public async Task Does_not_serve_an_image_outside_the_task_image_folders_though_the_clone_holds_it()
+    {
+        using var harness = new DescriptionWebViewHarness();
+        WriteImage(Path.Combine(harness.CloneFolder, "images", TaskId, "control.png"), Png);
+        WriteImage(Path.Combine(harness.CloneFolder, "other", "picture.png"), Png);
+        var core = await harness.Started;
+
+        harness.Port.Show(Page(
+            $"<img src=\"{harness.Port.CloneAddress}images/{TaskId}/control.png\">"
+            + $"<img src=\"{harness.Port.CloneAddress}other/picture.png\">"));
+        await harness.NextLoadedPageTitle();
+
+        Assert.Equal(new[] { 1, 0 }, await ImageWidths(core));
+    }
+
+    private const string TaskId = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
+
+    private static void WriteImage(string path, byte[] bytes)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        File.WriteAllBytes(path, bytes);
+    }
+
+    // A PNG that is the given number of pixels wide, so a test can tell which of two images the browser got.
+    private static byte[] PngOfWidth(int width)
+    {
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(System.Windows.Media.Imaging.BitmapSource.Create(
+            width, 1, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, new byte[width * 4], width * 4)));
+        using var stream = new MemoryStream();
+        encoder.Save(stream);
+        return stream.ToArray();
+    }
+
+    // The natural width of each image of the page, once the page has loaded: 0 for an image the browser could not get.
+    private static async Task<int[]> ImageWidths(Microsoft.Web.WebView2.Core.CoreWebView2 core) =>
+        System.Text.Json.JsonSerializer.Deserialize<int[]>(
+            await core.ExecuteScriptAsync("[...document.images].map(image => image.naturalWidth)"))!;
 
     [WpfFact]
     public async Task Cancels_every_link_the_user_clicks_including_one_for_a_new_window_and_reports_its_address()

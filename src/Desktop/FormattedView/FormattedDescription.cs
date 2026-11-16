@@ -14,6 +14,7 @@ public sealed class FormattedDescription : ContentControl, IDisposable
     private readonly ThemeFollower _themeFollower;
     private string _markdown = "";
     private TextBox? _source;
+    private bool _isPreview;
     private bool _disposed;
 
     /// <summary>Takes ownership of <paramref name="webView"/>: releasing the description releases it.</summary>
@@ -31,6 +32,7 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         Content = webView.Element;
         webView.LinkClicked += OnLinkClicked;
         webView.Failed += OnFailed;
+        webView.ImageResized += OnImageResized;
         _themeFollower = new ThemeFollower(this, theme, OnThemeChanged);
     }
 
@@ -57,11 +59,31 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         }
     }
 
+    /// <summary>
+    /// Whether the description is shown as a preview: false at first. In a preview the images can be resized, clicked links
+    /// do nothing, and changing it shows the current Markdown again.
+    /// </summary>
+    public bool IsPreview
+    {
+        get => _isPreview;
+        set
+        {
+            _isPreview = value;
+            if (!_disposed && _source is null)
+            {
+                _shown.SetPreview(value);
+            }
+        }
+    }
+
     /// <summary>Raised with the address of a clicked link that fails Rendering's browser check.</summary>
     public event EventHandler<string>? OtherLinkClicked;
 
     /// <summary>Raised when the default browser fails to open a web link.</summary>
     public event EventHandler<Exception>? OpenFailed;
+
+    /// <summary>Raised when the user resizes an image in the description. The description's Markdown doesn't change.</summary>
+    public event EventHandler<ImageResize>? ImageResized;
 
     /// <summary>Releases the web view and its browser.</summary>
     public void Dispose()
@@ -75,14 +97,30 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         _themeFollower.Dispose();
         _webView.LinkClicked -= OnLinkClicked;
         _webView.Failed -= OnFailed;
+        _webView.ImageResized -= OnImageResized;
         _webView.Dispose();
     }
 
-    private void OnLinkClicked(object? sender, string address) => _links.Click(address);
+    private void OnLinkClicked(object? sender, string address)
+    {
+        if (!_isPreview)
+        {
+            _links.Click(address);
+        }
+    }
+
+    private void OnImageResized(object? sender, ImageResize resize)
+    {
+        if (_isPreview)
+        {
+            ImageResized?.Invoke(this, resize);
+        }
+    }
 
     // Shows the Markdown as source with the reason, in place of the web view, for good: the browser raises this once.
     private void OnFailed(object? sender, string reason)
     {
+        _webView.ImageResized -= OnImageResized;
         _source = new TextBox { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, Text = Markdown };
         var panel = new StackPanel();
         panel.Children.Add(new TextBlock { Text = $"Descriptions can't show formatted: {reason}", TextWrapping = TextWrapping.Wrap });

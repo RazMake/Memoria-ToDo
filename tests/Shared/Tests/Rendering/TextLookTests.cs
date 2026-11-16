@@ -27,8 +27,8 @@ public class TextLookTests
         var look = TextLooks.Light;
 
         Assert.Equal(
-            ["#0f548c", "#0e7a75", "#6b3fa0", "#0969da", "#9a3c00", "#4f5b93"],
-            [look.Heading1, look.Heading2, look.Heading3, look.Link, look.Code, look.Italic]);
+            ["#bc4c00", "#8a6a00", "#5c5c00", "#0550ae", "#0969da", "#9a3c00", "#4f5b93"],
+            [look.Heading1, look.Heading2, look.Heading3, look.Heading4, look.Link, look.Code, look.Italic]);
     }
 
     [Fact]
@@ -37,8 +37,8 @@ public class TextLookTests
         var look = TextLooks.Dark;
 
         Assert.Equal(
-            ["#6cb8f6", "#4fd1c5", "#c4a7f5", "#4493f8", "#f0a868", "#b4bdf5"],
-            [look.Heading1, look.Heading2, look.Heading3, look.Link, look.Code, look.Italic]);
+            ["#ffa500", "#ffff00", "#9a9a00", "#79c0ff", "#4493f8", "#f0a868", "#b4bdf5"],
+            [look.Heading1, look.Heading2, look.Heading3, look.Heading4, look.Link, look.Code, look.Italic]);
     }
 
     [Fact]
@@ -79,6 +79,7 @@ public class TextLookTests
         var colors = new Dictionary<string, string>
         {
             ["Heading1"] = look.Heading1, ["Heading2"] = look.Heading2, ["Heading3"] = look.Heading3,
+            ["Heading4"] = look.Heading4,
             ["Link"] = look.Link, ["Code"] = look.Code, ["Italic"] = look.Italic,
         };
 
@@ -107,28 +108,47 @@ public class TextLookTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Keeps_the_heading_colors_of_a_theme_at_least_10_apart_in_CIEDE2000(bool dark)
+    {
+        var look = TextLooks.Of(dark);
+        var colors = new Dictionary<string, string>
+        {
+            ["Heading1"] = look.Heading1, ["Heading2"] = look.Heading2,
+            ["Heading3"] = look.Heading3, ["Heading4"] = look.Heading4,
+        }.ToList();
+
+        for (var i = 0; i < colors.Count; i++)
+        {
+            for (var j = i + 1; j < colors.Count; j++)
+            {
+                var difference = ColorMath.DeltaE2000(colors[i].Value, colors[j].Value);
+                Assert.True(difference >= 10,
+                    $"{colors[i].Key} {colors[i].Value} and {colors[j].Key} {colors[j].Value} differ by {difference:0.0}.");
+            }
+        }
+    }
+
     // Headings
 
     [Theory]
-    [InlineData(false, 1, "#0f548c")]
-    [InlineData(false, 2, "#0e7a75")]
-    [InlineData(false, 3, "#6b3fa0")]
-    [InlineData(true, 1, "#6cb8f6")]
-    [InlineData(true, 2, "#4fd1c5")]
-    [InlineData(true, 3, "#c4a7f5")]
-    public void Colors_headings_1_to_3(bool dark, int level, string expected)
+    [InlineData(false, 1, "#bc4c00")]
+    [InlineData(false, 2, "#8a6a00")]
+    [InlineData(false, 3, "#5c5c00")]
+    [InlineData(false, 4, "#0550ae")]
+    [InlineData(false, 5, "#0550ae")]
+    [InlineData(false, 6, "#0550ae")]
+    [InlineData(true, 1, "#ffa500")]
+    [InlineData(true, 2, "#ffff00")]
+    [InlineData(true, 3, "#9a9a00")]
+    [InlineData(true, 4, "#79c0ff")]
+    [InlineData(true, 5, "#79c0ff")]
+    [InlineData(true, 6, "#79c0ff")]
+    public void Colors_headings_1_to_6_and_gives_headings_4_to_6_the_heading_4_color(bool dark, int level, string expected)
     {
         Assert.Equal(expected, TextLooks.Of(dark).HeadingColor(level));
-    }
-
-    [Theory]
-    [InlineData(4)]
-    [InlineData(5)]
-    [InlineData(6)]
-    public void Leaves_headings_4_to_6_in_the_text_color(int level)
-    {
-        Assert.Null(TextLooks.Light.HeadingColor(level));
-        Assert.Null(TextLooks.Dark.HeadingColor(level));
     }
 
     [Theory]
@@ -203,12 +223,12 @@ public class TextLookTests
     }
 
     [Fact]
-    public void Shows_heading_text_in_its_heading_color_only_for_levels_1_to_3()
+    public void Shows_heading_text_in_its_heading_color_with_levels_4_to_6_in_the_heading_4_color()
     {
         var look = TextLooks.Light;
 
         Assert.Equal(
-            [look.Heading1, look.Heading2, look.Heading3, null, null, null],
+            [look.Heading1, look.Heading2, look.Heading3, look.Heading4, look.Heading4, look.Heading4],
             Enumerable.Range(1, 6).Select(level => look.ColorOf(Span(heading: level))));
     }
 

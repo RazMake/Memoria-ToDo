@@ -19,7 +19,7 @@ internal sealed class AddWindowView : Window, IAddWindow
     private readonly TaskEditorControl _editor;
     private readonly AddDraft _draft;
 
-    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates)
+    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates, SaveKeys saveKeys)
     {
         _editor = editor;
         _draft = new AddDraft(tasks, editor);
@@ -38,11 +38,15 @@ internal sealed class AddWindowView : Window, IAddWindow
             FontSize = 11,
         };
         clear.Click += (_, _) => _draft.Clear();
+        var save = SaveButton.Create(saveKeys, editor.RequestSave);
+        save.Margin = new Thickness(16, 0, 16, 16);
         editor.ShareKeysWith(clear);
+        editor.ShareKeysWith(save);
 
         var panel = new StackPanel();
         panel.Children.Add(clear);
         panel.Children.Add(editor);
+        panel.Children.Add(save);
         panel.Children.Add(new UpdateStatusBar(updates, null));
         Content = panel;
 
@@ -74,10 +78,17 @@ internal sealed class AddWindowView : Window, IAddWindow
 
     void IAddWindow.Close() => HideAndKeepDraft();
 
-    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        base.OnPreviewKeyDown(e);
-        if (e.Key == Key.Escape)
+        base.OnKeyDown(e);
+        // The editor's keys see Esc first, as the Save shortcut or to close a list, and handle it. Of the Esc presses that reach
+        // the window, only a plain one closes.
+        if (e.Handled)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Escape && e.KeyboardDevice.Modifiers == ModifierKeys.None)
         {
             e.Handled = true;
             if (!_editor.CloseOpenList())

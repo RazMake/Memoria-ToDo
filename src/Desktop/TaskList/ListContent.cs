@@ -21,23 +21,26 @@ internal sealed class ListContent(ITasks tasks, ListFilter filter)
     public bool ShowResolved { get; set; }
 
     /// <summary>
-    /// Sorts what the filter leaves into open and resolved. The task being edited stays open, with its text, at its place in
-    /// <paramref name="previous"/>, even when it is gone, filtered out, or resolved elsewhere.
+    /// Sorts what the filter leaves into open and resolved. The task being edited stays where <paramref name="previous"/> had it,
+    /// with its text, even when it is gone, filtered out, or resolved elsewhere: a resolved row stays a resolved row, and an open
+    /// row stays open.
     /// </summary>
     public ListSnapshot Build(TaskItem? editing, ListSnapshot? previous)
     {
         var open = new List<TaskItem>();
         var resolved = new List<TaskItem>();
+        var editedResolvedRow = editing is not null && previous is not null && IndexOf(previous.Resolved, editing.Id) >= 0;
         var matching = filter.Matching(tasks).Where(task => task.Id != HiddenId).ToList();
         foreach (var task in matching)
         {
-            (task.Resolved is null || task.Id == editing?.Id ? open : resolved).Add(task);
+            (task.Resolved is null || (task.Id == editing?.Id && !editedResolvedRow) ? open : resolved).Add(task);
         }
 
         if (editing is not null && matching.All(task => task.Id != editing.Id))
         {
-            var at = previous is null ? -1 : IndexOf(previous.Open, editing.Id);
-            open.Insert(at < 0 ? open.Count : Math.Min(at, open.Count), editing);
+            var kept = editedResolvedRow ? resolved : open;
+            var at = previous is null ? -1 : IndexOf(editedResolvedRow ? previous.Resolved : previous.Open, editing.Id);
+            kept.Insert(at < 0 ? kept.Count : Math.Min(at, kept.Count), editing);
         }
 
         return new ListSnapshot(open, resolved, ShowResolved);

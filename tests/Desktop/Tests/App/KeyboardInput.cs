@@ -9,6 +9,10 @@ internal static class KeyboardInput
     public const ushort Control = 0x11;
     public const ushort Alt = 0x12;
     public const ushort Escape = 0x1B;
+    public const ushort Tab = 0x09;
+    public const ushort Enter = 0x0D;
+    public const ushort A = 0x41;
+    public const ushort F5 = 0x74;
 
     private const uint InputKeyboard = 1;
     private const uint KeyUp = 0x0002;

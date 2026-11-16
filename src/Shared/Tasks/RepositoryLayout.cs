@@ -21,8 +21,11 @@ internal static class RepositoryLayout
     /// <summary>The address a description uses for an image, from the clone's root.</summary>
     public static string ImageLink(string taskId, string fileName) => $"{ImagesFolderName}/{taskId}/{fileName}";
 
+    /// <summary>Where this device keeps open edits' images, laid out like the clone: <c>images/&lt;task-id&gt;/</c> under it.</summary>
+    public static string EditImagesRoot(string deviceFolder) => Path.Combine(deviceFolder, "edits");
+
     /// <summary>Where this device keeps the images of an open edit of an existing task, apart from the draft's images.</summary>
-    public static string EditImagesFolder(string deviceFolder, string taskId) => ImagesFolder(Path.Combine(deviceFolder, "edits"), taskId);
+    public static string EditImagesFolder(string deviceFolder, string taskId) => ImagesFolder(EditImagesRoot(deviceFolder), taskId);
 
     public static string DraftFile(string deviceFolder) => Path.Combine(deviceFolder, "draft.json");
 }

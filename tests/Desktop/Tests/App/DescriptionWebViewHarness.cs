@@ -4,6 +4,8 @@ using System.Threading.Channels;
 using System.Windows;
 using System.Windows.Controls;
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Tasks;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -16,7 +18,7 @@ namespace Memoria.ToDo.Desktop.App.Tests;
 /// </summary>
 internal sealed class DescriptionWebViewHarness : IDisposable
 {
-    public static readonly TimeSpan Limit = TimeSpan.FromSeconds(60);
+    public static readonly TimeSpan Limit = TimeSpan.FromSeconds(20);
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "description-web-view", Guid.NewGuid().ToString("N"));
     private readonly Window _window;
@@ -46,13 +48,19 @@ internal sealed class DescriptionWebViewHarness : IDisposable
     /// <summary>Every reason the adapter reported through <c>Failed</c>, at startup or later.</summary>
     public IReadOnlyCollection<string> Failures => _failures;
 
-    public DescriptionWebViewHarness()
+    /// <param name="dragPause">Tells when a drag has ended, or null for the real pause on the dispatcher's clock.</param>
+    /// <param name="measure">Reads a dragged box's width, or null for the real DevTools measurement.</param>
+    public DescriptionWebViewHarness(IDragPause? dragPause = null, IImageMeasure? measure = null)
     {
         CloneFolder = Path.Combine(_root, "clone");
+        EditImagesFolder = Path.Combine(_root, "edit-images");
         BrowserDataFolder = Path.Combine(_root, "browser-data");
         Directory.CreateDirectory(CloneFolder);
+        Directory.CreateDirectory(EditImagesFolder);
 
-        WebView = new WpfDescriptionWebView(CloneFolder, BrowserDataFolder);
+        var files = new WindowsFileSystem();
+        var rules = TaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device")).Synchronization.Files;
+        WebView = new WpfDescriptionWebView(CloneFolder, EditImagesFolder, BrowserDataFolder, files, rules, dragPause ?? new DispatcherDragPause(), measure ?? new DevToolsImageMeasure());
         Port = WebView;
         Control = (WebView2CompositionControl)Port.Element;
         Control.CoreWebView2InitializationCompleted += OnInitialized;
@@ -69,6 +77,9 @@ internal sealed class DescriptionWebViewHarness : IDisposable
         _window = new Window { Width = 400, Height = 300, Content = new StackPanel { Children = { Control } } };
         _window.Show();
     }
+
+    /// <summary>The window that hosts the control.</summary>
+    public Window Window => _window;
 
     /// <summary>Sets the width the page is shown in.</summary>
     public void ResizeWindowTo(double width) => _window.Width = width;
@@ -118,6 +129,9 @@ internal sealed class DescriptionWebViewHarness : IDisposable
 
     public string CloneFolder { get; }
 
+    /// <summary>The folder of the images that wait for an open edit, laid out like the clone, which the adapter serves after it.</summary>
+    public string EditImagesFolder { get; }
+
     public string BrowserDataFolder { get; }
 
     /// <summary>The next user navigation the browser started, as (address, whether it ended cancelled), read once every handler has run.</summary>
@@ -164,24 +178,9 @@ internal sealed class DescriptionWebViewHarness : IDisposable
 
     public void Dispose()
     {
-        // The test's own cleanup of the real control, whatever the adapter's Dispose did (both are safe to repeat).
+        // WebView2 holds files in its data folder until its browser has exited, so the web view goes first, then the window.
         Control.Dispatcher.UnhandledException -= OnUnhandled;
-        Port.Dispose();
-        Control.Dispose();
-        _window.Close();
-        var exited = true;
-        if (_browser is not null)
-        {
-            // WebView2 holds files in its data folder until its browser has exited.
-            exited = _browser.WaitForExit(Limit);
-            _browser.Dispose();
-        }
-
-        if (!exited)
-        {
-            throw new TimeoutException($"The browser using {BrowserDataFolder} did not exit, so its folder was left in place.");
-        }
-
+        WebViewTeardown.Run([WebView], _window.Close, _browser, BrowserDataFolder);
         if (Directory.Exists(_root))
         {
             Directory.Delete(_root, recursive: true);
@@ -232,7 +231,12 @@ internal sealed class DescriptionWebViewHarness : IDisposable
                 _pages.Writer.TryWrite(core.DocumentTitle);
             }
         };
-        core.NewWindowRequested += (_, args) => AfterOtherHandlers(args.GetDeferral(), () => _windows.Writer.TryWrite((args.Uri, args.Handled)));
+        core.NewWindowRequested += (_, args) => AfterOtherHandlers(args.GetDeferral(), () =>
+        {
+            _windows.Writer.TryWrite((args.Uri, args.Handled));
+            // Whatever the adapter did, a test never lets the browser open a window of its own on the user's screen.
+            args.Handled = true;
+        });
         core.WebResourceResponseReceived += (_, args) =>
         {
             if (args.Request.Uri.StartsWith(Port.CloneAddress.AbsoluteUri, StringComparison.Ordinal) && args.Response.StatusCode == 200)

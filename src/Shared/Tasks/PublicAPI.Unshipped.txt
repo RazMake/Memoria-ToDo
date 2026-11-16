@@ -58,15 +58,18 @@ Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.Changed -> System.EventHandler?
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.CloseWindowShortcut.get -> string?
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.DeletionDelayDays.get -> int
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.ManageTasksShortcut.get -> string?
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SaveShortcut.get -> string?
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetAddNewTaskShortcut(string? shortcut) -> void
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetCloseWindowShortcut(string? shortcut) -> void
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetDeletionDelayDays(int days) -> void
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetManageTasksShortcut(string? shortcut) -> void
+Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetSaveShortcut(string? shortcut) -> void
 Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile
 Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile.Reason.get -> string!
 Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile.RelativePath.get -> string!
 Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile.RequiresUpdate.get -> bool
 Memoria.ToDo.Shared.Tasks.ITaskStore
+Memoria.ToDo.Shared.Tasks.ITaskStore.EditImagesFolder.get -> string!
 Memoria.ToDo.Shared.Tasks.ITaskStore.Settings.get -> Memoria.ToDo.Shared.Tasks.ISharedTaskSettings!
 Memoria.ToDo.Shared.Tasks.ITaskStore.Synchronization.get -> Memoria.ToDo.Shared.Tasks.ITaskSynchronization!
 Memoria.ToDo.Shared.Tasks.ITaskStore.TagColors.get -> Memoria.ToDo.Shared.Tasks.ITagColors!

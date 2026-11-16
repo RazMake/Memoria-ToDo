@@ -12,6 +12,15 @@ internal sealed class ShownDescription(ITheme theme, Func<Uri> cloneAddress, Act
     private string? _markdown;
     private string? _shownMarkdown;
     private bool _shownDark;
+    private bool _shownPreview;
+    private bool _preview;
+
+    /// <summary>Shows the Markdown set, if any, with resizable images (while true) or without, unless that is already shown.</summary>
+    public void SetPreview(bool preview)
+    {
+        _preview = preview;
+        Show();
+    }
 
     /// <summary>Shows the Markdown in the current theme, unless that is what is already shown.</summary>
     public void Set(string markdown)
@@ -32,13 +41,16 @@ internal sealed class ShownDescription(ITheme theme, Func<Uri> cloneAddress, Act
         }
 
         var dark = theme.IsDark;
-        if (_shownMarkdown == _markdown && _shownDark == dark)
+        if (_shownMarkdown == _markdown && _shownDark == dark && _shownPreview == _preview)
         {
             return;
         }
 
         _shownMarkdown = _markdown;
         _shownDark = dark;
-        showPage(DescriptionPage.Of(_markdown, dark, cloneAddress()));
+        _shownPreview = _preview;
+        showPage(_preview
+            ? DescriptionPage.WithResizableImages(_markdown, dark, cloneAddress())
+            : DescriptionPage.Of(_markdown, dark, cloneAddress()));
     }
 }

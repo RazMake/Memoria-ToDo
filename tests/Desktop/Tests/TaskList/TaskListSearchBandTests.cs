@@ -69,12 +69,12 @@ public class TaskListSearchBandTests
     public void The_search_box_grows_with_the_window()
     {
         using var screen = Open();
-        screen.ResizeTo(800);
+        screen.ResizeTo(700);
         var narrower = screen.SearchBox.ActualWidth;
 
-        screen.ResizeTo(1300);
+        screen.ResizeTo(1000);
 
-        Assert.True(screen.SearchBox.ActualWidth - narrower >= 300, $"The box went from {narrower} to {screen.SearchBox.ActualWidth}.");
+        Assert.True(screen.SearchBox.ActualWidth - narrower >= 250, $"The box went from {narrower} to {screen.SearchBox.ActualWidth}.");
     }
 
     [WpfFact]
@@ -84,7 +84,7 @@ public class TaskListSearchBandTests
         services.Add("Buy milk");
         using var screen = Open(services);
         screen.PressOn("Buy milk", Key.F2);
-        screen.TypeTitle("Buy milk", "Buy oat milk");
+        screen.TypeDescription("Oat milk");
         screen.Press(Key.Escape);
 
         var band = screen.SearchBand;

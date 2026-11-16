@@ -20,6 +20,8 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
 
     public event EventHandler? Changed;
 
+    public string EditImagesFolder => RepositoryLayout.EditImagesRoot(deviceFolder);
+
     public IReadOnlyList<TaskItem> All
     {
         get

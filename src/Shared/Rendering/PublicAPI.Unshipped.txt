@@ -74,6 +74,7 @@ override Memoria.ToDo.Shared.Rendering.StyledSpan.Equals(object? obj) -> bool
 override Memoria.ToDo.Shared.Rendering.StyledSpan.GetHashCode() -> int
 override Memoria.ToDo.Shared.Rendering.StyledSpan.ToString() -> string!
 static Memoria.ToDo.Shared.Rendering.BrowserCheck.MayOpen(string! address) -> bool
+static Memoria.ToDo.Shared.Rendering.DescriptionPage.WithResizableImages(string! markdown, bool dark, System.Uri! cloneAddress) -> string!
 static Memoria.ToDo.Shared.Rendering.DescriptionPage.Of(string! markdown, bool dark, System.Uri! cloneAddress) -> string!
 static Memoria.ToDo.Shared.Rendering.Palette.Colors.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>!
 static Memoria.ToDo.Shared.Rendering.PaletteColor.operator !=(Memoria.ToDo.Shared.Rendering.PaletteColor? left, Memoria.ToDo.Shared.Rendering.PaletteColor? right) -> bool
@@ -96,7 +97,10 @@ Memoria.ToDo.Shared.Rendering.TextLook.ColorOf(Memoria.ToDo.Shared.Rendering.Sty
 Memoria.ToDo.Shared.Rendering.TextLook.Heading1.get -> string!
 Memoria.ToDo.Shared.Rendering.TextLook.Heading2.get -> string!
 Memoria.ToDo.Shared.Rendering.TextLook.Heading3.get -> string!
-Memoria.ToDo.Shared.Rendering.TextLook.HeadingColor(int level) -> string?
+Memoria.ToDo.Shared.Rendering.TextLook.Heading4.get -> string!
+Memoria.ToDo.Shared.Rendering.ImageWidths
+static Memoria.ToDo.Shared.Rendering.ImageWidths.With(string! markdown, int image, int width) -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.HeadingColor(int level) -> string!
 Memoria.ToDo.Shared.Rendering.TextLook.Italic.get -> string!
 Memoria.ToDo.Shared.Rendering.TextLook.Link.get -> string!
 Memoria.ToDo.Shared.Rendering.TextLooks

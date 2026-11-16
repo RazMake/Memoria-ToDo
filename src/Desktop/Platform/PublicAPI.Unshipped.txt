@@ -40,6 +40,15 @@ Memoria.ToDo.Desktop.Platform.CloseWindowKeys
 Memoria.ToDo.Desktop.Platform.CloseWindowKeys.Attach(System.Windows.Window! window) -> void
 Memoria.ToDo.Desktop.Platform.CloseWindowKeys.CloseWindowKeys() -> void
 Memoria.ToDo.Desktop.Platform.CloseWindowKeys.Set(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> void
+Memoria.ToDo.Desktop.Platform.AppVersion
+static Memoria.ToDo.Desktop.Platform.AppVersion.Value.get -> string!
+Memoria.ToDo.Desktop.Platform.SaveKeys
+Memoria.ToDo.Desktop.Platform.SaveKeys.Matches(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> bool
+Memoria.ToDo.Desktop.Platform.SaveKeys.SaveKeys() -> void
+Memoria.ToDo.Desktop.Platform.SaveKeys.Set(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> void
+Memoria.ToDo.Desktop.Platform.SaveKeys.Text.get -> string!
+Memoria.ToDo.Desktop.Platform.ShortcutText
+static Memoria.ToDo.Desktop.Platform.ShortcutText.Of(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> string!
 Memoria.ToDo.Desktop.Platform.EscCloses
 static Memoria.ToDo.Desktop.Platform.EscCloses.Attach(System.Windows.Window! window) -> void
 Memoria.ToDo.Desktop.Platform.EventKey

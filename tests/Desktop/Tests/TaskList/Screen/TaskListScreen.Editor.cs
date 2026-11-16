@@ -9,36 +9,26 @@ using Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
-/// <summary>How a Task View test reads where the editor's parts sit on the right side during an edit: Save, the Description, and the Tags.</summary>
+/// <summary>How a Task View test reads where the editor's parts sit on the right side during an edit: Save and the Description.</summary>
 internal sealed partial class TaskListScreen
 {
     /// <summary>Whether the right side shows a Save button.</summary>
     public bool ShowsSave => HasButton("Save", Details);
 
-    /// <summary>The editor's Save button, which sits on the right side.</summary>
+    /// <summary>The Description editor's Save button, which sits on the right side.</summary>
     public ButtonBase SaveButton => FindButton("Save", Details) ?? throw new InvalidOperationException("The right side shows no \"Save\" button.");
 
     /// <summary>The editor's Description field.</summary>
     public FrameworkElement EditedDescription => EditedField("Description");
 
-    /// <summary>The editor's + button for tags, the top of the row under the Description.</summary>
-    public ButtonBase TagsPlus
-    {
-        get
-        {
-            Refresh();
-            return TagControls.Plus(Details);
-        }
-    }
-
-    /// <summary>How far the right side scrolls as a whole, summed over every scroll viewer the editor's Title field sits in; the Description's own scrolling isn't counted.</summary>
+    /// <summary>How far the right side scrolls as a whole, summed over every scroll viewer the Description sits in, not counting its own scrolling.</summary>
     public double EditorOuterScrollRange
     {
         get
         {
             Refresh();
             var range = 0.0;
-            for (DependencyObject? current = EditedField("Title"); current is not null; current = VisualTreeHelper.GetParent(current))
+            for (DependencyObject? current = EditedField("Description"); current is not null; current = VisualTreeHelper.GetParent(current))
             {
                 if (current is ScrollViewer viewer)
                 {

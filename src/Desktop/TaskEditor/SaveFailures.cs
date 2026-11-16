@@ -24,4 +24,24 @@ internal static class SaveFailures
             $"The task wasn't saved: {failure.Message}",
         _ => null,
     };
+
+    /// <summary>
+    /// Calls <paramref name="save"/> with the value and clears the message. Returns false, showing the failure's message,
+    /// when <paramref name="save"/> threw a known failure; other failures propagate.
+    /// </summary>
+    public static bool Try<T>(Action<T> save, T value, Action<string> showMessage)
+    {
+        try
+        {
+            save(value);
+        }
+        catch (Exception failure) when (MessageOf(failure) is not null)
+        {
+            showMessage(MessageOf(failure)!);
+            return false;
+        }
+
+        showMessage("");
+        return true;
+    }
 }

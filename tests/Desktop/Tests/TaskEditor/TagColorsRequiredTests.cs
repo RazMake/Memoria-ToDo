@@ -16,7 +16,7 @@ public class TagColorsRequiredTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             _services.Tasks, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
-            _services.ImageFiles, _services.Files, _services.CloseWindowKeys, _services.Updates));
+            _services.ImageFiles, _services.Files, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys));
 
         Assert.Equal("tagColors", failure.ParamName);
     }
@@ -26,7 +26,7 @@ public class TagColorsRequiredTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => new TaskEditorControl(
             _services.Tasks, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
-            _services.ImageFiles, _services.Files));
+            _services.ImageFiles, _services.Files, _services.SaveKeys));
 
         Assert.Equal("tagColors", failure.ParamName);
     }
@@ -34,19 +34,17 @@ public class TagColorsRequiredTests
     [Fact]
     public void The_tag_editor_without_tag_colors_is_rejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, null!, _services.Theme));
+        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, null!, _services.Theme));
+
+        Assert.Equal("tagColors", failure.ParamName);
     }
 
     [Fact]
     public void The_tag_badges_without_tag_colors_are_rejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new TagBadges(null!, _services.Theme));
-    }
+        var failure = Assert.Throws<ArgumentNullException>(() => new TagBadges(null!, _services.Theme));
 
-    [Fact]
-    public void The_top_tags_without_tag_colors_are_rejected()
-    {
-        Assert.Throws<ArgumentNullException>(() => new TopTags(_services.Tasks, null!, _services.Theme));
+        Assert.Equal("tagColors", failure.ParamName);
     }
 
     [Fact]

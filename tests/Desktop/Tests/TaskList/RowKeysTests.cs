@@ -11,6 +11,7 @@ public class RowKeysTests
     [Theory]
     [InlineData(ModifierKeys.None, Key.Enter, "Toggle")]
     [InlineData(ModifierKeys.None, Key.F2, "Edit")]
+    [InlineData(ModifierKeys.Shift, Key.F2, "EditTitle")]
     [InlineData(ModifierKeys.Control, Key.D, "Resolve")]
     [InlineData(ModifierKeys.None, Key.Delete, "Delete")]
     [InlineData(ModifierKeys.Alt, Key.Up, "MoveUp")]

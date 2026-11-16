@@ -13,6 +13,7 @@ public sealed class FakeSharedTaskSettings : ISharedTaskSettings
     private string? addNewTaskShortcut;
     private string? manageTasksShortcut;
     private string? closeWindowShortcut;
+    private string? saveShortcut;
 
     /// <summary>When set, every read throws it.</summary>
     public Exception? ReadFailure { get; set; }
@@ -36,6 +37,9 @@ public sealed class FakeSharedTaskSettings : ISharedTaskSettings
     public string? CloseWindowShortcut => Read(closeWindowShortcut);
 
     /// <inheritdoc />
+    public string? SaveShortcut => Read(saveShortcut);
+
+    /// <inheritdoc />
     public event EventHandler? Changed;
 
     /// <inheritdoc />
@@ -55,6 +59,9 @@ public sealed class FakeSharedTaskSettings : ISharedTaskSettings
 
     /// <inheritdoc />
     public void SetCloseWindowShortcut(string? shortcut) => Write(ref closeWindowShortcut, shortcut);
+
+    /// <inheritdoc />
+    public void SetSaveShortcut(string? shortcut) => Write(ref saveShortcut, shortcut);
 
     /// <summary>Raises <see cref="Changed"/>, as a reload does.</summary>
     public void RaiseChanged() => Changed?.Invoke(this, EventArgs.Empty);

@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -144,7 +145,7 @@ public class ListSyncTests
         public Host()
         {
             Service = new FakeSyncService();
-            Sync = new ListSync(Service);
+            Sync = new ListSync(Service, Palette.Colors, new FakeTheme());
             Container = new Grid();
             Container.Resources[SuccessKey] = new SolidColorBrush(Colors.Green);
             Container.Children.Add(Sync);

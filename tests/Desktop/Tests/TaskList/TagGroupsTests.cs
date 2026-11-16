@@ -6,7 +6,7 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
 /// The groups the left side shows: one for each tag with the open tasks that carry it, and a last "No tag" group, built
-/// from the tasks the list leaves after the search and the tag filter.
+/// from the tasks the list leaves after the search.
 /// </summary>
 [Unit]
 public class TagGroupsTests
@@ -16,7 +16,7 @@ public class TagGroupsTests
 
     private ListSnapshot Snapshot() => new ListContent(_tasks.Tasks, _filter).Build(null, null);
 
-    private IReadOnlyList<TaskGroup> Groups() => TagGroups.Of(Snapshot().Open, _filter.TagFilter);
+    private IReadOnlyList<TaskGroup> Groups() => TagGroups.Of(Snapshot().Open);
 
     private static IReadOnlyList<string?> Tags(IEnumerable<TaskGroup> groups) => [.. groups.Select(group => group.Tag)];
 
@@ -111,30 +111,6 @@ public class TagGroupsTests
     }
 
     [Fact]
-    public void Shows_only_the_chosen_tags_group_while_a_tag_filter_is_chosen()
-    {
-        _tasks.Add("Both", "", "home", "work");
-        _tasks.Add("Home only", "", "home");
-        _tasks.Add("Plain");
-        _filter.ToggleTag("work");
-
-        var groups = Groups();
-
-        Assert.Equal(["work"], Tags(groups));
-        Assert.Equal(["Both"], Titles(groups.Single()));
-    }
-
-    [Fact]
-    public void Shows_every_group_again_once_the_tag_filter_is_cleared()
-    {
-        _tasks.Add("Both", "", "home", "work");
-        _filter.ToggleTag("work");
-        _filter.ClearTag();
-
-        Assert.Equal(["home", "work"], Tags(Groups()));
-    }
-
-    [Fact]
     public void Hides_the_groups_with_no_task_matching_the_search()
     {
         _tasks.Add("Buy milk", "", "home");
@@ -157,20 +133,5 @@ public class TagGroupsTests
         _filter.SearchText = "buy";
 
         Assert.Equal(["Buy milk", "Buy tea"], Titles(Group("home")));
-    }
-
-    [Fact]
-    public void Shows_only_the_chosen_tags_group_with_the_tasks_matching_the_search()
-    {
-        _tasks.Add("Buy milk", "", "home");
-        _tasks.Add("Wash car", "", "home");
-        _tasks.Add("Buy tea", "", "work");
-        _filter.ToggleTag("home");
-        _filter.SearchText = "buy";
-
-        var groups = Groups();
-
-        Assert.Equal(["home"], Tags(groups));
-        Assert.Equal(["Buy milk"], Titles(groups.Single()));
     }
 }

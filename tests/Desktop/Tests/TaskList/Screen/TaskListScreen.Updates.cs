@@ -31,9 +31,6 @@ internal sealed partial class TaskListScreen
     public IReadOnlyList<string> StatusBarTexts =>
         [.. Visuals(StatusBar).OfType<TextBlock>().Where(b => b.IsVisible).OrderBy(b => LeftOf(b)).Select(OpenWindows.TextOf).Where(t => t.Length > 0)];
 
-    /// <summary>The Sync button, which sits in the status bar.</summary>
-    public ButtonBase SyncButton => FindButton("Sync", Window) ?? throw new InvalidOperationException("No \"Sync\" button shows.");
-
     /// <summary>Whether the element is inside the status bar.</summary>
     public bool IsInStatusBar(DependencyObject element) => IsInside(element, StatusBar);
 

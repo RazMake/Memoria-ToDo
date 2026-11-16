@@ -8,9 +8,10 @@ The session you talk to runs these steps, asks you each decision, and delivers t
 | --- | --- | --- |
 | Find what exists | [explorer](../../.agents/subagents/explorer.md) | Answers with `path:line` evidence |
 | Design | [architect](../../.agents/subagents/architect.md) | Design file, behaviors to build, questions for you |
-| Red | [tester](../../.agents/subagents/tester.md) | Failing tests of every kind, each proven able to fail |
+| Red | [tester](../../.agents/subagents/tester.md) | Tests of every kind; unit and integration tests seen failing |
 | Green | [coder](../../.agents/subagents/coder.md) | Code that makes unit tests pass, inside one module |
 | Review | [reviewer](../../.agents/subagents/reviewer.md) | Findings, sorted into code defects and design gaps |
+| Closing failure proof | [tester](../../.agents/subagents/tester.md) | [Every new test red didn't see fail, proven in the fewest groups](../../AGENTS.md#run-timing), once per session |
 | Final validation | [coder](../../.agents/subagents/coder.md) | [One full build and test run](../../AGENTS.md#run-timing), once per session |
 
 ## Spend agents, builds, and test runs sparingly
@@ -18,8 +19,9 @@ The session you talk to runs these steps, asks you each decision, and delivers t
 Each agent call, build, and test run costs minutes, so the session does each as few times as the work allows:
 
 - **One design call.** The architect runs once per request, covering every module and question. The main session records your decisions itself.
-- **Two test checkpoints per change.** Red and green, each running only the tests that cover the change, as [Run timing](../../AGENTS.md#run-timing) says.
+- **Two test checkpoints per change.** Red and green, each running only the tests that cover the change, as [Run timing](../../AGENTS.md#run-timing) says. UX tests wait for the session's end.
 - **One review per session.** It covers every change made in the session together; the trivial lane skips it.
+- **One closing failure proof per session.** It proves every new test that red didn't see fail, all together, in the fewest groups of breaks.
 - **One final validation per session.** It runs after all the session's changes, with one full build and test run.
 
 ## Pick the lightest lane that fits
@@ -32,7 +34,7 @@ Before any agent starts, the session sizes the change and picks a lane. When uns
 | Small | One module, and the owner design file already decides every behavior. No review-surface file changes. | No architect. The tester takes the behaviors straight from the design file. Modules don't run in parallel. |
 | Full | Anything else: a missing decision, a review-surface change, or more than one module. | Every step, with the [architect batched](#changing-the-code) and [modules in parallel](#run-modules-in-parallel). |
 
-The small and full lanes get an [independent review](#independent-review). Every lane gets [final validation](../../AGENTS.md#run-timing), shared with the rest of the session's changes.
+The small and full lanes get an [independent review](#independent-review). Every lane gets the [closing failure proof and final validation](../../AGENTS.md#run-timing), shared with the rest of the session's changes.
 
 ## Raise effort only for hard problems
 
@@ -57,14 +59,15 @@ Design files describe the current design only. Git history records how it change
 ## Changing the code
 
 1. **List the behaviors.** In the full lane, the architect lists each rule the change must satisfy, from the owner design file. One architect call covers the whole request: every module, behavior, and open question. After you decide, the main session records your decisions, as [Changing the design](#changing-the-design) says. In the trivial and small lanes, the owner design file already lists the behaviors, so there is no architect call. A rule that needs a missing decision goes through [Changing the design](#changing-the-design) first, or is decided, recorded, and flagged as [contributions](../../AGENTS.md#contributions) principle 3 allows.
-2. **Red.** The tester follows the [test policy](../../AGENTS.md#tests), delivering failing tests of every kind, each proven able to fail when it's added. In the trivial lane, the coder writes the failing test instead.
+2. **Red.** The tester follows the [test policy](../../AGENTS.md#tests), writing tests of every kind and running the new unit and integration tests once. It lists each new test the run didn't see fail for its expected reason, such as every UX test, for the closing failure proof. In the trivial lane, the coder writes the failing test instead.
 3. **Green.** The coder changes the code until the selected unit tests pass, without editing them. A test that turns out wrong goes back to the tester. The coder handles production refactors needed for testability under the [test policy](../../AGENTS.md#tests). It also adds the change's [changelog entry](changelog.md) when users would notice the change.
 4. **Review**, in the small and full lanes, once all the session's changes are green. Follow [Independent review](#independent-review) to launch the reviewer and resolve every finding. The reviewer checks the change against the design file and the [module rules](../architecture/modules.md). Each finding is one of two kinds:
-   - **Code defect**: the code, tests, or docs miss the design. Fix it test first, from step 2, running only the tests that cover the fix.
+   - **Code defect**: the code, tests, or docs miss the design. Fix it test first, from step 2. One run covers all the fixes, selecting only the tests that cover them.
    - **Design gap**: the design is missing, unclear, or wrong. It goes to you as a decision; code doesn't settle it.
 
-5. **Final validation**, only when all the work is done: every change in the session is green, and every finding is fixed or decided by you. The main session calls the coder once for the [full run](../../AGENTS.md#run-timing). It must end with zero failed and zero skipped tests; the coder fixes every failure it shows and reruns until it does.
-6. **Report** in chat, in the format below.
+5. **Closing failure proof**, only when all the work is done: every change in the session is green, and every finding is fixed or decided by you. The main session calls the tester once, with every test the red runs listed, across all the session's changes. The tester groups their breaks as the [test policy](../../AGENTS.md#test-design) says, runs each group once, and restores the code. A test that can't be proven goes back to step 2 for that test alone; a code defect it reveals goes to the coder.
+6. **Final validation**, right after the closing failure proof. The main session calls the coder once for the [full run](../../AGENTS.md#run-timing). It must end with zero failed and zero skipped tests; the coder fixes every failure it shows and reruns until it does.
+7. **Report** in chat, in the format below.
 
 A change that keeps behavior, such as a refactor or a move, uses the same unit tests before and after. UX and integration checks follow the [test policy's final-validation timing](../../AGENTS.md#tests).
 
@@ -89,5 +92,5 @@ The report tells you exactly what to review, and nothing else:
 - **Decisions to confirm**: each decision taken without asking you, with the option taken and its alternatives.
 - **Changelog**: the entry the change added to [`CHANGELOG.md`](../../CHANGELOG.md), or that it added none because users won't notice it.
 - **Spec coverage**: each listed behavior with the tests that prove it, or "deferred" with the reason and its backlog row.
-- **Evidence**: build results; unit, UX, and integration results reported separately, each with its passed, failed, and skipped counts, which must show zero failed and zero skipped; and each review's [independence evidence and finding resolutions](#independent-review).
+- **Evidence**: build results; the closing failure proof's groups, each with its breaks and the tests it proved; unit, UX, and integration results reported separately, each with its passed, failed, and skipped counts, which must show zero failed and zero skipped; and each review's [independence evidence and finding resolutions](#independent-review).
 - **Left open**: unresolved findings, risks, and anything not verified.

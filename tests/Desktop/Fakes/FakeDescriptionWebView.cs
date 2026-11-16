@@ -44,6 +44,9 @@ public sealed class FakeDescriptionWebView : IDescriptionWebView
     public event EventHandler<string>? Failed;
 
     /// <inheritdoc />
+    public event EventHandler<ImageResize>? ImageResized;
+
+    /// <inheritdoc />
     public void Show(string page)
     {
         if (FailWhenShowing is { } reason)
@@ -75,6 +78,9 @@ public sealed class FakeDescriptionWebView : IDescriptionWebView
 
     /// <summary>The user clicks a link with the address in the page.</summary>
     public void ClickLink(string address) => LinkClicked?.Invoke(this, address);
+
+    /// <summary>The user resizes the image at the position in the page to the width.</summary>
+    public void ResizeImage(int image, int width) => ImageResized?.Invoke(this, new ImageResize(image, width));
 
     /// <summary>The browser can't start, for the reason.</summary>
     public void Fail(string reason) => Failed?.Invoke(this, reason);

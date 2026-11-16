@@ -22,7 +22,7 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 /// <item>The right side is the element with automation id "Details": it holds the selected task's description, its tag control, the editor, or the placeholder text.</item>
 /// <item>A row's right-click menu is its <c>ContextMenu</c>, with the items Edit Description and Delete, each with its key as the gesture text.</item>
 /// <item>Buttons are found by their label: the automation name, or the text of the content: Undo, "N resolved".</item>
-/// <item>The search box is a text box named "Search". The tag chips are buttons labelled with the tag, inside the element named "Tag filter".</item>
+/// <item>The search box is a text box named "Search"; the magnifier button next to it has the tooltip "Search (Enter)". The status bar has automation id "StatusBar" and holds the Sync button (name "Sync"), the error text and the version.</item>
 /// <item>The editor's Title field has automation id "Title".</item>
 /// </list>
 /// </summary>
@@ -174,9 +174,6 @@ internal sealed partial class TaskListScreen : IDisposable
     /// <summary>How many buttons with the label show.</summary>
     public int CountButtons(string label) => Buttons(Window).Count(b => LabelOf(b) == label);
 
-    /// <summary>The tags the chips offer, in order.</summary>
-    public IReadOnlyList<string> ChipTags => [.. Buttons(Named("Tag filter")).Select(LabelOf)];
-
     /// <summary>Gives the row the keyboard focus, without selecting its task.</summary>
     public void Select(string title, string? group = null)
     {
@@ -229,102 +226,6 @@ internal sealed partial class TaskListScreen : IDisposable
         item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         Refresh();
     }
-
-    /// <summary>Picks the tag in the "All tags" list the way a user does, even when it is the tag already chosen.</summary>
-    /// <param name="input">With the mouse: opens the list and left-clicks the tag. With the keyboard: focuses the list, opens it with F4, moves the highlight to the tag with Home and Down, and commits with the key or chord <paramref name="input"/> names.</param>
-    public void ChooseFromAllTags(string tag, AllTagsInput input)
-    {
-        (Key Key, bool WithAlt) commit = default;
-        if (input != AllTagsInput.Mouse && !KeyboardCommits.TryGetValue(input, out commit))
-        {
-            throw new ArgumentOutOfRangeException(nameof(input), input, "Not a way to pick from the All tags list.");
-        }
-
-        var all = AllTagsList();
-        if (input == AllTagsInput.Mouse)
-        {
-            all.IsDropDownOpen = true;
-            Refresh();
-            LeftClick((ComboBoxItem)all.ItemContainerGenerator.ContainerFromItem(tag));
-        }
-        else
-        {
-            all.Focus();
-            Keyboard.Focus(all);
-            SendKey(all, Key.F4, withAlt: false);
-            Refresh(); // Lets the list open and lay out; the native list moves focus into it after the key.
-
-            // The highlight moves and commits in one synchronous run, so no dispatcher work can run between the keys.
-            // Each key is checked first, because a list that closed meanwhile turns Down into a direct selection.
-            var target = all.ItemContainerGenerator.ContainerFromItem(tag) as ComboBoxItem
-                ?? throw new InvalidOperationException($"The All tags list has no item for \"{tag}\" after it opened.");
-            RequireOpen(all, "after F4 opened it");
-            SendKey(all, Key.Home, withAlt: false);
-            for (var step = all.Items.IndexOf(tag); step > 0; step--)
-            {
-                RequireOpen(all, "before Down");
-                SendKey(all, Key.Down, withAlt: false);
-            }
-
-            RequireOpen(all, "before the commit key");
-            if (!target.IsHighlighted)
-            {
-                throw new InvalidOperationException($"The highlight isn't on \"{tag}\" before the commit key.");
-            }
-
-            SendKey(all, commit.Key, commit.WithAlt);
-        }
-
-        Refresh();
-    }
-
-    /// <summary>Opens the "All tags" list and gives it the keyboard focus, as F4 on it does.</summary>
-    public void OpenAllTagsList()
-    {
-        var all = AllTagsList();
-        all.Focus();
-        Keyboard.Focus(all);
-        all.IsDropDownOpen = true;
-        Refresh();
-    }
-
-    /// <summary>Whether the "All tags" list is open.</summary>
-    public bool AllTagsListIsOpen => AllTagsList().IsDropDownOpen;
-
-    private ComboBox AllTagsList() =>
-        Visuals(Window).OfType<ComboBox>().Single(c => c.IsVisible && AutomationProperties.GetName(c) == "All tags");
-
-    private static void RequireOpen(ComboBox all, string when)
-    {
-        if (!all.IsDropDownOpen)
-        {
-            throw new InvalidOperationException($"The All tags list isn't open {when}.");
-        }
-    }
-
-    // The key, and whether Alt is held, that commits the highlighted tag for each keyboard way of picking.
-    private static readonly Dictionary<AllTagsInput, (Key Key, bool WithAlt)> KeyboardCommits = new()
-    {
-        [AllTagsInput.Enter] = (Key.Enter, false),
-        [AllTagsInput.F4] = (Key.F4, false),
-        [AllTagsInput.AltDown] = (Key.Down, true),
-        [AllTagsInput.AltUp] = (Key.Up, true),
-    };
-
-    // Sends one key without pumping the dispatcher. Alt is put back on return, before any later pump can overwrite the held-Alt state.
-    private static void SendKey(UIElement target, Key key, bool withAlt)
-    {
-        if (withAlt)
-        {
-            HeldAlt.While(() => SimulatedKey.Chord(target, key));
-        }
-        else
-        {
-            SimulatedKey.Chord(target, key);
-        }
-    }
-
-    private static void LeftClick(UIElement target) => MouseClick(target, MouseButton.Left);
 
     private static void MouseClick(UIElement target, MouseButton button)
     {
@@ -444,20 +345,27 @@ internal sealed partial class TaskListScreen : IDisposable
         Activate(button);
     }
 
-    /// <summary>Clicks the tag's chip.</summary>
-    public void ClickChip(string tag) => Activate(Buttons(Named("Tag filter")).Single(b => LabelOf(b) == tag));
-
     /// <summary>Clicks the row's checkbox, as the mouse does.</summary>
     public void ClickCheckBox(string title, string? group = null) => Activate(Visuals(Row(title, group)).OfType<CheckBox>().Single());
 
     /// <summary>Whether the row's checkbox shows ticked.</summary>
     public bool CheckBoxIsTicked(string title, string? group = null) => Visuals(Row(title, group)).OfType<CheckBox>().Single().IsChecked == true;
 
-    /// <summary>Puts the text into the search box, as typing does. Ctrl+F gives the box the focus.</summary>
+    /// <summary>Types the text into the search box and presses Enter in it, which searches. Ctrl+F gives the box the focus.</summary>
     public void Search(string text)
     {
+        TypeSearch(text);
+        var box = SearchBox;
+        box.Focus();
+        Keyboard.Focus(box);
+        Press(Key.Enter);
+    }
+
+    /// <summary>Puts the text into the search box, as typing does, without searching.</summary>
+    public void TypeSearch(string text)
+    {
         Refresh();
-        Visuals(Window).OfType<TextBox>().Single(b => AutomationProperties.GetName(b) == "Search").Text = text;
+        SearchBox.Text = text;
         Refresh();
     }
 
@@ -466,23 +374,22 @@ internal sealed partial class TaskListScreen : IDisposable
         FocusedElement is TextBox box && AutomationProperties.GetName(box) == "Search";
 
     /// <summary>What the search box holds now.</summary>
-    public string SearchText => Visuals(Window).OfType<TextBox>().Single(b => AutomationProperties.GetName(b) == "Search").Text;
+    public string SearchText => SearchBox.Text;
 
-    /// <summary>The editor's Title field, which shows on the right side while the selected task, named by <paramref name="title"/>, is edited.</summary>
-    public FrameworkElement EditorTitle(string title)
-    {
-        RequireSelected(title);
-        return TextFields.Find(Details, "Title");
-    }
+    /// <summary>The row's Title field while its title is edited in the row; name the group when the task shows in two.</summary>
+    public FrameworkElement EditorTitle(string title, string? group = null) => TextFields.Find(Row(title, group), "Title");
 
-    /// <summary>What the editor's Title field holds.</summary>
-    public string EditorTitleText(string title) => TextFields.TextOf(EditorTitle(title));
+    /// <summary>What the Title field in the row holds.</summary>
+    public string EditorTitleText(string title, string? group = null) => TextFields.TextOf(EditorTitle(title, group));
 
-    /// <summary>Whether the selected task, named by <paramref name="title"/>, is being edited, so the right side shows the editor's Title field.</summary>
-    public bool IsEditing(string title) => SelectedTitles.Contains(title) && TextFields.FindShowing(Details, "Title") is not null;
+    /// <summary>Whether the task's description is being edited: the selected task, named by <paramref name="title"/>, shows the Description editor on the right side.</summary>
+    public bool IsEditing(string title) => SelectedTitles.Contains(title) && TextFields.FindShowing(Details, "Description") is not null;
 
-    /// <summary>Whether the right side shows the editor.</summary>
-    public bool IsEditingAny => TextFields.FindShowing(Window, "Title") is not null;
+    /// <summary>Whether the task's title is being edited in its row.</summary>
+    public bool IsEditingTitle(string title) => TextFields.FindShowing(Row(title), "Title") is not null;
+
+    /// <summary>Whether any edit is open: a Description editor on the right side or a Title editor in a row.</summary>
+    public bool IsEditingAny => TextFields.FindShowing(Window, "Title") is not null || TextFields.FindShowing(Window, "Description") is not null;
 
     private void RequireSelected(string title)
     {
@@ -492,10 +399,19 @@ internal sealed partial class TaskListScreen : IDisposable
         }
     }
 
-    /// <summary>Types the text into the editor's Title field and gives it the keyboard focus.</summary>
-    public void TypeTitle(string rowTitle, string text)
+    /// <summary>Types the text into the row's Title field and gives it the keyboard focus.</summary>
+    public void TypeTitle(string rowTitle, string text, string? group = null)
     {
-        var field = EditorTitle(rowTitle);
+        var field = EditorTitle(rowTitle, group);
+        TextFields.Type(field, text);
+        field.Focus();
+        Keyboard.Focus(field);
+    }
+
+    /// <summary>Sets the text of the edited Description field and gives it the keyboard focus.</summary>
+    public void TypeDescription(string text)
+    {
+        var field = EditedField("Description");
         TextFields.Type(field, text);
         field.Focus();
         Keyboard.Focus(field);
@@ -522,30 +438,6 @@ internal sealed partial class TaskListScreen : IDisposable
             var (start, length) = TaskEditor.Tests.EditorFields.SelectionOf(Window, "Description");
             return length == 0 && start == EditedDescriptionText.Length;
         }
-    }
-
-    /// <summary>What the Tags field of the row being edited holds: the tag text typed and not yet added.</summary>
-    public string EditedTagsText => TextFields.TextOf(EditedField("Tags"));
-
-    /// <summary>Types the text into the edited row's Tags field, without adding it as a tag. That field is Custom's tag box, so this opens the + menu and chooses Custom first when the box isn't showing.</summary>
-    public void TypeTags(string text)
-    {
-        if (!CustomIsOpen)
-        {
-            var tagRow = Details;
-            if (TextFields.FindShowing(tagRow, TaskEditor.Tests.TagControls.AddTag) is null)
-            {
-                throw new InvalidOperationException("The right side shows no tag control.");
-            }
-
-            Activate(TaskEditor.Tests.TagControls.Plus(tagRow));
-            ChooseCustom();
-        }
-
-        var field = EditedField("Tags");
-        TextFields.Type(field, text);
-        field.Focus();
-        Keyboard.Focus(field);
     }
 
     /// <summary>Types the text into the edited row's Description, one character at a time as the keyboard does; "/" opens the snippet list.</summary>

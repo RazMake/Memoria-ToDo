@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Memoria.ToDo.Desktop.Configure.Tests;
 
-/// <summary>What <see cref="ConfigureWindow.Create"/> requires: every part, the platform's Close window keys included.</summary>
+/// <summary>What <see cref="ConfigureWindow.Create"/> requires: every part, the platform's Close window and Save keys included.</summary>
 [Unit]
 public class ConfigureWindowCreateTests
 {
@@ -15,7 +15,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            null!, new FakeTheme(), new FakeUpdateStatus()));
+            null!, new FakeTheme(), new FakeUpdateStatus(), new SaveKeys()));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
     }
@@ -25,7 +25,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), null!, new FakeUpdateStatus()));
+            new CloseWindowKeys(), null!, new FakeUpdateStatus(), new SaveKeys()));
 
         Assert.Equal("theme", failure.ParamName);
     }
@@ -35,8 +35,18 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), new FakeTheme(), null!));
+            new CloseWindowKeys(), new FakeTheme(), null!, new SaveKeys()));
 
         Assert.Equal("updates", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_missing_Save_keys()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
+            new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
+            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), null!));
+
+        Assert.Equal("saveKeys", failure.ParamName);
     }
 }

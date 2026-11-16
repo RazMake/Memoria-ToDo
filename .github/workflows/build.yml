@@ -148,9 +148,9 @@ jobs:
           if (-not $name) { throw "The app's Product property is empty. Set <Product> in Directory.Build.props." }
           "APP_NAME=$name" >> $env:GITHUB_ENV
       - name: Build and run every test
-        # An empty property drops the unit-only filter.
+        # MemoriaAllTestKinds drops the unit-only filter and turns on the hang dump.
         run: |
-          dotnet test "-p:TestingPlatformCommandLineArguments="
+          dotnet test "-p:MemoriaAllTestKinds=true"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Publish the desktop app, self-contained for x64
         run: dotnet publish $env:APP_PROJECT -c Release -r win-x64 --self-contained true -o publish "-p:Version=$env:VERSION"

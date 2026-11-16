@@ -19,9 +19,10 @@ public static class ViewTasksWindow
     /// </summary>
     public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates)
+        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys,
+        IUpdateStatus updates, SaveKeys saveKeys)
     {
-                ArgumentNullException.ThrowIfNull(tasks);
+        ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(tagColors);
         ArgumentNullException.ThrowIfNull(palette);
         ArgumentNullException.ThrowIfNull(theme);
@@ -34,7 +35,8 @@ public static class ViewTasksWindow
         ArgumentNullException.ThrowIfNull(sync);
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(updates);
-        return new Opener(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates);
+        ArgumentNullException.ThrowIfNull(saveKeys);
+        return new Opener(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates, saveKeys);
     }
 
     // Holds a failure from a delete finished while the window closed, so the next window shows it, and the sync
@@ -48,17 +50,18 @@ public static class ViewTasksWindow
 
         public Opener(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
             IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-            Func<IDescriptionWebView> createWebView,             IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates)
+            Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys,
+            IUpdateStatus updates, SaveKeys saveKeys)
         {
             _window = new SingleWindow(() =>
             {
                 var message = _carried;
                 var webView = createWebView();
-                var listSync = new ListSync(sync);
+                var listSync = new ListSync(sync, palette, theme);
                 try
                 {
                     var window = new TaskListWindow(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, webView,
-                        browser, listSync, updates, message, failure => _carried = failure);
+                        browser, listSync, updates, saveKeys, message, failure => _carried = failure);
                     _carried = null;
                     closeWindowKeys.Attach(window);
                     _current = window;

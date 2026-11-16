@@ -53,27 +53,28 @@ internal sealed class TasksFixture
 
     /// <summary>
     /// Writes settings.json in the clone as literal JSON. Each setting is a value and a UTC time.
-    /// <paramref name="withClose"/> false leaves out closeWindowShortcut, as a file written before it existed.
+    /// <paramref name="shortcuts"/> are the optional shortcut settings after the manage shortcut, in file order;
+    /// null writes each as null at the default time, and a shorter list leaves some out, as a file written before they existed.
     /// </summary>
     public void SeedSettings(int days = 7, string? add = null, string? manage = null, int version = 1,
         string daysTime = "2026-01-01T00:00:00.000Z", string addTime = "2026-01-01T00:00:00.000Z", string manageTime = "2026-01-01T00:00:00.000Z",
-        string? close = null, string closeTime = "2026-01-01T00:00:00.000Z", bool withClose = true) =>
-        WriteText(SettingsFile, SettingsJson(days, add, manage, version, daysTime, addTime, manageTime, close, closeTime, withClose));
+        IEnumerable<ShortcutEntry>? shortcuts = null) =>
+        WriteText(SettingsFile, SettingsJson(days, add, manage, version, daysTime, addTime, manageTime, shortcuts));
 
     public static string SettingsJson(int days = 7, string? add = null, string? manage = null, int version = 1,
         string daysTime = "2026-01-01T00:00:00.000Z", string addTime = "2026-01-01T00:00:00.000Z", string manageTime = "2026-01-01T00:00:00.000Z",
-        string? close = null, string closeTime = "2026-01-01T00:00:00.000Z", bool withClose = true) =>
+        IEnumerable<ShortcutEntry>? shortcuts = null) =>
         $$"""
         {
           "version": {{version}},
           "deletionDelayDays": { "value": {{days}}, "updated": {{Quote(daysTime)}} },
           "addNewTaskShortcut": { "value": {{(add is null ? "null" : Quote(add))}}, "updated": {{Quote(addTime)}} },
-          "manageTasksShortcut": { "value": {{(manage is null ? "null" : Quote(manage))}}, "updated": {{Quote(manageTime)}} }{{(withClose ? CloseLine(close, closeTime) : "")}}
+          "manageTasksShortcut": { "value": {{(manage is null ? "null" : Quote(manage))}}, "updated": {{Quote(manageTime)}} }{{string.Concat((shortcuts ?? ShortcutSetting.AllDefault).Select(ShortcutLine))}}
         }
         """;
 
-    private static string CloseLine(string? close, string closeTime) =>
-        $",\n  \"closeWindowShortcut\": {{ \"value\": {(close is null ? "null" : Quote(close))}, \"updated\": {Quote(closeTime)} }}";
+    private static string ShortcutLine(ShortcutEntry e) =>
+        $",\n  \"{e.Name}\": {{ \"value\": {(e.Value is null ? "null" : Quote(e.Value))}, \"updated\": {Quote(e.Time)} }}";
 
     public string TagColorsFile => Path.Combine(Clone, "tags.json");
 

@@ -224,6 +224,62 @@ public class ConfigureWindowTests
         Assert.Equal(1.0, line.Opacity);
     }
 
+    [WpfTheory]
+    [InlineData("Repository", false)]
+    [InlineData("Git Access", false)]
+    [InlineData("Auto", false)]
+    [InlineData("Repository", true)]
+    [InlineData("Git Access", true)]
+    [InlineData("Auto", true)]
+    public void Shows_each_card_title_in_heading_2s_color_bold_and_size_for_the_theme(string title, bool dark)
+    {
+        using var screen = new ConfigureScreen();
+        screen.Theme.IsDark = dark;
+        screen.Open();
+        var normal = NormalTextSize(screen);
+        screen.ClickTitle("Sync settings");
+        _ = screen.WindowSize;
+
+        var text = CardTitle(screen, title);
+
+        Assert.Equal(HeadingColor(2, dark), ((SolidColorBrush)text.Foreground).Color);
+        Assert.Equal(FontWeights.Bold, text.FontWeight);
+        Assert.Equal(TextLooks.HeadingScale(2) * normal, text.FontSize);
+    }
+
+    [WpfFact]
+    public void Switches_every_card_title_to_the_new_themes_heading_2_color_when_the_theme_changes()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+        screen.ClickTitle("Sync settings");
+        _ = screen.WindowSize;
+        string[] cards = ["Repository", "Git Access", "Auto"];
+
+        screen.Theme.Switch(isDark: true);
+        var dark = cards.Select(c => ((SolidColorBrush)CardTitle(screen, c).Foreground).Color).ToList();
+        screen.Theme.Switch(isDark: false);
+        var light = cards.Select(c => ((SolidColorBrush)CardTitle(screen, c).Foreground).Color).ToList();
+
+        Assert.All(dark, color => Assert.Equal(HeadingColor(2, true), color));
+        Assert.All(light, color => Assert.Equal(HeadingColor(2, false), color));
+    }
+
+    [WpfFact]
+    public void Shows_card_titles_in_a_different_look_from_section_titles()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+        screen.ClickTitle("Sync settings");
+        _ = screen.WindowSize;
+
+        var section = TitleBlock(screen, "Sync settings");
+        var card = CardTitle(screen, "Repository");
+
+        Assert.NotEqual(((SolidColorBrush)section.Foreground).Color, ((SolidColorBrush)card.Foreground).Color);
+        Assert.True(section.FontSize > card.FontSize);
+    }
+
     [WpfFact]
     public void Shows_each_shortcut_box_in_the_themes_text_box_style()
     {
@@ -236,6 +292,7 @@ public class ConfigureWindowTests
         Assert.Same(themeTextBox, screen.AddField.Style);
         Assert.Same(themeTextBox, screen.ManageField.Style);
         Assert.Same(themeTextBox, screen.CloseField.Style);
+        Assert.Same(themeTextBox, screen.SaveField.Style);
     }
 
     [WpfFact]
@@ -250,9 +307,10 @@ public class ConfigureWindowTests
         // Windows caps a window's size at the largest it allows on the screen.
         var width = Math.Min(800, SystemParameters.MaximumWindowTrackWidth);
         var height = Math.Min(850, SystemParameters.MaximumWindowTrackHeight);
-        // Windows rounds the size to whole device pixels, up to one device-independent unit off at 100% scaling.
-        Assert.Equal(width, screen.Window.Width, 1.0);
-        Assert.Equal(height, screen.Window.Height, 1.0);
+        // Windows sizes windows in whole pixels, so allow one pixel at the screen's scaling.
+        var onePixel = 1 / VisualTreeHelper.GetDpi(screen.Window).PixelsPerDip;
+        Assert.Equal(width, screen.Window.Width, onePixel);
+        Assert.Equal(height, screen.Window.Height, onePixel);
     }
 
     [WpfTheory]
@@ -329,8 +387,14 @@ public class ConfigureWindowTests
         }
     }
 
-    private static Color HeadingColor(bool dark) =>
-        (Color)ColorConverter.ConvertFromString(TextLooks.Of(dark).HeadingColor(1)!);
+    private static Color HeadingColor(bool dark) => HeadingColor(1, dark);
+
+    private static Color HeadingColor(int level, bool dark) =>
+        (Color)ColorConverter.ConvertFromString(TextLooks.Of(dark).HeadingColor(level)!);
+
+    // The text block that shows a card's title: the Sync settings section is open, and the title is its card's first text.
+    private static TextBlock CardTitle(ConfigureScreen screen, string title) =>
+        OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b) == title);
 
     // The window's normal text size: the size of the instruction line, which has no style of its own.
     private static double NormalTextSize(ConfigureScreen screen) =>

@@ -37,7 +37,7 @@ Updates checks once when the app starts, then each night at 3:00 by the PC's loc
 
 ### Add and Task View show an update in a shared status bar
 
-Add and Task View show the same status bar along their bottom edge. Updates owns it, so the two windows share one component. Task View puts its [Sync button](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button) at the bar's start; Add has no Sync button.
+Add and Task View show the same status bar along their bottom edge. Updates owns it, so the two windows share one component. Task View puts its [Sync button](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button) at the bar's start; Add has no Sync button. The bar's start takes the width the update text leaves, so Task View's [version](task-list.md#a-status-bar-holds-the-sync-button-and-the-version) can sit at its right, just before the update text.
 
 - **While a version is available, the bar's end says "Update available: 2.2.0"**, with "Update available" in bold and the whole text in the theme's caution color, a yellow in the dark theme ([Fluent theme colors](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/Resources/Theme/Dark.xaml)). The text is a button: a click, or Enter or Space after Tab reaches it, starts the [update](#an-update-downloads-the-version-then-restarts-the-app-into-it). It shows the hand pointer, as [every button in the app](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does.
 - **While updating, it says "Updating to 2.2.0"**, with the version in bold, in the theme's secondary text color, so it reads as muted, and it's no longer a button.

@@ -73,6 +73,125 @@ public class FormattedDescriptionTests
         Assert.Equal(shown, screen.WebView.Pages.Count);
     }
 
+    [WpfFact]
+    public void Reports_an_image_the_user_resized_with_its_position_and_width()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.IsPreview = true;
+
+        screen.WebView.ResizeImage(2, 320);
+        screen.WebView.ResizeImage(0, 150);
+
+        Assert.Equal([new ImageResize(2, 320), new ImageResize(0, 150)], screen.Resizes);
+    }
+
+    [WpfFact]
+    public void Resizing_an_image_does_not_change_the_Markdown_or_the_page_shown()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.IsPreview = true;
+        screen.Description.Markdown = "![a](a.png) text";
+        var shown = screen.WebView.Pages.Count;
+
+        screen.WebView.ResizeImage(0, 200);
+
+        Assert.Equal("![a](a.png) text", screen.Description.Markdown);
+        Assert.Equal(shown, screen.WebView.Pages.Count);
+    }
+
+    [WpfFact]
+    public void A_failed_web_view_reports_no_resize()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.IsPreview = true;
+        screen.WebView.Fail("The WebView2 Runtime is missing.");
+
+        screen.WebView.ResizeImage(0, 200);
+
+        Assert.Empty(screen.Resizes);
+    }
+
+    [WpfFact]
+    public void A_released_description_reports_no_resize()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.IsPreview = true;
+        screen.Description.Dispose();
+
+        screen.WebView.ResizeImage(0, 200);
+
+        Assert.Empty(screen.Resizes);
+    }
+
+    [WpfFact]
+    public void Is_not_a_preview_at_first_and_shows_the_page_without_resizable_images()
+    {
+        using var screen = new DescriptionScreen(dark: false);
+
+        screen.Description.Markdown = "![a](a.png) text";
+
+        Assert.False(screen.Description.IsPreview);
+        Assert.Equal(DescriptionPage.Of("![a](a.png) text", dark: false, screen.WebView.CloneAddress), screen.WebView.Page);
+    }
+
+    [WpfFact]
+    public void Becoming_a_preview_shows_the_page_with_resizable_images_for_the_current_Markdown()
+    {
+        using var screen = new DescriptionScreen(dark: true);
+        screen.Description.Markdown = "![a](a.png) text";
+
+        screen.Description.IsPreview = true;
+
+        Assert.True(screen.Description.IsPreview);
+        Assert.Equal(DescriptionPage.WithResizableImages("![a](a.png) text", dark: true, screen.WebView.CloneAddress), screen.WebView.Page);
+    }
+
+    [WpfFact]
+    public void Leaving_preview_shows_the_page_without_resizable_images_again()
+    {
+        using var screen = new DescriptionScreen(dark: false);
+        screen.Description.Markdown = "![a](a.png) text";
+        screen.Description.IsPreview = true;
+
+        screen.Description.IsPreview = false;
+
+        Assert.Equal(DescriptionPage.Of("![a](a.png) text", dark: false, screen.WebView.CloneAddress), screen.WebView.Page);
+    }
+
+    [WpfFact]
+    public void Reports_no_image_resize_while_not_a_preview()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.IsPreview = true;
+        screen.Description.IsPreview = false;
+
+        screen.WebView.ResizeImage(0, 200);
+
+        Assert.Empty(screen.Resizes);
+    }
+
+    [WpfFact]
+    public void In_preview_clicking_a_web_link_opens_no_browser()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.IsPreview = true;
+
+        screen.WebView.ClickLink("https://example.com/docs");
+
+        Assert.Empty(screen.Browser.Opened);
+    }
+
+    [WpfFact]
+    public void In_preview_clicking_a_task_link_raises_no_OtherLinkClicked()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.IsPreview = true;
+
+        screen.WebView.ClickLink("task:01900000-0000-7000-8000-000000000001");
+
+        Assert.Empty(screen.OtherLinks);
+    }
+
     /// <summary>A description in a showing window over the shared fakes, with every event it raises recorded. Dispose it to close the window.</summary>
     private sealed class DescriptionScreen : IDisposable
     {
@@ -86,6 +205,7 @@ public class FormattedDescriptionTests
             Description = new FormattedDescription(WebView, Theme, Browser);
             Description.OtherLinkClicked += (_, address) => OtherLinks.Add(address);
             Description.OpenFailed += (_, failure) => OpenFailures.Add(failure);
+            Description.ImageResized += (_, resize) => Resizes.Add(resize);
             window = new Window { Content = Description, Width = 480, Height = 240 };
             window.Show();
         }
@@ -101,6 +221,8 @@ public class FormattedDescriptionTests
         public List<string> OtherLinks { get; } = [];
 
         public List<Exception> OpenFailures { get; } = [];
+
+        public List<ImageResize> Resizes { get; } = [];
 
         /// <summary>The texts the description displays, including a text box's text.</summary>
         public IReadOnlyList<string> Texts =>

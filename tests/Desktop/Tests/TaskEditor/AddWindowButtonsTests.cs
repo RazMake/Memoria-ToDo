@@ -97,15 +97,6 @@ public class AddWindowButtonsTests
         Assert.Equal(order.Distinct().Count(), order.Length);
     }
 
-    [WpfFact]
-    public void Save_is_the_editors_own_button_and_Clear_is_not()
-    {
-        using var screen = Shown();
-
-        Assert.True(IsInside(screen.SaveButton, screen.Editor), "Save is not inside the editor.");
-        Assert.False(IsInside(screen.ClearButton, screen.Editor), "Clear is inside the editor.");
-    }
-
     [WpfTheory]
     [InlineData("Clear")]
     [InlineData("Save")]

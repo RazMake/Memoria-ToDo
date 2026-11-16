@@ -44,9 +44,11 @@ internal static class Program
             var repositories = new RepositorySelection(files, tasks.UseRepositoryFolder, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
             var closeWindowKeys = new CloseWindowKeys();
             // Each open of a description web view serves the folder the repository is in then.
-            Func<IDescriptionWebView> createWebView = () => new WpfDescriptionWebView(tasks.Synchronization.RepositoryFolder, BrowserDataFolder());
+            Func<IDescriptionWebView> createWebView = () => new WpfDescriptionWebView(
+                tasks.Synchronization.RepositoryFolder, tasks.EditImagesFolder, BrowserDataFolder(), files, tasks.Synchronization.Files);
             var updates = AppUpdates.Create(
                 new VelopackUpdates(RepositoryUrl), files, deviceFolder, TimeProvider.System, theme, createWebView, browser, closeWindowKeys);
+            var saveKeys = new SaveKeys();
             var sync = SyncService.Create(
                 tasks.Synchronization,
                 files,
@@ -67,7 +69,8 @@ internal static class Program
                 browser,
                 sync,
                 closeWindowKeys,
-                updates);
+                updates,
+                saveKeys);
             return TrayApp.Create(
                 new TrayIcon(),
                 add,
@@ -79,7 +82,8 @@ internal static class Program
                     new WindowsSetupActions(browser),
                     closeWindowKeys,
                     theme,
-                    updates),
+                    updates,
+                    saveKeys),
                 updates,
                 new HotKeyShortcut(),
                 // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:

@@ -1,10 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Platform;
-using Memoria.ToDo.Shared.Rendering;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -12,14 +10,13 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// Sections of which exactly one is always open: the first at first, then whichever the user picks by its title.
 /// Each section is a rounded box. The open one fills the space the other titles leave, starts right under its title,
 /// and scrolls when its content is taller. A title is a button, so Tab reaches it and Enter or Space opens its section.
-/// Titles show like heading 1, in the theme's color.
+/// Titles show like heading 1, as <see cref="HeadingText"/> makes them.
 /// </summary>
 internal sealed class Accordion : Grid
 {
     private readonly AccordionState _state;
     private readonly RowDefinition[] _rows;
     private readonly ScrollViewer[] _contents;
-    private readonly TextBlock[] _titles;
     private readonly ITheme _theme;
 
     public Accordion(ITheme theme, params (string Heading, UIElement Content)[] sections)
@@ -28,7 +25,6 @@ internal sealed class Accordion : Grid
         _state = new AccordionState(sections.Length);
         _rows = new RowDefinition[sections.Length];
         _contents = new ScrollViewer[sections.Length];
-        _titles = new TextBlock[sections.Length];
         for (var i = 0; i < sections.Length; i++)
         {
             var section = Section(i, sections[i].Heading, sections[i].Content);
@@ -40,21 +36,13 @@ internal sealed class Accordion : Grid
         }
 
         Show();
-        // The follower stays alive through its event subscriptions on this accordion and the theme.
-        _ = new ThemeFollower(this, theme, ShowTitles);
     }
 
     private Border Section(int index, string heading, UIElement content)
     {
-        _titles[index] = new TextBlock
-        {
-            Text = heading,
-            TextWrapping = TextWrapping.Wrap,
-            FontWeight = FontWeights.Bold,
-        };
         var title = new Button
         {
-            Content = _titles[index],
+            Content = HeadingText.Make(heading, 1, _theme),
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             HorizontalContentAlignment = HorizontalAlignment.Left,
@@ -92,20 +80,6 @@ internal sealed class Accordion : Grid
         inside.Children.Add(title);
         inside.Children.Add(_contents[index]);
         return ThemedBox.Section(inside);
-    }
-
-    // Heading 1's look for the theme: its color, bold, and its multiple of the window's normal text size.
-    private void ShowTitles()
-    {
-        var color = (Color)ColorConverter.ConvertFromString(TextLooks.Of(_theme.IsDark).HeadingColor(1)!);
-        var brush = new SolidColorBrush(color);
-        brush.Freeze();
-        var size = TextLooks.HeadingScale(1) * TextElement.GetFontSize(this);
-        foreach (var title in _titles)
-        {
-            title.Foreground = brush;
-            title.FontSize = size;
-        }
     }
 
     private void Select(int index)

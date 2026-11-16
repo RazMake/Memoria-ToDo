@@ -9,10 +9,6 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// </summary>
 internal static class ThemedText
 {
-    /// <summary>A small bold heading for a group inside a section.</summary>
-    public static TextBlock Subheading(string text, Thickness margin) =>
-        Make(text, margin, style: "BodyStrongTextBlockStyle", brush: null);
-
     /// <summary>Help text: small, in the theme's secondary color, and muted further so it stays behind the controls.</summary>
     public static TextBlock Help(string text, Thickness margin)
     {

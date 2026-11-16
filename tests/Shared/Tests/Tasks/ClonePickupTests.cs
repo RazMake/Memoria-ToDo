@@ -30,6 +30,12 @@ public sealed class ClonePickupTests
     }
 
     [Fact]
+    public void Refuses_to_create_with_a_device_folder_that_is_not_fully_qualified()
+    {
+        Assert.Throws<ArgumentException>(() => TaskStore.Create(f.Files, f.Encoder, f.Time, Path.Combine("relative", "device")));
+    }
+
+    [Fact]
     public void Has_no_tasks_before_a_folder_is_given()
     {
         Assert.Empty(f.Tasks.All);

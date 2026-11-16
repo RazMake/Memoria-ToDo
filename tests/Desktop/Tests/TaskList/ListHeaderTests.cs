@@ -9,7 +9,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// The search band at the top of Task View: the band behind the search box and the tag filter, how wide and tall it is, and
+/// The search band at the top of Task View: the band behind the "Search:" label, the search box, and its button, how wide and tall it is, and
 /// the message line and Undo bar under it. Measured in a bare container with no window or theme, so the numbers are the
 /// header's own; the container holds the theme resource the band's color comes from.
 /// </summary>
@@ -17,7 +17,7 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 public class ListHeaderTests
 {
     private const string BandKey = "CardBackgroundFillColorDefaultBrush";
-    private const double SmallestSearchWidth = 200;
+    private const double SmallestSearchWidth = 160;
     private const double MostExtraBandHeight = 12;
 
     [WpfFact]
@@ -43,7 +43,7 @@ public class ListHeaderTests
     }
 
     [WpfFact]
-    public void The_search_box_takes_the_free_width_beside_the_tag_filter()
+    public void The_search_box_takes_the_free_width_between_the_label_and_the_button()
     {
         var narrower = new Host(width: 700).Search.ActualWidth;
         var wider = new Host(width: 1000).Search.ActualWidth;
@@ -52,21 +52,20 @@ public class ListHeaderTests
     }
 
     [WpfFact]
-    public void The_search_box_keeps_a_smallest_width_and_the_tag_filter_wraps_below_it()
+    public void The_search_box_keeps_a_smallest_width_in_a_narrow_window()
     {
-        var host = new Host(width: 300);
+        var host = new Host(width: 200);
 
         Assert.True(host.Search.ActualWidth >= SmallestSearchWidth, $"The box shrank to {host.Search.ActualWidth}.");
-        Assert.True(host.TopOf(host.AllTags) >= host.TopOf(host.Search) + host.Search.ActualHeight - 0.5, "The tag filter didn't wrap.");
     }
 
     [WpfFact]
-    public void The_band_is_one_row_of_controls_tall_with_small_padding_when_the_window_is_wide_enough()
+    public void The_band_is_one_row_of_controls_tall_with_small_padding()
     {
         var host = new Host(width: 1000);
 
-        Assert.InRange(host.TopOf(host.AllTags) - host.TopOf(host.Search), -1, 1);
-        var controls = Math.Max(host.Search.ActualHeight, host.AllTags.ActualHeight);
+        Assert.InRange(host.TopOf(host.RunSearch) - host.TopOf(host.Search), -1, 1);
+        var controls = Math.Max(host.Search.ActualHeight, host.RunSearch.ActualHeight);
         Assert.InRange(host.Band.ActualHeight - controls, 0, MostExtraBandHeight);
     }
 
@@ -92,8 +91,7 @@ public class ListHeaderTests
     {
         public Host(double width)
         {
-            var services = new ListServices();
-            Header = new ListHeader(services.Tasks, services.TagColors, services.Theme, new ListFilter());
+            Header = new ListHeader(new ListFilter());
             Container = new DockPanel { LastChildFill = false, Width = width };
             Container.Resources[BandKey] = new SolidColorBrush(Colors.Red);
             DockPanel.SetDock(Header, Dock.Top);
@@ -107,7 +105,7 @@ public class ListHeaderTests
 
         public TextBox Search => OpenWindows.Descendants(Header).OfType<TextBox>().Single(box => AutomationProperties.GetName(box) == "Search");
 
-        public ComboBox AllTags => OpenWindows.Descendants(Header).OfType<ComboBox>().Single(box => AutomationProperties.GetName(box) == "All tags");
+        public Button RunSearch => OpenWindows.Descendants(Header).OfType<Button>().Single(button => AutomationProperties.GetName(button) == "Run search");
 
         /// <summary>The element behind the search box that has a background: the band.</summary>
         public FrameworkElement Band

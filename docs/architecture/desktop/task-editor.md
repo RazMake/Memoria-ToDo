@@ -11,10 +11,10 @@ The Task editor is the desktop app's Add window, built so one key press puts the
 The Add window is created when the app starts and stays hidden until needed, so showing it loads nothing. It opens centered on the active screen, on top of other windows, with three fields:
 
 1. **Title**: one line, where the cursor starts.
-2. **Description**: grows with its content, then scrolls. Proposed: it is at least 140 and at most 400 device-independent pixels tall, so the window stays on screen. This is a decision to confirm. Proposed, a decision to confirm: where the window gives the editor a set height, as Task View's [right side](task-list.md#edit-description-turns-the-right-side-into-the-editor) does, the Description fills that height instead, with no upper limit, and scrolls inside itself. The editor then sets its `MinHeight` to its height with the Description at its smallest, so the container can tell when it must scroll.
+2. **Description**: grows with its content, then scrolls. Proposed: it is at least 140 and at most 400 device-independent pixels tall, so the window stays on screen. This is a decision to confirm. Proposed, a decision to confirm: where a window gives the [Description editor](#public-interface) a set height, as Task View's [right side](task-list.md#edit-description-turns-the-right-side-into-the-editor) does, the Description fills that height instead, with no upper limit, and scrolls inside itself. The Description editor then sets its `MinHeight` to its height with the Description at its smallest, so the container can tell when it must scroll.
 3. **Tags**: the task's tags as colored badges, with a + button that [adds one](#tags-show-as-colored-badges-and-the-plus-button-adds-one).
 
-Above the fields, a small **Clear** button empties Add and deletes its [draft](#closing-without-saving-keeps-a-draft-on-this-device). Below them, a **Save** button saves the task, exactly as [Ctrl+Enter](#keys-save-close-and-move-between-fields) does. Clear is smaller than Save and sits apart from it, so it isn't clicked by mistake.
+Above the fields, a small **Clear** button empties Add and deletes its [draft](#closing-without-saving-keeps-a-draft-on-this-device). Below them, a **Save** button saves the task, exactly as the [Save shortcut](#keys-save-close-and-move-between-fields) does. Clear is smaller than Save and sits apart from it, so it isn't clicked by mistake.
 
 Title and Description use the editor that [How the apps fit together](../overview.md#each-app-edits-in-its-own-text-box-with-shared-commands) picks: [AvalonEdit](https://www.nuget.org/packages/AvalonEdit/6.3.1.120) 6.3.1.120, a dependency of the Task editor's project. It restores and builds on .NET 11, but its first run there is not confirmed until the UX tests run. It references the whole desktop framework, so the project turns off the WinForms analyzer warning WFO2000, which is meant for WinForms controls. The box where a new tag is typed stays a plain WPF text box.
 
@@ -30,10 +30,11 @@ Proposed, each a decision to confirm:
 - Title and Description also match the tag box's padding, and its look under the pointer and with the focus.
 - Clear sits at the top right, above the Title. Save sits at the bottom right, below the tags and the message line.
 - Save has the theme's accent button look, as the window's main action. Clear has the theme's plain button look, with smaller text and padding, so it is shorter than Save.
-- Save's tooltip names its key, Ctrl+Enter, so the user learns it.
+- Save's tooltip names the Save shortcut's current keys, Ctrl+Enter at first, so the user learns them.
 - Save isn't the window's default button, so Enter keeps its meaning in each field.
 - The keyboard reaches both buttons with Tab, in the order they show.
-- **Save lives inside the editor, under the Tags and the message line**, so Add and Task View's [edit](task-list.md#edit-description-turns-the-right-side-into-the-editor) show the same button, and the [public interface](#public-interface) doesn't change. The user decided this. Clear belongs to the Add window.
+- Both buttons belong to the Add window, not to the editors the Task list reuses, so the [public interface](#public-interface) doesn't change.
+- **The Description editor shows a Save button too, at its bottom right under its message line**, for Task View's [edit](task-list.md#edit-description-turns-the-right-side-into-the-editor). The user decided this. It raises the editor's `SaveRequested`, as the Save shortcut does, so the public interface doesn't change. Proposed: one internal part of the Task editor makes Save for both, with the same look and tooltip, so the button keeps one home. This is a decision to confirm.
 - **While a new version is available or updating, Add shows [Updates' status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) along its bottom edge**, below Save, and grows taller by the bar's height, as it grows with what it holds. Otherwise the bar is hidden. A click on the bar's update text starts the update, which closes Add and keeps its draft.
 
 ### Keys save, close, and move between fields
@@ -45,14 +46,14 @@ The table lists the keys that work across the window, and which are still propos
 | Enter or Tab | Title | Moves to the Description | Decided |
 | Tab | Description, outside a list item | Moves to the tags | Proposed |
 | Enter | Tag box | Adds the chosen suggestion, or the typed tag | Proposed |
-| Ctrl+Enter | Anywhere | Saves the task, as the Save button does. Proposed: and closes Add. | Decided |
-| Ctrl+Shift+Enter | Anywhere | Saves the task and clears Add for another one | Proposed |
+| [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window), Ctrl+Enter at first | Anywhere | Saves the task, as the Save button does. Proposed: and closes Add. The user decided the key can be changed, in Configure. | Decided |
+| Ctrl+Shift+Enter | Anywhere | Saves the task and clears Add for another one. Proposed: these keys stay fixed when the Save shortcut changes, and the Save shortcut wins if the user picks them for it. | Proposed |
 | Esc | Anywhere | Closes Add and keeps a draft. Proposed: closes an open list, such as the snippet picker or the tag menu, first. | Decided |
 | [Close window shortcut](configure.md#esc-and-the-close-window-shortcut-close-the-window), Shift+Esc at first | Anywhere, even with a list open | Closes Add and keeps a draft, as its close button does | Decided |
 
 Proposed, each a decision to confirm:
 
-- Ctrl+Enter, Ctrl+Shift+Enter, and Esc also work while the Clear or Save button has the focus.
+- The Save shortcut, Ctrl+Shift+Enter, and Esc also work while the Clear or Save button has the focus.
 - A task with an empty Title can't be saved: Add stays open and marks the Title.
 - Pasting text with line breaks into the Title joins its lines with spaces, since a title is one line.
 - Pasting or dropping an image runs the image snippet.
@@ -62,7 +63,7 @@ Proposed, each a decision to confirm:
 - The snippet list's Image entry does what Ctrl+Shift+I does, in place of the "/" and what was typed after it. When the dialog is cancelled, the typed text stays.
 - An image that can't be read, isn't an image, can't be shrunk to 1 MB, or can't be kept shows an error on the [editor's message line](#add-and-task-view-save-the-same-way-through-the-editor). The error mentions the image, nothing is inserted, and the text, cursor, and focus stay as they were. The next image that is added clears the message.
 - Opening the file dialog doesn't hide Add, though the dialog takes the focus.
-- **No focus outline frames the editor or its Title and Description.** WPF draws a control's focus outline only when the keyboard moves the focus to it ([focus visual style](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/styling-for-focus-in-controls-and-focusvisualstyle)), so a key such as Ctrl+Tab can frame a field, or the whole editor in Task View, in a light outline. The user asked that it never show. The fields show the focus with their own focused border and caret, as the tag box does. Buttons and badges keep their outline, so keyboard users still see which one has the focus. Proposed: Ctrl+Tab keeps WPF's move to the next control. This is a decision to confirm.
+- **No focus outline frames the editors or their fields.** WPF draws a control's focus outline only when the keyboard moves the focus to it ([focus visual style](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/styling-for-focus-in-controls-and-focusvisualstyle)), so a key such as Ctrl+Tab can frame a field or a whole editor in a light outline. The user asked that it never show. The fields show the focus with their own focused border and caret, as the tag box does. Buttons and badges keep their outline, so keyboard users still see which one has the focus. Proposed: in Add, Ctrl+Tab keeps WPF's move to the next control; in Task View's edit, it switches the [Edit and Preview tabs](task-list.md#edit-description-has-an-edit-tab-and-a-preview-tab). This is a decision to confirm.
 
 ### Every formatting command and snippet has a key
 
@@ -126,7 +127,18 @@ Proposed, each a decision to confirm:
 
 The user decided how tags look and are added. The task's tags show as badges, each in its own color, followed by a **+** button. The + opens a menu with the seven most-used tags, which add with one click, and a **Custom** item. Custom shows a text box for any tag and a picker of Rendering's 30 [tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes), in the current theme's set. [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color, so every device shows it.
 
-The badges and the + button make up the tag control. It's part of the editor, so Add and the Task list's [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) both get it, and the Task list also shows it under the [selected task's](task-list.md#tags-show-as-colored-badges-and-change-without-edit) description. Tags still follow [Tasks' tag rules](../tasks.md#tags-and-search-ignore-case): case is ignored, and a typed tag takes the spelling of a matching tag in use.
+The badges and the + button make up the tag control. It's part of the editor, so Add gets it, and the Task list shows it under the [selected task's](task-list.md#tags-show-as-colored-badges-and-change-without-edit) description. Tags still follow [Tasks' tag rules](../tasks.md#tags-and-search-ignore-case): case is ignored, and a typed tag takes the spelling of a matching tag in use.
+
+The user decided that tags typed in the tag box are lowercase and have no spaces, and that tags already in use stay as they are. So in the tag box:
+
+- **Typed letters show lowercase**, whatever the Shift or Caps Lock state, and so do pasted ones, by the invariant culture's rules, so a tag reads the same on every PC.
+- **A typed space does nothing**, and spaces in pasted text are removed, so "to do" pastes as "todo".
+- **Only typed and pasted text changes.** Existing tags, the suggestions, the + menu's tags, and a typed tag that matches a tag in use, which takes that tag's spelling as Tasks decides, keep their spelling, so `Work` stays `Work` on every task that has it.
+
+Proposed, each a decision to confirm:
+
+- **Other whitespace, such as a tab, is removed as a space is**, so no tag has a gap in it.
+- **A removed space joins its neighbors** rather than becoming a hyphen, so the user sees exactly what they typed, less the space.
 
 Proposed, each a decision to confirm:
 
@@ -141,19 +153,19 @@ Proposed, each a decision to confirm:
 - **A tag with no color kept shows its default color**, which [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) picks from the tag's text with case ignored, so a tag looks the same in every window and on every device. A color name this app doesn't know, such as one a newer app wrote, shows the default and is kept as it is.
 - **A badge takes its color's value and text color for the current theme**, from Rendering, and changes when the theme or a tag's color does.
 - **Keys**: Tab reaches each badge's remove button, then the +. Enter, Space, or Down on the + opens the menu, Up and Down move through it, and Enter adds the tag moved to, or opens Custom. In the colors, the arrow keys move, and Space picks the color moved to, or unpicks it when it's the picked one. Backspace in the empty tag box removes the last tag, as it does in today's Tags line. Esc closes the menu, or hides the tag box and the colors and drops what was typed there, before it closes Add.
-- **The Save button, Ctrl+Enter, and Ctrl+Shift+Enter add any text still in the tag box**, with its picked color, before they save, so no typing is lost. That text counts as a change, as typed tag text does today.
+- **The Save button, the Save shortcut, and Ctrl+Shift+Enter add any text still in the tag box**, with its picked color, before they save, so no typing is lost. That text counts as a change, as typed tag text does today.
 - **A picked color is kept when its tag is added**, not when the task is saved, so the [draft](#closing-without-saving-keeps-a-draft-on-this-device) keeps its format. The color stays with the tag even if the task is never saved.
 - **When the picked color can't be kept, the tag isn't added.** Custom stays open with the typed text and the picked color, and says why under the colors. With no clone folder, it says to choose the repository folder in Configure, then add the tag again. Otherwise it says the tag wasn't added because its color couldn't be kept, followed by the reason, such as the file error. (Decision to confirm: the wording.) A save that was adding that text saves nothing.
 
 ### The editor styles Markdown in place, with no preview
 
-Add shows Markdown source styled in place: bold looks bold, and headings, links, and code are styled. The styling comes from [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html). Add has no rendered preview and uses no web view, so it never waits for one.
+Add shows Markdown source styled in place: bold looks bold, and headings, links, and code are styled. The styling comes from [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html). Add has no rendered preview and uses no web view, so it never waits for one. Task View's Edit Description has a [Preview](task-list.md#edit-description-has-an-edit-tab-and-a-preview-tab), which the Task list builds around the Description editor with its own web view; the editor itself still shows no preview.
 
 Proposed, each a decision to confirm:
 
 - Colored text shows in its palette color for the current [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), such as `:red[urgent]` in red.
 - Markdown's own characters, such as `**` around bold text, show dimmed.
-- Headings, links, code, and italic text take Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) for the current theme: headings 1 to 3 in their colors and every heading at its size, a link underlined in the link color, code in its font and color on the faded background, and italic text in the italic color.
+- Headings, links, code, and italic text take Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) for the current theme: every heading in its color and at its size, a link underlined in the link color, code in its font and color on the faded background, and italic text in the italic color.
 - Styling never delays typing: typed text shows at once, and its styling follows.
 
 ### A new task goes to the top
@@ -162,13 +174,13 @@ A saved new task goes to the top of the order, where the user sees it first in T
 
 ### Add and Task View save the same way, through the editor
 
-The editor runs every save itself, so Add and the Task list's [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) save the same way. Its user passes the function that saves: Add passes [Tasks'](../tasks.md#public-interface) add, and the Task list passes Tasks' save of an edit. Each save takes three steps:
+The editors run every save themselves, so Add and the Task list's [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) and [Edit Title](task-list.md#edit-title-edits-the-title-in-its-row) save the same way. Their user passes the function that saves: Add passes [Tasks'](../tasks.md#public-interface) add, and the Task list passes Tasks' save of an edit. Each save takes three steps, each where the editor has the field it needs:
 
 1. Tag text typed and not yet added becomes a tag, so no typing is lost.
 2. An empty Title is marked, the cursor goes to it, and nothing is saved.
 3. The editor calls the function. If it fails, the editor keeps the text and says why on its own message line.
 
-The editor tells its user whether the task was saved, so Add can clear or close, and the Task list can leave the edit. The editor knows the failures Tasks' saves throw, so each failure gets one message on both screens. The message line sits under the tags, so in Add it is still above Save, and it also says why an image wasn't added. The editor also lets its user put the cursor in the Title.
+The editor tells its user whether the task was saved, so Add can clear or close, and the Task list can leave the edit. The editors know the failures Tasks' saves throw, so each failure gets one message on both screens. In Add, the message line sits under the tags, so it is still above Save, and it also says why an image wasn't added. The Title editor and the Description editor each show theirs under their field. Add's editor also lets its user put the cursor in the Title.
 
 ### With no clone folder, saving points to Configure
 
@@ -181,17 +193,18 @@ The composition root, Shell, and the Task list use these parts:
 - **Create the Add window**: the composition root creates it when the app starts, as [above](#add-opens-at-once-with-the-cursor-in-the-title), and gives it to Shell.
 - **Show Add**: shows the Add window, with the draft if there is one. Shell calls it from the [Add new task shortcut](shell.md#a-shortcut-switches-between-add-and-task-view), the tray icon, and the tray menu.
 - **Close Add**: hides the Add window and keeps the draft, as Esc does, and does nothing while it's hidden. Shell calls it when the Task View shortcut [switches to Task View](shell.md#a-shortcut-switches-between-add-and-task-view).
-- **The editor**: the Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-task-view-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. The Task list uses it to edit a task on Task View's right side. The user decided that the editor tells what changed, so the Task list shows its [Undo bar](task-list.md#edit-description-turns-the-right-side-into-the-editor) only for an edit with changes, and never loses tag text typed and not yet added.
+- **The editor**: Add's Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-task-view-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. Only Add uses it, so it's internal to the Task editor.
+- **The Title editor and the Description editor**: the user decided that the Task list edits a title or a description alone through two public controls, each one field with the same keys, styling, paste rules, and save steps as Add's field, its own message line, and the same report of changes and requests to save or cancel. Add's editor is built from the same Title and Description parts, so each rule keeps one home. The Task list uses one at a time: the Title editor in a row, for [Edit Title](task-list.md#edit-title-edits-the-title-in-its-row), and the Description editor on the right side, for [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor). The user decided that an editor tells what changed, so the Task list shows its Undo bar only for an edit with changes. The Description editor also sets an image's width in its text, for an image resized in the [edit's Preview](task-list.md#an-image-resizes-by-dragging-its-corner-in-the-edits-preview): it writes the width with Rendering's [width function](../rendering.md#public-interface), as a change the user made, so the edit then has changes, and Ctrl+Z in the editor takes it back as one step.
+- **The Save keys**: Add's editor and both field editors save on the platform's [Save keys](README.md#the-save-shortcut-saves-in-any-window-that-edits), so a new Save shortcut applies at once.
 - **The tag control**: a task's tags as badges with remove buttons, then the + and its menu, as [above](#tags-show-as-colored-badges-and-the-plus-button-adds-one). It reports each tag the user adds or removes, and keeps a picked color through Tasks, but never saves the task. The editor holds one, and the Task list shows one under the selected task's description.
-- **Tag badges**: tags as read-only badges in their colors. The Task list shows one as each tag group's heading.
-- **The top tags**: the seven most-used tags as badges in their colors, reporting the one clicked. The Task list uses them in its tag filter. The + menu shows the same seven, less the task's own tags, so the count has one home.
+- **Tag badges**: tags as read-only badges in their colors. The Task list shows one as each tag group's heading, and in place of the tag control during an edit.
 - **Two ports**, the clipboard and the image file dialog, which the desktop app implements beside its composition root, so the Task editor's tests run on [fakes](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test).
 
-Proposed: the editor and the three tag parts follow Tasks' changes, the tag colors' changes, and the theme only while they're on screen, so a closed window or a left edit holds no subscription, as the [Formatted view](formatted-view.md#it-shows-what-rendering-decides-never-markdown) does. Each shows the current tags, colors, and theme when it's made, and again when it's back on screen, such as an edit reopened by Undo. This is a decision to confirm.
+Proposed: the editor and the two tag parts follow Tasks' changes, the tag colors' changes, and the theme only while they're on screen, so a closed window or a left edit holds no subscription, as the [Formatted view](formatted-view.md#it-shows-what-rendering-decides-never-markdown) does. Each shows the current tags, colors, and theme when it's made, and again when it's back on screen, such as an edit reopened by Undo. This is a decision to confirm.
 
 [Rendering](../rendering.md#public-interface) and [Editing](../editing.md#public-interface) are plain functions, so the Task editor calls them directly. The Task editor reads a dropped or chosen image file through Shared's `IFileSystem`, which `Create` and the editor's constructor take last (decision to confirm), and keeps each image through [Tasks' `SaveImage`](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task), for a draft or an open edit alike.
 
-Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) adds the editor's `Save`, `FocusTitle`, and `HasChanges`, which the Task list needs. Row 7 adds `IAddWindow.Close`. Row 8 adds Tasks' [tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own) to `Create` and the editor's constructor, right after `tasks`, and replaces `TagChips` with `TagEditor`, `TagBadges`, and `TopTags`.
+Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) adds the editor's `Save`, `FocusTitle`, and `HasChanges`, which the Task list needs. Row 7 adds `IAddWindow.Close`. Row 8 adds Tasks' [tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own) to `Create` and the editor's constructor, right after `tasks`, and replaces `TagChips` with `TagEditor`, `TagBadges`, and `TopTags`. Row 11 removes `TopTags`, since the Task list dropped the tag filter that used it; the + menu keeps the seven most-used tags inside the Task editor, so the count still has one home. Row 11 also adds `TitleEditor` and `DescriptionEditor`, with `DescriptionEditor.SetImageWidth`, makes `TaskEditorControl` internal, and adds the platform's Save keys to `AddWindow.Create` as its new last argument, after the update status. Proposed: the two editors' members below. This is a decision to confirm.
 
 ```csharp
 namespace Memoria.ToDo.Desktop.TaskEditor;
@@ -206,7 +219,13 @@ public static class AddWindow
 
 `AddWindow.Create` also takes the platform's [Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) as a new last argument, `CloseWindowKeys closeWindowKeys`, and attaches the Add window to them.
 
-The user decided that the Task editor may use [Updates](updates.md), for Add's [status bar](#add-opens-at-once-with-the-cursor-in-the-title). Proposed: `AddWindow.Create` also takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, as its new last argument, after `closeWindowKeys`, and shows the status bar from it. This is a decision to confirm.
+The user decided that the Task editor may use [Updates](updates.md), for Add's [status bar](#add-opens-at-once-with-the-cursor-in-the-title). Proposed: `AddWindow.Create` also takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, as its new last argument, after `closeWindowKeys`, and shows the status bar from it. This is a decision to confirm. Row 11 then adds `SaveKeys saveKeys` after it:
+
+```csharp
+public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette,
+    ITheme theme, TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
+    CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys);
+```
 
 ```csharp
 /// The Add window, as Shell uses it.
@@ -222,34 +241,58 @@ public interface IAddWindow
     bool IsOpen { get; }
 }
 
-/// The Title, Description, and Tags of one task, with every key on this page.
-public sealed class TaskEditorControl : UserControl
+/// One task's title, edited alone, as Add's Title edits it. Enter saves, since the title is one line.
+public sealed class TitleEditor : UserControl
 {
-    public TaskEditorControl(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme,
-        TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files);
+    public TitleEditor(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+        IClipboard clipboard, SaveKeys saveKeys);
 
-    /// What the fields hold now, without tag text typed and not yet added. Setting it replaces all
-    /// three fields and clears that text.
-    public TaskDraft Value { get; set; }
+    /// The title's Markdown. Setting it replaces the text and starts HasChanges over.
+    public string Value { get; set; }
 
-    /// Whether anything changed since Value was last set, or since the editor was made; it starts false. A Title or
-    /// Description changes when its text differs at all, and Tags when a tag was added or removed,
-    /// compared as Tasks' SaveEdit compares tags. Non-blank tag text typed and not yet added counts too.
+    /// Whether the text differs at all from Value as last set.
     public bool HasChanges { get; }
 
-    /// Adds typed tag text as a tag, then calls save with Value, unless the Title is empty, which it marks.
-    /// Returns false, keeping the text, when the Title is empty or save failed; the editor says why.
-    public bool Save(Action<TaskDraft> save);
+    /// Calls save with Value, unless it's empty, which it marks. Returns false, keeping the text, when it's empty or
+    /// save threw a failure Tasks' saves are known to throw; the editor says why under the field. Other failures propagate.
+    public bool Save(Action<string> save);
 
-    /// Puts the cursor in the Title.
-    public void FocusTitle();
+    /// Puts the cursor at the end of the title.
+    public void FocusEnd();
 
-    /// Puts the cursor at the end of the Description, for Task View's Edit Description.
-    public void FocusDescription();
+    public event EventHandler? SaveRequested;   // the Save shortcut, or Enter
+    public event EventHandler? CancelRequested; // Esc, with no list open
+}
 
-    public event EventHandler? SaveRequested;          // Ctrl+Enter
-    public event EventHandler? SaveAndClearRequested;  // Ctrl+Shift+Enter
-    public event EventHandler? CancelRequested;        // Esc, with no list open
+/// One task's description, edited alone, as Add's Description edits it, images included.
+public sealed class DescriptionEditor : UserControl
+{
+    public DescriptionEditor(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys);
+
+    /// The task the description belongs to; an added image is kept for it.
+    public string TaskId { get; set; }
+
+    /// The description's Markdown. Setting it replaces the text and starts HasChanges over.
+    public string Value { get; set; }
+
+    /// Whether the text differs at all from Value as last set.
+    public bool HasChanges { get; }
+
+    /// Calls save with Value. Returns false, keeping the text, when save threw a failure Tasks' saves are known to
+    /// throw; the editor says why under the field. Other failures propagate.
+    public bool Save(Action<string> save);
+
+    /// Sets the width of image number image, counted from 0 as the description page numbers images, as Rendering's
+    /// ImageWidths.With writes it. It changes the text as typing does: HasChanges still compares with Value as last
+    /// set, and the editor's undo takes it back. Throws ArgumentOutOfRangeException as ImageWidths.With does.
+    public void SetImageWidth(int image, int width);
+
+    /// Puts the cursor at the end of the description.
+    public void FocusEnd();
+
+    public event EventHandler? SaveRequested;   // the Save shortcut
+    public event EventHandler? CancelRequested; // Esc, with no list open
 }
 
 /// A task's tags as colored badges, each with a button that removes it, then the + button. Its menu adds one
@@ -277,14 +320,6 @@ public sealed class TagBadges : UserControl
 
     /// The tags the badges show, in order.
     public IReadOnlyList<string> Tags { get; set; }
-}
-
-/// The seven most-used tags as badges in their colors, in Tasks' most-used order.
-public sealed class TopTags : UserControl
-{
-    public TopTags(ITasks tasks, ITagColors tagColors, ITheme theme);
-
-    public event EventHandler<string>? TagChosen;
 }
 
 /// The system clipboard.
@@ -332,7 +367,8 @@ The options below were considered and rejected, grouped by decision.
   - **Save as the default button, pressed by Enter**: Enter already moves to the Description, breaks lines, and adds tags.
   - **A button for Ctrl+Shift+Enter too**: one more button in a compact window, for a key the user can learn.
   - **Clear inside the editor the Task list reuses**: the Task list's edit has [its own design](task-list.md#edit-description-turns-the-right-side-into-the-editor), with no Clear.
-  - **A Save button class the Task editor publishes, which each window places**: a new public class, when both windows put Save in the same place.
+  - **A Save button class the Task editor publishes, which each window places**: a new public class, when the Task editor itself places both Saves.
+  - **Save inside Add's whole editor, which Task View reused**: Task View now edits the description alone, through the [Description editor](#public-interface).
   - **Renaming Tasks' `DiscardDraft` to match Clear**: it would change a public interface only for the name on a button.
 - Which part of saving the editor owns:
   - **The editor publishes its save steps, and each screen runs them and shows its own messages**: Add and the Task list would repeat the same steps and messages, which the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) forbids.
@@ -365,3 +401,11 @@ The options below were considered and rejected, grouped by decision.
 - What Ctrl+Tab does in the editor:
   - **Moving the focus between Task View's list and its editor**: a new key, and Add has nothing to switch to.
   - **Ignoring it**: the key would do nothing.
+- How the Task list gets the Title or the Description alone:
+  - **A mode on the whole editor**, such as "title only" or "description only": a flag that every key, save step, and change check must respect, which the [code design](../../../AGENTS.md#code-design) rules advise against.
+  - **The Task list hides the fields it doesn't want**: hidden fields would still take part in saving and in whether anything changed, so a hidden empty Title could block a save.
+- Who owns Task View's Preview of an edited description:
+  - **The Description editor, with an Edit and a Preview tab of its own**: the Task editor would need the Formatted view, a new dependency in the [module map](../modules.md#module-map), and either a second web view in Task View or the Task list's one handed into the editor.
+- How a resized image's width reaches the draft:
+  - **The Task list sets `Value` to the new text**: setting `Value` starts `HasChanges` over, so Esc would show no Undo bar and closing wouldn't ask.
+  - **A general member that replaces the text and keeps the changes check**: a wider part than the one need, which a caller could use to lose the user's typing.

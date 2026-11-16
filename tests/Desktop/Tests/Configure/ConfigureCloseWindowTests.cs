@@ -8,7 +8,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.Configure.Tests;
 
 /// <summary>
-/// The Shortcuts section's three rows and how Configure closes: the Close window keys from anywhere in the window, and
+/// The Shortcuts section's four rows and how Configure closes: the Close window keys from anywhere in the window, and
 /// Esc. The rules are unit-tested on CloseWindowSetting, ShortcutKeyInput and DeviceActions; this checks the wiring.
 /// </summary>
 [UX]
@@ -16,12 +16,12 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 public class ConfigureCloseWindowTests
 {
     [WpfFact]
-    public void Shows_three_shortcut_rows_Add_new_task_Task_View_and_Close_window_in_order()
+    public void Shows_four_shortcut_rows_Add_new_task_Task_View_Close_window_and_Save_in_order()
     {
         using var screen = new ConfigureScreen();
         screen.Open();
 
-        string[] labels = ["Add new task", "Task View", "Close window"];
+        string[] labels = ["Add new task", "Task View", "Close window", "Save"];
 
         Assert.Equal(labels, screen.Texts.Where(text => labels.Contains(text)));
         Assert.Equal("Shift+Escape", screen.CloseField.Text);
@@ -38,8 +38,11 @@ public class ConfigureCloseWindowTests
         Assert.Equal(
             "Closes the app's window you're in, whatever has the focus.",
             OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.CloseField)));
+        Assert.Equal(
+            "Saves the task you're editing, in Add and Task View.",
+            OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.SaveField)));
         Assert.All(
-            new[] { screen.AddField, screen.ManageField, screen.CloseField },
+            new[] { screen.AddField, screen.ManageField, screen.CloseField, screen.SaveField },
             field => Assert.Equal(FontStyles.Italic, ConfigureScreen.DescriptionUnder(field).FontStyle));
     }
 

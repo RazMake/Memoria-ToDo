@@ -26,6 +26,16 @@ internal sealed class ListServices : ListTasks
     /// <summary>The Close window keys Task View is attached to; a test sets them as Configure does.</summary>
     public CloseWindowKeys CloseWindowKeys { get; } = new();
 
+    /// <summary>The Save keys Edit Description and Edit Title save on, set to Ctrl+Enter as the app starts with.</summary>
+    public SaveKeys SaveKeys { get; } = CtrlEnter();
+
+    private static SaveKeys CtrlEnter()
+    {
+        var keys = new SaveKeys();
+        keys.Set(System.Windows.Input.ModifierKeys.Control, System.Windows.Input.Key.Enter);
+        return keys;
+    }
+
     /// <summary>The web views Task View made, oldest first.</summary>
     public IReadOnlyList<FakeDescriptionWebView> WebViews => webViews;
 
@@ -38,5 +48,5 @@ internal sealed class ListServices : ListTasks
             webViews.Add(view);
             return view;
         },
-        Browser, Sync, CloseWindowKeys, Updates);
+        Browser, Sync, CloseWindowKeys, Updates, SaveKeys);
 }

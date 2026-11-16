@@ -314,8 +314,8 @@ public sealed class RepositoryFileRulesTests
 
     private static byte[] Settings(int days = 7, string? add = null, string? manage = null,
         string daysTime = T0, string addTime = T0, string manageTime = T0, int version = 1,
-        string? close = null, string closeTime = T0, bool withClose = true) =>
-        Encoding.UTF8.GetBytes(TasksFixture.SettingsJson(days, add, manage, version, daysTime, addTime, manageTime, close, closeTime, withClose));
+        IEnumerable<ShortcutEntry>? shortcuts = null) =>
+        Encoding.UTF8.GetBytes(TasksFixture.SettingsJson(days, add, manage, version, daysTime, addTime, manageTime, shortcuts));
 
     private JsonElement MergedSettings(byte[]? basis, byte[]? local, byte[]? remote)
     {
@@ -365,60 +365,62 @@ public sealed class RepositoryFileRulesTests
         Assert.Equal(30, MergedSettings(defaults, defaults, changed).GetProperty("deletionDelayDays").GetProperty("value").GetInt32());
     }
 
-    [Fact]
-    public void Merges_the_close_window_shortcut_by_its_own_time()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Merges_an_optional_shortcut_by_its_own_time(ShortcutSetting s)
     {
-        var local = Settings(manage: "L", manageTime: T3, close: "L", closeTime: T1);
-        var remote = Settings(manage: "R", manageTime: T1, close: "R", closeTime: T2);
+        var local = Settings(manage: "L", manageTime: T3, shortcuts: s.Entries("L", T1));
+        var remote = Settings(manage: "R", manageTime: T1, shortcuts: s.Entries("R", T2));
 
         var merged = MergedSettings(Settings(), local, remote);
 
-        Assert.Equal("R", merged.GetProperty("closeWindowShortcut").GetProperty("value").GetString());
-        Assert.Equal(T2, merged.GetProperty("closeWindowShortcut").GetProperty("updated").GetString());
+        Assert.Equal("R", merged.GetProperty(s.Name).GetProperty("value").GetString());
+        Assert.Equal(T2, merged.GetProperty(s.Name).GetProperty("updated").GetString());
         Assert.Equal("L", merged.GetProperty("manageTasksShortcut").GetProperty("value").GetString());
     }
 
-    [Fact]
-    public void Takes_the_remote_close_window_shortcut_when_both_times_are_equal()
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Takes_the_remote_optional_shortcut_when_both_times_are_equal(ShortcutSetting s)
     {
-        var merged = MergedSettings(null, Settings(close: "L", closeTime: T1), Settings(close: "R", closeTime: T1));
+        var merged = MergedSettings(null, Settings(shortcuts: s.Entries("L", T1)), Settings(shortcuts: s.Entries("R", T1)));
 
-        Assert.Equal("R", merged.GetProperty("closeWindowShortcut").GetProperty("value").GetString());
-    }
-
-    [Fact]
-    public void Counts_a_missing_close_window_shortcut_as_an_untouched_default()
-    {
-        var withClose = Settings(close: "C", closeTime: T1);
-        var without = Settings(withClose: false);
-
-        Assert.Equal("C", MergedSettings(null, withClose, without).GetProperty("closeWindowShortcut").GetProperty("value").GetString());
-        Assert.Equal("C", MergedSettings(null, without, withClose).GetProperty("closeWindowShortcut").GetProperty("value").GetString());
-        Assert.Equal("C", MergedSettings(without, without, withClose).GetProperty("closeWindowShortcut").GetProperty("value").GetString());
-    }
-
-    [Fact]
-    public void Writes_the_merged_close_window_shortcut_after_the_manage_shortcut_even_when_every_file_lacks_it()
-    {
-        var without = Settings(withClose: false);
-
-        var merged = MergedSettings(without, without, without);
-
-        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut"],
-            merged.EnumerateObject().Select(p => p.Name).ToArray());
-        Assert.Equal(JsonValueKind.Null, merged.GetProperty("closeWindowShortcut").GetProperty("value").ValueKind);
-        Assert.Equal("1970-01-01T00:00:00.000Z", merged.GetProperty("closeWindowShortcut").GetProperty("updated").GetString());
+        Assert.Equal("R", merged.GetProperty(s.Name).GetProperty("value").GetString());
     }
 
     [Theory]
-    [InlineData("""{ "value": 5, "updated": "2026-01-01T00:00:00.000Z" }""")]
-    [InlineData("""{ "value": "x", "updated": "yesterday" }""")]
-    [InlineData("""{ "value": "x" }""")]
-    [InlineData("""7""")]
-    public void Refuses_to_merge_a_settings_file_whose_close_window_shortcut_is_invalid(string closeWindowShortcut)
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Counts_a_missing_optional_shortcut_as_an_untouched_default(ShortcutSetting s)
     {
-        var bad = Encoding.UTF8.GetBytes(
-            $$"""{ "version": 1, "deletionDelayDays": { "value": 7, "updated": "2026-01-01T00:00:00.000Z" }, "addNewTaskShortcut": { "value": null, "updated": "2026-01-01T00:00:00.000Z" }, "manageTasksShortcut": { "value": null, "updated": "2026-01-01T00:00:00.000Z" }, "closeWindowShortcut": {{closeWindowShortcut}} }""");
+        var with = Settings(shortcuts: s.Entries("C", T1));
+        var without = Settings(shortcuts: s.EntriesWithout());
+
+        Assert.Equal("C", MergedSettings(null, with, without).GetProperty(s.Name).GetProperty("value").GetString());
+        Assert.Equal("C", MergedSettings(null, without, with).GetProperty(s.Name).GetProperty("value").GetString());
+        Assert.Equal("C", MergedSettings(without, without, with).GetProperty(s.Name).GetProperty("value").GetString());
+    }
+
+    [Fact]
+    public void Writes_the_merged_close_window_and_save_shortcuts_after_the_manage_shortcut_even_when_every_file_lacks_them()
+    {
+        var without = Settings(shortcuts: []);
+
+        var merged = MergedSettings(without, without, without);
+
+        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut", "saveShortcut"],
+            merged.EnumerateObject().Select(p => p.Name).ToArray());
+        foreach (var s in ShortcutSetting.All)
+        {
+            Assert.Equal(JsonValueKind.Null, merged.GetProperty(s.Name).GetProperty("value").ValueKind);
+            Assert.Equal("1970-01-01T00:00:00.000Z", merged.GetProperty(s.Name).GetProperty("updated").GetString());
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.EachInvalidValue), MemberType = typeof(ShortcutSetting))]
+    public void Refuses_to_merge_a_settings_file_whose_optional_shortcut_is_invalid(ShortcutSetting s, string invalid)
+    {
+        var bad = Encoding.UTF8.GetBytes(s.FileWith(invalid));
         var good = Settings();
 
         Assert.Throws<InvalidDataException>(() => Rules.MergeSettings(good, bad, good));
