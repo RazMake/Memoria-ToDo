@@ -74,7 +74,7 @@ public class TaskListSyncTests
             pending.TrySetResult(new FakeSyncStatus());
         }
 
-        await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+        await services.Sync.LastSync!;
         screen.Settle();
 
         Assert.True(screen.SyncButton.IsEnabled);
@@ -112,7 +112,7 @@ public class TaskListSyncTests
             pending.TrySetResult(new FakeSyncStatus());
         }
 
-        await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+        await services.Sync.LastSync!;
         screen.Settle();
         Assert.True(screen.SyncButton.IsEnabled);
     }

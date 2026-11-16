@@ -22,6 +22,12 @@ public sealed class FakeSyncService : ISyncService
     public Func<CancellationToken, Task<ISyncStatus>>? SyncOperation { get; set; }
     public Func<CancellationToken, Task>? StopOperation { get; set; }
 
+    /// <summary>
+    /// The task the last <see cref="SyncNowAsync"/> call returned. Awaiting it on the UI thread resumes after the caller's
+    /// own continuation, because both are posted to the dispatcher in the order they were registered.
+    /// </summary>
+    public Task<ISyncStatus>? LastSync { get; private set; }
+
     public void Publish(ISyncStatus status)
     {
         Status = status;
@@ -40,7 +46,8 @@ public sealed class FakeSyncService : ISyncService
     public Task<ISyncStatus> SyncNowAsync(CancellationToken cancellationToken)
     {
         SyncCount++;
-        return (SyncOperation?.Invoke(cancellationToken) ?? Task.FromResult(Status)).WaitAsync(cancellationToken);
+        LastSync = (SyncOperation?.Invoke(cancellationToken) ?? Task.FromResult(Status)).WaitAsync(cancellationToken);
+        return LastSync;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
