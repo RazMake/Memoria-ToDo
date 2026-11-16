@@ -12,7 +12,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const script = fileURLToPath(import.meta.url);
 const usage = 'usage: node .agents/version-tag.mjs [major|minor|patch] [--dry-run | --expect <tag> --commit <id>] | --clear [<tag>] [--dry-run | --here <id> --origin <id>] | --check <tag> | --notes <tag>';
-const parts = ['major', 'minor', 'patch'];
+export const parts = Object.freeze(['major', 'minor', 'patch']);
+export const defaultPart = 'minor';
 const versionTag = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const commitId = /^([0-9a-f]{40}|[0-9a-f]{64})$/;
 const command = (...words) => ['node', '.agents/version-tag.mjs', ...words].join(' ');
@@ -72,7 +73,17 @@ function parseArguments(args) {
   }
   if (here !== undefined || origin !== undefined) refuse(`--here and --origin are for --clear; ${usage}`);
   if (words.length > 1 || (words.length === 1 && !parts.includes(words[0]))) refuse(`give at most one of major, minor, patch; ${usage}`);
-  return { command: 'make', part: words[0] ?? 'minor', dryRun, expect, commit };
+  return { command: 'make', part: words[0] ?? defaultPart, dryRun, expect, commit };
+}
+
+export function approvalOf(preview) {
+  const line = preview.trimEnd().split('\n').at(-1);
+  const prefix = command('');
+  if (!line?.startsWith(prefix)) refuse('the preview has no approved version-tag command');
+  const args = line.slice(prefix.length).split(' ');
+  const parsed = parseArguments(args);
+  if (parsed.command !== 'make' || parsed.dryRun || !parsed.expect) refuse('the preview has no guarded make command');
+  return { args, tag: parsed.expect, commit: parsed.commit };
 }
 
 function check(tag) {
@@ -112,7 +123,7 @@ const versionTagsOf = (...maps) => [...new Set(maps.flatMap((map) => [...map.key
 const latestOf = (tags) => tags.reduce((best, tag) => (!best || compare(versionOf(tag), versionOf(best)) > 0 ? tag : best), undefined);
 
 function next(latest, part) {
-  if (!latest) return 'v0.1.0';
+  if (!latest) return 'v1.0.0';
   const [major, minor, patch] = versionOf(latest);
   return { major: `v${major + 1n}.0.0`, minor: `v${major}.${minor + 1n}.0`, patch: `v${major}.${minor}.${patch + 1n}` }[part];
 }
@@ -162,8 +173,8 @@ async function make(git, { part, dryRun, expect, commit: approvedCommit }) {
   } catch (error) {
     try {
       await git.deleteLocalTag(tag, id);
-    } catch {
-      throw new Refusal(`${error.message}\nThe tag ${tag} here changed since it was made and was kept.`);
+    } catch (cleanupError) {
+      throw new Refusal(`${error.message}\nThe local tag ${tag} was kept because cleanup failed: ${cleanupError.message}`);
     }
     throw error;
   }
@@ -249,8 +260,8 @@ export async function run(args, git, files) {
 }
 
 /** The real git operations, run in `cwd`. A failed operation rejects with git's message. */
-export function createGit(cwd) {
-  const gitWithInput = (input, ...args) => new Promise((resolve, reject) => {
+export function createGit(cwd, execute) {
+  const gitWithInput = (input, ...args) => execute ? execute('git', args, { input }) : new Promise((resolve, reject) => {
     const child = execFile('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } }, (error, stdout, stderr) => {
       if (error) reject(new Error(stderr.trim() || error.message));
       else resolve(stdout);
@@ -318,7 +329,7 @@ export function createGit(cwd) {
       return id;
     },
     // Pushing the ID sends the tag object that was made, whatever the tag here is by now.
-    pushTag: (name, id) => git('push', '--no-follow-tags', 'origin', `${id}:refs/tags/${name}`),
+    pushTag: (name, id, destination = 'origin') => git('push', '--no-follow-tags', destination, `${id}:refs/tags/${name}`),
     // update-ref deletes the tag only while its own ID is still `id`, and never what a symbolic tag points to.
     deleteLocalTag: (name, id) => git('update-ref', '--no-deref', '-d', `refs/tags/${name}`, id),
     // The lease makes origin delete the tag only while its own ID is still `id`.

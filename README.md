@@ -10,7 +10,8 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
 | Write or change documentation | [Writing docs](docs/contributing/writing-docs.md) |
 | See what changed in each version, or add an entry | [Changelog](CHANGELOG.md), and [how to write it](docs/contributing/changelog.md) |
 | Run the desktop app with F5 | [What you need](#what-you-need) |
-| Publish a new version, or clear a version tag | [How a version tag is made and cleared](docs/architecture/version-tags.md) |
+| Publish a version with one guided command | [Release a version](docs/architecture/releasing.md) |
+| Clear a version tag | [How a version tag is made and cleared](docs/architecture/version-tags.md) |
 
 ## What you need
 
@@ -30,6 +31,7 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
   ```
 
 - **Git on `PATH`**, for [Sync's integration tests](docs/architecture/technology-stack.md#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), which run it behind their own SSH server, and for the version tag script. Its version isn't pinned.
+- **GitHub CLI (`gh`)**, signed in with `gh auth login`, to [release a version](docs/architecture/releasing.md). The guided command also explains missing sign-in.
 - **Visual Studio Code with the [C# extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp)** (`ms-dotnettools.csharp`). F5 builds and runs the desktop app with the debugger, and Ctrl+F5 runs it without. Both use the pinned SDK. Code completion needs Visual Studio Code to find that SDK on `PATH`, so start it from the repository root like this ([why](docs/architecture/technology-stack.md#visual-studio-code-runs-the-desktop-app-with-f5-on-the-pinned-sdk)):
 
   ```powershell

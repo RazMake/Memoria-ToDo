@@ -118,10 +118,10 @@ describe('making the next version tag (unit)', () => {
   }
 
   for (const part of [undefined, 'major', 'minor', 'patch']) {
-    test(`makes v0.1.0 for ${part ?? 'no part'} when there is no version tag yet`, async () => {
+    test(`makes v1.0.0 for ${part ?? 'no part'} when there is no version tag yet`, async () => {
       const { git, result } = await runWith(part ? [part] : []);
       assert.equal(result.code, 0, result.stderr);
-      assert.deepEqual(Object.keys(git.snapshot().remote), ['v0.1.0']);
+      assert.deepEqual(Object.keys(git.snapshot().remote), ['v1.0.0']);
     });
   }
 
@@ -129,7 +129,7 @@ describe('making the next version tag (unit)', () => {
     const others = Object.fromEntries(['v1.2', 'proof-1', 'v01.2.3', 'v1.2.3-rc1', 'V1.2.3', '1.2.3'].map((tag) => [tag, 'c1']));
     const { git, result } = await runWith(['patch'], { local: others, remote: {} });
     assert.equal(result.code, 0, result.stderr);
-    assert.ok(Object.hasOwn(git.snapshot().remote, 'v0.1.0'));
+    assert.ok(Object.hasOwn(git.snapshot().remote, 'v1.0.0'));
   });
 
   test('is not blocked by a local tag that is not a version tag and is missing on origin', async () => {
@@ -156,12 +156,12 @@ describe('making the next version tag (unit)', () => {
 
   test('puts the tag on the newest commit of origin\'s default branch', async () => {
     const { git } = await runWith([], { originHead: 'c2', commits: { c2: { shortId: 'def5678', subject: 'Fix the build' } } });
-    assert.deepEqual(git.snapshot(), { local: { 'v0.1.0': 'c2' }, remote: { 'v0.1.0': 'c2' } });
+    assert.deepEqual(git.snapshot(), { local: { 'v1.0.0': 'c2' }, remote: { 'v1.0.0': 'c2' } });
   });
 
   test('makes an annotated tag', async () => {
     const { git } = await runWith([]);
-    assert.equal(git.isAnnotated('v0.1.0'), true);
+    assert.equal(git.isAnnotated('v1.0.0'), true);
   });
 
   test('pushes the tag, prints what it did, and succeeds', async () => {
@@ -416,23 +416,23 @@ describe('fetching only origin\'s default branch (unit)', () => {
 
 describe('the push that makes a tag (unit)', () => {
   test('deletes the tag it made here, shows git\'s message, and exits 1 when origin got that tag meanwhile', async () => {
-    const { git, result } = await runWith([], { afterRemoteTagsRead: (fake) => fake.setRemoteTag('v0.1.0', commitB) });
+    const { git, result } = await runWith([], { afterRemoteTagsRead: (fake) => fake.setRemoteTag('v1.0.0', commitB) });
     assert.equal(result.code, 1);
     assert.match(result.stderr, /rejected/);
-    assert.deepEqual(git.snapshot(), { local: {}, remote: { 'v0.1.0': commitB } });
+    assert.deepEqual(git.snapshot(), { local: {}, remote: { 'v1.0.0': commitB } });
   });
 
   test('pushes the tag object it made, not a tag moved here to another commit right after', async () => {
-    const { git, result } = await runWith([], { afterCreateTag: (fake) => fake.setLocalTag('v0.1.0', commitB) });
+    const { git, result } = await runWith([], { afterCreateTag: (fake) => fake.setLocalTag('v1.0.0', commitB) });
     assert.equal(result.code, 0, result.stderr);
-    assert.deepEqual(git.snapshot().remote, { 'v0.1.0': 'c1' });
+    assert.deepEqual(git.snapshot().remote, { 'v1.0.0': 'c1' });
   });
 
   test('keeps a tag moved here after the script made it, and exits 1, when the push is rejected', async () => {
-    const { git, result } = await runWith([], { refusePush: 'remote: refused by the server', afterCreateTag: (fake) => fake.setLocalTag('v0.1.0', commitB) });
+    const { git, result } = await runWith([], { refusePush: 'remote: refused by the server', afterCreateTag: (fake) => fake.setLocalTag('v1.0.0', commitB) });
     assert.equal(result.code, 1);
     assert.notEqual(result.stderr, '');
-    assert.deepEqual(git.snapshot(), { local: { 'v0.1.0': commitB }, remote: {} });
+    assert.deepEqual(git.snapshot(), { local: { 'v1.0.0': commitB }, remote: {} });
   });
 });
 
@@ -593,7 +593,7 @@ describe('the command a preview ends with (unit)', () => {
 
   test('for a make preview names a 64-character commit id in full', async () => {
     const { result } = await runWith(['--dry-run'], { originHead: commitC, commits: { [commitC]: { shortId: 'c3c3c3c', subject: 'Big id' } } });
-    assert.equal(lastLine(result), command('minor', '--expect', 'v0.1.0', '--commit', commitC));
+    assert.equal(lastLine(result), command('minor', '--expect', 'v1.0.0', '--commit', commitC));
   });
 
   for (const [what, options, options2, expected] of [
@@ -824,7 +824,7 @@ describe('approval options in the command line (unit)', () => {
 
   for (const id of [commitA, commitC]) {
     test(`accepts a ${id.length}-character lowercase hex commit id`, async () => {
-      const { result } = await runWith(['--expect', 'v0.1.0', '--commit', id], { originHead: id, commits: { [id]: { shortId: id.slice(0, 7), subject: 'x' } } });
+      const { result } = await runWith(['--expect', 'v1.0.0', '--commit', id], { originHead: id, commits: { [id]: { shortId: id.slice(0, 7), subject: 'x' } } });
       assert.equal(result.code, 0, result.stderr);
     });
   }
@@ -1096,11 +1096,11 @@ describe('version-tag.mjs on real git (integration)', () => {
     const { work, origin, runScript } = repositories(t);
     const result = runScript(work);
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /v0\.1\.0/);
+    assert.match(result.stdout, /v1\.0\.0/);
     const head = git(work, 'rev-parse', 'HEAD');
-    assert.equal(git(work, 'cat-file', '-t', 'v0.1.0'), 'tag');
-    assert.equal(git(work, 'rev-parse', 'v0.1.0^{commit}'), head);
-    assert.equal(git(origin, 'rev-parse', 'v0.1.0^{commit}'), head);
+    assert.equal(git(work, 'cat-file', '-t', 'v1.0.0'), 'tag');
+    assert.equal(git(work, 'rev-parse', 'v1.0.0^{commit}'), head);
+    assert.equal(git(origin, 'rev-parse', 'v1.0.0^{commit}'), head);
   });
 
   test('raises the part it was given from the latest tag', (t) => {
@@ -1108,7 +1108,7 @@ describe('version-tag.mjs on real git (integration)', () => {
     assert.equal(runScript(work).status, 0);
     const result = runScript(work, 'patch');
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(git(origin, 'tag', '--list').split('\n').sort(), ['v0.1.0', 'v0.1.1']);
+    assert.deepEqual(git(origin, 'tag', '--list').split('\n').sort(), ['v1.0.0', 'v1.0.1']);
   });
 
   test('refuses as behind when another clone pushed a commit to origin after the last fetch', (t) => {
@@ -1145,7 +1145,7 @@ describe('version-tag.mjs on real git (integration)', () => {
 
     const result = runScript(work);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(git(origin, 'tag', '--list'), 'v0.1.0');
+    assert.equal(git(origin, 'tag', '--list'), 'v1.0.0');
   });
 
   test('--clear deletes the latest version tag from the work repository and from origin', (t) => {
@@ -1162,7 +1162,7 @@ describe('version-tag.mjs on real git (integration)', () => {
     assert.equal(runScript(work).status, 0);
     git(work, 'tag', 'proof-1');
     git(work, 'push', 'origin', 'proof-1');
-    assert.equal(runScript(work, '--clear', 'v0.1.0').status, 0);
+    assert.equal(runScript(work, '--clear', 'v1.0.0').status, 0);
     assert.deepEqual(tags(work), ['proof-1']);
     assert.deepEqual(tags(origin), ['proof-1']);
   });
@@ -1194,8 +1194,8 @@ describe('version-tag.mjs on real git (integration)', () => {
 
     const result = runScript(elsewhere);
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(tags(work), ['v0.1.0']);
-    assert.deepEqual(tags(origin), ['v0.1.0']);
+    assert.deepEqual(tags(work), ['v1.0.0']);
+    assert.deepEqual(tags(origin), ['v1.0.0']);
     assert.deepEqual(tags(elsewhere), []);
     assert.equal(existsSync(join(elsewhere, '.agents')), false);
   });
@@ -1244,10 +1244,10 @@ describe('version-tag.mjs changelog on real git (integration)', () => {
   });
 
   test('makes and pushes the tag when the committed changelog has the version\'s notes', (t) => {
-    const { work, origin, runScript } = repositories(t, { changelog: changelogWith('0.1.0') });
+    const { work, origin, runScript } = repositories(t, { changelog: changelogWith('1.0.0') });
     const result = runScript(work);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(git(origin, 'tag', '--list'), 'v0.1.0');
+    assert.equal(git(origin, 'tag', '--list'), 'v1.0.0');
   });
 
   test('refuses with one line naming the version, and makes no tag, when the committed changelog lacks its notes', (t) => {
@@ -1256,7 +1256,7 @@ describe('version-tag.mjs changelog on real git (integration)', () => {
     assert.equal(result.status, 1);
     assert.equal(result.stdout, '');
     assert.equal(lines(result.stderr).length, 1);
-    assert.ok(result.stderr.includes('0.1.0'));
+    assert.ok(result.stderr.includes('1.0.0'));
     assert.deepEqual(tags(work), []);
     assert.deepEqual(tags(origin), []);
   });
@@ -1294,10 +1294,10 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
     const { root, work, origin, tags, runScriptWith } = repositories(t);
     const { file, env } = traced(t, root);
     assert.equal(runScriptWith(env, work).status, 0);
-    const tagId = git(work, 'rev-parse', 'v0.1.0');
-    assert.notEqual(tagId, git(work, 'rev-parse', 'v0.1.0^{commit}'));
+    const tagId = git(work, 'rev-parse', 'v1.0.0');
+    assert.notEqual(tagId, git(work, 'rev-parse', 'v1.0.0^{commit}'));
     assert.equal(runScriptWith(env, work, '--clear').status, 0);
-    assert.ok(commands(file, 'push').includes(`git push --no-follow-tags --force-with-lease=refs/tags/v0.1.0:${tagId} origin :refs/tags/v0.1.0`), commands(file, 'push').join('\n'));
+    assert.ok(commands(file, 'push').includes(`git push --no-follow-tags --force-with-lease=refs/tags/v1.0.0:${tagId} origin :refs/tags/v1.0.0`), commands(file, 'push').join('\n'));
     assert.deepEqual(tags(origin), []);
     assert.deepEqual(tags(work), []);
   });
@@ -1305,12 +1305,12 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
   test('the guarded delete removes an annotated tag for its own id and refuses, deleting nothing, for its commit\'s id or any other', (t) => {
     const { work, origin, runScript } = repositories(t);
     assert.equal(runScript(work).status, 0);
-    const tagId = git(origin, 'rev-parse', 'refs/tags/v0.1.0');
-    const commitId = git(origin, 'rev-parse', 'refs/tags/v0.1.0^{commit}');
-    const guarded = (id) => spawnSync('git', ['push', '--no-follow-tags', `--force-with-lease=refs/tags/v0.1.0:${id}`, 'origin', ':refs/tags/v0.1.0'], { cwd: work, env: gitEnv, encoding: 'utf8' });
+    const tagId = git(origin, 'rev-parse', 'refs/tags/v1.0.0');
+    const commitId = git(origin, 'rev-parse', 'refs/tags/v1.0.0^{commit}');
+    const guarded = (id) => spawnSync('git', ['push', '--no-follow-tags', `--force-with-lease=refs/tags/v1.0.0:${id}`, 'origin', ':refs/tags/v1.0.0'], { cwd: work, env: gitEnv, encoding: 'utf8' });
     for (const id of [commitId, '0'.repeat(40)]) {
       assert.notEqual(guarded(id).status, 0);
-      assert.equal(git(origin, 'tag', '--list'), 'v0.1.0');
+      assert.equal(git(origin, 'tag', '--list'), 'v1.0.0');
     }
     assert.equal(guarded(tagId).status, 0);
     assert.equal(git(origin, 'tag', '--list'), '');
@@ -1319,13 +1319,13 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
   test('the guarded delete here removes an annotated tag for its own id and refuses, deleting nothing, for its commit\'s id or any other', (t) => {
     const { work, runScript } = repositories(t);
     assert.equal(runScript(work).status, 0);
-    const tagId = git(work, 'rev-parse', 'refs/tags/v0.1.0');
-    const commitId = git(work, 'rev-parse', 'refs/tags/v0.1.0^{commit}');
-    const guarded = (id) => spawnSync('git', ['update-ref', '-d', 'refs/tags/v0.1.0', id], { cwd: work, env: gitEnv, encoding: 'utf8' });
+    const tagId = git(work, 'rev-parse', 'refs/tags/v1.0.0');
+    const commitId = git(work, 'rev-parse', 'refs/tags/v1.0.0^{commit}');
+    const guarded = (id) => spawnSync('git', ['update-ref', '-d', 'refs/tags/v1.0.0', id], { cwd: work, env: gitEnv, encoding: 'utf8' });
     // An all-zero old value means "no check" to update-ref -d, and the script never passes one.
     for (const id of [commitId, 'f'.repeat(40)]) {
       assert.notEqual(guarded(id).status, 0);
-      assert.equal(git(work, 'tag', '--list'), 'v0.1.0');
+      assert.equal(git(work, 'tag', '--list'), 'v1.0.0');
     }
     assert.equal(guarded(tagId).status, 0);
     assert.equal(git(work, 'tag', '--list'), '');
@@ -1369,8 +1369,8 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
 
     const made = runScript(work);
     assert.equal(made.status, 0, made.stderr);
-    assert.deepEqual(tags(work).sort(), ['annotated-here', 'only-here', 'v0.1.0']);
-    assert.deepEqual(tags(origin).sort(), ['proof-9', 'v0.1.0']);
+    assert.deepEqual(tags(work).sort(), ['annotated-here', 'only-here', 'v1.0.0']);
+    assert.deepEqual(tags(origin).sort(), ['proof-9', 'v1.0.0']);
 
     const cleared = runScript(work, '--clear');
     assert.equal(cleared.status, 0, cleared.stderr);
@@ -1410,12 +1410,12 @@ describe('version-tag.mjs preview and approved run on real git (integration)', (
     assert.equal(preview.status, 0, preview.stderr);
     assert.deepEqual(tags(work), []);
     const head = git(work, 'rev-parse', 'HEAD');
-    assert.equal(lastLine(preview), `node .agents/version-tag.mjs patch --expect v0.1.0 --commit ${head}`);
+    assert.equal(lastLine(preview), `node .agents/version-tag.mjs patch --expect v1.0.0 --commit ${head}`);
 
     const result = runScript(work, ...approved(preview));
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(git(origin, 'rev-parse', 'v0.1.0^{commit}'), head);
-    assert.deepEqual(tags(work), ['v0.1.0']);
+    assert.equal(git(origin, 'rev-parse', 'v1.0.0^{commit}'), head);
+    assert.deepEqual(tags(work), ['v1.0.0']);
   });
 
   test('an approved make refuses, changing no tag, when origin\'s default branch got a commit after the preview', (t) => {
@@ -1438,39 +1438,39 @@ describe('version-tag.mjs preview and approved run on real git (integration)', (
     const { work, origin, clone, tags, runScript } = repositories(t);
     const preview = runScript(work, '--dry-run');
     const other = clone();
-    git(other, 'tag', '-a', 'v0.1.0', '-m', 'Made elsewhere');
-    git(other, 'push', 'origin', 'v0.1.0');
+    git(other, 'tag', '-a', 'v1.0.0', '-m', 'Made elsewhere');
+    git(other, 'push', 'origin', 'v1.0.0');
 
     const result = runScript(work, ...approved(preview));
     assert.equal(result.status, 1);
     assert.deepEqual(tags(work), []);
-    assert.deepEqual(tags(origin), ['v0.1.0']);
+    assert.deepEqual(tags(origin), ['v1.0.0']);
   });
 
   test('the last line of a clear preview, run unchanged, clears what the preview showed, and a newer tag stays', (t) => {
     const { work, origin, tags, runScript } = repositories(t);
     assert.equal(runScript(work).status, 0);
     const head = git(work, 'rev-parse', 'HEAD');
-    const preview = runScript(work, '--clear', 'v0.1.0', '--dry-run');
+    const preview = runScript(work, '--clear', 'v1.0.0', '--dry-run');
     assert.equal(preview.status, 0, preview.stderr);
-    assert.equal(lastLine(preview), `node .agents/version-tag.mjs --clear v0.1.0 --here ${head} --origin ${head}`);
+    assert.equal(lastLine(preview), `node .agents/version-tag.mjs --clear v1.0.0 --here ${head} --origin ${head}`);
 
-    git(work, 'tag', '-a', 'v0.2.0', '-m', 'Newer');
-    git(work, 'push', 'origin', 'v0.2.0');
+    git(work, 'tag', '-a', 'v1.1.0', '-m', 'Newer');
+    git(work, 'push', 'origin', 'v1.1.0');
     const result = runScript(work, ...approved(preview));
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(tags(work), ['v0.2.0']);
-    assert.deepEqual(tags(origin), ['v0.2.0']);
+    assert.deepEqual(tags(work), ['v1.1.0']);
+    assert.deepEqual(tags(origin), ['v1.1.0']);
   });
 
   test('an approved clear refuses, changing no tag, when the tag is on another commit', (t) => {
     const { work, origin, tags, runScript } = repositories(t);
     assert.equal(runScript(work).status, 0);
-    const result = runScript(work, '--clear', 'v0.1.0', '--here', '1'.repeat(40), '--origin', git(work, 'rev-parse', 'HEAD'));
+    const result = runScript(work, '--clear', 'v1.0.0', '--here', '1'.repeat(40), '--origin', git(work, 'rev-parse', 'HEAD'));
     assert.equal(result.status, 1);
     assert.equal(lines(result.stderr).length, 1);
-    assert.deepEqual(tags(work), ['v0.1.0']);
-    assert.deepEqual(tags(origin), ['v0.1.0']);
+    assert.deepEqual(tags(work), ['v1.0.0']);
+    assert.deepEqual(tags(origin), ['v1.0.0']);
   });
 
   test('previews and clears a tag whose commit only origin has, without its subject', (t) => {

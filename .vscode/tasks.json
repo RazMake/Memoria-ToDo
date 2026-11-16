@@ -13,6 +13,21 @@
       ],
       "problemMatcher": "$msCompile",
       "group": "build"
+    },
+    {
+      "label": "release a version",
+      "type": "process",
+      "command": "node",
+      "args": ["${workspaceFolder}\\.agents\\release.mjs"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
     }
   ]
 }

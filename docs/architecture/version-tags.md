@@ -2,7 +2,7 @@
 
 Status: Decided
 
-A script, `.agents/version-tag.mjs`, makes the next version tag and pushes it to GitHub, which starts the [release workflow](technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag); it also clears a version tag, and gives the release job a tag's version and its notes from the [changelog](../contributing/changelog.md). The `version-tag` skill runs it from Codex, Claude Code, or GitHub Copilot, after you approve its preview.
+A script, `.agents/version-tag.mjs`, makes the next version tag and pushes it to GitHub, which starts the [release workflow](technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag); it also clears a version tag, and gives the release job a tag's version and its notes from the [changelog](../contributing/changelog.md). The `version-tag` skill runs it from Codex, Claude Code, or GitHub Copilot, after you approve its preview. For one command that also follows the build and guides installation, use the [release guide](releasing.md).
 
 ## Behavior
 
@@ -22,7 +22,7 @@ You name the part to raise, `major`, `minor`, or `patch`; with none, it's `minor
 
 | Latest version tag | `major` | `minor` | `patch` |
 | --- | --- | --- | --- |
-| None yet | `v0.1.0` | `v0.1.0` | `v0.1.0` |
+| None yet | `v1.0.0` | `v1.0.0` | `v1.0.0` |
 | `v1.2.3` | `v2.0.0` | `v1.3.0` | `v1.2.4` |
 
 - **The latest is the highest version by number**, so `v0.10.0` comes after `v0.9.0`. Version tags here and on origin both count.
@@ -190,7 +190,7 @@ The release job also reads what `--notes` prints. Proposed, a decision to confir
 ### Making and clearing a tag
 
 - **Another language, a tag that isn't pushed, or a clear that also deletes the GitHub release**: you chose otherwise.
-- **A first tag that depends on the part, such as `v1.0.0` for `major`**: you chose `v0.1.0` for every part.
+- **A first tag that depends on the part, or starts below the first major version**: you chose the same first version for every part, as the table above states.
 - **Fetching origin's tags**: a preview would change local tags, and a clashing tag would fail with git's message instead of one that names the fix.
 - **Naming `main` in the script**: a second home for GitHub's default-branch setting.
 - **Lightweight tags**: git keeps them for private or temporary labels.
