@@ -13,7 +13,13 @@ public sealed class FakeSyncSetup : ISyncSetup
     public List<(string Address, string Folder)> Clones { get; } = [];
     public List<(string Address, string Folder)> Selections { get; } = [];
     public string? AcceptedFingerprint { get; private set; }
-    public (string Host, int Port)? ForgottenHost { get; private set; }
+    public int ForgetKeyCount { get; private set; }
+
+    /// <summary>The addresses <see cref="CheckAddress"/> accepts, each with its add-key page, or null when none is known. Any other address is refused.</summary>
+    public Dictionary<string, Uri?> AcceptedAddresses { get; } = [];
+
+    /// <summary>Every address <see cref="CheckAddress"/> was asked about, as given.</summary>
+    public List<string> AddressChecks { get; } = [];
 
     public void Publish(FakeSyncSetupState state)
     {
@@ -48,8 +54,20 @@ public sealed class FakeSyncSetup : ISyncSetup
     public Task AcceptHostKeyAsync(string fingerprint, CancellationToken cancellationToken) =>
         Complete(() => AcceptedFingerprint = fingerprint, cancellationToken);
 
-    public Task ForgetHostKeyAsync(string host, int port, CancellationToken cancellationToken) =>
-        Complete(() => ForgottenHost = (host, port), cancellationToken);
+
+    public Task ForgetKeyAsync(CancellationToken cancellationToken) =>
+        Complete(() =>
+        {
+            ForgetKeyCount++;
+            Publish(Snapshot with { PublicKey = null, IsConfigured = false });
+        }, cancellationToken);
+
+    public bool CheckAddress(string address, out Uri? addKeyPage)
+    {
+        AddressChecks.Add(address);
+        addKeyPage = null;
+        return AcceptedAddresses.TryGetValue(address.Trim(), out addKeyPage);
+    }
 
     private async Task Complete(Action update, CancellationToken cancellationToken)
     {

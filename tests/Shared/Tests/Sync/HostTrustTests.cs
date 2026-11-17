@@ -127,54 +127,7 @@ public sealed class HostTrustTests
     }
 
     [Fact]
-    public async Task Keeps_the_trust_of_other_hosts_and_other_ports_when_a_host_and_port_is_forgotten()
-    {
-        f.WithKey();
-        f.WriteDeviceFile("known-hosts.json", TrustedFile((CustomHost, 22, "SHA256:first"), (CustomHost, 2222, "SHA256:first"), ("other.example.org", 22, "SHA256:first")));
-        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:first");
-        await using var sync = f.Create();
-
-        await sync.Setup.ForgetHostKeyAsync(CustomHost, 22, CancellationToken.None);
-
-        await AssertTrustedAsync(sync, OtherPortAddress);
-        await AssertTrustedAsync(sync, OtherHostAddress);
-        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
-        Assert.Equal(HostKeyVerdict.Unknown, f.Git.Verdicts[^1]);
-    }
-
-    [Fact]
-    public async Task Offers_the_key_again_after_a_custom_host_is_forgotten()
-    {
-        f.WithKey();
-        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:first");
-        await using var sync = f.Create();
-        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
-        await sync.Setup.AcceptHostKeyAsync("SHA256:first", CancellationToken.None);
-
-        await sync.Setup.ForgetHostKeyAsync(CustomHost, 22, CancellationToken.None);
-        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
-
-        Assert.Equal(HostKeyVerdict.Unknown, f.Git.Verdicts[^1]);
-        Assert.True(sync.Setup.State.HostKey!.CanAccept);
-    }
-
-    [Fact]
-    public async Task Forgets_a_custom_host_named_with_different_case_or_a_trailing_dot()
-    {
-        f.WithKey();
-        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:first");
-        await using var sync = f.Create();
-        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
-        await sync.Setup.AcceptHostKeyAsync("SHA256:first", CancellationToken.None);
-
-        await sync.Setup.ForgetHostKeyAsync(CustomHost.ToUpperInvariant() + ".", 22, CancellationToken.None);
-        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
-
-        Assert.Equal(HostKeyVerdict.Unknown, f.Git.Verdicts[^1]);
-    }
-
-    [Fact]
-    public async Task Refuses_a_changed_custom_host_key_and_does_not_let_it_be_accepted()
+    public async Task Refuses_a_changed_custom_host_key_and_offers_it_for_acceptance_without_saving_it()
     {
         f.WithKey();
         var saved = TrustedFile((CustomHost, 22, "SHA256:first"));
@@ -186,13 +139,12 @@ public sealed class HostTrustTests
 
         Assert.Equal(HostKeyVerdict.Changed, f.Git.Verdicts[^1]);
         Assert.Equal(SyncFailure.ChangedHostKey, sync.Status.Failure);
-        Assert.False(sync.Setup.State.HostKey!.CanAccept);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.Setup.AcceptHostKeyAsync("SHA256:second", CancellationToken.None));
+        Assert.True(sync.Setup.State.HostKey!.CanAccept);
         Assert.Equal(saved, f.ReadDeviceFile("known-hosts.json"));
     }
 
     [Fact]
-    public async Task Refuses_a_changed_key_when_a_configured_service_syncs_and_leaves_the_saved_trust_unchanged()
+    public async Task Offers_a_changed_key_for_acceptance_when_a_configured_service_syncs_and_leaves_the_saved_trust_unchanged()
     {
         f.Ready();
         var saved = TrustedFile((CustomHost, 22, "SHA256:first"));
@@ -205,25 +157,125 @@ public sealed class HostTrustTests
         Assert.Equal(HostKeyVerdict.Changed, f.Git.Verdicts[^1]);
         Assert.Equal(SyncState.Error, returned.State);
         Assert.Null(returned.LastSuccessfulSync);
-        Assert.False(sync.Setup.State.HostKey!.CanAccept);
+        Assert.True(sync.Setup.State.HostKey!.CanAccept);
         Assert.Equal(saved, f.ReadDeviceFile("known-hosts.json"));
     }
 
     [Fact]
-    public async Task Accepts_a_replacement_key_only_after_the_old_one_is_forgotten()
+    public async Task Replaces_the_saved_key_of_a_custom_host_when_its_changed_key_is_accepted()
     {
         f.WithKey();
         f.WriteDeviceFile("known-hosts.json", TrustedFile((CustomHost, 22, "SHA256:first")));
         f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:second");
         await using var sync = f.Create();
-        await sync.Setup.ForgetHostKeyAsync(CustomHost, 22, CancellationToken.None);
-
         await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
 
-        Assert.True(sync.Setup.State.HostKey!.CanAccept);
         await sync.Setup.AcceptHostKeyAsync("SHA256:second", CancellationToken.None);
-        await sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None);
-        Assert.Equal(HostKeyVerdict.Trusted, f.Git.Verdicts[^1]);
+
+        await AssertTrustedAsync(sync, CustomAddress);
+        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:first");
+        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
+        Assert.Equal(HostKeyVerdict.Changed, f.Git.Verdicts[^1]);
+    }
+
+    [Fact]
+    public async Task Keeps_the_trust_of_other_hosts_and_other_ports_when_a_changed_key_is_accepted()
+    {
+        f.WithKey();
+        f.WriteDeviceFile("known-hosts.json", TrustedFile((CustomHost, 22, "SHA256:old"), (CustomHost, 2222, "SHA256:first"), ("other.example.org", 22, "SHA256:first")));
+        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:second");
+        await using var sync = f.Create();
+        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
+
+        await sync.Setup.AcceptHostKeyAsync("SHA256:second", CancellationToken.None);
+
+        await AssertTrustedAsync(sync, CustomAddress);
+        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:first");
+        await AssertTrustedAsync(sync, OtherPortAddress);
+        await AssertTrustedAsync(sync, OtherHostAddress);
+    }
+
+    [Fact]
+    public async Task Replaces_every_saved_key_of_a_host_and_port_when_a_changed_key_is_accepted()
+    {
+        f.WithKey();
+        f.WriteDeviceFile("known-hosts.json", TrustedFile((CustomHost, 22, "SHA256:first"), (CustomHost, 22, "SHA256:third")));
+        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:second");
+        await using var sync = f.Create();
+        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
+
+        await sync.Setup.AcceptHostKeyAsync("SHA256:second", CancellationToken.None);
+
+        await AssertTrustedAsync(sync, CustomAddress);
+        foreach (var old in new[] { "SHA256:first", "SHA256:third" })
+        {
+            f.Git.OfferedHostKey = ("ssh-ed25519", old);
+            await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
+            Assert.Equal(HostKeyVerdict.Changed, f.Git.Verdicts[^1]);
+        }
+    }
+
+    [Fact]
+    public async Task Replaces_saved_keys_under_case_and_trailing_dot_aliases_of_the_host_when_a_changed_key_is_accepted()
+    {
+        f.WithKey();
+        f.WriteDeviceFile("known-hosts.json", TrustedFile((CustomHost, 22, "SHA256:first"), (CustomHost.ToUpperInvariant() + ".", 22, "SHA256:third"), (CustomHost.ToUpperInvariant(), 22, "SHA256:fourth")));
+        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:second");
+        await using var sync = f.Create();
+        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
+
+        await sync.Setup.AcceptHostKeyAsync("SHA256:second", CancellationToken.None);
+
+        await AssertTrustedAsync(sync, CustomAddress);
+        foreach (var old in new[] { "SHA256:first", "SHA256:third", "SHA256:fourth" })
+        {
+            f.Git.OfferedHostKey = ("ssh-ed25519", old);
+            await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
+            Assert.Equal(HostKeyVerdict.Changed, f.Git.Verdicts[^1]);
+        }
+
+        var savedTrust = f.ReadDeviceFile("known-hosts.json");
+        Assert.Contains("SHA256:second", savedTrust);
+        Assert.DoesNotContain("SHA256:first", savedTrust);
+        Assert.DoesNotContain("SHA256:third", savedTrust);
+        Assert.DoesNotContain("SHA256:fourth", savedTrust);
+    }
+
+    [Fact]
+    public async Task Trusts_a_key_saved_under_a_case_and_trailing_dot_alias_of_the_host()
+    {
+        f.WithKey();
+        f.WriteDeviceFile("known-hosts.json", TrustedFile((CustomHost.ToUpperInvariant() + ".", 22, "SHA256:first")));
+        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:first");
+        await using var sync = f.Create();
+
+        await AssertTrustedAsync(sync, CustomAddress);
+    }
+
+    [Fact]
+    public async Task Refuses_to_accept_a_fingerprint_other_than_the_offered_changed_key_and_changes_nothing()
+    {
+        f.WithKey();
+        var saved = TrustedFile((CustomHost, 22, "SHA256:first"));
+        f.WriteDeviceFile("known-hosts.json", saved);
+        f.Git.OfferedHostKey = ("ssh-ed25519", "SHA256:second");
+        await using var sync = f.Create();
+        await Assert.ThrowsAsync<IOException>(() => sync.Setup.CloneAsync(CustomAddress, f.CloneFolder, CancellationToken.None));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.Setup.AcceptHostKeyAsync("SHA256:other", CancellationToken.None));
+
+        Assert.Equal(saved, f.ReadDeviceFile("known-hosts.json"));
+    }
+
+    [Fact]
+    public async Task Refuses_to_accept_a_key_when_none_is_pending_and_changes_nothing()
+    {
+        f.WithKey();
+        await using var sync = f.Create();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.Setup.AcceptHostKeyAsync("SHA256:first", CancellationToken.None));
+
+        Assert.False(f.Files.FileExists(f.DeviceFile("known-hosts.json")));
     }
 
     [Fact]
@@ -270,17 +322,6 @@ public sealed class HostTrustTests
         f.Git.OfferedHostKey = ("ssh-ed25519", GitHubEd25519);
         await sync.Setup.CloneAsync(GitHubAddress, f.CloneFolder, CancellationToken.None);
         Assert.Equal(HostKeyVerdict.Trusted, f.Git.Verdicts[^1]);
-    }
-
-    [Fact]
-    public async Task Refuses_to_forget_a_built_in_host_even_when_it_is_named_with_different_case_and_a_trailing_dot()
-    {
-        f.WithKey();
-        await using var sync = f.Create();
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.Setup.ForgetHostKeyAsync("GitHub.com.", 22, CancellationToken.None));
-
-        Assert.False(f.Files.FileExists(f.DeviceFile("known-hosts.json")));
     }
 
     [Theory]
@@ -379,17 +420,6 @@ public sealed class HostTrustTests
     }
 
     [Fact]
-    public async Task Keeps_the_offered_key_visible_but_not_acceptable_when_forgetting_a_host_fails_because_the_saved_trust_became_unusable()
-    {
-        await using var sync = await OfferUnknownKeyThenCorruptTrustAsync();
-
-        await Assert.ThrowsAsync<IOException>(() => sync.Setup.ForgetHostKeyAsync(CustomHost, 22, CancellationToken.None));
-
-        AssertOfferedButNotAcceptable(sync);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.Setup.AcceptHostKeyAsync("SHA256:first", CancellationToken.None));
-    }
-
-    [Fact]
     public async Task Keeps_the_offered_key_not_acceptable_after_a_successful_setup_refresh_while_the_saved_trust_is_still_unusable()
     {
         await using var sync = await OfferUnknownKeyThenCorruptTrustAsync();
@@ -444,74 +474,6 @@ public sealed class HostTrustTests
         Assert.Equal(SyncFailure.Unexpected, sync.Status.Failure);
         Assert.DoesNotContain(HostKeyVerdict.Trusted, f.Git.Verdicts);
         AssertOfferedButNotAcceptable(sync);
-    }
-
-    [Fact]
-    public async Task Forgets_nothing_and_creates_no_trust_file_when_a_custom_host_has_no_saved_trust()
-    {
-        f.WithKey();
-        await using var sync = f.Create();
-
-        await sync.Setup.ForgetHostKeyAsync(CustomHost, 22, CancellationToken.None);
-        await sync.Setup.ForgetHostKeyAsync(CustomHost, 22, CancellationToken.None);
-
-        Assert.False(f.Files.FileExists(f.DeviceFile("known-hosts.json")));
-    }
-
-    [Fact]
-    public async Task Leaves_the_saved_trust_file_unchanged_when_forgetting_a_host_and_port_it_does_not_hold()
-    {
-        f.WithKey();
-        var saved = TrustedFile(("other.example.org", 22, "SHA256:other"), (CustomHost, 2222, "SHA256:first"));
-        f.WriteDeviceFile("known-hosts.json", saved);
-        await using var sync = f.Create();
-        f.Files.FailWritesUnder(f.DeviceFolder);
-
-        await sync.Setup.ForgetHostKeyAsync(CustomHost, 22, CancellationToken.None);
-
-        f.Files.StopFailing();
-        Assert.Equal(saved, f.ReadDeviceFile("known-hosts.json"));
-    }
-
-    [Fact]
-    public async Task Rejects_forgetting_a_missing_host_before_returning_a_task_and_without_reporting_an_error()
-    {
-        f.WithKey();
-        await using var sync = f.Create();
-
-        Assert.Throws<ArgumentNullException>(() => { _ = sync.Setup.ForgetHostKeyAsync(null!, 22, CancellationToken.None); });
-
-        Assert.Null(sync.Status.Failure);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public async Task Rejects_forgetting_a_blank_host_before_returning_a_task_and_without_reporting_an_error(string host)
-    {
-        f.WithKey();
-        await using var sync = f.Create();
-
-        Assert.Throws<ArgumentException>(() => { _ = sync.Setup.ForgetHostKeyAsync(host, 22, CancellationToken.None); });
-
-        Assert.Null(sync.Status.Failure);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(65536)]
-    public async Task Rejects_forgetting_a_port_outside_1_to_65535_before_returning_a_task_without_reporting_an_error_or_touching_the_saved_trust(int port)
-    {
-        f.WithKey();
-        var saved = TrustedFile((CustomHost, 22, "SHA256:first"));
-        f.WriteDeviceFile("known-hosts.json", saved);
-        await using var sync = f.Create();
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => { _ = sync.Setup.ForgetHostKeyAsync(CustomHost, port, CancellationToken.None); });
-
-        Assert.Null(sync.Status.Failure);
-        Assert.Equal(saved, f.ReadDeviceFile("known-hosts.json"));
     }
 
     // An unknown key is offered for acceptance, then the saved trust becomes unusable.

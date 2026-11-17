@@ -21,6 +21,7 @@ internal sealed class RepositorySection : StackPanel
     private readonly TextBox _address = new() { Margin = new Thickness(0, 0, 0, 5) };
     private readonly TextBox _localFolder = new();
     private readonly Button _clone = ConfigureButton.Make("Clone");
+    private readonly Button _setKey = ConfigureButton.Make("Set key", new Thickness(0, 0, 6, 0));
     private readonly Button _use = ConfigureButton.Make("Use this clone");
     private readonly StackPanel _controls = new() { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 0) };
     private readonly TextBlock _message = ThemedText.Message();
@@ -34,12 +35,19 @@ internal sealed class RepositorySection : StackPanel
         AutomationProperties.SetName(_localFolder, "Local folder");
         _clone.Click += async (_, _) => await _change.ChangeAsync(_address.Text, _localFolder.Text);
         _use.Click += async (_, _) => await _change.ChangeAsync(_address.Text, _localFolder.Text);
+        _setKey.IsEnabled = false;
+        _setKey.ToolTip = "Copies this device's public key, then opens the page where you add it, on the host of the typed address.";
+        _setKey.Click += (_, _) => _change.SetKey(_address.Text);
+        _address.TextChanged += (_, _) => _setKey.IsEnabled = _change.CanSetKey(_address.Text);
 
         _controls.Children.Add(Label("Repository address"));
         _controls.Children.Add(_address);
         _controls.Children.Add(Label("Local folder"));
         _controls.Children.Add(FolderRow(_localFolder));
-        _controls.Children.Add(_clone);
+        var cloneRow = new StackPanel { Orientation = Orientation.Horizontal };
+        cloneRow.Children.Add(_setKey);
+        cloneRow.Children.Add(_clone);
+        _controls.Children.Add(cloneRow);
         _controls.Children.Add(_use);
 
         Children.Add(ThemedText.Help("Your tasks are kept in a git repository.", new Thickness(0, 0, 0, 8)));
@@ -64,6 +72,7 @@ internal sealed class RepositorySection : StackPanel
         ShowLine(_folder, "Local Path:", lines.Folder);
         ShowLine(_identity, "Identity:", lines.Identity);
         _clone.Visibility = _change.Choice == RepositoryChoice.UseExisting ? Visibility.Collapsed : Visibility.Visible;
+        _setKey.Visibility = _change.Choice == RepositoryChoice.Clone ? Visibility.Visible : Visibility.Collapsed;
         _use.Visibility = _change.Choice == RepositoryChoice.Clone ? Visibility.Collapsed : Visibility.Visible;
         _controls.Visibility = _change.ControlsVisible ? Visibility.Visible : Visibility.Collapsed;
         ThemedText.ShowMessage(_message, _change.Message);

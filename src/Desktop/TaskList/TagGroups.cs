@@ -9,10 +9,10 @@ internal sealed record TaskGroup(string? Tag, IReadOnlyList<TaskItem> Tasks);
 internal static class TagGroups
 {
     /// <summary>
-    /// A group for each tag in alphabetical order ignoring case, then the "No tag" group, with its tasks in the order given. A
-    ///     task with two tags is in both groups. Groups with no task are left out.
+    /// A group for each tag in the tag order's order, then the "No tag" group, with its tasks in the order given. A
+    /// task with two tags is in both groups. Groups with no task are left out.
     /// </summary>
-       public static IReadOnlyList<TaskGroup> Of(IReadOnlyList<TaskItem> open)
+    public static IReadOnlyList<TaskGroup> Of(IReadOnlyList<TaskItem> open, ITagOrder tagOrder)
     {
         var tagged = new Dictionary<string, (string Tag, List<TaskItem> Tasks)>(StringComparer.OrdinalIgnoreCase);
         var untagged = new List<TaskItem>();
@@ -39,9 +39,8 @@ internal static class TagGroups
             }
         }
 
-        var groups = tagged.Values
-            .OrderBy(group => group.Tag, StringComparer.OrdinalIgnoreCase)
-            .Select(group => new TaskGroup(group.Tag, group.Tasks))
+        var groups = tagOrder.Sort([.. tagged.Values.Select(group => group.Tag)])
+            .Select(tag => new TaskGroup(tag, tagged[tag].Tasks))
             .ToList();
         if (untagged.Count > 0)
         {

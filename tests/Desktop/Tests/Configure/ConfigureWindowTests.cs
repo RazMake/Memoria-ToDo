@@ -184,7 +184,7 @@ public class ConfigureWindowTests
         {
             "Application" => OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b) == "Update"),
             "Startup" => screen.StartWithWindowsBox,
-            _ => OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b) == "Repository"),
+            _ => OpenWindows.Descendants(screen.Window).OfType<TextBlock>().First(b => OpenWindows.TextOf(b) == "Git Access"),
         };
 
         var gap = first.TranslatePoint(new Point(0, 0), screen.Window).Y

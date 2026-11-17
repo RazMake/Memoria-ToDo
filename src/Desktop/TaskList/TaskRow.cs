@@ -31,18 +31,20 @@ internal sealed class TaskRow : Border
     };
     private readonly FormattedTitle _title;
     private readonly FirstLineAlignment _alignment;
-    private Point? _pressedAt;
+    private readonly PressDrag _press = new(SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance);
+    private readonly IDragPointer _pointer;
     private bool _updating;
     private bool _selected;
     private UIElement? _editor;
 
-    public TaskRow(TaskItem task, ITheme theme, IDefaultBrowser browser)
+    public TaskRow(TaskItem task, ITheme theme, IDefaultBrowser browser, IDragPointer pointer)
     {
+        _pointer = pointer;
         Task = task;
         Group = [];
+        GroupKey = new GroupKey(null, false);
         Focusable = true;
         FocusVisualStyle = null;
-        AllowDrop = true;
         Padding = new Thickness(8);
         BorderThickness = new Thickness(0, 0, 0, 1);
         SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
@@ -70,9 +72,8 @@ internal sealed class TaskRow : Border
         PreviewMouseDown += OnPreviewMouseDown;
         MouseUp += OnMouseUp;
         MouseMove += OnMouseMove;
-        DragOver += OnDragOver;
-        Drop += OnDrop;
-        Show(task, false, []);
+        MouseLeave += (_, _) => _press.Leave();
+        Show(task, false, [], GroupKey);
     }
 
     /// <summary>The task as the row shows it now.</summary>
@@ -81,6 +82,8 @@ internal sealed class TaskRow : Border
     /// <summary>The tasks of the group the row is in, in the order the group shows them.</summary>
     public IReadOnlyList<TaskItem> Group { get; private set; }
 
+    /// <summary>The key of the group the row is in.</summary>
+    public GroupKey GroupKey { get; private set; }
     /// <summary>Raised when the user selects the task: a left click on the row, or a right-click.</summary>
     public event EventHandler? SelectRequested;
 
@@ -98,14 +101,12 @@ internal sealed class TaskRow : Border
 
     public event EventHandler<Exception>? OpenFailed;
 
-    /// <summary>Raised with what the drag carried and whether it was dropped on the row's lower half.</summary>
-    public event EventHandler<(DraggedTask Dropped, bool LowerHalf)>? TaskDropped;
-
     /// <summary>Shows the task's current title and resolved state, whether it is the selected one, and the group it is in.</summary>
-    public void Show(TaskItem task, bool selected, IReadOnlyList<TaskItem> group)
+    public void Show(TaskItem task, bool selected, IReadOnlyList<TaskItem> group, GroupKey groupKey)
     {
         Task = task;
         Group = group;
+        GroupKey = groupKey;
         _selected = selected;
         if (_title.Markdown != task.Title)
         {
@@ -129,7 +130,7 @@ internal sealed class TaskRow : Border
     }
 
     /// <summary>Shows the checkbox as the task is, after a change of it could not be saved.</summary>
-    public void Revert() => Show(Task, _selected, Group);
+    public void Revert() => Show(Task, _selected, Group, GroupKey);
 
     private ContextMenu MakeMenu()
     {
@@ -188,7 +189,7 @@ internal sealed class TaskRow : Border
 
         if (e.ChangedButton == MouseButton.Left)
         {
-            _pressedAt = e.GetPosition(this);
+            _press.Press(_pointer.PositionIn(this));
         }
         else if (e.ChangedButton == MouseButton.Right)
         {
@@ -200,7 +201,12 @@ internal sealed class TaskRow : Border
     // A click on the row itself or its title, not on the checkbox or a link inside it.
     private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (_editor is not null || e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject source || !IsPlain(source))
+        if (_editor is not null || e.ChangedButton != MouseButton.Left)
+        {
+            return;
+        }
+
+        if (!_press.Release() || e.OriginalSource is not DependencyObject source || !IsPlain(source))
         {
             return;
         }
@@ -227,36 +233,10 @@ internal sealed class TaskRow : Border
 
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
-        if (_editor is not null || e.LeftButton != MouseButtonState.Pressed || _pressedAt is not { } from || e.OriginalSource is not DependencyObject source || !IsPlain(source))
+        if (_editor is null && e.OriginalSource is DependencyObject source && IsPlain(source)
+            && _press.Move(_pointer.PositionIn(this), _pointer.IsLeftButtonDown))
         {
-            return;
+            _pointer.StartDrag(this, new DraggedTask(Task, GroupKey).ToData());
         }
-
-        var now = e.GetPosition(this);
-        if (Math.Abs(now.X - from.X) < SystemParameters.MinimumHorizontalDragDistance
-            && Math.Abs(now.Y - from.Y) < SystemParameters.MinimumVerticalDragDistance)
-        {
-            return;
-        }
-
-        _pressedAt = null;
-        DragDrop.DoDragDrop(this, new DraggedTask(Task, Group).ToData(), DragDropEffects.Move);
-    }
-
-    private static void OnDragOver(object sender, DragEventArgs e)
-    {
-        e.Effects = DraggedTask.IsIn(e.Data) ? DragDropEffects.Move : DragDropEffects.None;
-        e.Handled = true;
-    }
-
-    private void OnDrop(object sender, DragEventArgs e)
-    {
-        if (DraggedTask.From(e.Data) is not { } dropped)
-        {
-            return;
-        }
-
-        e.Handled = true;
-        TaskDropped?.Invoke(this, (dropped, e.GetPosition(this).Y > ActualHeight / 2));
     }
 }

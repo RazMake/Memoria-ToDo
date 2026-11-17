@@ -47,7 +47,7 @@ The user decided the rules on sections below: only a click on another section's 
 - **The Shortcuts card starts with a line saying how to change one**, in the window's normal text size and color and ending with a colon: "Click a box, then press the new shortcut. Esc keeps the current one:". Then each shortcut has a row, Add new task first, then Task View, Configure, Close window, and Save: its name on the left and its field on the right. Under the field, a short description says what the shortcut does, in the help style and in italics, then the row's message. The names share one column, so the fields line up. The user decided the Configure row's name and place.
 - **The descriptions are**: Add new task, "Opens the Add window from any app."; Task View, "Opens Task View from any app."; Configure, "Opens Configure from any app."; Close window, "Closes the app's window you're in, whatever has the focus."; Save, "Saves the task you're editing, in Add and Task View."
 - **Startup holds the Start with Windows check box**, a line of help under it, and its message.
-- **Sync settings shows its settings on three cards**: Repository, Git Access, and Auto, as [below](#the-sync-settings-section-sets-the-devices-clone) says.
+- **Sync settings shows its settings on three cards**: Git Access, Repository, and Auto, as [below](#the-sync-settings-section-sets-the-devices-clone) says.
 - **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
 - **The window keeps its size.** It's 800 pixels wide and 850 tall, or as tall as the screen allows on a shorter screen, and neither the user, the open section, nor its messages change that. The titles of the sections below the open one stay at the window's bottom, and the open section fills the space between; it scrolls when its content is taller. Messages take no room while empty.
 - **The window opens with no field focused**, so the shortcuts keep working until the user clicks a field, as [below](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) explains.
@@ -166,14 +166,13 @@ Not confirmed by a run: Windows' [Startup apps page](https://support.microsoft.c
 
 The section keeps the folder of this device's git clone, through [Sync's setup contract](../../../src/Shared/Sync/Setup/ISyncSetup.cs).
 
-Proposed, each a decision to confirm, so the section reads at a glance and fits the window:
+The user decided the cards' order: Git Access, Repository, and Auto. The rest are proposed, each a decision to confirm, so the section reads at a glance and fits the window:
 
-- **Three cards, each with its title, in [heading 2's look](#the-window-shows-its-settings-in-labeled-sections), at its top, in order: Repository, Git Access, and Auto.** Repository holds the help line, the three lines, the sync status, the Configure button, and the clone controls. Git Access holds the device name, the key buttons, and the host key. Auto holds the settings that act on their own; today, only the deletion delay.
+- **Three cards, each with its title, in [heading 2's look](#the-window-shows-its-settings-in-labeled-sections), at its top, in order: Git Access, Repository, and Auto.** Git Access holds the device name, the [key buttons](#git-access-makes-copies-and-forgets-the-devices-key), and the [Accept host key button](#git-access-accepts-a-custom-hosts-new-or-changed-key). Repository holds the help line, the three lines, the sync status, the Configure button, and the clone controls. Auto holds the settings that act on their own; today, only the deletion delay.
 - **The sync status sits in the Repository card, right after the three lines.** Its first line starts with a Sync button, followed by "Last successful sync:" and the time, or "Not synced yet."; the other status lines and the status message follow under it, as [below](#configure-shows-how-sync-is-doing) says.
-- **In Git Access, labels share one column on the left, and their controls sit beside them**: Device name beside its box, and SSH key beside its two buttons in one row.
+- **In Git Access, labels share one column on the left, and their controls sit beside them**: Device name beside its box, and SSH key beside its buttons in one row.
 - **Auto lists its settings as bulleted items.** The deletion delay is one item that reads as one sentence: a bullet, "Delete resolved tasks after", a narrow days box, then "days", with its message under it.
-- **Buttons that act together sit in one row**: Generate key and Copy public key; Accept host key and Forget host key, under the host key's text.
-- **Copy public key copies the key, then opens the host's page for adding it**, and its tooltip says so. With no key yet, it says "Generate a key first." and opens nothing. When copying fails, it shows the error and opens no page, since the page is no use without the key. When the host has no known add-key page, the key is still copied, and the message says to add it in the host's own settings. When the page can't open, the message shows the error; the key stays copied.
+- **Buttons that act together sit in one row**: the SSH key's buttons, and Set key before Clone.
 
 - **The Repository card shows three lines, each starting with its name in bold**: Repository, the clone's `origin` address; Local Path, the clone's folder; and Identity, the device name, which Sync puts on each commit it makes ([Sync through git](../sync.md#device-metadata-has-one-owner-and-never-travels-in-task-commits)). Repository and Local Path show "None" when there's none. A failure to read them shows as the card's message.
 - **A Configure button opens a menu with two choices**: Clone a repo, and Use existing repo clone. Each shows only its own controls under the lines, replacing the other's. Clicking Clone or Use this clone hides the controls at once; on success the lines update, and on failure the controls show again with the error. Proposed; a decision to confirm.
@@ -181,9 +180,38 @@ Proposed, each a decision to confirm, so the section reads at a glance and fits 
 - **Use existing repo clone** asks Sync to validate and select the folder. The currently selected clone remains the starting point; setup never forces a replacement clone.
 - **The folder's path is kept on this device**, in `repository-folder.txt` under `%LocalAppData%\Memoria-ToDo`, apart from Velopack's install folder.
 
-The user can change the address and the device name during setup. Generate key and Copy public key use Sync's cached setup state. An unknown custom host's key is trusted only when the user accepts its fingerprint, never implicitly.
+The user can change the address and the device name during setup. The key buttons use Sync's cached setup state.
 
 After Clone or Use this clone, Configure runs one sync and waits for it, so a read-only key fails here. An offline or failed first sync keeps the selected clone for a retry and local work, but doesn't mark setup complete.
+
+### Git Access makes, copies, and forgets the device's key
+
+The repository's host lets this device sync only after the user adds the device's public key there, as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says. The user decided what each key button does:
+
+- **Generate key**, while the device has no key, makes the key, then copies its public key.
+- **Copy public key**, while the device has a key, only copies the public key.
+- **Forget key**, while the device has a key, deletes the device's key once the user confirms the risk. It never changes host trust.
+- **Set key** sits before Clone, in the Repository card. It's on only while the address box holds an address Sync accepts. It copies the public key, then opens the add-key page of that address's host, whatever clone is selected or saved.
+
+The user approved Sync-owned deletion, a shared themed question dialog, and a Sync setup API for checking the typed address. Proposed, each a decision to confirm:
+
+- **The SSH key row shows only the buttons that apply**: Generate key with no key, and Copy public key and Forget key with one.
+- **Set key with no key asks the user to generate one first**, without opening a page. Generating remains an explicit action.
+- **Set key sits before Clone only**, as requested.
+- **On a host with no known add-key page**, Set key still copies the key, and its message says to add it in the host's own settings.
+- **Each key button's tooltip says what it does**; Set key's says it also opens the host's page.
+- **Each message shows in its button's card**: Generate key's, Copy public key's, and Forget key's under Git Access, and Set key's under Repository.
+- **A dialog asks before Forget key deletes anything.** Its title is "Forget key", and its text is "Delete this device's SSH key? Sync stops until you generate a new key and add it at your repository's host. The old key stays listed at the host until you remove it there." Its buttons are Forget key and Cancel. Cancel is the default, so Enter picks it; Esc and the close button pick it too. It's modal, owned by Configure, centered on it, and follows the theme, like Task View's [close prompt](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit).
+- **After Forget key, the SSH key row shows Generate key**, and the device isn't configured until a new key completes a first sync. Scheduled syncs don't run, as on a device that never had a key, and a sync the user starts fails with "The device has no key yet." ([SyncEngine.cs](../../../src/Shared/Sync/Service/SyncEngine.cs)).
+- **Forget key shows only while the public key shows.** A key that's stored but can't be opened, such as one Windows can no longer decrypt, shows no public key, so Forget key can't remove it. That would need setup to report a stored key it can't open, which this change doesn't add.
+
+### Git Access accepts a custom host's new or changed key
+
+**Decided by the user:** Accept host key is the only host-trust control, in Git Access. It shows while Sync offers a key it lets the user accept ([`ISshHostKey.CanAccept`](../../../src/Shared/Sync/Setup/ISshHostKey.cs)): a custom host's key that is unknown, or that differs from the key saved for that host and port. Accept trusts that exact offered key, replacing any saved one, as [Sync through git](../sync.md#device-metadata-has-one-owner-and-never-travels-in-task-commits) decides. When Accept succeeds, the button hides. It never shows for a built-in host, for a key already trusted, or while the trust file can't be loaded.
+
+There is no Forget host key button: Accept replaces a changed key, so trust never has to be removed first. Forget key deletes only the device's own key.
+
+The user also decided to remove the host, port, algorithm, and fingerprint string in every state. Sync's host verification and built-in pins don't change.
 
 ### Configure shows how sync is doing
 
@@ -252,7 +280,7 @@ The composition root and Shell use these parts:
 Configure publishes two ports:
 
 - **Start with Windows** retains its existing `Run`-key contract.
-- **[Setup actions](../../../src/Desktop/Configure/ISetupActions.cs)** copies the displayed public key and opens Sync's supplied add-key page. Copy public key calls both, in that order, as [above](#the-sync-settings-section-sets-the-devices-clone) says; the port itself doesn't change. App adapts its existing clipboard and browser components; Configure never reaches another window module's port. Failures are shown under setup.
+- **[Setup actions](../../../src/Desktop/Configure/ISetupActions.cs)** copies the public key and opens the add-key page Sync gives. Generate key and Copy public key only copy; Set key copies, then opens the page, as [above](#git-access-makes-copies-and-forgets-the-devices-key) says. The port itself doesn't change. App adapts its existing clipboard and browser components; Configure never reaches another window module's port. Failures are shown under setup.
 
 The composition root implements these ports. Their real adapters have integration tests; Configure's UX tests use
 the shared fakes.
@@ -267,7 +295,9 @@ the shared fakes.
 - **A setting can't be applied or saved**, such as a failed write to the `Run` key, a switch in a copy that isn't installed, or a shortcut that fails for a reason other than being taken: Configure shows the error and keeps the previous value.
 - **Installing can't write the `Run` key**: the app still installs, since Velopack's install step can't stop the install ([hooks](https://docs.velopack.io/integrating/hooks)). The app doesn't start at sign-in, and Configure shows the setting off.
 - **Setting up sync fails**, such as when the host rejects the key or the repository isn't found: Configure shows the error, as [Sync through git](../sync.md#failure-modes) lists, and the device stays unconfigured until setup succeeds.
-- **Copy public key can't copy, or can't open the host's page**: the message under Git Access shows the error. A failed copy opens no page; a failed page leaves the key copied.
+- **A key button can't copy, or Set key can't open the host's page**: the message in the button's card shows the error. A failed copy opens no page, and a failed page leaves the key copied. When Generate key made the key but couldn't copy it, the key stays.
+- **Forget key can't delete the key**: the message under Git Access shows the error, and the key stays.
+- **Accept host key can't save the trust**: the message under Git Access shows the error, and the saved trust doesn't change.
 
 ## Ruled out
 
@@ -301,7 +331,12 @@ The options below were considered and rejected, grouped by decision.
   - **The sync status in a group, or a card, of its own**: the user wanted the Sync button beside the last sync time, on three cards.
   - **The update card above the sections, outside any section**: the user asked to move it into Application, as its first card.
 - Adding the device's key at the host:
-  - **An Add key at host button beside Copy public key**: the user always copies the key to add it, so one button does both.
+  - **Copy public key also opens the host's page**: the user chose a Copy public key that only copies, and a Set key beside Clone that opens the page.
+  - **Opening the add-key page of the selected clone's host**: the user wants the page of the address being typed, which works before any clone exists.
+- Showing the host key:
+  - **After every connection, built-in hosts included**: the user removed that line.
+- Replacing a custom host's changed key:
+  - **A Forget host key button beside Accept**: the user removed it, as [Sync through git](../sync.md#ruled-out) says.
 - Entering a shortcut:
   - **Check boxes for Ctrl, Alt, Shift, and Win, and a list of keys**: slower, and looks dated.
   - **Typing it, such as `Win+Alt+N`**: typing mistakes, and a format to explain.
@@ -337,3 +372,81 @@ The options below were considered and rejected, grouped by decision.
   - **Version 2, with the new field**: every older app's settings reads and writes fail until it updates, which Tasks [ruled out](../tasks.md#ruled-out) for tag colors.
 
 The other settings Configure shows were chosen elsewhere, with their rejected options: the default shortcuts in [Shell](shell.md#ruled-out), the deletion delay in [purpose and scope](../purpose.md#ruled-out), and the sync settings in [Sync through git](../sync.md#ruled-out).
+
+## Approved setup contracts
+
+The user approved the recommended choices below. They add no dependency or stored-format change.
+
+### 1. How Sync deletes the device's key
+
+Forget key must delete the key Sync signs in with. Nothing can today: [`ISyncSetup`](../../../src/Shared/Sync/Setup/ISyncSetup.cs) only makes a key, and [`IDeviceKeyStore`](../../../src/Shared/Sync/DeviceKeys/IDeviceKeyStore.cs) has no delete.
+
+- **Recommended: Sync deletes it, as a setup action.** `ISyncSetup` gains `ForgetKeyAsync`, and `IDeviceKeyStore` gains `Delete`, which App implements by deleting `device-key.json`. Like every setup action, it waits for a running sync, then refreshes the setup, so the old public key stops showing. It adds two members, and no type, dependency, or stored format. The [configured receipt](../sync.md#device-metadata-has-one-owner-and-never-travels-in-task-commits) already makes a new key need a first sync.
+- **App deletes the file, through Configure's [setup actions](#public-interface) port.** Sync's public interface stays as it is. But Sync remembers a public key once read ([SetupModel.cs](../../../src/Shared/Sync/Setup/SetupModel.cs)), so it would show the deleted key, and count the device as configured, until the app restarts.
+
+The recommended declarations:
+
+```csharp
+// In ISyncSetup:
+/// Deletes the device key, if any. Host trust and the selected clone don't change.
+/// The device isn't configured again until a new key completes a first writable sync.
+Task ForgetKeyAsync(CancellationToken cancellationToken);
+
+// In IDeviceKeyStore:
+/// Deletes the stored key, whether or not it can be opened. Does nothing when there's none.
+void Delete();
+```
+
+### 2. Where the Forget key dialog lives
+
+The Forget key dialog does what Task View's [close prompt](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) does: a modal question owned by a window, with a default answer and a cancel answer. That dialog belongs to the Task list ([CloseDialog.cs](../../../src/Desktop/TaskList/CloseDialog.cs)), so a second use must share it, as the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) says. A copy in Configure is ruled out by that rule.
+
+- **Recommended: move it into the desktop [platform](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) as a question dialog**, used by both Task View's close prompt and Forget key. Code two modules share moves there, as [Modules](../modules.md#the-platform-serves-every-module-and-knows-none) says, and as the theme follower did. The platform's public interface gains one part, and Task View behaves as before.
+- **WPF's [message box](https://learn.microsoft.com/en-us/dotnet/api/system.windows.messagebox), with OK and Cancel, and Cancel the default**: no new code, and the platform's error box already uses one. But it doesn't follow the app's dark theme, and its button says OK, not Forget key.
+
+The recommended declaration:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// A modal question, owned by and centered on a window, that follows the theme.
+public static class QuestionDialog
+{
+    /// Shows the text with one button per answer, in order, and returns the answer picked.
+    /// Enter picks defaultAnswer; Esc and the close button pick cancelAnswer.
+    public static T Ask<T>(
+        System.Windows.Window owner, string title, string text,
+        System.Collections.Generic.IReadOnlyList<(string Label, T Answer)> answers, T defaultAnswer, T cancelAnswer);
+}
+```
+
+### 3. How Configure checks the typed address
+
+Set key needs two answers about the address being typed: whether Sync accepts it, and its host's add-key page. Only Sync's internal [address parser](../../../src/Shared/Sync/Setup/AddressParser.cs) knows both. The setup state gives only the selected clone's page, and copying the parser into Configure is ruled out by the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication).
+
+- **Approved: `ISyncSetup` gains `CheckAddress`**, which gives both answers on the caller's thread, with no I/O, so Configure can call it as the user types. `ISyncSetupState.AddKeyPage` stays for compatibility, but Configure no longer reads it. The fake setup answers the check too; Sync's tests cover the parser.
+- **A public static class in Sync, such as `SyncAddress.Check`**: Configure's tests run the real parser. But Configure would depend on a concrete Sync type, which [Code design](../../../AGENTS.md#code-design) rules out.
+
+The recommended declaration:
+
+```csharp
+// In ISyncSetup:
+/// Whether Clone and Use existing accept this address, checked on the caller's thread with no I/O.
+/// When they do, addKeyPage is the host's page for adding the device key, or null when Sync knows none.
+bool CheckAddress(string address, out Uri? addKeyPage);
+```
+
+## Decided questions
+
+### 1. Where the user sees the offered fingerprint before Accept
+
+**Decided by the user: keep showing nothing.** Git Access shows no host, port, or fingerprint in any state, including while Accept host key shows. The user accepts the risk below.
+
+Accept now replaces a custom host's changed key, which is what an impostor between the device and the host would also cause. [Sync through git](../sync.md#the-app-checks-each-host-key-against-its-own-list) expects the user to compare the new fingerprint with the host's first, but Git Access [shows no fingerprint in any state](#git-access-accepts-a-custom-hosts-new-or-changed-key), and the sync error's details don't name it ([HostKeyCheck.cs](../../../src/Shared/Sync/Trust/HostKeyCheck.cs)).
+
+- **Recommended: show the offered fingerprint, with its host and port, only while Accept host key shows.** The user can compare before trusting, and the card stays clean once trust is settled. It narrows the earlier removal of the details string to the states with nothing to accept. Sync's interface already gives every value ([`ISshHostKey`](../../../src/Shared/Sync/Setup/ISshHostKey.cs)).
+- **Put the fingerprint in Accept's tooltip**: no visible change, but easy to miss, and hard to read or copy.
+- **Keep showing nothing (chosen)**: no change, but the user accepts a changed key without anything to compare.
+
+Earlier proposed settings remain marked above.
+

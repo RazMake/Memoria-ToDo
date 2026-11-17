@@ -180,6 +180,112 @@ public class WindowsDeviceKeyStoreTests
         Assert.Equal(before, files.ReadFile(KeyFile));
     }
 
+    [Fact]
+    public void Deleting_removes_the_key_file_and_only_that_file()
+    {
+        const string Other = Folder + @"\device-name.txt";
+        var files = new FakeFileSystem();
+        files.WriteFile(Other, [1]);
+        using var protection = new FakeUserProtection();
+        IDeviceKeyStore keys = SmallKeyStore(files, protection);
+        using (keys.Generate()) { }
+
+        keys.Delete();
+
+        Assert.False(keys.HasKey);
+        Assert.False(files.FileExists(KeyFile));
+        Assert.Equal([Other], files.AllFilesUnder(Folder));
+    }
+
+    [Fact]
+    public void Deleting_with_no_key_does_nothing_and_does_not_fail()
+    {
+        const string Other = Folder + @"\device-name.txt";
+        var files = new FakeFileSystem();
+        files.WriteFile(Other, [1]);
+        using var protection = new FakeUserProtection();
+        IDeviceKeyStore keys = new WindowsDeviceKeyStore(files, protection, Folder);
+
+        keys.Delete();
+
+        Assert.False(keys.HasKey);
+        Assert.Equal([Other], files.AllFilesUnder(Folder));
+    }
+
+    [Theory]
+    [InlineData("not JSON")]
+    [InlineData("{\"version\":2,\"encryptedPrivateKey\":\"AA==\",\"protectedPassphrase\":\"AA==\"}")]
+    public void Deleting_removes_a_stored_key_that_cannot_be_opened(string contents)
+    {
+        var files = new FakeFileSystem();
+        files.WriteFile(KeyFile, Encoding.UTF8.GetBytes(contents));
+        using var protection = new FakeUserProtection();
+        IDeviceKeyStore keys = new WindowsDeviceKeyStore(files, protection, Folder);
+        Assert.True(keys.HasKey);
+
+        keys.Delete();
+
+        Assert.False(keys.HasKey);
+        Assert.Empty(files.AllFilesUnder(Folder));
+    }
+
+    [Fact]
+    public void Deleting_removes_a_key_that_Windows_can_no_longer_unlock_without_trying_to_unlock_it()
+    {
+        var files = new FakeFileSystem();
+        using var protection = new FakeUserProtection();
+        IDeviceKeyStore keys = SmallKeyStore(files, protection);
+        using (keys.Generate()) { }
+        protection.RefuseOpening = true;
+
+        keys.Delete();
+
+        Assert.False(keys.HasKey);
+        Assert.Empty(protection.Unprotected);
+    }
+
+    [Fact]
+    public void A_failed_deletion_reports_the_error_and_keeps_the_key_file_whole()
+    {
+        var files = new FakeFileSystem();
+        using var protection = new FakeUserProtection();
+        IDeviceKeyStore keys = SmallKeyStore(files, protection);
+        using (keys.Generate()) { }
+        var before = files.ReadFile(KeyFile).ToArray();
+        files.FailDeletesUnder(Folder);
+
+        Assert.ThrowsAny<IOException>(() => keys.Delete());
+
+        Assert.True(keys.HasKey);
+        Assert.Equal(before, files.ReadFile(KeyFile));
+    }
+
+    [Fact]
+    public void A_key_generated_after_deleting_is_a_new_key_that_reopens()
+    {
+        var files = new FakeFileSystem();
+        using var protection = new FakeUserProtection();
+        IDeviceKeyStore keys = SmallKeyStore(files, protection);
+        byte[] oldPublicKey;
+        using (var first = keys.Generate())
+        {
+            oldPublicKey = first.PublicKeyBlob.ToArray();
+        }
+
+        keys.Delete();
+        byte[] newPublicKey;
+        using (var second = keys.Generate())
+        {
+            newPublicKey = second.PublicKeyBlob.ToArray();
+        }
+
+        Assert.NotEqual(oldPublicKey, newPublicKey);
+        Assert.True(keys.HasKey);
+        using var reopened = SmallKeyStore(files, protection).Open();
+        Assert.Equal(newPublicKey, reopened.PublicKeyBlob.ToArray());
+        Assert.Equal([KeyFile], files.AllFilesUnder(Folder));
+    }
+
     private static WindowsDeviceKeyStore SmallKeyStore(IFileSystem files, IUserProtection protection) =>
         new(files, protection, Folder, _ => RSA.Create(SmallKeyBits));
 }

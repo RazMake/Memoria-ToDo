@@ -21,8 +21,8 @@ internal sealed class SyncSettingsSection : StackPanel
         _status = new StatusSection(ui);
         _repository = new RepositorySection(ui, _status);
         _device = new DeviceSection(ui);
-        Card("Repository", _repository);
         Card("Git Access", _device);
+        Card("Repository", _repository);
         Card("Auto", delay);
         ui.Changed += Refresh;
     }

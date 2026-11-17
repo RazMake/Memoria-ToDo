@@ -100,6 +100,8 @@ internal sealed class WindowsDeviceKeyStore : IDeviceKeyStore
         }
     }
 
+    public void Delete() => _files.DeleteFile(_path);
+
     // The strict read tells a missing file from one that can't be read; a file that can't be probed is never "no key".
     private byte[]? ReadIfPresent()
     {

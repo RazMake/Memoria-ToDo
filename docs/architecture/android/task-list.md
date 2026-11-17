@@ -30,7 +30,13 @@ Proposed: the task's file is deleted when the Undo bar goes away or Task View cl
 
 ### Tags and search narrow the list
 
-Proposed: tag chips filter the list one tag at a time, and choosing a tag again clears the filter; search works as on the [desktop](../desktop/task-list.md#search-narrows-the-list), and opens from a button in the top app bar. This is a decision to confirm. The desktop dropped its tag filter, since its tag groups collapse; whether the phone keeps its chips is decided when the Android app is built.
+The user decided that Task View's tag chips come in the [tags' order](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips) that Tasks keeps, the order of the desktop's [tag groups](../desktop/task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description). A group moved on the PC moves its chip on the phone after the next sync, and a tag never moved shows first. The composition root gives the Task list Tasks' tag order, as the desktop's does, and the chips are the [Task editor's](task-editor.md#public-interface), given the tags in that order.
+
+Proposed, each a decision to confirm:
+
+- Task View shows a chip for each tag an open task has, in one row that scrolls sideways, so every tag can filter. Add's chips keep their five most-used tags, as the desktop's + menu keeps its most-used order.
+- The phone doesn't move tags: the order changes only by dragging groups on the desktop, and a long press and drag on the phone moves tasks only.
+- Tag chips filter the list one tag at a time, and choosing a tag again clears the filter; search works as on the [desktop](../desktop/task-list.md#search-narrows-the-list), and opens from a button in the top app bar. The desktop dropped its tag filter, since its tag groups collapse.
 
 Deferred: the desktop shows tags as [colored badges](../desktop/task-list.md#tags-show-as-colored-badges-and-change-without-edit) on group headings, and changes them on the selected task without Edit. Whether the phone's chips take each tag's color, and whether a tag changes without Edit, follows the [Task editor's](task-editor.md#tags-sit-as-chips-under-the-title) answer when the Android app is built.
 
@@ -62,6 +68,7 @@ Shell uses these parts:
 
 - **The web view can't start, or a move, resolve, or delete can't be saved**: Task View handles it as the [desktop does](../desktop/task-list.md#failure-modes).
 - **A sync started from Task View fails**: the status line shows the error.
+- **`tags.json` can't be read, or has a newer version**: the chips come in alphabetical order, as [Tasks](../tasks.md#failure-modes) says, and the list still loads.
 
 ## Ruled out
 
@@ -72,3 +79,5 @@ The options below were considered and rejected, grouped by decision.
 - Starting a sync by hand:
   - **A Sync button in the top app bar**: offered, and not chosen.
   - **Both pulling the list down and a Sync button**: offered, and not chosen.
+- The order of the tag chips:
+  - **Decided when the Android app is built**: the user wants one order everywhere now, set on the desktop.

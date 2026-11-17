@@ -43,10 +43,6 @@ internal static class SyncText
         return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
     }
 
-    /// <summary>The host key the device trusts or waits to trust, on one line.</summary>
-    public static string HostKey(ISshHostKey host) =>
-        $"Host {host.Host}:{host.Port} key {host.Algorithm} {host.Fingerprint}";
-
     /// <summary>Whether the sync failed, or can't reach the host.</summary>
     public static bool IsFailure(ISyncStatus status) => status.State is SyncState.Error or SyncState.Offline;
 }

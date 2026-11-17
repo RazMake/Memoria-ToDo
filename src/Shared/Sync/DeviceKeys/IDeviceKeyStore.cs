@@ -15,4 +15,7 @@ public interface IDeviceKeyStore
 
     /// <summary>Opens the existing key. A missing, unreadable, or unusable key fails without replacement.</summary>
     IDeviceSigningKey Open();
+
+    /// <summary>Deletes the stored key, whether or not it can be opened. Does nothing when there's none.</summary>
+    void Delete();
 }

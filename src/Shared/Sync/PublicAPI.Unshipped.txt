@@ -1,4 +1,5 @@
 Memoria.ToDo.Shared.Sync.IDeviceKeyStore
+Memoria.ToDo.Shared.Sync.IDeviceKeyStore.Delete() -> void
 Memoria.ToDo.Shared.Sync.IDeviceKeyStore.Generate() -> Memoria.ToDo.Shared.Sync.IDeviceSigningKey!
 Memoria.ToDo.Shared.Sync.IDeviceKeyStore.HasKey.get -> bool
 Memoria.ToDo.Shared.Sync.IDeviceKeyStore.Open() -> Memoria.ToDo.Shared.Sync.IDeviceSigningKey!
@@ -24,8 +25,9 @@ Memoria.ToDo.Shared.Sync.ISyncService.SyncNowAsync(System.Threading.Cancellation
 Memoria.ToDo.Shared.Sync.ISyncSetup
 Memoria.ToDo.Shared.Sync.ISyncSetup.AcceptHostKeyAsync(string! fingerprint, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Memoria.ToDo.Shared.Sync.ISyncSetup.Changed -> System.EventHandler?
+Memoria.ToDo.Shared.Sync.ISyncSetup.CheckAddress(string! address, out System.Uri? addKeyPage) -> bool
+Memoria.ToDo.Shared.Sync.ISyncSetup.ForgetKeyAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Memoria.ToDo.Shared.Sync.ISyncSetup.CloneAsync(string! address, string! folder, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
-Memoria.ToDo.Shared.Sync.ISyncSetup.ForgetHostKeyAsync(string! host, int port, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Memoria.ToDo.Shared.Sync.ISyncSetup.GenerateKeyAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Memoria.ToDo.Shared.Sync.ISyncSetup.SetDeviceNameAsync(string! name, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Memoria.ToDo.Shared.Sync.ISyncSetup.State.get -> Memoria.ToDo.Shared.Sync.ISyncSetupState!

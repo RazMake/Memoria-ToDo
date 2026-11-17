@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -10,10 +11,10 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 /// <summary>
 /// Drives the prompt that asks what to do with a changed edit when Task View closes, the way a user does. The prompt is
 /// modal, so a call that closes the window doesn't return until the prompt is answered: <see cref="Run{T}"/> queues the
-/// answer first, to run once the prompt shows, then makes the call. The prompt is found as the showing window titled
-/// "Unsaved changes", and its buttons by their text: Save, Discard, Cancel. Shared test setup.
+/// answer first, to run once the prompt shows, then makes the call. The prompt is found as the showing window with its
+/// title, "Unsaved changes" unless given another, and its buttons by their text. Shared test setup.
 /// </summary>
-internal sealed class ClosePrompt
+internal sealed class ClosePrompt(string title = ClosePrompt.Title)
 {
     public const string Title = "Unsaved changes";
 
@@ -47,7 +48,7 @@ internal sealed class ClosePrompt
                 return;
             }
 
-            var prompt = windows.Visible().SingleOrDefault(w => w.Title == Title);
+            var prompt = windows.Visible().SingleOrDefault(w => w.Title == title);
             if (prompt is null)
             {
                 // Not showing yet. A call that shows no prompt returns, and then this stops; one that shows it is waited for.
@@ -91,6 +92,23 @@ internal sealed class ClosePrompt
     /// <summary>Answers by pressing Enter, which picks the prompt's default button.</summary>
     public static void PressEnter(Window prompt) =>
         SimulatedKey.Raise(prompt, Key.Enter, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
+
+    public static Action<Window> PressEnterOn(string text) => prompt =>
+    {
+        var button = OpenWindows.Descendants(prompt).OfType<Button>().Single(candidate => candidate.Content as string == text);
+        button.Focus();
+        Keyboard.Focus(button);
+        if (!ReferenceEquals(Keyboard.FocusedElement, button))
+        {
+            throw new InvalidOperationException($"The \"{text}\" button didn't take the keyboard focus.");
+        }
+
+        SimulatedKey.Raise(button, Key.Enter, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
+        if (prompt.IsVisible)
+        {
+            throw new InvalidOperationException("Enter on the focused button didn't answer the prompt.");
+        }
+    };
 
     /// <summary>Answers by pressing Esc.</summary>
     public static void PressEscape(Window prompt) => OpenWindows.PressEscape(prompt);

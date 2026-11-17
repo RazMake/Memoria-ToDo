@@ -93,36 +93,6 @@ public class ConfigureRepositoryTests
     }
 
     [WpfFact]
-    public void Copy_public_key_copies_the_key_then_opens_the_hosts_add_key_page()
-    {
-        var sync = new FakeSyncService();
-        var page = new Uri("https://example.com/settings/keys");
-        sync.SetupControl.Publish(new FakeSyncSetupState { AddKeyPage = page });
-        using var screen = Opened(sync);
-
-        screen.Click("Generate key");
-        screen.Click("Copy public key");
-
-        Assert.Equal(1, sync.SetupControl.GenerateCount);
-        Assert.Equal(sync.Setup.State.PublicKey, screen.SetupActions.CopiedPublicKey);
-        Assert.Equal(page, screen.SetupActions.OpenedKeyPage);
-        Assert.Equal(["CopyPublicKey", "OpenKeyPage"], screen.SetupActions.Calls);
-    }
-
-    [WpfFact]
-    public void Copy_public_key_with_no_key_yet_says_to_generate_one_and_opens_nothing()
-    {
-        var sync = new FakeSyncService();
-        sync.SetupControl.Publish(new FakeSyncSetupState { AddKeyPage = new Uri("https://example.com/settings/keys") });
-        using var screen = Opened(sync);
-
-        screen.Click("Copy public key");
-
-        Assert.True(screen.ShowsText("Generate a key first."));
-        Assert.Empty(screen.SetupActions.Calls);
-    }
-
-    [WpfFact]
     public async Task Setup_and_status_notices_from_a_worker_thread_update_the_open_window()
     {
         using var screen = Opened();
@@ -142,7 +112,7 @@ public class ConfigureRepositoryTests
     }
 
     [WpfFact]
-    public void An_unknown_custom_host_shows_its_key_and_accepts_that_exact_fingerprint()
+    public void An_unknown_custom_host_shows_no_host_details_and_accepts_that_exact_fingerprint()
     {
         var sync = new FakeSyncService();
         sync.SetupControl.Publish(new FakeSyncSetupState
@@ -151,8 +121,8 @@ public class ConfigureRepositoryTests
         });
         using var screen = Opened(sync);
 
-        Assert.True(screen.ShowsText("self.example:2222"));
-        Assert.True(screen.ShowsText("SHA256:unknown-test-key"));
+        Assert.DoesNotContain(screen.Texts, text => text.Contains("self.example", StringComparison.Ordinal));
+        Assert.DoesNotContain(screen.Texts, text => text.Contains("SHA256:", StringComparison.Ordinal));
         screen.Click("Accept host key");
 
         Assert.Equal("SHA256:unknown-test-key", sync.SetupControl.AcceptedFingerprint);
@@ -209,14 +179,16 @@ public class ConfigureRepositoryTests
     }
 
     [WpfFact]
-    public void Sync_settings_shows_the_cards_Repository_Git_Access_and_Auto_in_order_and_no_other_titles()
+    public void Sync_settings_shows_the_cards_Git_Access_Repository_and_Auto_in_order_and_no_other_titles()
     {
         using var screen = Opened();
-        string[] cards = ["Repository", "Git Access", "Auto"];
+        string[] cards = ["Git Access", "Repository", "Auto"];
         string[] oldTitles = ["Device", "Status", "Tasks"];
 
         Assert.Equal(cards, screen.Texts.Where(text => cards.Contains(text)));
         Assert.All(oldTitles, title => Assert.DoesNotContain(title, screen.Texts));
+        var tops = cards.Select(card => Bounds(screen.TitleBlock(card), screen.Window).Top).ToList();
+        Assert.True(tops[0] < tops[1] && tops[1] < tops[2], "The cards run top to bottom: Git Access, Repository, Auto.");
     }
 
     [WpfFact]
@@ -241,11 +213,11 @@ public class ConfigureRepositoryTests
         var identity = OpenWindows.Descendants(screen.Window).OfType<TextBlock>()
             .Single(b => OpenWindows.TextOf(b).StartsWith("Identity:", StringComparison.Ordinal));
         var button = OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == "Sync");
-        var gitAccess = OpenWindows.Descendants(screen.Window).OfType<TextBlock>()
-            .Single(b => OpenWindows.TextOf(b) == "Git Access");
+        var auto = OpenWindows.Descendants(screen.Window).OfType<TextBlock>()
+            .Single(b => OpenWindows.TextOf(b) == "Auto");
 
         Assert.True(Bounds(identity, screen.Window).Bottom <= Bounds(button, screen.Window).Top + 1);
-        Assert.True(Bounds(button, screen.Window).Bottom <= Bounds(gitAccess, screen.Window).Top + 1);
+        Assert.True(Bounds(button, screen.Window).Bottom <= Bounds(auto, screen.Window).Top + 1);
     }
 
     [WpfFact]
@@ -272,20 +244,6 @@ public class ConfigureRepositoryTests
 
         Assert.DoesNotContain(
             OpenWindows.Descendants(screen.Window).OfType<Button>(), button => button.Content as string == "Add key at host");
-    }
-
-    [WpfFact]
-    public void Copy_public_key_explains_in_a_tooltip_that_it_copies_the_key_and_opens_the_hosts_page()
-    {
-        using var screen = Opened();
-        var button = OpenWindows.Descendants(screen.Window).OfType<Button>().Single(b => b.Content as string == "Copy public key");
-
-        var tip = button.ToolTip is ToolTip { Content: var content } ? content?.ToString() : button.ToolTip?.ToString();
-
-        Assert.NotNull(tip);
-        Assert.Contains("copies", tip, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("opens", tip, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("host", tip, StringComparison.OrdinalIgnoreCase);
     }
 
     [WpfFact]

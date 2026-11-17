@@ -38,6 +38,43 @@ public static class SimulatedDrop
         return second.Handled;
     }
 
+    /// <summary>
+    /// Raises the tunneling drag-over event on the element, then the bubbling one unless a handler handled it, as the pointer
+    /// moving over it during a drag does.
+    /// </summary>
+    /// <param name="element">The element the pointer is over; it must be in a showing window.</param>
+    /// <param name="data">What is dragged.</param>
+    /// <param name="at">Where the pointer is, in the element's own coordinates.</param>
+    /// <returns>The effects the handlers allow: <see cref="DragDropEffects.None"/> where the drop is refused (the no-drop cursor).</returns>
+    public static DragDropEffects Over(UIElement element, IDataObject data, Point at)
+    {
+        var first = Args(element, data, DragDrop.PreviewDragOverEvent, at);
+        element.RaiseEvent(first);
+        if (first.Handled)
+        {
+            return first.Effects;
+        }
+
+        var second = Args(element, data, DragDrop.DragOverEvent, at);
+        element.RaiseEvent(second);
+        return second.Effects;
+    }
+
+    /// <summary>
+    /// Raises the tunneling drag-leave event on the element, then the bubbling one, as the pointer of a drag leaving it does.
+    /// </summary>
+    /// <param name="element">The element the pointer leaves; it must be in a showing window.</param>
+    /// <param name="data">What is dragged.</param>
+    public static void Leave(UIElement element, IDataObject data)
+    {
+        var first = Args(element, data, DragDrop.PreviewDragLeaveEvent, new Point(1, 1));
+        element.RaiseEvent(first);
+        if (!first.Handled)
+        {
+            element.RaiseEvent(Args(element, data, DragDrop.DragLeaveEvent, new Point(1, 1)));
+        }
+    }
+
     // WPF gives DragEventArgs no public constructor, so the drop is built the way the drag-and-drop system builds it.
     private static DragEventArgs Args(UIElement element, IDataObject data, RoutedEvent routed, Point at)
     {

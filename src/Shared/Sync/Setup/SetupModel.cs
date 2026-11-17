@@ -19,6 +19,8 @@ internal sealed class SetupModel(ITaskSynchronization tasks, IGitOperations git,
     /// <summary>Remembers the public key of an open handle. Call on the worker.</summary>
     public void Observe(IDeviceSigningKey key) => publicKey ??= key.PublicKeyBlob.ToArray();
 
+    public void ForgetKey() => publicKey = null;
+
     /// <summary>Rebuilds the view and publishes it.</summary>
     public async Task RefreshAsync()
     {
@@ -36,11 +38,16 @@ internal sealed class SetupModel(ITaskSynchronization tasks, IGitOperations git,
         var offered = trust.Offered;
         Snapshot.Update(s =>
         {
-            var withKey = s with { HostKey = offered };
+            var withKey = s with
+            {
+                HostKey = offered,
+                PublicKey = publicKey is null ? null : s.PublicKey,
+                IsConfigured = publicKey is not null && s.IsConfigured,
+            };
             return lastNameRead is not { } read ? withKey : withKey with
             {
                 DeviceName = read,
-                PublicKey = publicKey is not null && read.Length > 0 ? DeviceMetadata.PublicKeyLine(publicKey, read) : s.PublicKey,
+                PublicKey = publicKey is not null && read.Length > 0 ? DeviceMetadata.PublicKeyLine(publicKey, read) : withKey.PublicKey,
             };
         });
     }

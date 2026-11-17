@@ -499,11 +499,22 @@ internal sealed partial class TaskListScreen : IDisposable
     /// upper half, or its lower half when <paramref name="lowerHalf"/>.
     /// </summary>
     /// <returns>Whether a handler took the drop.</returns>
-    public bool Drop(Shared.Tasks.TaskItem task, string onRowTitle, bool lowerHalf = false, string? onGroup = null, string? fromGroup = null)
+    public bool Drop(Shared.Tasks.TaskItem task, string onRowTitle, bool lowerHalf = false, string? onGroup = null, string? fromGroup = null) =>
+        Drop(DragOf(task, fromGroup), onRowTitle, lowerHalf, onGroup);
+
+    /// <summary>What a drag of the task from its row (in <paramref name="fromGroup"/>, or the first row showing it) carries, taken when the drag starts.</summary>
+    public DraggedTask DragOf(Shared.Tasks.TaskItem task, string? fromGroup = null) =>
+        new(task, ((TaskRow)Row(task.Title, fromGroup)).GroupKey);
+
+    /// <summary>
+    /// Drops what a drag started earlier carries on the row, as <see cref="Drop(Shared.Tasks.TaskItem, string, bool, string?, string?)"/> does, so
+    /// the list can change between the drag's start and its drop.
+    /// </summary>
+    /// <returns>Whether a handler took the drop.</returns>
+    public bool Drop(DraggedTask dragged, string onRowTitle, bool lowerHalf = false, string? onGroup = null)
     {
         var row = Row(onRowTitle, onGroup);
-        var source = ((TaskRow)Row(task.Title, fromGroup)).Group;
-        var taken = SimulatedDrop.Data(row, new DraggedTask(task, source).ToData(), new Point(1, lowerHalf ? row.ActualHeight - 1 : 1));
+        var taken = SimulatedDrop.Data(row, dragged.ToData(), new Point(1, lowerHalf ? row.ActualHeight - 1 : 1));
         Refresh();
         return taken;
     }

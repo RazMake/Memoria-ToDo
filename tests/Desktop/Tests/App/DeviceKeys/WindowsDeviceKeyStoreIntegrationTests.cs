@@ -35,5 +35,29 @@ public sealed class WindowsDeviceKeyStoreIntegrationTests : IDisposable
         Assert.True(publicRsa.VerifyData(data, sha512, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1));
     }
 
+    [Fact]
+    public void Deleting_removes_the_real_key_file_and_a_new_key_can_then_be_generated()
+    {
+        var files = new WindowsFileSystem();
+        var protection = new WindowsUserProtection();
+        IDeviceKeyStore keys = new WindowsDeviceKeyStore(files, protection, folder, _ => RSA.Create(1024));
+        byte[] oldPublicKey;
+        using (var generated = keys.Generate())
+        {
+            oldPublicKey = generated.PublicKeyBlob.ToArray();
+        }
+        var other = Path.Combine(folder, "device-name.txt");
+        File.WriteAllText(other, "Desk");
+
+        keys.Delete();
+        keys.Delete();
+
+        Assert.False(keys.HasKey);
+        Assert.Equal([other], Directory.EnumerateFiles(folder));
+        using var replacement = keys.Generate();
+        Assert.NotEqual(oldPublicKey, replacement.PublicKeyBlob.ToArray());
+        Assert.True(keys.HasKey);
+    }
+
     public void Dispose() => Directory.Delete(folder, recursive: true);
 }

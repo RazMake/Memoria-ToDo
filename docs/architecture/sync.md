@@ -41,6 +41,10 @@ registration with the Git host. The local envelope has this format:
   defaults can change without rewriting old keys.
 - Missing, unsupported, corrupt, or undecryptable envelopes fail opening without replacement. Generate refuses an
   existing envelope. Temporary passphrase buffers are cleared; opened RSA objects and signing handles are disposed.
+- Delete removes only `device-key.json`, whether or not the envelope can be opened or unlocked, and does nothing when
+  it's absent. A failed deletion leaves the file whole. Forget key runs it as a setup action: it waits for a running
+  sync and its key handle, clears Sync's remembered public key, and refreshes the setup. The selected clone, the
+  device name, and host trust stay. The configured receipt names the old key, so a new key needs a first writable sync.
 
 This is not the proof's DPAPI-wrapped plaintext PEM. App separates the envelope/handle logic from its internal
 CurrentUser-protection adapter, so unit tests can use fake files and fake protection without invoking Windows;
@@ -49,9 +53,11 @@ real DPAPI persistence and signing are final-validation integration checks. The 
 
 ### The app checks each host key against its own list
 
-The app keeps its own file of trusted host keys, and never reads or changes the user's `~/.ssh` folder. The transport checks each host key in our code, through SSH.NET's host key event ([BaseClient](https://github.com/sshnet/SSH.NET/blob/develop/src/Renci.SshNet/BaseClient.cs)). It ships the host key fingerprints that GitHub, GitLab, Bitbucket, and Azure DevOps publish ([GitHub](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints), [GitLab](https://docs.gitlab.com/user/gitlab_com/), [Bitbucket](https://support.atlassian.com/bitbucket-cloud/docs/configure-ssh-and-two-step-verification/), [Azure DevOps](https://learn.microsoft.com/en-us/azure/devops/repos/git/use-ssh-keys-to-authenticate)). For any other host, Configure shows the host key's fingerprint once, and the user accepts it. A changed host key stops sync with an error.
+The app keeps its own file of trusted host keys, and never reads or changes the user's `~/.ssh` folder. The transport checks each host key in our code, through SSH.NET's host key event ([BaseClient](https://github.com/sshnet/SSH.NET/blob/develop/src/Renci.SshNet/BaseClient.cs)). It ships the host key fingerprints that GitHub, GitLab, Bitbucket, and Azure DevOps publish ([GitHub](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints), [GitLab](https://docs.gitlab.com/user/gitlab_com/), [Bitbucket](https://support.atlassian.com/bitbucket-cloud/docs/configure-ssh-and-two-step-verification/), [Azure DevOps](https://learn.microsoft.com/en-us/azure/devops/repos/git/use-ssh-keys-to-authenticate)). For any other host, the user must explicitly accept its key. Configure owns the [host-trust controls and their presentation](desktop/configure.md#git-access-accepts-a-custom-hosts-new-or-changed-key). A changed host key stops sync with an error.
 
-Proposed: when a built-in host changes its key, an app update brings the new one, as when [GitHub replaced its RSA host key](https://github.blog/news-insights/company-news/we-updated-our-rsa-ssh-host-key/) in March 2023. For other hosts, the user removes the stored key in Configure and accepts the new one. This is a decision to confirm.
+Proposed: when a built-in host changes its key, an app update brings the new one, as when [GitHub replaced its RSA host key](https://github.blog/news-insights/company-news/we-updated-our-rsa-ssh-host-key/) in March 2023. This is a decision to confirm.
+
+**Decided by the user:** when any other host changes its key, the user accepts the new key in Configure, which [replaces the saved one](#device-metadata-has-one-owner-and-never-travels-in-task-commits).
 
 ### On the desktop, sync runs soon after a change and every 30 minutes
 
@@ -77,7 +83,7 @@ Proposed: each sync runs these steps. This is a decision to confirm.
 1. **Delete** the tasks [due for automatic deletion](tasks.md#resolved-tasks-are-deleted-after-a-delay-every-device-shares).
 2. **Commit** this device's changes as one commit. Its message lists them, such as `Add: Buy milk`, and its author is the device name.
 3. **Fetch** the remote's default branch, the only branch sync uses.
-4. **Merge**, when both sides have new commits. The app computes the merged files with [Tasks' merge rules](tasks.md#two-versions-of-a-task-merge-field-by-field), never git's line-based merge, and commits a merge with two parents. Settings and [tag colors](tasks.md#each-tags-color-is-kept-in-one-synced-file) merge by Tasks' rules too, one setting or tag at a time.
+4. **Merge**, when both sides have new commits. The app computes the merged files with [Tasks' merge rules](tasks.md#two-versions-of-a-task-merge-field-by-field), never git's line-based merge, and commits a merge with two parents. Settings and `tags.json`, which holds each tag's [color](tasks.md#each-tags-color-is-kept-in-one-synced-file) and [place](tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips), merge by Tasks' rules too, one setting or tag at a time.
 5. **Push**. When another device pushed first, the push is rejected, and sync fetches and merges again.
 
 Also proposed, each a decision to confirm:
@@ -108,8 +114,8 @@ Unreadable remote task files still follow the skip-and-report rule above; Tasks'
 Proposed: a device is set up in Configure in these steps. This is a decision to confirm.
 
 1. The user enters the repository's SSH address, such as `git@github.com:<you>/<repository>.git`, and the device name, which starts as the machine's name.
-2. Generate makes the device's key. Configure shows the public key with a Copy button, and links to the host's page for adding it. On GitHub, that's a [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys), and Configure reminds the user to check "Allow write access".
-3. Configure checks the host key: silently for the four built-in hosts, and by showing its fingerprint for any other.
+2. The user manages the device key through Configure's [key controls](desktop/configure.md#git-access-makes-copies-and-forgets-the-devices-key). On GitHub, the repository's [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) needs "Allow write access".
+3. Sync checks the host key: silently for the four built-in hosts, and with explicit acceptance for any other.
 4. Configure keeps the selected clone, lets the user select another existing clone, or clones into a new or empty folder. On an empty repository, the first device creates `settings.json`.
 
 Afterwards, Configure shows the last sync time, the status, and Sync now.
@@ -307,18 +313,15 @@ Other implementation choices remain subject to confirmation.
   malformed entries, or read failures stop trust loading rather than silently trusting or replacing anything.
   A failure to load custom-host trust keeps its cause, and the [rule for naming failures](#failure-modes) gives
   its kind. This adds no recovery UI or replacement of the trust file.
-  **Decided by the user:** while that load fails, setup still shows the key the host offered, with its host, port,
-  algorithm, and fingerprint, and never allows accepting it. It looks like a changed key, and the user can compare
-  the fingerprint with the host's.
-  Acceptance writes only the exact pending unknown custom-host key. A changed trusted key must first be forgotten;
-  built-in pins can neither be forgotten nor accepted through setup.
-  Decision to confirm: using Forget for a built-in host refuses the request with an explanation through the
-  existing setup action, rather than silently succeeding. No new eligibility API is needed.
-  **Decided by the user:** Forget for a custom host and port with no saved trust succeeds and changes nothing,
-  so pressing it twice, or before Accept, is harmless. Afterwards nothing is trusted for that host and port,
-  which is what Forget promises.
-  Decision to confirm: Forget with a missing or blank host, or a port outside 1 to 65535, is an invalid argument.
-  It fails before any work, like the other setup actions' invalid arguments, and shows no error status.
+  **Decided by the user:** while that load fails, setup still reports the key the host offered, with its host, port,
+  algorithm, and fingerprint, and never allows accepting it. Configure
+  [shows none of these details](desktop/configure.md#git-access-accepts-a-custom-hosts-new-or-changed-key).
+  **Decided by the user:** Accept trusts a custom host's unknown key, and also replaces a changed one: it writes the
+  offered key for that host and port in place of the saved one. It writes only the exact pending offered key.
+  Built-in pins can't be accepted or replaced through setup. Setup has no action that removes a host's trust;
+  Accept replacing a key is the only way saved trust changes.
+  Decision to confirm: when the file holds more than one key for that host and port, such as after a hand edit,
+  Accept replaces them all, so only the accepted key is trusted there afterwards.
 
 The reviewed [built-in pin data](sync-host-keys.json) is embedded directly by Sync's project, not copied into
 another source file. Each host's official source and verification date live beside its fingerprints. DNS names
@@ -336,7 +339,7 @@ or platform change is needed.
 | --- | --- |
 | [`ISyncService`](../../src/Shared/Sync/ISyncService.cs) | Shell, Task list, and Configure: lifecycle, manual sync, status, and setup |
 | [`ISyncStatus`](../../src/Shared/Sync/Status/ISyncStatus.cs) | Immutable status and failure kind, successful-sync time, pending changes, and Tasks' skipped-file reports |
-| [`ISyncSetup`](../../src/Shared/Sync/Setup/ISyncSetup.cs) | Configure: device name, key generation, clone or existing-clone selection, and explicit custom-host trust |
+| [`ISyncSetup`](../../src/Shared/Sync/Setup/ISyncSetup.cs) | Configure: device name, key generation and deletion, clone or existing-clone selection, explicit custom-host trust, and the typed-address check |
 | [`ISyncSetupState`](../../src/Shared/Sync/Setup/ISyncSetupState.cs) | Immutable setup state, including the selected clone, public key, and host's add-key page |
 | [`ISshHostKey`](../../src/Shared/Sync/Setup/ISshHostKey.cs) | The endpoint and fingerprint actually observed, including whether acceptance is allowed |
 | [`IDeviceKeyStore`](../../src/Shared/Sync/DeviceKeys/IDeviceKeyStore.cs) | App's synchronous secure-store adapter, called only on the owned worker |
@@ -582,13 +585,11 @@ The options below were considered and rejected, grouped by decision. The git and
 - Host keys:
   - **Trusting the first key seen, without asking**: an intercepted first connection would trust an impostor.
   - **Always confirming in Configure**: one more step on every device.
-  - **Silently succeeding when Forget targets a built-in host**: it looks as though trust was removed when it was not.
-  - **Adding an eligibility capability only to hide that action**: it grows the public interface for a request the
-    existing action can refuse with an explanation.
-  - **Hiding the offered key when the trust file can't be loaded**: the user would lose the fingerprint the host
-    offered.
-  - **Refusing Forget for a host and port with nothing saved**: pressing it twice, or before Accept, would show an
-    error for a harmless request.
+  - **Dropping the offered key from setup when the trust file can't be loaded**: a screen could no longer report
+    what the host offered.
+- Replacing a custom host's changed key:
+  - **A Forget host key action, then Accept**: two steps for one change, nothing trusted between them, and one more
+    setup action in the public interface. The user removed it.
 - Desktop timing:
   - **Every 5 minutes**: the user chose 30.
   - **Every minute**: about 1,400 contacts with the host a day.

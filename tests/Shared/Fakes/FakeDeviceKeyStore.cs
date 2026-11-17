@@ -22,6 +22,9 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
     private int generateCalls;
     private int openCalls;
     private int openHandles;
+    private int deleteCalls;
+    // Deleting a key makes the next generated key a different one.
+    private int generation;
 
     /// <summary>A store whose key really signs, for tests that run a transport against a real SSH server.</summary>
     public static FakeDeviceKeyStore Signing() => new(signs: true);
@@ -32,7 +35,7 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
 
     private FakeDeviceKeyStore(bool signs) => this.signs = signs;
 
-    private byte[] PublicBlob => signs ? Blob(Shared.Value) : ConstantBlob.Value;
+    private byte[] PublicBlob => signs ? Blob(Shared.Value) : generation == 0 ? ConstantBlob.Value : GenerationBlob(generation);
 
     /// <summary>When true, <see cref="Open"/> fails with an <see cref="IOException"/>, as an unusable stored key does.</summary>
     public bool FailOpen { get; set; }
@@ -45,6 +48,15 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
 
     /// <summary>When set, <see cref="Generate"/> throws it and stores no key, as an unwritable key location does.</summary>
     public Exception? GenerateFailure { get; set; }
+
+    /// <summary>When set, <see cref="Delete"/> throws it and keeps the key, as an undeletable key location does.</summary>
+    public Exception? DeleteFailure { get; set; }
+
+    /// <summary>How many times <see cref="Delete"/> was called, whether or not a key was stored.</summary>
+    public int DeleteCalls => Volatile.Read(ref deleteCalls);
+
+    /// <summary>Runs at the start of each <see cref="Delete"/>, so a test can record what was true at that moment.</summary>
+    public Action? OnDelete { get; set; }
 
     public int GenerateCalls => Volatile.Read(ref generateCalls);
 
@@ -106,6 +118,21 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
     }
 
     /// <inheritdoc />
+    public void Delete()
+    {
+        lock (gate)
+        {
+            Interlocked.Increment(ref deleteCalls);
+            OnDelete?.Invoke();
+            if (DeleteFailure is not null)
+                throw DeleteFailure;
+            if (hasKey)
+                generation++;
+            hasKey = false;
+        }
+    }
+
+    /// <inheritdoc />
     public IDeviceSigningKey Open()
     {
         lock (gate)
@@ -131,6 +158,9 @@ public sealed class FakeDeviceKeyStore : IDeviceKeyStore
 
     /// <summary>Runs each time a handle is disposed, so a test can record what was true at that moment.</summary>
     public Action? OnHandleDisposed { get; set; }
+
+    private static byte[] GenerationBlob(int generation) =>
+        BlobOf(new byte[] { 1, 0, 1 }, Enumerable.Range(1, 256).Select(i => (byte)((i + generation) | 0x81)).ToArray());
 
     private static byte[] Mpint(byte[] unsigned)
     {

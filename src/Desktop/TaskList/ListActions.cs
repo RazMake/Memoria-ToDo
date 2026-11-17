@@ -13,17 +13,5 @@ internal sealed class ListActions(ITasks tasks, Action<string> report)
 
     public bool Move(Move move) => Run(() => tasks.Move(move.Id, move.After, move.Before));
 
-    private bool Run(Action action)
-    {
-        try
-        {
-            action();
-            return true;
-        }
-        catch (Exception failure) when (ListFailures.MessageOf(failure) is { } why)
-        {
-            report(why);
-            return false;
-        }
-    }
+    private bool Run(Action action) => ListFailures.Run(action, report);
 }

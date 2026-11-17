@@ -42,6 +42,8 @@ public sealed class SigningFailureIntegrationTests
 
         public IDeviceSigningKey Generate() => inner.Generate();
 
+        public void Delete() => inner.Delete();
+
         public IDeviceSigningKey Open() => new Unsignable(inner.Open(), failure);
     }
 

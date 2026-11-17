@@ -38,15 +38,20 @@ public interface ISyncSetup
     Task CloneAsync(string address, string folder, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Accepts only the currently offered, previously unknown custom-host key with this exact fingerprint.
-    /// Built-in hosts and changed trusted keys cannot be accepted by this operation.
+    /// Accepts only the currently offered, unknown or changed custom-host key with this exact fingerprint.
+    /// It replaces every key saved for that host and port. Built-in hosts cannot be accepted by this operation.
     /// </summary>
     Task AcceptHostKeyAsync(string fingerprint, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Removes a custom host's saved trust for this endpoint. Built-in pins cannot be removed.
-    /// The next connection must offer its key for explicit acceptance again.
-    /// A missing or blank host and a port outside 1 to 65535 are invalid arguments.
+    /// Deletes the device key, if any. Host trust and the selected clone don't change.
+    /// The device isn't configured again until a new key completes a first writable sync.
     /// </summary>
-    Task ForgetHostKeyAsync(string host, int port, CancellationToken cancellationToken);
+    Task ForgetKeyAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether Clone and Use existing accept this address, checked on the caller's thread with no I/O.
+    /// When they do, addKeyPage is the host's page for adding the device key, or null when Sync knows none.
+    /// </summary>
+    bool CheckAddress(string address, out Uri? addKeyPage);
 }

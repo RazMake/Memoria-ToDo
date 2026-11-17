@@ -9,6 +9,9 @@ public interface ITaskStore : ITasks
     /// <summary>Each tag's color in this store's selected repository.</summary>
     ITagColors TagColors { get; }
 
+    /// <summary>Each tag's place in this store's selected repository.</summary>
+    ITagOrder TagOrder { get; }
+
     /// <summary>
     /// The full path of the folder where an open edit's images wait, laid out like the clone, so that <see cref="ITasks.SaveImage"/>'s
     /// link path names the image under it. It is outside the clone, may not exist yet, and stays the same for the store's whole life.

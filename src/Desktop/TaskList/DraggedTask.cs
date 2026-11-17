@@ -3,8 +3,8 @@ using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
-/// <summary>What a row drag carries: the dragged task and the group of the row the drag started from.</summary>
-internal sealed record DraggedTask(TaskItem Task, IReadOnlyList<TaskItem> Source)
+/// <summary>What a row drag carries: the dragged task and the key of the group of the row the drag started from.</summary>
+internal sealed record DraggedTask(TaskItem Task, GroupKey Source)
 {
     /// <summary>The drag data for this payload.</summary>
     public IDataObject ToData() => new DataObject(this);

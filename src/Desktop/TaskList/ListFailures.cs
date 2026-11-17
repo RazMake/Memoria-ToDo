@@ -14,4 +14,22 @@ internal static class ListFailures
         IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException => failure.Message,
         _ => null,
     };
+
+    /// <summary>
+    /// Runs the call. A known failure is passed to <paramref name="report"/> with its message and answered with false; any
+    /// other failure is not swallowed.
+    /// </summary>
+    public static bool Run(Action call, Action<string> report)
+    {
+        try
+        {
+            call();
+            return true;
+        }
+        catch (Exception failure) when (MessageOf(failure) is { } why)
+        {
+            report(why);
+            return false;
+        }
+    }
 }

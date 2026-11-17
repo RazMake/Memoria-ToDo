@@ -77,7 +77,7 @@ Shell and the Task list use these parts:
 
 - **Show Add**: opens Add, with the draft if there is one. Shell calls it from the app shortcut and the widget, and the Task list from its floating button.
 - **Edit a task**: opens this screen with one task, and reports whether the user saved or left. The Task list calls it from Edit.
-- **The tag chips**: the five most-used tags as chips, reporting the chosen tag. The Task list uses them to filter.
+- **The tag chips**: the tags its caller gives, as chips in that order, reporting the chosen tag. Add gives the five most-used tags; the Task list gives its [tags in the tags' order](task-list.md#tags-and-search-narrow-the-list), to filter.
 
 ## Failure modes
 

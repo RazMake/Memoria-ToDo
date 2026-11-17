@@ -63,6 +63,41 @@ internal sealed class RepositoryChange
         _changed();
     }
 
+    public bool CanSetKey(string address) => _ui.Sync.Setup.CheckAddress(address.Trim(), out _);
+
+    public void SetKey(string address)
+    {
+        var setup = _ui.Sync.Setup;
+        if (!setup.CheckAddress(address.Trim(), out var page))
+        {
+            return;
+        }
+
+        if (setup.State.PublicKey is not { } key)
+        {
+            Show(DeviceActions.NoKeyMessage);
+            return;
+        }
+
+        try
+        {
+            _ui.Actions.CopyPublicKey(key);
+            if (page is null)
+            {
+                Show("Copied. Add the key in your repository host's settings.");
+            }
+            else
+            {
+                _ui.Actions.OpenKeyPage(page);
+                Show(null);
+            }
+        }
+        catch (Exception error)
+        {
+            Show(error.Message);
+        }
+    }
+
     /// <summary>
     /// Clones or uses the clone, by the choice, then runs one sync. Missing input changes nothing. A failure shows
     /// the controls again.

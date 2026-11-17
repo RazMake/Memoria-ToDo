@@ -17,13 +17,14 @@ public static class ViewTasksWindow
     /// Creates Task View. The window, and its description web view, are made only on <see cref="IViewTasksWindow.Show"/>;
     /// the web view is released when the window closes.
     /// </summary>
-    public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme,
+    public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
         Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys,
         IUpdateStatus updates, SaveKeys saveKeys)
     {
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(tagColors);
+        ArgumentNullException.ThrowIfNull(tagOrder);
         ArgumentNullException.ThrowIfNull(palette);
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(time);
@@ -36,7 +37,7 @@ public static class ViewTasksWindow
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(saveKeys);
-        return new Opener(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates, saveKeys);
+        return new Opener(tasks, tagColors, tagOrder, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates, saveKeys);
     }
 
     // Holds a failure from a delete finished while the window closed, so the next window shows it, and the sync
@@ -48,7 +49,7 @@ public static class ViewTasksWindow
         private TaskListWindow? _current;
         private Task _opening = Task.CompletedTask;
 
-        public Opener(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+        public Opener(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
             IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
             Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys,
             IUpdateStatus updates, SaveKeys saveKeys)
@@ -60,7 +61,7 @@ public static class ViewTasksWindow
                 var listSync = new ListSync(sync, palette, theme);
                 try
                 {
-                    var window = new TaskListWindow(tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, webView,
+                    var window = new TaskListWindow(tasks, tagColors, tagOrder, palette, theme, time, clipboard, imageFiles, files, webView,
                         browser, listSync, updates, saveKeys, message, failure => _carried = failure);
                     _carried = null;
                     closeWindowKeys.Attach(window);

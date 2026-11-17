@@ -18,13 +18,14 @@ public class RepositoryChangeTests : IDisposable
     private const string Folder = @"C:\New Tasks";
 
     private readonly FakeSyncService _sync = new();
+    private readonly FakeSetupActions _actions = new();
     private readonly SyncUi _ui;
     private readonly RepositoryChange _change;
     private int _changed;
 
     public RepositoryChangeTests()
     {
-        _ui = new SyncUi(_sync, new FakeSetupActions(), post => post());
+        _ui = new SyncUi(_sync, _actions, post => post());
         _change = new RepositoryChange(_ui, () => _changed++);
     }
 
@@ -232,6 +233,185 @@ public class RepositoryChangeTests : IDisposable
         Assert.Null(_change.Message);
     }
 
+    // Set key: copies the public key, then opens the add-key page of the host of the address being typed.
+
+    private const string GitHubAddress = "git@github.com:me/tasks.git";
+    private static readonly Uri GitHubPage = new("https://github.com/me/tasks/settings/keys/new");
+    private static readonly Uri ClonePage = new("https://clone.example/settings/keys");
+
+    private void Accepts(string address, Uri? page) => Setup.AcceptedAddresses[address] = page;
+
+    [Theory]
+    [InlineData(GitHubAddress, true)]
+    [InlineData("  git@github.com:me/tasks.git  ", true)]
+    [InlineData("not an address", false)]
+    [InlineData("", false)]
+    [InlineData("   ", false)]
+    public void Set_key_is_available_only_while_the_typed_address_is_one_the_setup_accepts(string typed, bool expected)
+    {
+        Accepts(GitHubAddress, GitHubPage);
+
+        Assert.Equal(expected, _change.CanSetKey(typed));
+    }
+
+    [Fact]
+    public void Set_key_is_available_with_no_key_and_no_selected_clone()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = null, RepositoryAddress = null, RepositoryFolder = null });
+        Accepts(GitHubAddress, GitHubPage);
+
+        Assert.True(_change.CanSetKey(GitHubAddress));
+    }
+
+    [Fact]
+    public void Set_key_follows_the_typed_address_not_the_selected_clones()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key", RepositoryAddress = "git@clone.example:me/tasks.git" });
+        Accepts("git@clone.example:me/tasks.git", ClonePage);
+
+        Assert.False(_change.CanSetKey("not an address"));
+        Accepts(GitHubAddress, GitHubPage);
+        Assert.True(_change.CanSetKey(GitHubAddress));
+    }
+
+    [Fact]
+    public void Set_key_with_a_key_copies_it_then_opens_the_page_of_the_typed_addresss_host()
+    {
+        Setup.Publish(new FakeSyncSetupState
+        {
+            PublicKey = "ssh-rsa test-key", RepositoryAddress = "git@clone.example:me/tasks.git", AddKeyPage = ClonePage,
+        });
+        Accepts(GitHubAddress, GitHubPage);
+
+        _change.SetKey(GitHubAddress);
+
+        Assert.Equal("ssh-rsa test-key", _actions.CopiedPublicKey);
+        Assert.Equal(GitHubPage, _actions.OpenedKeyPage);
+        Assert.Equal(["CopyPublicKey", "OpenKeyPage"], _actions.Calls);
+        Assert.Null(_change.Message);
+    }
+
+    [Fact]
+    public void Set_key_asks_the_setup_about_the_typed_text()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
+        Accepts(GitHubAddress, GitHubPage);
+
+        _change.SetKey(GitHubAddress);
+
+        Assert.Contains(GitHubAddress, Setup.AddressChecks);
+    }
+
+    [Fact]
+    public void Set_key_with_no_key_asks_to_generate_one_first_without_copying_opening_or_generating()
+    {
+        Accepts(GitHubAddress, GitHubPage);
+
+        _change.SetKey(GitHubAddress);
+
+        Assert.Equal("Generate a key first.", _change.Message);
+        Assert.Empty(_actions.Calls);
+        Assert.Equal(0, Setup.GenerateCount);
+        Assert.Null(_sync.Setup.State.PublicKey);
+    }
+
+    [Fact]
+    public void Set_key_on_a_valid_host_with_no_known_page_copies_the_key_and_explains_without_opening_a_page()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
+        Accepts("git@git.example.org:me/tasks.git", null);
+
+        _change.SetKey("git@git.example.org:me/tasks.git");
+
+        Assert.Equal("ssh-rsa test-key", _actions.CopiedPublicKey);
+        Assert.Equal(["CopyPublicKey"], _actions.Calls);
+        Assert.Equal("Copied. Add the key in your repository host's settings.", _change.Message);
+    }
+
+    [Theory]
+    [InlineData("not an address")]
+    [InlineData("")]
+    [InlineData("C:\\tasks")]
+    public void Set_key_with_an_address_the_setup_refuses_never_copies_or_opens(string typed)
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key", AddKeyPage = ClonePage });
+        Accepts(GitHubAddress, GitHubPage);
+
+        _change.SetKey(typed);
+
+        Assert.Empty(_actions.Calls);
+        Assert.Null(_actions.CopiedPublicKey);
+        Assert.Null(_actions.OpenedKeyPage);
+    }
+
+    [Fact]
+    public void A_clipboard_failure_in_Set_key_shows_why_and_opens_no_page()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
+        Accepts(GitHubAddress, GitHubPage);
+        _actions.CopyFailure = new InvalidOperationException("Clipboard is busy.");
+
+        _change.SetKey(GitHubAddress);
+
+        Assert.Equal("Clipboard is busy.", _change.Message);
+        Assert.Null(_actions.OpenedKeyPage);
+        Assert.Empty(_actions.Calls);
+    }
+
+    [Fact]
+    public void A_browser_failure_in_Set_key_shows_why_and_the_key_stays_copied()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
+        Accepts(GitHubAddress, GitHubPage);
+        _actions.OpenFailure = new InvalidOperationException("No browser.");
+
+        _change.SetKey(GitHubAddress);
+
+        Assert.Equal("No browser.", _change.Message);
+        Assert.Equal("ssh-rsa test-key", _actions.CopiedPublicKey);
+    }
+
+    [Fact]
+    public void A_later_successful_Set_key_clears_the_message_of_an_earlier_one()
+    {
+        Accepts(GitHubAddress, GitHubPage);
+        _change.SetKey(GitHubAddress);
+        Assert.NotNull(_change.Message);
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key" });
+
+        _change.SetKey(GitHubAddress);
+
+        Assert.Null(_change.Message);
+    }
+
+    [Fact]
+    public void Set_key_never_clones_selects_syncs_or_changes_the_repository_choice()
+    {
+        Setup.Publish(new FakeSyncSetupState { PublicKey = "ssh-rsa test-key", RepositoryAddress = "git@clone.example:me/tasks.git" });
+        Accepts(GitHubAddress, GitHubPage);
+        _change.Choose(RepositoryChoice.Clone);
+
+        _change.SetKey(GitHubAddress);
+
+        Assert.Empty(Setup.Clones);
+        Assert.Empty(Setup.Selections);
+        Assert.Equal(0, _sync.SyncCount);
+        Assert.Equal("git@clone.example:me/tasks.git", _sync.Setup.State.RepositoryAddress);
+        Assert.Equal(RepositoryChoice.Clone, _change.Choice);
+        Assert.True(_change.ControlsVisible);
+    }
+
+    [Fact]
+    public void Set_key_tells_the_window_when_its_message_changes()
+    {
+        Accepts(GitHubAddress, GitHubPage);
+        var before = _changed;
+
+        _change.SetKey(GitHubAddress);
+
+        Assert.True(_changed > before);
+    }
+
     // The bug: the design says a failure to read the lines shows as the section's message.
 
     [Fact]
@@ -291,6 +471,13 @@ public class RepositoryChangeTests : IDisposable
 
         public Task AcceptHostKeyAsync(string fingerprint, CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public Task ForgetHostKeyAsync(string host, int port, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task ForgetKeyAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public bool CheckAddress(string address, out Uri? addKeyPage)
+        {
+            addKeyPage = null;
+            return false;
+        }
     }
 }

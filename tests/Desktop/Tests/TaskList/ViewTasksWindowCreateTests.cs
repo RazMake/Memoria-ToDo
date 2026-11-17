@@ -15,7 +15,7 @@ public class ViewTasksWindowCreateTests
     public void Create_rejects_missing_tag_colors_by_name()
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
-            _services.Tasks, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            _services.Tasks, null!, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
             _services.Browser, _services.Sync, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys));
 
@@ -23,10 +23,21 @@ public class ViewTasksWindowCreateTests
     }
 
     [Fact]
+    public void Create_rejects_a_missing_tag_order_by_name()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
+            _services.Tasks, _services.TagColors, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
+            _services.Browser, _services.Sync, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys));
+
+        Assert.Equal("tagOrder", failure.ParamName);
+    }
+
+    [Fact]
     public void Create_rejects_a_missing_update_status_by_name()
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
-            _services.Tasks, _services.TagColors, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            _services.Tasks, _services.TagColors, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
             _services.Browser, _services.Sync, _services.CloseWindowKeys, null!, _services.SaveKeys));
 
@@ -37,7 +48,7 @@ public class ViewTasksWindowCreateTests
     public void Create_rejects_missing_Close_window_keys_by_name()
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
-            _services.Tasks, _services.TagColors, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            _services.Tasks, _services.TagColors, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
             _services.Browser, _services.Sync, null!, _services.Updates, _services.SaveKeys));
 
@@ -48,7 +59,7 @@ public class ViewTasksWindowCreateTests
     public void Create_rejects_missing_Save_keys_by_name()
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
-            _services.Tasks, _services.TagColors, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            _services.Tasks, _services.TagColors, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
             _services.Browser, _services.Sync, _services.CloseWindowKeys, _services.Updates, null!));
 

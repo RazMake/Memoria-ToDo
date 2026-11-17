@@ -36,6 +36,9 @@ internal class ListTasks
     /// <summary>The tag colors the window shows tags in.</summary>
     public FakeTagColors TagColors { get; } = new();
 
+    /// <summary>The tag order the window sorts its groups by and saves a group's move in.</summary>
+    public FakeTagOrder TagOrder { get; } = new();
+
     /// <summary>Pastes an image into an edit of the task and returns the files the paste added.</summary>
     public IReadOnlyList<string> PasteImage(string taskId)
     {

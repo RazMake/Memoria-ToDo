@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -16,7 +17,9 @@ public class TagGroupsTests
 
     private ListSnapshot Snapshot() => new ListContent(_tasks.Tasks, _filter).Build(null, null);
 
-    private IReadOnlyList<TaskGroup> Groups() => TagGroups.Of(Snapshot().Open);
+    private IReadOnlyList<TaskGroup> Groups() => TagGroups.Of(Snapshot().Open, _order);
+
+    private readonly FakeTagOrder _order = new();
 
     private static IReadOnlyList<string?> Tags(IEnumerable<TaskGroup> groups) => [.. groups.Select(group => group.Tag)];
 
@@ -133,5 +136,49 @@ public class TagGroupsTests
         _filter.SearchText = "buy";
 
         Assert.Equal(["Buy milk", "Buy tea"], Titles(Group("home")));
+    }
+
+    [Fact]
+    public void Puts_the_groups_in_the_tag_orders_order()
+    {
+        _order.Seed("work", "home");
+        _tasks.Add("One", "", "home");
+        _tasks.Add("Two", "", "work");
+
+        Assert.Equal(["work", "home"], Tags(Groups()));
+    }
+
+    [Fact]
+    public void Puts_a_tag_with_no_place_on_top_of_the_placed_ones()
+    {
+        _order.Seed("work", "home");
+        _tasks.Add("One", "", "home");
+        _tasks.Add("Two", "", "work");
+        _tasks.Add("Three", "", "alpha");
+
+        Assert.Equal(["alpha", "work", "home"], Tags(Groups()));
+    }
+
+    [Fact]
+    public void Keeps_the_No_tag_group_last_whatever_the_tag_order_says()
+    {
+        _order.Seed("work", "home");
+        _tasks.Add("Plain");
+        _tasks.Add("One", "", "home");
+        _tasks.Add("Two", "", "work");
+
+        Assert.Equal(["work", "home", null], Tags(Groups()));
+    }
+
+    [Fact]
+    public void Keeps_the_order_of_the_groups_that_show_when_a_group_is_hidden_by_the_search()
+    {
+        _order.Seed("work", "play", "home");
+        _tasks.Add("Buy one", "", "home");
+        _tasks.Add("Call two", "", "play");
+        _tasks.Add("Buy three", "", "work");
+        _filter.SearchText = "buy";
+
+        Assert.Equal(["work", "home"], Tags(Groups()));
     }
 }

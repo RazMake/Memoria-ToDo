@@ -1,11 +1,13 @@
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// What the device controls do: generate, copy and open the key, rename the device, and accept or forget the host
+/// What the device controls do: generate, copy and open the key, rename the device, and accept the host
 /// key. A problem becomes <see cref="Message"/>, the one message under the controls.
 /// </summary>
 internal sealed class DeviceActions
 {
+    public const string NoKeyMessage = "Generate a key first.";
+
     private readonly SyncUi _ui;
     private readonly Action _changed;
 
@@ -20,33 +22,43 @@ internal sealed class DeviceActions
     /// <summary>What to tell the user, or null when there is nothing to say.</summary>
     public string? Message { get; private set; }
 
-    public Task GenerateKeyAsync() => _ui.RunAsync(token => _ui.Sync.Setup.GenerateKeyAsync(token), Report);
+    public async Task GenerateKeyAsync()
+    {
+        Report(null);
+        await _ui.RunAsync(
+            async token =>
+            {
+                var setup = _ui.Sync.Setup;
+                await setup.GenerateKeyAsync(token);
+                if (setup.State.PublicKey is { } key)
+                {
+                    _ui.Actions.CopyPublicKey(key);
+                }
+            },
+            Report);
+    }
+
+    public async Task ForgetKeyAsync()
+    {
+        Report(null);
+        await _ui.RunAsync(token => _ui.Sync.Setup.ForgetKeyAsync(token), Report);
+    }
 
     /// <summary>
-    /// Copies the public key, then opens the host's page for adding it. Without a key it opens nothing; a failed copy
-    /// opens no page; a host with no page leaves the key copied and says where to add it.
+    /// Copies the public key without opening a page. Without a key it says to generate one first.
     /// </summary>
     public void CopyPublicKey()
     {
-        var state = _ui.Sync.Setup.State;
-        if (state.PublicKey is not { } key)
+        if (_ui.Sync.Setup.State.PublicKey is not { } key)
         {
-            Report("Generate a key first.");
+            Report(NoKeyMessage);
             return;
         }
 
         try
         {
             _ui.Actions.CopyPublicKey(key);
-            if (state.AddKeyPage is { } page)
-            {
-                _ui.Actions.OpenKeyPage(page);
-                Report(null);
-            }
-            else
-            {
-                Report("Copied. Add the key in your repository host's settings.");
-            }
+            Report(null);
         }
         catch (Exception error)
         {
@@ -67,21 +79,12 @@ internal sealed class DeviceActions
         await _ui.RunAsync(token => _ui.Sync.Setup.SetDeviceNameAsync(name, token), Report);
     }
 
-    /// <summary>Trusts the host key that waits to be accepted; does nothing when there is none.</summary>
+    /// <summary>Trusts the new or changed host key that waits to be accepted; does nothing when there is none.</summary>
     public async Task AcceptHostKeyAsync()
     {
         if (_ui.Sync.Setup.State.HostKey is { CanAccept: true } host)
         {
             await _ui.RunAsync(token => _ui.Sync.Setup.AcceptHostKeyAsync(host.Fingerprint, token), Report);
-        }
-    }
-
-    /// <summary>Forgets the host key; does nothing when there is none.</summary>
-    public async Task ForgetHostKeyAsync()
-    {
-        if (_ui.Sync.Setup.State.HostKey is { } host)
-        {
-            await _ui.RunAsync(token => _ui.Sync.Setup.ForgetHostKeyAsync(host.Host, host.Port, token), Report);
         }
     }
 

@@ -33,7 +33,7 @@ internal sealed class HostTrust(HostPins pins, KnownHostsFile saved, Action offe
         return verdict;
     }
 
-    /// <summary>Saves trust for the currently offered unknown key. Throws InvalidOperationException for anything else.</summary>
+    /// <summary>Saves trust for the currently offered unknown or changed key, replacing every saved key of its host and port. Throws InvalidOperationException for anything else.</summary>
     public void Accept(string fingerprint)
     {
         SshHostKey key;
@@ -45,7 +45,9 @@ internal sealed class HostTrust(HostPins pins, KnownHostsFile saved, Action offe
         }
 
         var hosts = LoadSaved();
-        hosts.Add((key.Host, key.Port, key.Fingerprint));
+        var host = AddressParser.NormalizeHost(key.Host);
+        hosts.RemoveAll(h => AddressParser.NormalizeHost(h.Host) == host && h.Port == key.Port);
+        hosts.Add((host, key.Port, key.Fingerprint));
         saved.Save(hosts);
         lock (gate)
         {
@@ -53,22 +55,6 @@ internal sealed class HostTrust(HostPins pins, KnownHostsFile saved, Action offe
         }
 
         offeredChanged();
-    }
-
-    /// <summary>Removes saved trust for a custom host. A built-in host's key is fixed, so forgetting it throws InvalidOperationException.</summary>
-    public void Forget(string host, int port)
-    {
-        host = AddressParser.NormalizeHost(host);
-        if (pins.IsBuiltIn(host))
-        {
-            throw new InvalidOperationException("A built-in host's key is fixed and cannot be forgotten.");
-        }
-
-        var hosts = LoadSaved();
-        if (hosts.RemoveAll(h => h.Host == host && h.Port == port) > 0)
-        {
-            saved.Save(hosts);
-        }
     }
 
     // The one place the saved trust is loaded. While it can't be, the offered key stays visible but can't be accepted.
@@ -98,14 +84,15 @@ internal sealed class HostTrust(HostPins pins, KnownHostsFile saved, Action offe
         }
 
         var hosts = LoadSaved();
-        var known = hosts.Where(h => h.Host == host && h.Port == port).ToList();
-        if (known.Count == 0)
+        var normalized = AddressParser.NormalizeHost(host);
+        var known = hosts.Where(h => AddressParser.NormalizeHost(h.Host) == normalized && h.Port == port).ToList();
+        if (known.Any(h => h.Fingerprint == fingerprint))
         {
-            canAccept = true;
-            return HostKeyVerdict.Unknown;
+            return HostKeyVerdict.Trusted;
         }
 
-        return known.Any(h => h.Fingerprint == fingerprint) ? HostKeyVerdict.Trusted : HostKeyVerdict.Changed;
+        canAccept = true;
+        return known.Count == 0 ? HostKeyVerdict.Unknown : HostKeyVerdict.Changed;
     }
 
     private sealed record SshHostKey(string Host, int Port, string Algorithm, string Fingerprint, bool CanAccept) : ISshHostKey;

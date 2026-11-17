@@ -14,6 +14,8 @@ internal sealed class WeakTrackingKeyStore(IDeviceKeyStore inner) : IDeviceKeySt
 
     public IDeviceSigningKey Generate() => inner.Generate();
 
+    public void Delete() => inner.Delete();
+
     public IDeviceSigningKey Open()
     {
         var wrapper = new Wrapper(inner.Open());

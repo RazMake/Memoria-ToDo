@@ -12,7 +12,8 @@ namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// A group's heading on the left side: the tag as the Task editor's badge, or "No tag" for the untagged tasks, and, while the
-/// group is collapsed, how many tasks it holds. A click on the badge or the words asks to collapse or expand the group.
+/// group is collapsed, how many tasks it holds. A click on the badge or the words asks to collapse or expand the group; a press on a
+/// tag's heading that moves past the system's drag distance drags the group instead, and is no click.
 /// </summary>
 internal sealed class GroupHeading : Border
 {
@@ -22,9 +23,13 @@ internal sealed class GroupHeading : Border
     private readonly Run _open = new();
     private readonly Run _number = new() { FontWeight = FontWeights.Bold };
     private readonly Run _close = new();
+    private readonly string? _tag;
+    private readonly IDragPointer _pointer;
+    private readonly PressDrag _press = new(SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance);
 
-    public GroupHeading(string? tag, ITagColors tagColors, ITheme theme)
+    public GroupHeading(string? tag, ITagColors tagColors, ITheme theme, IDragPointer pointer)
     {
+        _pointer = pointer;
         foreach (var piece in new[] { _open, _number, _close })
         {
             piece.SetResourceReference(TextElement.ForegroundProperty, "TextFillColorSecondaryBrush");
@@ -32,7 +37,8 @@ internal sealed class GroupHeading : Border
         }
 
         _count.Margin = new Thickness(8, 0, 0, 0);
-        Margin = new Thickness(0, 12, 0, 4);
+        _tag = tag;
+        Margin = new Thickness(0, Gap, 0, 4);
         Cursor = Cursors.Hand;
         AutomationProperties.SetAutomationId(this, "GroupHeading");
         AutomationProperties.SetName(this, tag ?? NoTagName);
@@ -54,15 +60,30 @@ internal sealed class GroupHeading : Border
             Unloaded += (_, _) => LayoutUpdated -= HandOverBadge;
         }
 
+        PreviewMouseLeftButtonDown += (_, _) => _press.Press(_pointer.PositionIn(this));
+        PreviewMouseMove += (_, _) => OnPreviewMouseMove();
+        MouseLeave += (_, _) => _press.Leave();
         MouseUp += (_, e) =>
         {
-            if (e.ChangedButton == MouseButton.Left)
+            if (_press.Release() && e.ChangedButton == MouseButton.Left)
             {
                 e.Handled = true;
                 Clicked?.Invoke(this, EventArgs.Empty);
             }
         };
     }
+
+    // A press that moves past the system's drag distance drags the group, and is no click. "No tag" can't be dragged.
+    private void OnPreviewMouseMove()
+    {
+        if (_tag is { } tag && _press.Move(_pointer.PositionIn(this), _pointer.IsLeftButtonDown))
+        {
+            _pointer.StartDrag(this, new DraggedGroup(tag).ToData());
+        }
+    }
+
+    /// <summary>The space above a heading, which the group before it ends in.</summary>
+    public const double Gap = 12;
 
     /// <summary>Raised when the user clicks the heading's badge or words.</summary>
     public event EventHandler? Clicked;

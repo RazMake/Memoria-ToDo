@@ -23,9 +23,9 @@ public sealed class TagColorFileRulesTests
         var merged = Rules.MergeTagColors(basis, local, remote);
         Assert.NotNull(merged);
         using var json = JsonDocument.Parse(merged);
-        Assert.Equal(1, json.RootElement.GetProperty("version").GetInt32());
+        Assert.Equal(2, json.RootElement.GetProperty("version").GetInt32());
         return json.RootElement.GetProperty("tags").EnumerateArray()
-            .Select(e => (e.GetProperty("tag").GetString()!, e.GetProperty("color").GetString()!, e.GetProperty("updated").GetString()!))
+            .Select(e => (e.GetProperty("tag").GetString()!, e.GetProperty("color").GetProperty("value").GetString()!, e.GetProperty("color").GetProperty("updated").GetString()!))
             .ToList();
     }
 
@@ -107,7 +107,7 @@ public sealed class TagColorFileRulesTests
     [Theory]
     [InlineData("{ not json")]
     [InlineData("""{ "version": 1 }""")]
-    [InlineData("""{ "version": 2, "tags": [] }""")]
+    [InlineData("""{ "version": 3, "tags": [] }""")]
     [InlineData("""{ "version": 1, "tags": [ { "tag": " x ", "color": "red", "updated": "2026-01-01T00:00:00.000Z" } ] }""")]
     [InlineData("""{ "version": 1, "tags": [ { "tag": "x", "color": "", "updated": "2026-01-01T00:00:00.000Z" } ] }""")]
     [InlineData("""{ "version": 1, "tags": [ { "tag": "x", "color": "red", "updated": "soon" } ] }""")]

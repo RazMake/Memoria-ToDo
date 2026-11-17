@@ -65,7 +65,7 @@ public class ListSelectionTests
         var task = _tasks.Add("Buy milk", "", "home", "errand");
         _tasks.Add("Other", "", "home");
         _selection.Select(task.Id);
-        var groups = TagGroups.Of(Snapshot().Open);
+        var groups = TagGroups.Of(Snapshot().Open, new Memoria.ToDo.Shared.Fakes.FakeTagOrder());
 
         var selectedRows = groups.SelectMany(group => group.Tasks).Where(row => _selection.IsSelected(row.Id)).ToList();
 

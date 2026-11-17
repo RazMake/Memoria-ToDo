@@ -82,12 +82,22 @@ internal sealed class SyncSetup(
     public Task AcceptHostKeyAsync(string fingerprint, CancellationToken cancellationToken) =>
         TrustChangeAsync(() => trust.Accept(fingerprint), cancellationToken);
 
-    public Task ForgetHostKeyAsync(string host, int port, CancellationToken cancellationToken)
+    public Task ForgetKeyAsync(CancellationToken cancellationToken) =>
+        RunSetupAsync(async _ =>
+        {
+            await worker.Run(() =>
+            {
+                Backend(() => keys.Delete());
+                model.ForgetKey();
+            }).ConfigureAwait(false);
+            await RefreshAsync().ConfigureAwait(false);
+        }, cancellationToken);
+
+    public bool CheckAddress(string address, out Uri? addKeyPage)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(host);
-        if (!AddressParser.IsValidPort(port))
-            throw new ArgumentOutOfRangeException(nameof(port), port, "The port must be from 1 to 65535.");
-        return TrustChangeAsync(() => trust.Forget(host, port), cancellationToken);
+        var parsed = AddressParser.TryParse(address);
+        addKeyPage = parsed is null ? null : AddressParser.AddKeyPage(parsed);
+        return parsed is not null;
     }
 
     private Task TrustChangeAsync(Action change, CancellationToken cancellationToken) =>

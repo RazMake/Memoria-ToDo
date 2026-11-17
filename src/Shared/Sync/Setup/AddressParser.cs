@@ -56,7 +56,7 @@ internal static partial class AddressParser
     public static Uri? AddKeyPage(string originText) =>
         TryParse(originText) is { } address ? AddKeyPage(address) : null;
 
-    private static SshAddress? TryParse(string text)
+    internal static SshAddress? TryParse(string text)
     {
         try
         {

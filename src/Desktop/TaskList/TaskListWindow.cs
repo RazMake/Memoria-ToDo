@@ -22,7 +22,10 @@ internal sealed class TaskListWindow : Window
 
     private readonly ITasks _tasks;
     private readonly ITagColors _tagColors;
+    private readonly ITagOrder _tagOrder;
+    private readonly GroupActions _groupActions;
     private readonly ITheme _theme;
+    private readonly TimeProvider _time;
     private readonly IDefaultBrowser _browser;
     private readonly Action<string> _carry;
     private readonly FormattedDescription _description;
@@ -56,17 +59,19 @@ internal sealed class TaskListWindow : Window
     private bool _closing;
     private bool _closed;
 
-    public TaskListWindow(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    public TaskListWindow(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
         IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, string? message, Action<string> carry)
     {
         _sync = sync;
+        _tagOrder = tagOrder;
         _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync));
         _saveKeys = saveKeys;
         _tagColors = tagColors;
         _decision = new CloseDecision(new CloseDialog(this));
         _tasks = tasks;
         _theme = theme;
+        _time = time;
         _browser = browser;
         _carry = carry;
         _rowActions = new()
@@ -101,7 +106,8 @@ internal sealed class TaskListWindow : Window
         _cleanup = new EditCleanup(tasks, _pending, Report);
         _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report);
         _editing = new ListEditing(tasks, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit);
-        _rows = new GroupedRows(tagColors, theme, CreateRow);
+        _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow);
+        _groupActions = new GroupActions(tagOrder, Report);
         _header.ShowMessage(message);
         _filter.Changed += (_, _) => Refresh();
         _header.UndoClicked += (_, _) => _pending.Undo();
@@ -111,6 +117,8 @@ internal sealed class TaskListWindow : Window
             Refresh();
         };
         _rows.GroupToggled += (_, tag) => ToggleGroup(tag);
+        _rows.TaskDropped += (_, drop) => DropIn(drop);
+        _rows.GroupDropped += (_, move) => MoveGroup(move);
 
         Content = Layout();
         EscCloses.Attach(this);
@@ -118,6 +126,7 @@ internal sealed class TaskListWindow : Window
         PreviewKeyUp += (_, e) => _held.Released(EventKey.Of(e));
         Deactivated += (_, _) => _held.Clear();
         tasks.Changed += OnChanged;
+        tagOrder.Changed += OnChanged;
         Refresh();
     }
 
@@ -155,6 +164,7 @@ internal sealed class TaskListWindow : Window
         _closed = true;
         _closing = true;
         _tasks.Changed -= OnChanged;
+        _tagOrder.Changed -= OnChanged;
         try
         {
             _pending.Commit();
@@ -182,6 +192,7 @@ internal sealed class TaskListWindow : Window
             Content = _rows,
         };
         KeyboardNavigation.SetIsTabStop(left, false);
+        AutoScroll.Attach(left, _time, pointer => _rows.ContinueDrag(left.TranslatePoint(pointer, _rows)));
         var splitter = new GridSplitter
         {
             Width = 6,
@@ -329,7 +340,7 @@ internal sealed class TaskListWindow : Window
 
     private TaskRow CreateRow(TaskItem task)
     {
-        var row = new TaskRow(task, _theme, _browser);
+        var row = new TaskRow(task, _theme, _browser, MousePointer.Instance);
         row.SelectRequested += (_, _) => SelectTask(row.Task.Id);
         row.EditRequested += (_, _) => BeginEditOf(row.Task, row);
         row.EditTitleRequested += (_, _) => BeginTitleEditOf(row.Task, row);
@@ -337,7 +348,6 @@ internal sealed class TaskListWindow : Window
         row.ResolveToggled += (_, on) => Resolve(row.Task, row, on);
         row.LinkClicked += (_, address) => FollowLink(address);
         row.OpenFailed += (_, failure) => Report(failure.Message);
-        row.TaskDropped += (_, drop) => DropOn(row, drop.Dropped, drop.LowerHalf);
         return row;
     }
 
@@ -615,13 +625,21 @@ internal sealed class TaskListWindow : Window
         }
     }
 
-    private void DropOn(TaskRow targetRow, DraggedTask dropped, bool lowerHalf)
+    private void DropIn((DraggedTask Dropped, GroupKey Target, IReadOnlyList<TaskItem> TargetRows, int Index) drop)
     {
         _header.ShowMessage(null);
-        if (ListOrder.Drop(dropped.Source, targetRow.Group, _snapshot.Shown, targetRow.Task.Id, dropped.Task.Id, lowerHalf) is { } move)
+        if (ListOrder.DropIn(drop.Dropped.Source, drop.Target, drop.TargetRows, _snapshot.Shown, drop.Dropped.Task.Id, drop.Index) is { } move)
         {
             _actions.Move(move);
         }
+    }
+
+    // The group moves at once, in Tasks' tag order. The list regroups when the order says it changed, so a move that can't be
+    // saved leaves the group where it was.
+    private void MoveGroup(GroupMove move)
+    {
+        _header.ShowMessage(null);
+        _groupActions.Move(move);
     }
 
     // ---- Links ----

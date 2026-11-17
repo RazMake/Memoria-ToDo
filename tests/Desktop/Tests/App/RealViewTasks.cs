@@ -42,7 +42,7 @@ internal sealed class RealViewTasks : IDisposable
         _rules = store.Synchronization.Files;
         Tasks.UseRepositoryFolder(clone);
         View = ViewTasksWindow.Create(
-            Tasks, new FakeTagColors(), Palette.Colors, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(),
+            Tasks, new FakeTagColors(), store.TagOrder, Palette.Colors, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(),
             files, () => MakeWebView(clone), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
             new FakeUpdateStatus(), new Platform.SaveKeys());
     }

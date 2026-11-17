@@ -169,12 +169,4 @@ public class SyncTextTests
     {
         Assert.Null(SyncText.StatusDetails(new FakeSyncStatus { State = SyncState.Error, Details = null }));
     }
-
-    [Fact]
-    public void A_host_key_line_names_the_host_port_algorithm_and_fingerprint()
-    {
-        var text = SyncText.HostKey(new FakeSshHostKey("self.example", 2222, "ssh-ed25519", "SHA256:abc", true));
-
-        Assert.Equal("Host self.example:2222 key ssh-ed25519 SHA256:abc", text);
-    }
 }

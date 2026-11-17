@@ -11,7 +11,7 @@ internal sealed partial class TaskService
         {
             ArgumentNullException.ThrowIfNull(tag);
             lock (owner.gate)
-                return owner.tagColors.Failure is null ? owner.tagColors.Value.Find(tag)?.Color : null;
+                return owner.tagColors.Failure is null ? owner.tagColors.Value.Find(tag)?.Color?.Value : null;
         }
 
         public event EventHandler? Changed
@@ -40,9 +40,11 @@ internal sealed partial class TaskService
             {
                 var root = owner.clone ?? throw new NoRepositoryFolderException();
                 var colors = owner.tagColors.Require();
-                if (colors.Find(tag)?.Color == colorName)
+                var existing = colors.Find(tag);
+                if (existing?.Color?.Value == colorName)
                     return;
-                var changed = colors.With(new TagColorEntry(tag, colorName, owner.Now()));
+                var entry = (existing ?? new TagColorEntry(tag, null, null)) with { Tag = tag, Color = new TagStamp(colorName, owner.Now()) };
+                var changed = colors.With([entry]);
                 owner.tagColorsFolder.Write(root, changed);
                 owner.tagColors = new FileLoad<TagColorSet>(changed, true, null);
             }

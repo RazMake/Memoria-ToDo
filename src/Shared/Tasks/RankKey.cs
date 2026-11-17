@@ -11,6 +11,13 @@ internal static class RankKey
     private const string Digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static readonly SearchValues<char> DigitChars = SearchValues.Create(Digits);
 
+    /// <summary>Throws <see cref="InvalidDataException"/> unless <paramref name="key"/> is a rank key.</summary>
+    public static void Require(string key)
+    {
+        if (key[IntegerLength(key)..].EndsWith('0'))
+            throw new InvalidDataException("A rank fraction can't end in 0.");
+    }
+
     /// <summary>A key that sorts before <paramref name="top"/>, the smallest key now in use; null when there is none.</summary>
     public static string Before(string? top)
     {

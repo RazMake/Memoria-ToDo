@@ -2,7 +2,7 @@
 
 Status: Drafting
 
-The Task list is the desktop app's Task View window. Its left side lists the tasks grouped by tag, where a click on a title selects the task, its checkbox checks it off, drag and drop reorders a group, and a click on a group's tag collapses or expands it; its right side shows the selected task's formatted description and tags, and turns into the Description editor on Edit Description, with a Preview tab where images resize. Edit Title edits a title in its row. A status bar at the bottom holds the Sync button, the app's version, and any new version from [Updates](updates.md).
+The Task list is the desktop app's Task View window. Its left side lists the tasks grouped by tag, where a click on a title selects the task, its checkbox checks it off, drag and drop reorders a group's tasks and the groups themselves, with a line showing where they land, and a click on a group's tag collapses or expands it; its right side shows the selected task's formatted description and tags, and turns into the Description editor on Edit Description, with a Preview tab where images resize. Edit Title edits a title in its row. A status bar at the bottom holds the Sync button, the app's version, and any new version from [Updates](updates.md).
 
 ## Behavior
 
@@ -25,7 +25,7 @@ The user decided that titles and descriptions show formatted, as a reader sees t
 
 The user decided:
 
-- **Groups come in the tags' alphabetical order, ignoring case, with a "No tag" group last** for tasks without a tag, so every open task shows. A group stays where the user found it.
+- **Groups come in the tags' order from [Tasks](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips), which the user sets by [dragging a group](#drag-and-drop-moves-tasks-and-groups-and-a-line-shows-where-they-land), with a "No tag" group last** for tasks without a tag, so every open task shows. A tag never moved shows at the top, as a new task does, so before any move, groups come in the tags' alphabetical order, ignoring case. Adding, resolving, or retagging tasks never changes the order of the groups that show; a new tag's group appears at the top. Every device, and the Android app's tag chips, show the same order.
 - **Within a group, tasks keep their rank order.** Rank stays one order for all tasks, as [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors) keeps it, so two groups show their shared tasks in the same order, and the task file format doesn't change.
 
 Proposed, each a decision to confirm:
@@ -154,6 +154,7 @@ The table lists each action on the selected task, by mouse and by key. Proposed:
 | Switch between an edit's Edit and Preview | Click the tab header | Ctrl+Tab, Ctrl+Shift+Tab |
 | Collapse or expand a group | Click its tag | None |
 | Move up or down within its group | Drag and drop | Alt+Up, Alt+Down |
+| Move a group among the groups | Drag its heading | None |
 | Resolve, or reopen a resolved task | Click the checkbox | Ctrl+D |
 | Delete | The right-click menu | Delete |
 | Search | The magnifier button | Ctrl+F moves to the search box, and Enter there searches |
@@ -173,6 +174,35 @@ Also proposed, each a decision to confirm:
 - Dropping a task that was deleted meanwhile, such as by a sync, moves nothing and shows the same message as a link to a deleted task.
 
 A moved task gets its new rank from [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors), between the two tasks it lands between in its group. Rank is one order for all tasks, so a task in two groups may also change place in its other group: dropping it between A and B puts it between A and B everywhere both show, and wherever that rank falls among the tasks of its other group. The user accepted this, so the task file needs no order per tag.
+
+### Drag and drop moves tasks and groups, and a line shows where they land
+
+The user decided that dragging a group's heading moves the whole group among the groups, and that every drag, of a task or a group, shows a line where the item will land. Only the mouse moves a group: headings stay off the keyboard's stops, as only the mouse [collapses a group](#a-click-on-a-groups-tag-collapses-or-expands-it).
+
+A group's drag works this way:
+
+- **A press on a heading that moves past Windows' drag distance starts a group drag.** It's the same distance a row's drag uses ([`SystemParameters.MinimumHorizontalDragDistance`](https://learn.microsoft.com/en-us/dotnet/api/system.windows.systemparameters.minimumhorizontaldragdistance)). A release before that distance is a click, which collapses or expands the group as [above](#a-click-on-a-groups-tag-collapses-or-expands-it); a drag never collapses or expands it. The press may start on the badge or on a collapsed group's count.
+- **A group's heading and its shown rows count as one item, split into halves, to pick the gap.** Over the item's upper half, the dragged group lands before that group; over its lower half, after it, as a task does over a row. A collapsed group is its heading alone. A long expanded group puts its two gaps far apart, so the line may sit well above or below the pointer.
+- **"No tag" stays last and can't be dragged.** A press on its heading only collapses or expands it. A group dropped anywhere over "No tag" lands just before it, after the last tag group; no group lands after it.
+- **The resolved tasks never move with the groups**: "N resolved" and its list stay at the bottom, and a group dropped there moves nothing.
+- **A group moved while search hides some groups lands between the two shown groups it was dropped between**, wherever the hidden groups fall, as a task moved among a group's shown tasks does.
+- **The move saves at once, in [Tasks' tag order](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips)**, with no Undo bar, as a task's move has none; dragging back undoes it. Other devices, and the Android app's tag chips, get the new order with the next sync.
+- **Moving a group keeps everything else as it was**: the selection, which groups are collapsed, and an open title edit with its text.
+- **The order changes only Task View's groups on the desktop.** The tag control's + menu keeps its [most-used order](../tasks.md#tags-and-search-ignore-case), and the selected task's badges keep the order the task added them in.
+
+While a drag is over the list, a drop line shows where the item will land:
+
+- **The line is thin, in the theme's accent color, `AccentFillColorDefaultBrush`, with a small circle at its start**, so it reads as a place between items, not a border. The Edit and Preview [tab headers](#edit-description-has-an-edit-tab-and-a-preview-tab) use the same accent, and it follows the theme.
+- **The line sits in the gap the item would land in.** For a task, it's the gap between two rows of the task's own group, from the rows' indent to the list's right edge. For a group, it's the gap between two groups, just above the heading of the group it would land before, from the headings' indent. After the last tag group, it sits above "No tag", or under the last group when there's none.
+- **The line and the drop come from one rule**, so a drop always lands where the line showed. A row's upper half still puts a task before it, and its lower half after it, as [above](#keys-and-the-mouse-reorder-resolve-and-delete).
+- **Where a drop would move nothing, no line shows, and the pointer shows Windows' no-drop cursor.** A drop handler tells Windows which drops it accepts ([Drag and drop](https://learn.microsoft.com/en-us/windows/apps/develop/data/drag-and-drop)). For a task, that's over another group's rows, over a heading, over the resolved tasks from an open task or the open tasks from a resolved one, and over a gap next to the task itself. For a group, that's a gap next to the group itself, and the resolved tasks. Outside the list, no line shows.
+- **The line takes no room.** Rows and headings don't move while it shows, so the place under the pointer never jumps. WPF draws such marks in an adorner layer, above the list and outside its layout ([Adorners overview](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/adorners-overview)).
+- **The line goes away when the drop lands, the pointer leaves the list, or Esc cancels the drag.** WPF's drag cancels on Esc by itself ([Drag-and-drop overview](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/drag-and-drop-overview)), so that Esc never closes Task View or leaves an edit.
+
+The list scrolls during a drag, so a task or a group can go to a place off screen:
+
+- **While the pointer is near the list's top or bottom edge during a drag, of a task or a group, the list scrolls that way.** The size of that edge band and the scrolling speed live in code.
+- **The scrolling stops when the pointer leaves the edge band, the list reaches its end, the drop lands, or the drag is canceled.** The line follows the place under the pointer as the list scrolls.
 
 ### Esc goes back one step, then closes Task View
 
@@ -370,10 +400,20 @@ public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, IReadO
     CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys);
 ```
 
+Row 13 of the [delivery backlog](README.md#delivery-backlog) adds Tasks' [tag order](../tasks.md#tag-order-is-a-capability-of-its-own), `ITagOrder tagOrder`, right after `tagColors`, as tag colors came in; Task View sorts its groups and saves a group's move through it. The drop line, a group's drag, and the scrolling during a drag change no other part. This is not implemented:
+
+```csharp
+public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder,
+    IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
+    IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser,
+    ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys);
+```
+
 ## Failure modes
 
 - **The web view fails**, for example when the WebView2 Runtime is missing: the description shows as Markdown source, with a message saying why, as the [Formatted view](formatted-view.md#failure-modes) does. So does an edit's Preview, where no image can then resize. The rest of the list works.
 - **A move, resolve, or delete can't be saved**: the task returns to how it was, and a message says why.
+- **A group's move can't be saved**, for example because no clone folder is set, or `tags.json` can't be read, has a newer version, or can't be written: the group goes back to its place, and the message line says why, as Tasks' [failure modes](../tasks.md#failure-modes) give it. While `tags.json` can't be read, groups show in the tags' alphabetical order, and the list still loads.
 - **A deleted task's images can't be removed**: the task's file is already deleted, as [Tasks](../tasks.md#public-interface) says, so the task stays gone. Proposed: the message line says "The task was deleted, but some of its images couldn't be removed: " followed by the reason. This is a decision to confirm.
 - **Saving an edit fails**: the editor stays open with the text and shows the error, as the [editor's save](task-editor.md#add-and-task-view-save-the-same-way-through-the-editor) does.
 - **An edit's images can't be deleted**: the action goes ahead and the message line says why, and a new edit of that task doesn't open until they're deleted, as the [user decided](#edit-description-turns-the-right-side-into-the-editor).
@@ -435,6 +475,19 @@ The options below were considered and rejected, grouped by decision.
   - **In the Title, as in Add**: the user would have to move to the Description first.
 - The order of the tag groups:
   - **Most-used tag first**: groups would move as tasks are added and resolved.
+  - **Always alphabetical, ignoring case**: the user asked to set the groups' order by dragging. Where the order is stored is ruled out in [Tasks](../tasks.md#ruled-out).
+- Whether "No tag" moves:
+  - **Like any group**: the stored order would need a reserved name no real tag may take, which both apps must know.
+- Which part of the list picks the gap a dragged group lands in:
+  - **Only headings, by their halves**: rows show no line during a group's drag, so there's less to aim at.
+  - **Every group shows collapsed during a group's drag**: the gaps sit close together, but the list changes shape under the pointer when the drag starts.
+- Moving a group by key:
+  - **Ctrl+Alt+Up and Ctrl+Alt+Down move the focused row's group**: two more keys to learn and test; the user chose the mouse only.
+- How the drop line looks:
+  - **The target row's or heading's edge turns the accent color**: an edge drawn on one row can't show the gap after the last row as clearly.
+  - **The rows part, leaving a gap the size of the dragged item**: rows move under the pointer during the drag, and it needs animation.
+- Reaching a place off screen during a drag:
+  - **No scrolling; the user collapses groups first**: a task couldn't reach a place off screen within a group taller than the list.
 - What the Sync button shows:
   - **The word "Sync", alone or beside the icon**: a wider button in a one-line bar.
 - What the search bar covers:

@@ -111,7 +111,7 @@ internal sealed partial class TaskService
             }
 
             if (reloaded)
-                owner.Announce(Notice.Tasks | Notice.Settings | Notice.TagColors);
+                owner.Announce(Notice.Tasks | Notice.Settings | Notice.TagColors | Notice.TagOrder);
             Rethrow(updateFailure, reloadFailure);
         }
 

@@ -1,4 +1,6 @@
+using System.Windows.Controls;
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
@@ -101,6 +103,28 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
+    public void The_prompt_lists_Save_Discard_Cancel_in_that_order_and_only_Save_is_the_default_button()
+    {
+        var services = new ListServices();
+        using var screen = ChangedEdit(services);
+        string[] buttons = [];
+        string[] defaults = [];
+        string? title = null;
+
+        Close(screen, prompt =>
+        {
+            title = prompt.Title;
+            buttons = [.. OpenWindows.Descendants(prompt).OfType<Button>().Select(b => (string)b.Content)];
+            defaults = [.. OpenWindows.Descendants(prompt).OfType<Button>().Where(b => b.IsDefault).Select(b => (string)b.Content)];
+            OpenWindows.Click(prompt, "Cancel");
+        });
+
+        Assert.Equal(ClosePrompt.Title, title);
+        Assert.Equal(["Save", "Discard", "Cancel"], buttons);
+        Assert.Equal(["Save"], defaults);
+    }
+
+    [WpfFact]
     public void Save_saves_the_edit_closes_Task_View_and_returns_true()
     {
         var services = new ListServices();
@@ -120,6 +144,18 @@ public class TaskListClosePromptTests
         using var screen = ChangedEdit(services);
 
         var closed = Close(screen, ClosePrompt.PressEnter);
+
+        Assert.True(closed);
+        Assert.Equal("Buy oat milk", services.Tasks.All.Single().Title);
+    }
+
+    [WpfFact]
+    public void Enter_with_the_Discard_button_focused_still_picks_Save_and_discards_nothing()
+    {
+        var services = new ListServices();
+        using var screen = ChangedEdit(services);
+
+        var closed = Close(screen, ClosePrompt.PressEnterOn("Discard"));
 
         Assert.True(closed);
         Assert.Equal("Buy oat milk", services.Tasks.All.Single().Title);

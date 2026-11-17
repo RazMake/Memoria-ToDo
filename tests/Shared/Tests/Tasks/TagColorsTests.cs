@@ -26,7 +26,7 @@ public sealed class TagColorsTests
     {
         using var json = f.ReadJson(f.TagColorsFile);
         var entries = json.RootElement.GetProperty("tags").EnumerateArray()
-            .Select(e => (e.GetProperty("tag").GetString()!, e.GetProperty("color").GetString()!, e.GetProperty("updated").GetString()!))
+            .Select(e => (e.GetProperty("tag").GetString()!, e.GetProperty("color").GetProperty("value").GetString()!, e.GetProperty("color").GetProperty("updated").GetString()!))
             .ToList();
         return (json.RootElement.GetProperty("version").GetInt32(), entries);
     }
@@ -40,7 +40,7 @@ public sealed class TagColorsTests
 
         Colors.SetColor("work", "teal");
 
-        Assert.Equal(1, Read().Version);
+        Assert.Equal(2, Read().Version);
         Assert.Equal([("work", "teal", NowText)], Read().Entries);
         Assert.Equal("teal", Colors.ColorOf("work"));
     }
@@ -54,7 +54,7 @@ public sealed class TagColorsTests
 
         using var json = f.ReadJson(f.TagColorsFile);
         Assert.Equal(["version", "tags"], json.RootElement.EnumerateObject().Select(p => p.Name).ToList());
-        Assert.Equal(["tag", "color", "updated"], json.RootElement.GetProperty("tags")[0].EnumerateObject().Select(p => p.Name).ToList());
+        Assert.Equal(["tag", "color", "place"], json.RootElement.GetProperty("tags")[0].EnumerateObject().Select(p => p.Name).ToList());
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public sealed class TagColorsTests
     [Fact]
     public void Fails_to_set_a_color_on_a_newer_version_and_leaves_it_untouched()
     {
-        var newer = TasksFixture.TagColorsJson(2, ("work", "teal", Earlier));
+        var newer = TasksFixture.        TagColorsJson(3, ("work", "teal", Earlier));
         f.WriteText(f.TagColorsFile, newer);
         f.Tasks.UseRepositoryFolder(f.Clone);
 
@@ -287,7 +287,7 @@ public sealed class TagColorsTests
     public void Skips_a_newer_file_asks_for_an_update_answers_null_and_still_loads_the_tasks()
     {
         f.Seed(TasksFixture.Id(1), "Readable");
-        f.SeedTagColors(2, ("work", "teal", Earlier));
+        f.SeedTagColors(3, ("work", "teal", Earlier));
 
         f.Tasks.UseRepositoryFolder(f.Clone);
 

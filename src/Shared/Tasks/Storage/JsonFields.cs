@@ -71,13 +71,21 @@ internal static class JsonFields
     }
 
     /// <summary>Throws <see cref="InvalidDataException"/> unless the file's <c>version</c> is one this app reads.</summary>
-    public static void RequireSupportedVersion(JsonElement obj)
+    public static void RequireSupportedVersion(JsonElement obj) => RequireSupportedVersion(obj, CurrentVersion);
+
+    /// <summary>The file's <c>version</c>, which is at least 1 and at most <paramref name="newest"/>. Throws <see cref="InvalidDataException"/> otherwise.</summary>
+    public static int RequireSupportedVersion(JsonElement obj, int newest)
     {
         if (!Field(obj, "version", JsonValueKind.Number).TryGetInt32(out var version) || version < 1)
             throw new InvalidDataException("Unsupported version.");
-        if (version > CurrentVersion)
+        if (version > newest)
             throw new InvalidDataException("The file needs a newer version of the app.", new NewerVersionException());
+        return version;
     }
+
+    /// <summary>The object, or null when the field is <c>null</c>. The field must be there.</summary>
+    public static JsonElement? OptionalObject(JsonElement obj, string name) =>
+        obj.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Null ? null : Object(obj, name);
 
     public static string String(JsonElement obj, string name) => Field(obj, name, JsonValueKind.String).GetString()!;
 

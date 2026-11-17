@@ -42,7 +42,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             Apply(loaded);
         }
 
-        Announce(Notice.Tasks | Notice.Settings | Notice.TagColors);
+        Announce(Notice.Tasks | Notice.Settings | Notice.TagColors | Notice.TagOrder);
     }
 
     /// <summary>Everything a reload reads, built whole so a failure leaves the current state untouched.</summary>
@@ -79,6 +79,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         Settings = 2,
         LocalSaved = 4,
         TagColors = 8,
+        TagOrder = 16,
     }
 
     /// <summary>Raises the events for what changed. Call it after leaving the lock, so handlers never run inside it.</summary>
@@ -90,12 +91,15 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             settingsChanged?.Invoke(this, EventArgs.Empty);
         if (notice.HasFlag(Notice.TagColors))
             tagColorsChanged?.Invoke(this, EventArgs.Empty);
+        if (notice.HasFlag(Notice.TagOrder))
+            tagOrderChanged?.Invoke(this, EventArgs.Empty);
         if (notice.HasFlag(Notice.LocalSaved))
             localSaved?.Invoke(this, EventArgs.Empty);
     }
 
     private EventHandler? settingsChanged;
     private EventHandler? tagColorsChanged;
+    private EventHandler? tagOrderChanged;
     private EventHandler? localSaved;
 
     public TaskItem Add(TaskDraft draft)

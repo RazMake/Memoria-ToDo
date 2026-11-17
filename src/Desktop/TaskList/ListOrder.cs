@@ -27,21 +27,21 @@ internal static class ListOrder
     }
 
     /// <summary>
-    /// Puts <paramref name="droppedId"/> before or after <paramref name="targetId"/> among the tasks of <paramref name="target"/>,
-    /// the group of the row it is dropped on. <paramref name="shown"/> is every task the list shows, in every group and among the
+    /// Puts <paramref name="droppedId"/> before or after <paramref name="targetId"/> among <paramref name="targetRows"/>, the rows
+    /// of <paramref name="target"/>, the group of the row it is dropped on. <paramref name="shown"/> is every task the list shows, in every group and among the
     /// resolved ones. Returns null when it is dropped on itself, when it is dragged from another group than the target (even if it
     /// is in both), or when it is shown but not in the target group. A task that is
     /// not shown still gets a move, so Tasks can say it is gone.
     /// </summary>
-    public static Move? Drop(IReadOnlyList<TaskItem> source, IReadOnlyList<TaskItem> target, IReadOnlyList<TaskItem> shown, string targetId, string droppedId, bool lowerHalf)
+    public static Move? Drop(GroupKey source, GroupKey target, IReadOnlyList<TaskItem> targetRows, IReadOnlyList<TaskItem> shown, string targetId, string droppedId, bool lowerHalf)
     {
-        var at = IndexOf(target, targetId);
-        if (!ReferenceEquals(source, target) || droppedId == targetId || at < 0)
+        var at = IndexOf(targetRows, targetId);
+        if (source != target || droppedId == targetId || at < 0)
         {
             return null;
         }
 
-        var droppedAt = IndexOf(target, droppedId);
+        var droppedAt = IndexOf(targetRows, droppedId);
         if (droppedAt < 0 && IndexOf(shown, droppedId) >= 0)
         {
             return null;
@@ -50,8 +50,17 @@ internal static class ListOrder
         // The neighbors are the target's, without the dropped task, which leaves its old place.
         var before = lowerHalf ? at + 1 : at;
         var after = lowerHalf ? at : at - 1;
-        return new Move(droppedId, NeighborId(target, after, droppedId, -1), NeighborId(target, before, droppedId, 1));
+        return new Move(droppedId, NeighborId(targetRows, after, droppedId, -1), NeighborId(targetRows, before, droppedId, 1));
     }
+
+    /// <summary>
+    /// Puts <paramref name="droppedId"/> in the gap before the task at <paramref name="gap"/> among <paramref name="targetRows"/>, or at
+    /// the end when the gap is its count, as <see cref="Drop"/> does for the row it is dropped on.
+    /// </summary>
+    public static Move? DropIn(GroupKey source, GroupKey target, IReadOnlyList<TaskItem> targetRows, IReadOnlyList<TaskItem> shown, string droppedId, int gap) =>
+        gap < targetRows.Count
+            ? Drop(source, target, targetRows, shown, targetRows[gap].Id, droppedId, lowerHalf: false)
+            : Drop(source, target, targetRows, shown, targetRows[^1].Id, droppedId, lowerHalf: true);
 
     private static string? NeighborId(IReadOnlyList<TaskItem> group, int from, string skip, int direction)
     {

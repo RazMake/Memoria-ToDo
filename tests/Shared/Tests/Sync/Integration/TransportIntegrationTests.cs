@@ -29,7 +29,7 @@ public sealed class TransportIntegrationTests
     }
 
     [Fact]
-    public async Task A_host_key_that_differs_from_the_trusted_one_is_refused_and_cannot_be_accepted()
+    public async Task A_host_key_that_differs_from_the_trusted_one_is_refused_and_offered_for_acceptance()
     {
         var ct = TestContext.Current.CancellationToken;
         await using var world = await SyncWorld.StartAsync();
@@ -43,7 +43,7 @@ public sealed class TransportIntegrationTests
 
         Assert.NotNull(await Record.ExceptionAsync(() => a.Sync.Setup.CloneAsync(world.Address, a.CloneFolder, ct)));
         Assert.Equal(SyncFailure.ChangedHostKey, a.Sync.Status.Failure);
-        Assert.False(a.Sync.Setup.State.HostKey?.CanAccept ?? false);
+        Assert.True(a.Sync.Setup.State.HostKey?.CanAccept ?? false);
         Assert.False(a.Sync.Setup.State.IsConfigured);
     }
 

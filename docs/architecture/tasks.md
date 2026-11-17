@@ -2,7 +2,7 @@
 
 Status: Decided
 
-Tasks is the shared module that owns every task: its file, ID, and rank, how two devices' versions of it merge, automatic deletion, images, the draft each device keeps, and the settings and tag colors every device shares. Both apps change tasks only through Tasks.
+Tasks is the shared module that owns every task: its file, ID, and rank, how two devices' versions of it merge, automatic deletion, images, the draft each device keeps, and the settings, tag colors, and tag order every device shares. Both apps change tasks only through Tasks.
 
 ## Behavior
 
@@ -17,7 +17,7 @@ The table lists what Tasks keeps in the task repository:
 | `tasks/<id>.json` | One task, in a file named by the task's ID |
 | `images/<id>/` | That task's images, one file each |
 | `settings.json` | The deletion delay and the desktop app's shortcut texts, whose validation belongs to [Configure](desktop/configure.md#each-setting-has-one-owner) |
-| `tags.json` | The color the user picked for each tag, as [below](#each-tags-color-is-kept-in-one-synced-file) |
+| `tags.json` | The color the user picked for each tag, and its place in the tags' order, as [below](#each-tags-color-is-kept-in-one-synced-file) |
 
 Deleting a task removes its file and its image folder.
 
@@ -256,30 +256,65 @@ Proposed, each a decision to confirm:
 
 ### Each tag's color is kept in one synced file
 
-The user decided that each tag's color is kept in `tags.json`, a file in the clone that syncs like `settings.json`, so a tag looks the same on every device. It holds one entry per tag: the color's name and when the user picked it. Tasks keeps the name as text without interpreting it, as it keeps shortcut text, since Tasks uses no other module. [Rendering](rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the colors, and picks the color of a tag with no entry.
+The user decided that each tag's color is kept in `tags.json`, a file in the clone that syncs like `settings.json`, so a tag looks the same on every device. The same file keeps each tag's [place](#each-tags-place-orders-task-views-groups-and-androids-tag-chips), so everything the user sets for a tag lives in one entry. Tasks keeps a color's name as text without interpreting it, as it keeps shortcut text, since Tasks uses no other module. [Rendering](rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the colors, and picks the color of a tag with none.
 
 The file is one object with these fields, in this order:
 
 | Field | Value |
 | --- | --- |
-| `version` | `1` |
-| `tags` | A list of entries, each an object with `tag`, the tag as spelled when its color was picked; `color`, the color's name; and `updated`, a UTC timestamp |
+| `version` | `2` |
+| `tags` | A list of entries, each an object with `tag`, the tag as spelled when it was last set; `color`, an object with `value`, the color's name, and `updated`, a UTC timestamp, or `null` when no color was picked; and `place`, an object with `value`, a [rank key](#rank-is-a-text-key-that-sorts-between-its-neighbors), and `updated`, or `null` when the tag was never moved |
 
-Two versions of the file merge one entry at a time, matching tags with case ignored:
+For example, a tag the user colored and then moved:
+
+```json
+{
+  "version": 2,
+  "tags": [
+    {
+      "tag": "work",
+      "color": { "value": "teal", "updated": "2026-11-12T08:30:15.123Z" },
+      "place": { "value": "a0", "updated": "2026-11-16T17:02:44.010Z" }
+    }
+  ]
+}
+```
+
+Version 1 has the same `tags` list, but each entry holds `tag`, `color` as the bare name, and `updated`, the color's time. Tasks reads it as entries with that color and no place.
+
+The user decided that the place lives in `tags.json`, as version 2, not in a file of its own, and accepted the cost. Tasks writes version 2 every time it writes the file, whether for a color, a move, or a merge. An app older than this design [skips a newer version](#failure-modes), so once version 2 reaches it, every tag shows its default color there, and picking a color fails, until the user updates that app. Its sync names the file, asks the user to update, and leaves the file as it is, so no color or place is lost.
+
+Two versions of the file merge one entry at a time, matching tags with case ignored. An entry's color and place merge apart:
 
 - **An entry on one side only is kept.** A missing entry or an absent file never deletes one.
-- **An entry on both sides takes the one with the later `updated` time**, spelling included. Equal times take the remote's.
+- **An entry on both sides takes the color with the later `updated` time, and, apart from it, the place with the later `updated` time.** Equal times take the remote's. So a color picked on one device and a move made on another both survive.
+- **The entry's spelling comes from the side with the latest time** of its color and place. Equal times take the remote's.
 - **Three absent files merge to no file.** A present file that can't be read fails the merge, as a settings file does.
 
-Sync carries `tags.json` as it carries `settings.json`: Tasks' [file rules](#tag-colors-are-a-capability-of-their-own) classify the file and merge its versions, and Sync commits, merges, and pushes it. An older app doesn't know the file, so it [leaves it as the remote has it](sync.md#each-sync-commits-fetches-merges-and-pushes-one-branch), and the colors survive.
+Sync carries `tags.json` as it carries `settings.json`: Tasks' [file rules](#tag-colors-are-a-capability-of-their-own) classify the file and merge its versions, and Sync commits, merges, and pushes it. Places need no new file kind and no change to Sync.
 
 Proposed, each a decision to confirm:
 
-- The file uses the [task file's JSON style](#each-task-file-holds-nine-fields), with its entries sorted by tag, ignoring case, so a recolor shows as a few changed lines.
-- An entry is written only when the user picks a color, and is never deleted, so a tag that goes out of use and comes back keeps its color. A clone has no `tags.json` until the first pick; settings initialization doesn't create one.
-- Picking a color writes the tag as spelled in the call, the color, and the current time. Picking the color a tag already has writes nothing.
-- A present file is unreadable when an entry's tag breaks the [tag rules](#tags-and-search-ignore-case), its color isn't one non-empty line, or its time isn't valid, or when two entries name the same tag. A newer app reads every older `version`, and an app that finds a newer one skips the file, as for task files.
-- While `tags.json` can't be read, every tag shows its default color, and picking a color fails without writing, as [failure modes](#failure-modes) say. Showing colors never stops the task list from loading.
+- The file uses the [task file's JSON style](#each-task-file-holds-nine-fields), with its entries sorted by tag, ignoring case, so a recolor or a move shows as a few changed lines.
+- An entry is written only when the user picks a color or moves a tag, and is never deleted, so a tag that goes out of use and comes back keeps its color and its place. A clone has no `tags.json` until the first pick or move; settings initialization doesn't create one.
+- Picking a color writes the tag as spelled in the call, the color, and the current time, and keeps the entry's place. Picking the color a tag already has writes nothing.
+- A present file is unreadable when an entry's tag breaks the [tag rules](#tags-and-search-ignore-case), its color isn't one non-empty line, its place isn't a valid rank key, a time isn't valid, or it has neither a color nor a place, or when two entries name the same tag. A newer app reads every older `version`, and an app that finds a newer one skips the file, as for task files.
+- While `tags.json` can't be read, every tag shows its default color and has no place, and picking a color or moving a tag fails without writing, as [failure modes](#failure-modes) say. Showing colors and order never stops the task list from loading.
+
+### Each tag's place orders Task View's groups and Android's tag chips
+
+The user decided that each tag has its own place: a [rank key](#rank-is-a-text-key-that-sorts-between-its-neighbors) with the time it was set, kept in the tag's [`tags.json` entry](#each-tags-color-is-kept-in-one-synced-file). The desktop's Task View shows its [tag groups](desktop/task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) in this order, and the Android app's Task View its [tag chips](android/task-list.md#tags-and-search-narrow-the-list). Tasks owns the sort rule, so both apps show the same order with no copy of it.
+
+Tasks sorts tags this way, as the user decided:
+
+1. **Tags with no place come first**, at the top, as a [new task goes to the top](#rank-is-a-text-key-that-sorts-between-its-neighbors), in alphabetical order, ignoring case. With nothing placed, the order is alphabetical, and a new tag shows first, where the user sees it.
+2. **Then the placed tags, by place.** Places compare as task ranks do; equal places sort by tag, ignoring case.
+
+A task with no tag has no tag to sort. Where an app shows such tasks, such as the desktop's "No tag" group, is that app's choice.
+
+A move gives the moved tag a new place between its two neighbors' places, with the current time. Only that tag's entry changes, so two devices that move different tags never conflict, and when both move the same tag, the later move wins. A move to where the tag already shows writes nothing.
+
+When a neighbor has no place yet, or both neighbors share one, the move first gives a new place to every tag in use, every tag the file already places, the moved tag, and its neighbors, in the order sorting shows now. Then it places the moved tag. So the tag lands exactly where it was dropped, and unused placed tags keep their order among the rest. The user decided this, and accepted two costs. Unused placed tags get a new time, which can win over another device's move of them. And two devices making their first move offline may interleave their orders; each entry still merges cleanly.
 
 ## Public interface
 
@@ -293,6 +328,7 @@ Each app's modules and Sync use these parts:
 - **Images**: save an image for a draft or an open edit and get its Markdown, discard an open edit's images, and the folder where an open edit's images wait.
 - **[Shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs)**: the typed settings capability used by Configure.
 - **[Tag colors](#tag-colors-are-a-capability-of-their-own)**: the color name kept for a tag, and keeping a new one.
+- **[Tag order](#tag-order-is-a-capability-of-its-own)**: tags sorted in the user's order, and moving a tag to a new place.
 - **[Synchronization](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs)**: Sync's separate capability, including its [pure file rules](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs). The source contracts define initialization, automatic deletion, coordinated updates, reloads, and diagnostics.
 
 The same three versions always merge to the same result, on every device. Tasks reads and writes files through the shared platform's [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files), takes the time from .NET's TimeProvider, and publishes an interface for image shrinking. Each app implements the interfaces and passes the system's time, as [How the apps fit together](overview.md#two-apps-share-one-c-library) says.
@@ -553,6 +589,60 @@ Proposed: `ColorOf` answers null while `tags.json` can't be read, rather than fa
 
 Proposed: `SetColor` checks its arguments before anything else, so an invalid tag or color name throws `ArgumentException` even when no repository is selected or `tags.json` can't be read. A caller's mistake then shows the same way whatever the repository's state. This is a decision to confirm.
 
+### Tag order is a capability of its own
+
+Row 13 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) adds [each tag's place](#each-tags-place-orders-task-views-groups-and-androids-tag-chips) as a second capability over `tags.json`, beside tag colors, so each caller gets only the part it uses: the desktop's Task list gets both, and its Task editor only colors. The composition root passes `TagOrder` to each app's Task list. The declarations below add to the existing contracts:
+
+```csharp
+namespace Memoria.ToDo.Shared.Tasks;
+
+public interface ITaskStore : ITasks
+{
+    // The existing members stay as they are.
+
+    /// <summary>Each tag's place in this store's selected repository.</summary>
+    ITagOrder TagOrder { get; }
+}
+
+/// <summary>
+/// Each tag's place in the order both apps show tags in, kept in tags.json beside the tag's color and shared by every
+/// device. Safe to call from any thread; uses the task store's lock. Tags match with case ignored.
+/// </summary>
+public interface ITagOrder
+{
+    /// <summary>
+    /// tags in the user's order: the tags with no place first, in alphabetical order ignoring case, then the placed
+    /// tags by place, equal places in alphabetical order ignoring case. Each tag keeps its spelling. Every tag has no
+    /// place when no repository is selected, or tags.json can't be read or has a newer version, which SkippedFiles names.
+    /// Throws ArgumentException for an invalid tag, or the same tag twice, ignoring case.
+    /// </summary>
+    IReadOnlyList<string> Sort(IReadOnlyCollection<string> tags);
+
+    /// <summary>
+    /// Gives tag a place after previousTag and before nextTag, as Sort shows them; null leaves that side open, so
+    /// Move(tag, null, null) changes nothing. When a neighbor has no place, or both share one, first gives the tags in
+    /// use, tag, and its neighbors places in the order Sort shows them. Writes tags.json with the current UTC time and
+    /// tag as spelled in the call, then raises LocalSaved and Changed. Writes and raises nothing when tag already shows
+    /// there. Throws, before writing: ArgumentException for an invalid tag, a neighbor that is tag itself, or a
+    /// previousTag that doesn't show before nextTag; NoRepositoryFolderException when no repository is selected; and
+    /// InvalidDataException when tags.json can't be read or has a newer version.
+    /// </summary>
+    void Move(string tag, string? previousTag, string? nextTag);
+
+    /// <summary>
+    /// Raised on the calling thread, outside the store's lock, after a move here, on repository selection,
+    /// and on every reload.
+    /// </summary>
+    event EventHandler? Changed;
+}
+```
+
+The file rules keep their `TagColorsFileName` and `MergeTagColors` names; their contracts now cover version 2 of `tags.json`, which holds each tag's color and place. The [file rules source](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs) holds the merge rules.
+
+`RepositoryFileKind.TagColors` still classifies `tags.json`, so Sync's [table of merges by file kind](../../src/Shared/Sync/Git/FileMerges.cs) doesn't change. A reload raises both `TagColors.Changed` and `TagOrder.Changed`; a color pick raises only the first, and a move only the second.
+
+Proposed: the file rules keep their `TagColors` names, though `tags.json` now holds places too. Renaming them would change Sync's code and two published names for no change in behavior. This is a decision to confirm.
+
 ## Failure modes
 
 - **No clone folder is set**: adding a task fails before any file is written, and the screen that asked keeps the text and points to where the folder is set.
@@ -563,7 +653,7 @@ Proposed: `SetColor` checks its arguments before anything else, so an invalid ta
 - **The kept draft can't be read**: loading it fails with `InvalidDataException` (a read failure keeps its cause inside), and the file stays as it is until the next keep or discard. The Add window then opens empty and says so.
 - **Adding a task fails after its file is written**, while moving images or deleting the draft: Tasks undoes what it did, moving the images back and deleting the new task file, and rethrows the original error, so the draft stays whole, nothing is left in the repository, and a retry works. The draft's images folder is deleted before its file, so a failed draft delete is undone the same way. If the undo itself fails, Tasks throws an `AggregateException` with both errors. Adding never overwrites: if the task file's path is already occupied, even by a file that was skipped on load, it throws `ArgumentException`.
 - **The top task's rank isn't a valid key**: adding fails with `InvalidDataException` rather than guess an order.
-- **`tags.json` can't be read, or has a newer `version`**: Tasks leaves it unchanged, and the sync status names it, or asks the user to update the app. Every tag shows its default color, and picking a color fails without writing, so the screen that asked says why. Tasks still load.
+- **`tags.json` can't be read, or has a newer `version`**: Tasks leaves it unchanged, and the sync status names it, or asks the user to update the app. Every tag shows its default color and has no place, so tags show in alphabetical order, and picking a color or moving a tag fails without writing, so the screen that asked says why. Tasks still load.
 
 Proposed, each a decision to confirm: `Add` refuses a draft whose ID is already a task or whose task file path is occupied (`ArgumentException`); the `AggregateException` when an undo also fails; task and draft files with an ID that isn't a lowercase UUID are unreadable; a description's line breaks are stored as `\n`; times are stored to the millisecond; draft images are deleted on discard for the kept draft and for every ID that got an image since the app started, including a draft never kept; images left by an earlier run for a draft that was never kept, or whose draft file is unreadable, aren't cleaned up, because the file system can't list folders. Known limitation, not fixed: `Add` checks that the task file path is free and then writes, so another process creating that file in between could be overwritten; this is a single-user local app, and closing the gap needs a create-only `IFileSystem` operation, a public interface change.
 
@@ -612,3 +702,13 @@ The options below were considered and rejected, grouped by decision.
   - **A new field in `settings.json`**: it needs a new version, which makes an older app's settings reads and writes fail; without one, an older app drops the colors when it writes a setting.
 - How Sync merges `tags.json`:
   - **One merge method in the file rules that takes any managed path**: it would replace two published methods to add one file.
+- Where each tag's place is kept:
+  - **A separate synced file, `tag-order.json`**: older apps would keep their colors, but it adds a file format, a merge rule, and a file kind in Sync. The user chose one file for everything set on a tag.
+  - **On each device only**: another PC, the phone, or a reinstall would show the default order, and many drags would restore it.
+- How the stored order records each tag's place:
+  - **One ordered list of tags, with one time**: two devices that move different tags conflict, and the later move undoes the other.
+  - **One time per entry, shared by its color and place**: a color picked on one device and a move made on another would conflict, and one would be lost.
+- Where a tag with no place shows:
+  - **After every placed tag, in alphabetical order**: the user chose the top, as for a new task.
+- How the tag order is published:
+  - **Sorting and moving on `ITagColors`**: a caller that needs only colors, such as the desktop's Task editor, would get the order too.

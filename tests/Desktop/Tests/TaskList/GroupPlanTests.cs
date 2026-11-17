@@ -17,7 +17,7 @@ public class GroupPlanTests
     private IReadOnlyList<PlannedGroup> Plan()
     {
         var open = _tasks.Tasks.All.Where(task => task.Resolved is null).OrderBy(task => task.Rank, StringComparer.Ordinal).ToList();
-        return GroupPlan.Of(TagGroups.Of(open), _collapse);
+        return GroupPlan.Of(TagGroups.Of(open, new Memoria.ToDo.Shared.Fakes.FakeTagOrder()), _collapse);
     }
 
     private static IReadOnlyList<string> Titles(PlannedGroup group) => [.. group.Rows.Select(task => task.Title)];

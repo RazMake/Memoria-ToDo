@@ -28,14 +28,34 @@ public class ListOrderTests
 
     private string? IdOrNull(string? title) => title is null ? null : Id(title);
 
-    // The tasks with these titles, in the order given: one group, as the list shows it.
-    private List<TaskItem> Group(params string[] titles) => [.. titles.Select(Item)];
+    // The tasks with these titles, in the order given: one group, as the list shows it. Each group gets a key of its own, which
+    // stays the same when the list shows the group again after a refresh (see Refreshed).
+    private List<TaskItem> Group(params string[] titles)
+    {
+        var group = Refreshed(null, titles);
+        _keys[group] = new GroupKey($"group {_keys.Count}", Resolved: false);
+        return group;
+    }
+
+    // The same group as shown after a refresh: a new list, in the same place, with the titles it has now.
+    private List<TaskItem> Refreshed(List<TaskItem>? before, params string[] titles)
+    {
+        var group = new List<TaskItem>(titles.Select(Item));
+        if (before is not null)
+        {
+            _keys[group] = _keys[before] with { };
+        }
+
+        return group;
+    }
+
+    private readonly Dictionary<List<TaskItem>, GroupKey> _keys = new(ReferenceEqualityComparer.Instance);
 
     private Move? Nudge(List<TaskItem> group, string title, int step) => ListOrder.Nudge(group, Id(title), step);
 
     // The dragged row was in the group it is dropped on, unless the test names the group it was dragged from.
     private Move? Drop(List<TaskItem> target, List<TaskItem> shown, string onTitle, string droppedTitle, bool lowerHalf, List<TaskItem>? from = null) =>
-        ListOrder.Drop(from ?? target, target, shown, Id(onTitle), Id(droppedTitle), lowerHalf);
+        ListOrder.Drop(_keys[from ?? target], _keys[target], target, shown, Id(onTitle), Id(droppedTitle), lowerHalf);
 
     private void AssertMove(Move? move, string title, string? after, string? before)
     {
@@ -249,8 +269,114 @@ public class ListOrderTests
         _tasks.Tasks.Delete(gone.Id);
         var all = Group("A", "B");
 
-        var move = ListOrder.Drop(all, all, all, Id("A"), gone.Id, lowerHalf: false);
+        var move = ListOrder.Drop(_keys[all], _keys[all], all, all, Id("A"), gone.Id, lowerHalf: false);
 
         Assert.Equal(new Move(gone.Id, null, Id("A")), move);
+    }
+
+    // A refresh while a task is dragged, such as a sync or a tag-order change, shows its groups as new lists. The drag still
+    // knows the group it came from by the group's place, not by the list it was shown in.
+
+    [Fact]
+    public void Dropping_after_a_refresh_still_moves_the_task_within_its_group()
+    {
+        AddInOrder("A", "B", "C");
+        var before = Group("A", "B", "C");
+        var after = Refreshed(before, "A", "B", "C");
+
+        AssertMove(ListOrder.Drop(_keys[before], _keys[after], after, after, Id("A"), Id("C"), lowerHalf: false), "C", after: null, before: "A");
+    }
+
+    [Fact]
+    public void Dropping_after_a_refresh_that_added_a_task_to_the_group_goes_by_the_group_as_it_is_now()
+    {
+        AddInOrder("A", "B", "C");
+        _tasks.Add("New");
+        var before = Group("A", "B", "C");
+        var after = Refreshed(before, "New", "A", "B", "C");
+
+        AssertMove(ListOrder.Drop(_keys[before], _keys[after], after, after, Id("B"), Id("C"), lowerHalf: false), "C", after: "A", before: "B");
+    }
+
+    [Fact]
+    public void Dropping_a_task_deleted_during_the_drag_after_a_refresh_still_describes_a_move_so_that_Tasks_can_say_it_is_gone()
+    {
+        AddInOrder("A", "B");
+        var gone = _tasks.Add("Gone");
+        var before = Group("A", "B", "Gone");
+        _tasks.Tasks.Delete(gone.Id);
+        var after = Refreshed(before, "A", "B");
+
+        var move = ListOrder.Drop(_keys[before], _keys[after], after, after, Id("A"), gone.Id, lowerHalf: false);
+
+        Assert.Equal(new Move(gone.Id, null, Id("A")), move);
+    }
+
+    [Fact]
+    public void Dropping_after_a_refresh_in_a_gap_still_moves_the_task_within_its_group()
+    {
+        AddInOrder("A", "B", "C");
+        var before = Group("A", "B", "C");
+        var after = Refreshed(before, "A", "B", "C");
+
+        AssertMove(ListOrder.DropIn(_keys[before], _keys[after], after, after, Id("C"), gap: 1), "C", after: "A", before: "B");
+    }
+
+    [Fact]
+    public void Dropping_after_a_refresh_on_another_group_than_the_one_it_was_dragged_from_still_moves_nothing()
+    {
+        AddInOrder("A work", "B home");
+        var work = Group("A work");
+        var home = Group("B home");
+        var shown = Group("A work", "B home");
+        // The refresh also shows the dragged task in the target group, as when it gained that tag during the drag.
+        var after = Refreshed(home, "A work", "B home");
+
+        Assert.Null(ListOrder.Drop(_keys[work], _keys[after], after, shown, Id("B home"), Id("A work"), lowerHalf: false));
+    }
+
+    // Dropping in a gap: the gap before the task at that place, or the end when the gap is the group's count.
+
+    private Move? DropIn(List<TaskItem> target, string droppedTitle, int gap, List<TaskItem>? from = null) =>
+        ListOrder.DropIn(_keys[from ?? target], _keys[target], target, target, Id(droppedTitle), gap);
+
+    [Fact]
+    public void Dropping_in_the_gap_before_a_task_puts_the_dropped_task_between_that_task_and_the_one_before_it()
+    {
+        AddInOrder("A", "B", "C");
+
+        AssertMove(DropIn(Group("A", "B", "C"), "C", gap: 1), "C", after: "A", before: "B");
+    }
+
+    [Fact]
+    public void Dropping_in_the_first_gap_puts_the_dropped_task_first()
+    {
+        AddInOrder("A", "B", "C");
+
+        AssertMove(DropIn(Group("A", "B", "C"), "C", gap: 0), "C", after: null, before: "A");
+    }
+
+    [Fact]
+    public void Dropping_in_the_last_gap_puts_the_dropped_task_last()
+    {
+        AddInOrder("A", "B", "C");
+
+        AssertMove(DropIn(Group("A", "B", "C"), "A", gap: 3), "A", after: "C", before: null);
+    }
+
+    [Fact]
+    public void Dropping_in_the_gap_next_to_the_dropped_task_describes_the_place_it_already_has()
+    {
+        AddInOrder("A", "B", "C");
+
+        AssertMove(DropIn(Group("A", "B", "C"), "B", gap: 2), "B", after: "A", before: "C");
+    }
+
+    [Fact]
+    public void Dropping_in_a_gap_of_another_group_than_the_one_it_was_dragged_from_moves_nothing()
+    {
+        AddInOrder("A", "B", "C");
+
+        Assert.Null(DropIn(Group("B", "C"), "A", gap: 1, from: Group("A", "B")));
     }
 }

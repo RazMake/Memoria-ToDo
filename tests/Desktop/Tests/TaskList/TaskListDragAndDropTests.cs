@@ -53,4 +53,32 @@ public class TaskListDragAndDropTests
         Assert.Equal(["work"], Task(services, "A").Tags);
     }
 
+    [WpfFact]
+    public void A_task_dropped_after_the_list_refreshed_during_the_drag_still_moves_within_its_group()
+    {
+        var services = ThreeTasks();
+        using var screen = new TaskListScreen(services);
+        var dragged = screen.DragOf(Task(services, "A"), "work");
+
+        services.Add("D", "", "work"); // A change from elsewhere, such as a sync, shows the groups again mid-drag.
+        screen.Drop(dragged, "C", lowerHalf: true, onGroup: "work");
+
+        Assert.Equal(["D", "C", "A"], screen.RowTitlesIn("work"));
+    }
+
+    [WpfFact]
+    public void A_task_deleted_during_the_drag_says_it_no_longer_exists_when_dropped()
+    {
+        var services = ThreeTasks();
+        using var screen = new TaskListScreen(services);
+        var gone = Task(services, "A");
+        var dragged = screen.DragOf(gone, "work");
+
+        services.Tasks.Delete(gone.Id);
+        screen.Drop(dragged, "C", lowerHalf: true, onGroup: "work");
+
+        Assert.NotNull(screen.FailureLine("This task no longer exists."));
+        Assert.Equal(["C"], screen.RowTitlesIn("work"));
+    }
+
 }

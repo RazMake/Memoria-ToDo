@@ -15,7 +15,7 @@ public interface IRepositoryFileRules
     /// <summary>The shared settings file's name, relative to the repository root.</summary>
     string SettingsFileName { get; }
 
-    /// <summary>The tag colors file's name, relative to the repository root.</summary>
+    /// <summary>The tags file's name, tags.json, relative to the repository root. It holds each tag's color and place.</summary>
     string TagColorsFileName { get; }
 
     /// <summary>The kind of file Tasks owns, or Unmanaged for another repository file.</summary>
@@ -43,9 +43,11 @@ public interface IRepositoryFileRules
     byte[]? MergeSettings(byte[]? basis, byte[]? local, byte[]? remote);
 
     /// <summary>
-    /// Merges each tag's entry by its own Updated time, remote winning ties, matching tags with case ignored.
-    /// Null means an absent file; an absent side or a missing entry never removes an entry. Three absent
-    /// files return null. Throws InvalidDataException for any present file that cannot be read; never alters input arrays.
+    /// Merges each tag's entry, matching tags with case ignored: its color and its place apart, each by its own
+    /// Updated time, and its spelling from the side with the latest time; equal times take the remote's. Reads
+    /// versions 1 and 2 and writes version 2. Null means an absent file; an absent side or a missing entry never
+    /// removes an entry. Three absent files return null. Throws InvalidDataException for any present file that cannot
+    /// be read, including a newer version; never alters input arrays.
     /// </summary>
     byte[]? MergeTagColors(byte[]? basis, byte[]? local, byte[]? remote);
 }
