@@ -40,6 +40,7 @@ internal sealed partial class TaskListScreen : IDisposable
         if (show)
         {
             View.Show();
+            ScreenSizeLimit.Lift(Window);
         }
     }
 

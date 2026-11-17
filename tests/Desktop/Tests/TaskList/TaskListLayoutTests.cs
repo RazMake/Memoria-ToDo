@@ -46,6 +46,7 @@ public class TaskListLayoutTests
         var services = new ListServices();
         services.Add("Buy milk");
         using var screen = new TaskListScreen(services);
+        screen.ResizeTo(1600);
         var before = screen.RowsSideWidth;
 
         screen.MoveSplitter(40);
