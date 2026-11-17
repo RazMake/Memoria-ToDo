@@ -20,6 +20,7 @@ internal sealed class TitleEdit : IFieldEdit
     {
         _tasks = tasks;
         Started = task;
+        Tag = task.Tags.FirstOrDefault();
         _editor = new TitleEditor(tasks, palette, theme, time, clipboard, saveKeys) { Value = task.Title };
         _editor.SaveRequested += (_, _) => saveRequested();
         _editor.CancelRequested += (_, _) => cancelRequested();
@@ -31,9 +32,11 @@ internal sealed class TitleEdit : IFieldEdit
 
     public bool ShowsInRow => true;
 
-    public bool HasChanges => _editor.HasChanges;
+    public string? Tag { get; set; }
 
-    public bool Save() => _editor.Save(EditSaves.Title(_tasks, Started));
+    public bool HasChanges => _editor.HasChanges || EditSaves.TagChanged(Started, Tag);
+
+    public bool Save() => _editor.Save(EditSaves.Title(_tasks, Started, Tag));
 
     public void FocusEnd() => _editor.FocusEnd();
 

@@ -8,7 +8,7 @@ using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
-/// <summary>The Title, Description, and Tags of one task, with every key the Task editor's design lists.</summary>
+/// <summary>The Title, Description, and one tag of a task, with every key the Task editor's design lists.</summary>
 internal sealed class TaskEditorControl : UserControl, IDraftEditor
 {
     private readonly TitleField _title;
@@ -47,7 +47,7 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
         Add(panel, "Title", _title.Editor);
         Add(panel, "Description", _description.Editor);
         _lists.AddTo(panel);
-        Add(panel, "Tags", _tags);
+        Add(panel, "Tag", _tags);
         panel.Children.Add(_message);
         Content = panel;
         FocusVisualStyle = null;
@@ -76,7 +76,7 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
     /// <summary>Asks to save, as the Save keys do: typed tag text becomes a tag first.</summary>
     internal void RequestSave() => RequestSave(SaveRequested);
 
-    /// <summary>What the fields hold now. Setting it replaces all three fields.</summary>
+    /// <summary>What the fields hold now. Setting it replaces all three fields; a task saved with several tags shows its first, so <see cref="Value"/> then holds only it.</summary>
     public TaskDraft Value
     {
         get => new(_taskId, _title.Editor.Text, _description.Editor.Text, _tagsModel.Tags);
@@ -86,7 +86,7 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
             _taskId = value.TaskId;
             _title.Editor.Text = value.Title;
             _description.Editor.Text = value.Description;
-            _tagsModel.Tags = value.Tags;
+            _tagsModel.Tags = [.. value.Tags.Take(1)];
             _baseline.Reset(Value);
         }
     }
@@ -133,7 +133,7 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
     internal bool IsChoosingImageFile => _images.IsChoosingFile;
 
     /// <summary>Closes the open list or tag part: colors, snippets, tasks, the tag suggestions, the + menu, or Custom. Returns false, doing nothing, when none was open.</summary>
-    internal bool CloseOpenList() => _lists.Popups.CloseOpen() || _tags.CloseOpen();
+    internal bool CloseOpenList() => _lists.Popups.CloseOpen() || _tags.CloseEdit();
 
     private static void Add(Panel panel, string caption, UIElement field)
     {

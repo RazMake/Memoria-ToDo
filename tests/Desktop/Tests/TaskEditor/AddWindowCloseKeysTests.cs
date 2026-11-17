@@ -52,7 +52,7 @@ public class AddWindowCloseKeysTests
         screen.Services.UseTag("hobby");
         screen.Show();
         screen.Fill("Buy milk", "Two litres", "home");
-        OpenWindows.Click(TagControls.Plus(screen.Window));
+        OpenWindows.Click(TagControls.PillButton(screen.Window));
         Assert.True(TagControls.MenuIsOpen(screen.Window));
         TagEditorWindow.Focus(TagControls.SearchBox(screen.Window));
         Assert.Equal(TagControls.MenuSearch, TagControls.FocusedId());

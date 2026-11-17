@@ -168,7 +168,7 @@ public class TaskListLayoutTests
     {
         var services = new ListServices();
         services.Add("Plain");
-        services.Add("Both", "", "work", "Home");
+        services.AddOlder("Both", "", "work", "Home");
         using var screen = new TaskListScreen(services);
 
         Assert.Equal(["Home", "work", "No tag"], screen.GroupNames);

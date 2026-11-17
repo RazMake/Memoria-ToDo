@@ -85,9 +85,46 @@ public sealed class AddTaskTests
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.ThrowsAny<ArgumentException>(() => f.Tasks.Add(f.Draft("Title", "", "fine", tag)));
+        Assert.ThrowsAny<ArgumentException>(() => f.Tasks.Add(f.Draft("Title", "", tag)));
 
         Assert.Empty(f.Files.ListFiles(Path.Combine(f.Clone, "tasks")));
+    }
+
+    [Theory]
+    [InlineData("work", "home")]
+    [InlineData("work", "home", "errand")]
+    public void Refuses_two_or_more_tags_and_writes_nothing(params string[] tags)
+    {
+        f.Tasks.UseRepositoryFolder(f.Clone);
+        var changes = f.CountChanges();
+
+        Assert.Throws<ArgumentException>(() => f.Tasks.Add(f.Draft("Title", "", tags)));
+
+        Assert.Empty(f.Files.ListFiles(Path.Combine(f.Clone, "tasks")));
+        Assert.Empty(f.Tasks.All);
+        Assert.Equal(0, changes.Count);
+    }
+
+    [Fact]
+    public void Keeps_the_kept_draft_and_its_images_when_two_tags_are_refused()
+    {
+        f.Tasks.UseRepositoryFolder(f.Clone);
+        var draft = f.Draft("Keep", "text", "work", "home");
+        f.Tasks.KeepDraft(draft);
+        f.Tasks.SaveImage(draft.TaskId, TasksFixture.TinyPng(), "pic");
+
+        Assert.Throws<ArgumentException>(() => f.Tasks.Add(draft));
+
+        Assert.Equal("Keep", f.Tasks.LoadDraft()!.Title);
+        Assert.Single(f.Files.ListFiles(f.DraftImages(draft.TaskId)));
+    }
+
+    [Fact]
+    public void Adds_a_task_with_no_tag()
+    {
+        var task = f.AddTask("T");
+
+        Assert.Empty(task.Tags);
     }
 
     [Fact]
@@ -161,14 +198,6 @@ public sealed class AddTaskTests
     }
 
     [Fact]
-    public void Keeps_the_tags_in_the_order_they_were_added()
-    {
-        var task = f.AddTask("T", "", "zeta", "alpha", "mid");
-
-        Assert.Equal(["zeta", "alpha", "mid"], task.Tags);
-    }
-
-    [Fact]
     public void Trims_the_tags()
     {
         var task = f.AddTask("T", "", "  work ");
@@ -177,31 +206,23 @@ public sealed class AddTaskTests
     }
 
     [Fact]
-    public void Drops_a_tag_the_task_already_has_ignoring_case()
-    {
-        var task = f.AddTask("T", "", "work", "WORK", "home", "Work");
-
-        Assert.Equal(["work", "home"], task.Tags);
-    }
-
-    [Fact]
     public void Spells_a_tag_as_the_matching_tag_in_use()
     {
         f.Seed(TasksFixture.Id(1), tags: ["Work"]);
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var task = f.Tasks.Add(f.Draft("T", "", "work", "home"));
+        var task = f.Tasks.Add(f.Draft("T", "", "work"));
 
-        Assert.Equal(["Work", "home"], task.Tags);
+        Assert.Equal(["Work"], task.Tags);
     }
 
     [Fact]
-    public void Saves_the_tags_the_task_ends_up_with()
+    public void Saves_the_tag_the_task_ends_up_with()
     {
         f.Seed(TasksFixture.Id(1), tags: ["Work"]);
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var task = f.Tasks.Add(f.Draft("T", "", "work", "WORK"));
+        var task = f.Tasks.Add(f.Draft("T", "", "work"));
 
         using var json = f.ReadJson(f.TaskFile(task.Id));
         var tags = json.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetString()).ToList();

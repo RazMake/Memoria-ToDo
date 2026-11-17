@@ -17,9 +17,13 @@ internal static class EditorFields
     public const string Tags = "Tags";
 
     /// <summary>The tag control's + button, which has the keyboard focus when the user tabs to the tags.</summary>
-    public const string AddTag = "AddTag";
+    /// <summary>The tag control's pill, the element that has the keyboard focus when the user tabs to the tag. Its x has the id <see cref="ClearTag"/>, the next Tab stop.</summary>
+    public const string TagPill = "TagPill";
 
-    private static readonly string[] Names = [Title, Description, Tags, AddTag];
+    /// <summary>The x at the end of the pill that clears the tag. It exists only while the task has a tag.</summary>
+    public const string ClearTag = "ClearTag";
+
+    private static readonly string[] Names = [Title, Description, Tags, TagPill, ClearTag];
 
     /// <summary>The field with the name, found below <paramref name="root"/>.</summary>
     public static FrameworkElement Field(DependencyObject root, string name) => TextFields.Find(root, name);
@@ -116,8 +120,8 @@ internal static class EditorFields
         Field(root, name) as ICSharpCode.AvalonEdit.TextEditor
             ?? throw new InvalidOperationException($"The {name} field isn't a styled text editor.");
 
-    /// <summary>The tags the task shows, in order.</summary>
-    public static IReadOnlyList<string> ShownTags(DependencyObject root) => TagControls.BadgeTags(Field(root, TagList));
+    /// <summary>The tag the pill shows, or null when it shows "No tag".</summary>
+    public static string? ShownTag(DependencyObject root) => TagControls.PillTag(root);
 
     /// <summary>The texts of the text blocks the user can see below <paramref name="root"/>, such as the message line when it is shown.</summary>
     public static IReadOnlyList<string> VisibleTexts(DependencyObject root) =>

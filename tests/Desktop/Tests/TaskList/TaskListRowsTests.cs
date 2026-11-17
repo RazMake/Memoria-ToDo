@@ -25,7 +25,7 @@ public class TaskListRowsTests
     public void Rows_show_no_tag_badges_and_each_group_heading_shows_its_tag()
     {
         var services = new ListServices();
-        services.Add("Buy milk", "", "home", "errand");
+        services.AddOlder("Buy milk", "", "home", "errand");
         using var screen = new TaskListScreen(services);
 
         Assert.False(screen.RowsShowBadges);

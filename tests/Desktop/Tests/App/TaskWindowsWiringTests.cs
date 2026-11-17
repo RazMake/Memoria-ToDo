@@ -64,7 +64,7 @@ public class TaskWindowsWiringTests : IDisposable
 
         Assert.Equal(
             TagControls.Expected(TagColors.Find("blue-1")!, dark: false),
-            TagControls.FillOf(_windows.Visible().Single(), "home"));
+            TagControls.PillFill(_windows.Visible().Single()));
         add.Close();
     }
 }

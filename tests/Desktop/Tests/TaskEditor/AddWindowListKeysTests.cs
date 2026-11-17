@@ -33,6 +33,6 @@ public class AddWindowListKeysTests
         screen.Press(Key.Tab);
 
         Assert.Equal("plain", screen.TextOf(EditorFields.Description));
-        Assert.Equal(EditorFields.AddTag, screen.FocusedField);
+        Assert.Equal(EditorFields.TagPill, screen.FocusedField);
     }
 }

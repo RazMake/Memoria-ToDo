@@ -9,21 +9,14 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
 /// How a Task View test reaches the tag parts, through the ids the Task editor's tests already use (see <see cref="TagControls"/>).
-/// The selected task's tag control, and the editor's own during an edit, show on the right side: badges with id "Badge {tag}",
-/// remove buttons ("Remove {tag}"), and the + button ("AddTag"). A group heading shows its tag as one badge. Rows show no badges.
-/// Each helper that names a task's title needs that task to be the selected one. Shared test setup.
+/// The selected task's tag control shows on the right side, during an edit too: one pill ("TagPill") with the tag or "No tag",
+/// its x ("ClearTag") while there's a tag, and the menu it opens. A group heading shows its tag as one badge. Rows show no
+/// badges. Each helper that names a task's title needs that task to be the selected one. Shared test setup.
 /// </summary>
 internal sealed partial class TaskListScreen
 {
     /// <summary>Lets pending work finish, then lays the window out.</summary>
     public void Settle() => Refresh();
-
-    /// <summary>The tags of the badges the selected task, named by <paramref name="title"/>, shows on the right side, in order.</summary>
-    public IReadOnlyList<string> BadgeTags(string title)
-    {
-        RequireSelected(title);
-        return TagControls.BadgeTags(Details);
-    }
 
     /// <summary>The tags of the badges in the group headings, top to bottom.</summary>
     public IReadOnlyList<string> HeadingBadgeTags =>
@@ -32,14 +25,28 @@ internal sealed partial class TaskListScreen
     /// <summary>Whether any row shows a tag badge.</summary>
     public bool RowsShowBadges => Rows().Any(row => TagControls.BadgeTags(row).Count > 0);
 
-    /// <summary>The tags whose remove buttons the selected task's tag control shows, in order.</summary>
-    public IReadOnlyList<string> ControlTags(string title)
+    /// <summary>The tag the selected task's pill shows, or null when it shows "No tag".</summary>
+    public string? PillTag(string title)
     {
         RequireSelected(title);
-        return TagControls.RemovableTags(Details);
+        return TagControls.PillTag(Details);
     }
 
-    /// <summary>Whether the right side shows a tag control: the selected task's, or the editor's own during an edit.</summary>
+    /// <summary>The words the selected task's pill shows: the tag, or "No tag".</summary>
+    public string PillText(string title)
+    {
+        RequireSelected(title);
+        return TagControls.PillText(Details);
+    }
+
+    /// <summary>Whether the selected task's pill shows an x.</summary>
+    public bool PillHasClear(string title)
+    {
+        RequireSelected(title);
+        return TagControls.HasClearButton(Details);
+    }
+
+    /// <summary>Whether the right side shows a tag control: the selected task's, during an edit too.</summary>
     public bool ShowsTagControl(string title) => SelectedTitles.Contains(title) && HasTagControl(Details);
 
     /// <summary>How many tag controls show in the whole window: one on the right side, or none.</summary>
@@ -52,22 +59,31 @@ internal sealed partial class TaskListScreen
         }
     }
 
-    /// <summary>Clicks the remove button of the tag in the selected task's tag control.</summary>
-    public void RemoveTag(string title, string tag)
+    /// <summary>Clicks the x of the selected task's pill.</summary>
+    public void ClearTag(string title)
     {
         RequireSelected(title);
-        Activate(TagControls.RemoveButton(Details, tag));
+        Activate(TagControls.ClearButton(Details));
     }
 
-    /// <summary>Clicks the + button of the selected task's tag control, which opens its menu.</summary>
-    public void OpenPlusMenu(string title)
+    /// <summary>Clicks the selected task's pill, which opens its menu.</summary>
+    public void OpenTagMenu(string title)
     {
         RequireSelected(title);
-        Activate(TagControls.Plus(Details));
+        Activate(TagControls.PillButton(Details));
     }
 
-    /// <summary>Whether the + menu is open anywhere in the window.</summary>
-    public bool PlusMenuIsOpen
+    /// <summary>Gives the selected task's pill the keyboard focus, as clicking it or tabbing to it does, without opening its menu.</summary>
+    public void FocusTagPill(string title)
+    {
+        RequireSelected(title);
+        var pill = TagControls.PillButton(Details);
+        pill.Focus();
+        Keyboard.Focus(pill);
+    }
+
+    /// <summary>Whether the tag menu is open anywhere in the window.</summary>
+    public bool TagMenuIsOpen
     {
         get
         {
@@ -76,7 +92,7 @@ internal sealed partial class TaskListScreen
         }
     }
 
-    /// <summary>The tags the open + menu lists, in order.</summary>
+    /// <summary>The tags the open tag menu lists, in order.</summary>
     public IReadOnlyList<string> MenuTags
     {
         get
@@ -86,10 +102,10 @@ internal sealed partial class TaskListScreen
         }
     }
 
-    /// <summary>Chooses a tag from the open + menu.</summary>
+    /// <summary>Chooses a tag from the open tag menu.</summary>
     public void ChooseMenuTag(string tag) => Activate(TagControls.MenuItem(Window, tag));
 
-    /// <summary>Chooses Custom in the open + menu.</summary>
+    /// <summary>Chooses Custom in the open tag menu.</summary>
     public void ChooseCustom() => Activate(TagControls.CustomItem(Window));
 
     /// <summary>Whether Custom's tag box shows.</summary>
@@ -111,10 +127,10 @@ internal sealed partial class TaskListScreen
         Keyboard.Focus(box);
     }
 
-    /// <summary>What Custom's tag box holds: the tag text typed and not yet added.</summary>
+    /// <summary>What Custom's tag box holds: the tag text typed and not yet chosen.</summary>
     public string EditedTagsText => TextFields.TextOf(CustomBox());
 
-    /// <summary>Types the text into Custom's tag box without adding it as a tag, and gives the box the focus. The box must be open.</summary>
+    /// <summary>Types the text into Custom's tag box without choosing it as the tag, and gives the box the focus. The box must be open.</summary>
     public void TypeTags(string text)
     {
         var field = CustomBox();
@@ -130,5 +146,5 @@ internal sealed partial class TaskListScreen
     }
 
     private static bool HasTagControl(FrameworkElement row) =>
-        TextFields.FindShowing(row, TagControls.AddTag) is not null;
+        TextFields.FindShowing(row, TagControls.Pill) is not null;
 }

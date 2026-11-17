@@ -48,18 +48,19 @@ public class TaskListEditTests
     }
 
     [WpfFact]
-    public void The_Description_editor_shows_the_tasks_tags_as_read_only_badges()
+    public void The_tag_control_stays_beside_the_Description_editor_with_the_tasks_tag()
     {
         var services = new ListServices();
-        services.Add("Buy milk", "Oat milk", "home", "errand");
+        services.Add("Buy milk", "Oat milk", "home");
         using var screen = new TaskListScreen(services);
         screen.ClickRow("Buy milk");
 
         screen.Press(Key.F2);
 
-        Assert.Equal(["home", "errand"], screen.BadgeTags("Buy milk"));
-        Assert.Empty(screen.ControlTags("Buy milk"));
-        Assert.Equal(0, screen.TagControlCount);
+        Assert.True(screen.IsEditing("Buy milk"));
+        Assert.True(screen.ShowsTagControl("Buy milk"));
+        Assert.Equal(1, screen.TagControlCount);
+        Assert.Equal("home", screen.PillTag("Buy milk"));
     }
 
     [WpfFact]

@@ -20,37 +20,13 @@ internal static class TagBadgeVisuals
     private static ControlTemplate? _flatButton;
 
     /// <summary>A button with no chrome of its own: its background, border, and padding are all it draws around its content.</summary>
-    public static ControlTemplate FlatButton => _flatButton ??= FlatButtonTemplate();
+    public static ControlTemplate FlatButton => _flatButton ??= FlatButtonWith(Rounded);
 
     /// <summary>A badge that only shows the tag.</summary>
     public static FrameworkElementFactory Plain(TagLook look)
     {
         var badge = Badge(look);
         badge.AppendChild(Name(look));
-        return badge;
-    }
-
-    /// <summary>A badge with a button after the tag's name that removes the tag.</summary>
-    public static FrameworkElementFactory Removable(TagLook look)
-    {
-        var remove = new FrameworkElementFactory(typeof(Button));
-        remove.SetValue(Control.TemplateProperty, FlatButton);
-        remove.SetValue(ContentControl.ContentProperty, "×");
-        remove.SetValue(Control.PaddingProperty, new Thickness(4, 0, 0, 0));
-        remove.SetValue(Control.BackgroundProperty, System.Windows.Media.Brushes.Transparent);
-        remove.SetBinding(AutomationProperties.AutomationIdProperty, new Binding(".") { StringFormat = "Remove {0}" });
-        remove.SetBinding(AutomationProperties.NameProperty, new Binding(".") { StringFormat = "Remove {0}" });
-        remove.SetBinding(Control.ForegroundProperty, TextOf(look));
-
-        var row = new FrameworkElementFactory(typeof(StackPanel));
-        row.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
-        row.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        row.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        row.AppendChild(Name(look));
-        row.AppendChild(remove);
-
-        var badge = Badge(look);
-        badge.AppendChild(row);
         return badge;
     }
 
@@ -102,7 +78,8 @@ internal static class TagBadgeVisuals
 
     private static Binding TextOf(TagLook look) => new(".") { Converter = new FillPart(look, fill => fill.Text) };
 
-    private static ControlTemplate FlatButtonTemplate()
+    /// <summary>Like <see cref="FlatButton"/>, with the given corners, so two buttons side by side can read as one badge.</summary>
+    public static ControlTemplate FlatButtonWith(CornerRadius corners)
     {
         var content = new FrameworkElementFactory(typeof(ContentPresenter));
         content.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
@@ -113,7 +90,7 @@ internal static class TagBadgeVisuals
         frame.SetValue(Border.BorderBrushProperty, new TemplateBindingExtension(Control.BorderBrushProperty));
         frame.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(Control.BorderThicknessProperty));
         frame.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Control.PaddingProperty));
-        frame.SetValue(Border.CornerRadiusProperty, Rounded);
+        frame.SetValue(Border.CornerRadiusProperty, corners);
         frame.AppendChild(content);
         return new ControlTemplate(typeof(Button)) { VisualTree = frame };
     }

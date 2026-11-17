@@ -170,7 +170,7 @@ public class TaskListCollapsedTitleEditTests
     private static TaskListScreen EditedInWork(out ListServices services)
     {
         services = new ListServices();
-        services.Add("Both", "", "work", "home");
+        services.AddOlder("Both", "", "work", "home");
         var screen = new TaskListScreen(services);
         screen.ClickRow("Both", "work");
         screen.Press(Key.LeftShift, Key.F2);

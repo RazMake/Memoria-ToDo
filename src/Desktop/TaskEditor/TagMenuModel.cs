@@ -3,9 +3,9 @@ using Memoria.ToDo.Shared.Tasks;
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
 /// <summary>
-/// The + menu without a screen: whether it is open, its top tags, Search and its matches, which item the keys are on, and
+/// The menu the pill opens, without a screen: whether it is open, its top tags, Search and its matches, which item the keys are on, and
 /// what choosing an item or pressing a key does. Items are numbered from 0: the top tags, then Search, then Custom…. The
-/// menu follows the tags model, so an open menu stays right when the task's tags or the tags in use change.
+/// menu follows the tags model, so an open menu stays right when the task's tag or the tags in use change.
 /// </summary>
 internal sealed class TagMenuModel
 {
@@ -103,7 +103,7 @@ internal sealed class TagMenuModel
         return true;
     }
 
-    /// <summary>A click on the + button: opens the menu, or closes it when it is open.</summary>
+    /// <summary>A click on the pill: opens the menu, or closes it when it is open.</summary>
     public void Toggle()
     {
         if (!Close())
@@ -171,7 +171,7 @@ internal sealed class TagMenuModel
         return true;
     }
 
-    /// <summary>Enter: adds the tag the keys are on, or opens Custom…. In Search it adds the highlighted match, or the first; with no match it does nothing.</summary>
+    /// <summary>Enter: chooses the tag the keys are on, or opens Custom…. In Search it chooses the highlighted match, or the first; with no match it does nothing.</summary>
     public void Enter()
     {
         if (FocusedIndex < 0)
@@ -196,14 +196,14 @@ internal sealed class TagMenuModel
         }
     }
 
-    /// <summary>Adds the tag and closes the menu, dropping the Search text. Custom stays as it is.</summary>
+    /// <summary>Chooses the tag as the task's tag and closes the menu, dropping the Search text. Custom stays as it is.</summary>
     public void ChooseTag(string tag)
     {
         Close();
         _tags.Add(tag);
     }
 
-    /// <summary>Adds the match at the position, as <see cref="ChooseTag"/> does.</summary>
+    /// <summary>Chooses the match at the position, as <see cref="ChooseTag"/> does.</summary>
     public void ChooseMatch(int position) => ChooseTag(_matches[position]);
 
     /// <summary>Closes the menu, dropping the Search text, and opens Custom.</summary>

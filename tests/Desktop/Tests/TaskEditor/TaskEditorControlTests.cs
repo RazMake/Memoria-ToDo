@@ -14,7 +14,7 @@ public class TaskEditorControlTests
     public void Holds_the_draft_it_was_given()
     {
         using var host = new EditorHost();
-        var draft = new TaskDraft(host.Services.Tasks.StartDraft().TaskId, "Title", "Text", ["a", "b"]);
+        var draft = new TaskDraft(host.Services.Tasks.StartDraft().TaskId, "Title", "Text", ["a"]);
 
         host.Editor.Value = draft;
 
@@ -101,7 +101,7 @@ public class TaskEditorControlTests
         host.OpenCustom();
         host.Focus(EditorFields.Tags);
         host.Type(EditorFields.Tags, "ho");
-        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.Plus(host.Editor));
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.PillButton(host.Editor));
         Assert.True(TagControls.MenuIsOpen(host.Editor));
 
         host.Press(Key.Escape);
@@ -234,10 +234,10 @@ internal sealed class EditorHost : IDisposable
         Keyboard.Focus(element);
     }
 
-    /// <summary>Clicks + and then Custom, which opens the tag box.</summary>
+    /// <summary>Clicks the pill and then Custom, which opens the tag box.</summary>
     public void OpenCustom()
     {
-        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.Plus(Editor));
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.PillButton(Editor));
         Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.CustomItem(Editor));
     }
 

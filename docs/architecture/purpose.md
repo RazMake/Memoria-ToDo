@@ -13,7 +13,7 @@ Two principles shape everything below: adding a task is as fast as it can be, an
 The main goal is that the user gets from deciding to add a task to typing in the editor as close to instantly as possible.
 
 - **Title and description are markdown.** The user formats text and inserts common snippets with shortcuts.
-- **Tags can be added while adding the task**, or later in Task View.
+- **One tag can be set while adding the task**, or changed later in Task View. The user decided that a task has at most one tag.
 - **Anything else that makes adding a task faster is in scope.**
 
 ### Every device shows the same task list
@@ -46,7 +46,7 @@ Each task is saved in the repository as its own JSON file, named after the task'
 | Title | A short title, in markdown | The user |
 | Description | Longer text in markdown, which can hold images, links, info blocks, references, and time stamps | The user |
 | Rank | A sort key that sets the order of the tasks, as [Tasks](tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors) decides | The user |
-| Tags | Labels for the task | The user |
+| Tag | One label for the task, or none | The user |
 | ID | The task's identity, also its file name | The apps |
 | Created time | When the task was added | The apps |
 | Last-updated time | When the task last changed | The apps |

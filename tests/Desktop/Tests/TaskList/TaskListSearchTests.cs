@@ -133,7 +133,7 @@ public class TaskListSearchTests
     public void Up_in_the_box_focuses_the_bottom_row_of_a_task_that_also_shows_in_an_earlier_group()
     {
         var services = new ListServices();
-        services.Add("Shared", "", "a", "z");
+        services.AddOlder("Shared", "", "a", "z");
         for (var i = 1; i <= 40; i++)
         {
             services.Add($"Task {i:00}", "", "m");

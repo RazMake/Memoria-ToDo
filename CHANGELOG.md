@@ -14,6 +14,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - In Task View's list, Up on the first task and Down on the last one take you back to the search box. Esc now first clears the search when it holds text, and closes the window on the next press.
 - Pressing a window's shortcut while it's open behind other windows now brings it to the front. For Task View, it also clears the search and puts the cursor there.
 - Task View's list now takes about two thirds of the window at first. A collapsed group's count reads "( 3 )", and tag names sit centered in their colored tags.
+- A task now has at most one tag. In Add, the window for a new task, and in Task View, the window that lists your tasks, the tag shows as one colored pill, or "No tag". Click the pill to open a menu where you pick a tag, search for one, or make a custom one, or click the × beside it to clear the tag. In Task View a tag you choose is saved at once, and an Undo bar says "Tag changed" or "Tag cleared". While you edit a task's title or description, a tag you choose is saved together with the edit, and Esc drops it. Tasks you saved with several tags keep them until you change the tag, and show the first one. If two devices change a task's tag, the later change wins.
 
 ## 1.0.0
 

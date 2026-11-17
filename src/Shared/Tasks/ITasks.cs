@@ -15,7 +15,7 @@ public interface ITasks
     /// <summary>
     /// Adds the draft's task at the top, writes its file, moves its images into the clone, then deletes the kept draft.
     /// Throws <see cref="NoRepositoryFolderException"/> when no folder is set, and <see cref="ArgumentException"/>
-    /// for an empty or multi-line title or an invalid tag.
+    /// for an empty or multi-line title, an invalid tag, or two or more tags, before any file is written.
     /// </summary>
     TaskItem Add(TaskDraft draft);
 
@@ -46,7 +46,7 @@ public interface ITasks
     /// <summary>A new, empty draft with a new task ID. Keeps nothing.</summary>
     TaskDraft StartDraft();
 
-    /// <summary>The kept draft, or null when there's none. Throws <see cref="InvalidDataException"/> when it can't be read.</summary>
+    /// <summary>The kept draft, or null when there's none, with its first tag only. Throws <see cref="InvalidDataException"/> when it can't be read.</summary>
     TaskDraft? LoadDraft();
 
     /// <summary>Replaces the kept draft with this one.</summary>
@@ -68,12 +68,13 @@ public interface ITasks
 
     /// <summary>
     /// Saves an edit of <paramref name="started"/>, the task as the editor got it, onto the task as it is now. A Title or
-    /// Description that differs from started's replaces the current one; the tags edited added or removed, ignoring case, are
-    /// added to or removed from the current tags. Every other field keeps its current value. Moves the edit's images into the
-    /// clone, then writes the file and sets Updated, unless nothing changed. Returns the task as saved.
+    /// Description that differs from started's replaces the current one; a tag that differs from started's, ignoring case, replaces
+    /// every current tag, where no tag counts as a value, and the started task's first tag is its tag. Every other field keeps its
+    /// current value. Moves the edit's waiting images into the clone, on any save that changes something, then writes the file and sets Updated,
+    /// unless nothing changed. Returns the task as saved.
     /// Throws, before any change: <see cref="NoRepositoryFolderException"/> when no folder is set;
     /// <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>; <see cref="ArgumentException"/> when
-    /// <c>edited.TaskId</c> isn't <c>started.Id</c>, or for an empty or multi-line title or tag.
+    /// <c>edited.TaskId</c> isn't <c>started.Id</c>, or for an empty or multi-line title, an invalid tag, or two or more tags.
     /// </summary>
     TaskItem SaveEdit(TaskItem started, TaskDraft edited);
 

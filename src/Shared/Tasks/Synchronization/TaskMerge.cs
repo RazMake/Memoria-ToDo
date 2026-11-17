@@ -20,13 +20,14 @@ internal static class TaskMerge
             return Absent(basis, local ?? remote);
 
         var localWins = local.Updated > remote.Updated;
-        T Field<T>(Func<TaskItem, T> field) => Pick(basis is null ? (false, default!) : (true, field(basis)), field(local), field(remote), localWins);
+        T Field<T>(Func<TaskItem, T> field, IEqualityComparer<T>? comparer = null) =>
+            Pick(basis is null ? (false, default!) : (true, field(basis)), field(local), field(remote), localWins, comparer ?? EqualityComparer<T>.Default);
         var merged = new TaskItem(
             local.Id,
             Field(task => task.Title),
             Field(task => task.Description),
             Field(task => task.Rank),
-            MergeTags(basis?.Tags ?? [], local.Tags, remote.Tags),
+            Field(task => task.Tags, TagListComparer.Instance),
             local.Created < remote.Created ? local.Created : remote.Created,
             local.Updated > remote.Updated ? local.Updated : remote.Updated,
             Field(task => task.Resolved));
@@ -44,24 +45,24 @@ internal static class TaskMerge
     private static TaskItem? Parse(byte[]? bytes) => bytes is null ? null : TaskFileFormat.Read(bytes);
 
     /// <summary>Without a basis, both sides count as having changed the field, so the later edit wins.</summary>
-    private static T Pick<T>((bool Known, T Value) basis, T local, T remote, bool localWins)
+    private static T Pick<T>((bool Known, T Value) basis, T local, T remote, bool localWins, IEqualityComparer<T> comparer)
     {
-        var localChanged = !basis.Known || !EqualityComparer<T>.Default.Equals(local, basis.Value);
-        var remoteChanged = !basis.Known || !EqualityComparer<T>.Default.Equals(remote, basis.Value);
+        var localChanged = !basis.Known || !comparer.Equals(local, basis.Value);
+        var remoteChanged = !basis.Known || !comparer.Equals(remote, basis.Value);
         if (localChanged && remoteChanged)
             return localWins ? local : remote;
         return localChanged ? local : remote;
     }
 
-    /// <summary>The basis tags minus any either side removed, then each side's additions, ignoring case.</summary>
-    private static IReadOnlyList<string> MergeTags(IReadOnlyList<string> basis, IReadOnlyList<string> local, IReadOnlyList<string> remote)
+    /// <summary>Two tag lists are the same when they hold the same tags in the same order, ignoring case.</summary>
+    private sealed class TagListComparer : IEqualityComparer<IReadOnlyList<string>>
     {
-        var tags = new List<string>();
-        foreach (var tag in basis.Where(tag => TagCatalog.Has(local, tag) && TagCatalog.Has(remote, tag))
-                     .Concat(local.Where(tag => !TagCatalog.Has(basis, tag)))
-                     .Concat(remote.Where(tag => !TagCatalog.Has(basis, tag))))
-            if (!TagCatalog.Has(tags, tag))
-                tags.Add(tag);
-        return tags;
+        public static readonly TagListComparer Instance = new();
+
+        public bool Equals(IReadOnlyList<string>? x, IReadOnlyList<string>? y) =>
+            ReferenceEquals(x, y) || x is not null && y is not null && x.SequenceEqual(y, StringComparer.OrdinalIgnoreCase);
+
+        public int GetHashCode(IReadOnlyList<string> tags) =>
+            tags.Aggregate(0, (hash, tag) => HashCode.Combine(hash, StringComparer.OrdinalIgnoreCase.GetHashCode(tag)));
     }
 }

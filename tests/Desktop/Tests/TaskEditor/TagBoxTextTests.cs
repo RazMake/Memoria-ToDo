@@ -84,17 +84,17 @@ public class TagBoxTextTests
 
         window.Press(Key.Enter);
 
-        Assert.Equal(["Work"], window.Editor.Tags);
+        Assert.Equal("Work", window.Editor.TaskTag);
     }
 
     [WpfFact]
-    public void An_existing_tag_keeps_its_spelling_in_the_badges_and_the_menu()
+    public void An_existing_tag_keeps_its_spelling_in_the_pill_and_the_menu()
     {
         using var window = new TagEditorWindow("Work");
         window.Services.UseTag("Errand");
-        window.ClickPlus();
+        window.ClickPill();
 
-        Assert.Equal(["Work"], EditorFields.ShownTags(window.Editor));
+        Assert.Equal("Work", window.PillText);
         Assert.Equal(["Errand"], TagControls.MenuTags(window.Editor));
     }
 }

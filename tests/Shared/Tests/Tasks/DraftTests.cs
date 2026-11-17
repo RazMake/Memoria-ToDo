@@ -52,7 +52,7 @@ public sealed class DraftTests
     [Fact]
     public void Writes_the_kept_draft_to_draft_json_in_the_device_folder()
     {
-        var draft = f.Draft("Title", "Body", "a", "b");
+        var draft = f.Draft("Title", "Body", "a");
 
         f.Tasks.KeepDraft(draft);
 
@@ -62,14 +62,14 @@ public sealed class DraftTests
         Assert.Equal(draft.TaskId, json.RootElement.GetProperty("id").GetString());
         Assert.Equal("Title", json.RootElement.GetProperty("title").GetString());
         Assert.Equal("Body", json.RootElement.GetProperty("description").GetString());
-        Assert.Equal(["a", "b"], json.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetString()));
+        Assert.Equal(["a"], json.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetString()));
         Assert.Equal(JsonValueKind.Number, json.RootElement.GetProperty("version").ValueKind);
     }
 
     [Fact]
     public void Loads_the_kept_draft_as_it_was_kept_even_after_the_app_restarts()
     {
-        var draft = f.Draft("Title", "Line one\nLine two", "a", "b");
+        var draft = f.Draft("Title", "Line one\nLine two", "a");
         f.Tasks.KeepDraft(draft);
 
         Assert.Equal(draft, f.Tasks.LoadDraft(), DraftComparer.Instance);
@@ -90,6 +90,70 @@ public sealed class DraftTests
         f.Tasks.KeepDraft(f.Draft("", "", "tag"));
 
         Assert.Equal(["tag"], f.Tasks.LoadDraft()!.Tags);
+    }
+
+    // A draft kept before the one-tag rule can hold several tags. It never leaves the device, so it loads with its first tag only.
+
+    private TaskDraft SeedOlderDraft(params string[] tags)
+    {
+        var draft = f.Draft("Older", "Body");
+        var tagList = string.Join(", ", tags.Select(tag => JsonSerializer.Serialize(tag)));
+        f.WriteText(f.DraftFile,
+            $$"""
+            {
+              "version": 1,
+              "id": "{{draft.TaskId}}",
+              "title": "Older",
+              "description": "Body",
+              "tags": [{{tagList}}]
+            }
+            """);
+        return draft;
+    }
+
+    [Theory]
+    [InlineData("work", "home")]
+    [InlineData("work", "home", "errand")]
+    public void Loads_a_kept_draft_with_two_or_more_tags_with_its_first_tag_only(params string[] tags)
+    {
+        var draft = SeedOlderDraft(tags);
+
+        var loaded = f.Tasks.LoadDraft()!;
+
+        Assert.Equal(["work"], loaded.Tags);
+        Assert.Equal(draft.TaskId, loaded.TaskId);
+        Assert.Equal("Older", loaded.Title);
+        Assert.Equal("Body", loaded.Description);
+    }
+
+    [Fact]
+    public void Loads_the_first_tag_only_after_the_app_restarts()
+    {
+        SeedOlderDraft("work", "home");
+
+        Assert.Equal(["work"], f.Restarted().LoadDraft()!.Tags);
+    }
+
+    [Fact]
+    public void Loads_a_kept_draft_with_one_tag_or_none_unchanged()
+    {
+        SeedOlderDraft("work");
+        Assert.Equal(["work"], f.Tasks.LoadDraft()!.Tags);
+
+        SeedOlderDraft();
+        Assert.Empty(f.Tasks.LoadDraft()!.Tags);
+    }
+
+    [Fact]
+    public void Adds_a_task_from_a_loaded_older_draft_because_it_holds_one_tag()
+    {
+        var draft = SeedOlderDraft("work", "home");
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var task = f.Tasks.Add(f.Tasks.LoadDraft()!);
+
+        Assert.Equal(draft.TaskId, task.Id);
+        Assert.Equal(["work"], task.Tags);
     }
 
     [Fact]

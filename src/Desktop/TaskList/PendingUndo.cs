@@ -11,7 +11,6 @@ internal sealed class PendingUndo(TimeProvider time, Action<Action> post, Action
 
     private Action? _commit;
     private Action? _undo;
-    private string? _taskId;
     private ITimer? _timer;
     private int _generation;
 
@@ -21,6 +20,9 @@ internal sealed class PendingUndo(TimeProvider time, Action<Action> post, Action
     /// <summary>What the bar says is undoable.</summary>
     public string Label { get; private set; } = "";
 
+    /// <summary>The task the pending one is about, or null when none is pending.</summary>
+    public string? TaskId { get; private set; }
+
     /// <summary>
     /// Finishes the pending one, then makes this one, about the task <paramref name="taskId"/>, the pending one.
     /// <paramref name="commit"/> finishes it for good; <paramref name="undo"/> brings it back.
@@ -29,7 +31,7 @@ internal sealed class PendingUndo(TimeProvider time, Action<Action> post, Action
     {
         Commit();
         Label = label;
-        _taskId = taskId;
+        TaskId = taskId;
         _commit = commit;
         _undo = undo;
         var generation = ++_generation;
@@ -58,7 +60,7 @@ internal sealed class PendingUndo(TimeProvider time, Action<Action> post, Action
     /// <summary>Finishes the pending one for good when it is about <paramref name="taskId"/>; leaves any other one pending.</summary>
     public void CommitIfFor(string taskId)
     {
-        if (_taskId == taskId)
+        if (TaskId == taskId)
         {
             Commit();
         }
@@ -85,7 +87,7 @@ internal sealed class PendingUndo(TimeProvider time, Action<Action> post, Action
         }
 
         var pending = (_commit, _undo);
-        _taskId = null;
+        TaskId = null;
         _commit = null;
         _undo = null;
         return pending;

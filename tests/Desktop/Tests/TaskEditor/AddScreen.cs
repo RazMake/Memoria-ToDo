@@ -65,7 +65,8 @@ internal sealed class AddScreen : IDisposable
     /// <summary>Presses Ctrl, or Ctrl+Shift, with the key.</summary>
     public void PressCtrl(bool withShift, Key key) =>
         Press(withShift ? [Key.LeftCtrl, Key.LeftShift, key] : [Key.LeftCtrl, key]);
-
+
+
     /// <summary>The fake clock's time in this PC's time zone, which is what stamps show.</summary>
     public DateTimeOffset LocalNow => TimeZoneInfo.ConvertTime(Services.Time.GetUtcNow(), TimeZoneInfo.Local);
 
@@ -106,7 +107,7 @@ internal sealed class AddScreen : IDisposable
         EditorFields.Type(Window, EditorFields.Tags, text);
     }
 
-    /// <summary>Clicks + and then Custom, unless Custom is already open.</summary>
+    /// <summary>Clicks the pill and then Custom, unless Custom is already open.</summary>
     public void OpenCustom()
     {
         if (TagControls.CustomIsOpen(Window))
@@ -114,11 +115,11 @@ internal sealed class AddScreen : IDisposable
             return;
         }
 
-        OpenWindows.Click(TagControls.Plus(Window));
+        OpenWindows.Click(TagControls.PillButton(Window));
         OpenWindows.Click(TagControls.CustomItem(Window));
     }
 
-    /// <summary>The tags of the + menu's items, in order; empty while it is closed.</summary>
+    /// <summary>The tags of the menu's items, in order; empty while it is closed.</summary>
     public IReadOnlyList<string> MenuTags => TagControls.MenuTags(Window);
 
     /// <summary>Clicks the color in Custom's grid, which adds the typed tag in that color.</summary>
@@ -127,8 +128,8 @@ internal sealed class AddScreen : IDisposable
     /// <summary>What the Tags line holds, typed and not yet added.</summary>
     public string TypedTag => EditorFields.TextOf(Window, EditorFields.Tags);
 
-    /// <summary>The tags the task shows, in order.</summary>
-    public IReadOnlyList<string> ShownTags => EditorFields.ShownTags(Window);
+    /// <summary>The tag the pill shows, or null when it shows "No tag".</summary>
+    public string? ShownTag => TagControls.PillTag(Window);
 
     /// <summary>Puts the text in the field, selects <paramref name="length"/> characters from <paramref name="start"/>, and gives the field the keyboard focus.</summary>
     public void Edit(string field, string text, int start, int length = 0)

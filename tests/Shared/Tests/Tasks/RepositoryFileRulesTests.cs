@@ -105,15 +105,121 @@ public sealed class RepositoryFileRulesTests
         Assert.Equal("remote", merged.GetProperty("title").GetString());
     }
 
+    // The tag merges as a Title does: a change on one device wins, and when both changed it, the later edit wins.
+
+    private static List<string?> TagsOf(JsonElement merged) =>
+        [.. merged.GetProperty("tags").EnumerateArray().Select(t => t.GetString())];
+
     [Fact]
-    public void Applies_both_devices_tag_adds_and_removes()
+    public void Takes_the_tag_the_one_device_that_changed_it_set()
     {
-        var basis = Task(tags: ["a", "b", "c"]);
+        var basis = Task(tags: ["a"]);
 
-        var merged = Merged(basis, Task(tags: ["b", "c", "x"], updated: T1), Task(tags: ["a", "c", "y"], updated: T2));
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T1), Task(tags: ["a"]))));
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["a"]), Task(tags: ["x"], updated: T1))));
+    }
 
-        var tags = merged.GetProperty("tags").EnumerateArray().Select(t => t.GetString()).Order().ToList();
-        Assert.Equal(["c", "x", "y"], tags);
+    [Fact]
+    public void Takes_the_tag_the_one_device_that_changed_it_set_even_when_the_other_device_edited_later()
+    {
+        var basis = Task("B", tags: ["a"]);
+
+        var merged = Merged(basis, Task("B", tags: ["x"], updated: T1), Task("Edited", tags: ["a"], updated: T3));
+
+        Assert.Equal(["x"], TagsOf(merged));
+        Assert.Equal("Edited", merged.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public void Takes_a_cleared_tag_the_one_device_that_cleared_it_set()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Empty(TagsOf(Merged(basis, Task(tags: [], updated: T1), Task(tags: ["a"]))));
+        Assert.Empty(TagsOf(Merged(basis, Task(tags: ["a"]), Task(tags: [], updated: T1))));
+    }
+
+    [Fact]
+    public void Takes_a_tag_the_one_device_set_when_the_task_had_none()
+    {
+        var basis = Task();
+
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T1), Task())));
+    }
+
+    [Fact]
+    public void Keeps_the_tag_of_the_later_edit_when_both_devices_changed_it_and_does_not_unite_them()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T2), Task(tags: ["y"], updated: T1))));
+        Assert.Equal(["y"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T1), Task(tags: ["y"], updated: T2))));
+    }
+
+    [Fact]
+    public void Keeps_a_clearing_that_is_the_later_edit_when_the_other_device_set_a_tag()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Empty(TagsOf(Merged(basis, Task(tags: [], updated: T2), Task(tags: ["y"], updated: T1))));
+        Assert.Equal(["y"], TagsOf(Merged(basis, Task(tags: [], updated: T1), Task(tags: ["y"], updated: T2))));
+    }
+
+    [Fact]
+    public void Takes_the_remote_tag_when_both_devices_changed_it_at_the_same_time()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Equal(["y"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T1), Task(tags: ["y"], updated: T1))));
+    }
+
+    [Fact]
+    public void Counts_a_change_of_letter_case_alone_as_no_change()
+    {
+        var basis = Task(tags: ["Work"]);
+
+        var merged = Merged(basis, Task(tags: ["work"], updated: T3), Task(tags: ["home"], updated: T1));
+
+        Assert.Equal(["home"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Counts_a_tag_list_in_another_order_as_a_change()
+    {
+        var basis = Task(tags: ["a", "b"]);
+
+        var merged = Merged(basis, Task(tags: ["b", "a"], updated: T2), Task(tags: ["c"], updated: T1));
+
+        Assert.Equal(["b", "a"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Takes_the_one_tag_a_device_set_when_the_basis_holds_older_tags()
+    {
+        var basis = Task(tags: ["a", "b"]);
+
+        Assert.Equal(["a"], TagsOf(Merged(basis, Task(tags: ["a"], updated: T1), Task(tags: ["a", "b"]))));
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["a", "b"]), Task(tags: ["x"], updated: T1))));
+    }
+
+    [Fact]
+    public void Keeps_older_tags_that_neither_device_changed()
+    {
+        var basis = Task("B", tags: ["a", "b"]);
+
+        var merged = Merged(basis, Task("L", tags: ["a", "b"], updated: T1), Task("B", tags: ["a", "b"]));
+
+        Assert.Equal(["a", "b"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Writes_the_tag_in_the_spelling_of_the_version_it_took()
+    {
+        var basis = Task(tags: ["a"]);
+
+        var merged = Merged(basis, Task(tags: ["Work"], updated: T1), Task(tags: ["a"]));
+
+        Assert.Equal(["Work"], TagsOf(merged));
     }
 
     [Fact]
@@ -215,19 +321,17 @@ public sealed class RepositoryFileRulesTests
     }
 
     [Fact]
-    public void Unites_the_tags_when_both_devices_added_the_task_without_a_basis()
+    public void Keeps_the_tag_of_the_later_edit_when_both_devices_added_the_task_without_a_basis()
     {
-        var merged = Merged(null, Task(tags: ["a", "x"], updated: T1), Task(tags: ["a", "y"], updated: T2));
-
-        var tags = merged.GetProperty("tags").EnumerateArray().Select(t => t.GetString()).Order().ToList();
-        Assert.Equal(["a", "x", "y"], tags);
+        Assert.Equal(["y"], TagsOf(Merged(null, Task(tags: ["x"], updated: T1), Task(tags: ["y"], updated: T2))));
+        Assert.Equal(["x"], TagsOf(Merged(null, Task(tags: ["x"], updated: T2), Task(tags: ["y"], updated: T1))));
     }
 
     [Fact]
     public void Merges_to_the_same_bytes_every_time_in_utc_to_the_millisecond()
     {
         var basis = Task("B", tags: ["a"]);
-        var local = Task("L", tags: ["a", "x"], updated: T1);
+        var local = Task("L", tags: ["x"], updated: T1);
         var remote = Task("R", tags: [], updated: T2);
 
         var first = Rules.MergeTask(id, basis, local, remote);
@@ -241,7 +345,7 @@ public sealed class RepositoryFileRulesTests
     public void Leaves_the_merged_files_unchanged()
     {
         var basis = Task("B", tags: ["a"]);
-        var local = Task("L", tags: ["a", "x"], updated: T1);
+        var local = Task("L", tags: ["x"], updated: T1);
         var remote = Task("R", tags: [], updated: T2);
         var copies = new[] { basis.ToArray(), local.ToArray(), remote.ToArray() };
 

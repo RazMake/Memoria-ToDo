@@ -5,7 +5,7 @@ using Memoria.ToDo.Desktop.Fakes;
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 /// <summary>
-/// Shows a <see cref="TagEditor"/> holding the tags in a window over a real Tasks (with a repository) and the fake tag
+/// Shows a <see cref="TagEditor"/> holding the tag in a window over a real Tasks (with a repository) and the fake tag
 /// colors, records what it raises, and drives it as a user does. Dispose it to close the window. Shared test setup.
 /// </summary>
 internal sealed class TagEditorWindow : IDisposable
@@ -13,14 +13,13 @@ internal sealed class TagEditorWindow : IDisposable
     private readonly Window window;
     private Window? other;
 
-    public TagEditorWindow(params string[] tags)
+    public TagEditorWindow(string? tag = null)
     {
         Services = new EditorServices();
         Services.UseRepository();
         Editor = Services.CreateTagEditor();
-        Editor.Tags = tags;
-        Editor.TagAdded += (_, tag) => Added.Add((tag, Editor.Tags, [.. Services.TagColors.Kept]));
-        Editor.TagRemoved += (_, tag) => Removed.Add((tag, Editor.Tags));
+        Editor.TagChanged += (_, changed) => Changes.Add((changed, Editor.TaskTag, [.. Services.TagColors.Kept]));
+        Editor.TaskTag = tag;
         window = new Window { Content = Editor, Width = 480, Height = 400 };
         window.Show();
     }
@@ -29,23 +28,26 @@ internal sealed class TagEditorWindow : IDisposable
 
     public TagEditor Editor { get; }
 
-    /// <summary>Each TagAdded: the tag, the tags the editor held and the colors kept when it was raised.</summary>
-    public List<(string Tag, IReadOnlyList<string> TagsThen, IReadOnlyList<(string Tag, string Color)> KeptThen)> Added { get; } = [];
-
-    /// <summary>Each TagRemoved: the tag, and the tags the editor held when it was raised.</summary>
-    public List<(string Tag, IReadOnlyList<string> TagsThen)> Removed { get; } = [];
+    /// <summary>Each TagChanged: the tag it carried, the tag the editor held and the colors kept when it was raised.</summary>
+    public List<(string? Tag, string? TagThen, IReadOnlyList<(string Tag, string Color)> KeptThen)> Changes { get; } = [];
 
     public void Remove() => LoadSync.Remove(window, Editor);
 
     public void Put() => LoadSync.Put(window, Editor);
 
-    /// <summary>Clicks +.</summary>
-    public void ClickPlus() => OpenWindows.Click(TagControls.Plus(Editor));
+    /// <summary>The words the pill shows now.</summary>
+    public string PillText => TagControls.PillText(Editor);
 
-    /// <summary>Clicks + and then Custom.</summary>
+    /// <summary>Clicks the pill, away from its x.</summary>
+    public void ClickPill() => OpenWindows.Click(TagControls.PillButton(Editor));
+
+    /// <summary>Clicks the x of the pill.</summary>
+    public void ClickClear() => OpenWindows.Click(TagControls.ClearButton(Editor));
+
+    /// <summary>Clicks the pill and then Custom.</summary>
     public void OpenCustom()
     {
-        ClickPlus();
+        ClickPill();
         OpenWindows.Click(TagControls.CustomItem(Editor));
     }
 

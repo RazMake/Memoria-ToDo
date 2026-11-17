@@ -52,7 +52,7 @@ internal sealed class TaskListWindow : Window
     private ListSnapshot _snapshot = new([], [], false);
     private TaskItem? _selected;
     private TagEditor? _tagEditor;
-    private TagBadges? _editBadges;
+    private string? _tagEditorId;
     private RowPosition? _titleAt;
     private string? _detailsId;
     private bool _previewing;
@@ -268,71 +268,92 @@ internal sealed class TaskListWindow : Window
             _previewing = false;
         }
 
+        // The tag control stays live during an edit, so it follows the task the edit is of when a filter hides it.
+        var task = ShownTask();
+        if (task is null)
+        {
+            _tagEditor = null;
+            _tagEditorId = null;
+            _detailsId = null;
+            _details.ShowNothing();
+            return;
+        }
+
+        var tags = TagControlFor(task);
         if (describing is not null)
         {
-            _editBadges ??= new TagBadges(_tagColors, _theme);
-            if (!_editBadges.Tags.SequenceEqual(_selected?.Tags ?? describing.Started.Tags))
-            {
-                _editBadges.Tags = _selected?.Tags ?? describing.Started.Tags;
-            }
-
             if (_previewing)
             {
-                _details.ShowPreview(describing.Draft, describing.Editor, _editBadges);
+                _details.ShowPreview(describing.Draft, describing.Editor, tags);
             }
             else
             {
-                _details.ShowEditor(describing.Editor, _editBadges);
+                _details.ShowEditor(describing.Editor, tags);
             }
 
-            _tagEditor = null;
-            _detailsId = null;
-        }
-        else if (_selected is not { } task)
-        {
-            _details.ShowNothing();
-            _tagEditor = null;
             _detailsId = null;
         }
         else if (_detailsId != task.Id)
         {
-            // A new control for each selected task, so selecting another drops what was typed in Custom.
-            _tagEditor = NewTagControl();
             _detailsId = task.Id;
-            _details.ShowTask(task.Description, _tagEditor);
+            _details.ShowTask(task.Description, tags);
         }
         else
         {
             _details.UpdateDescription(task.Description);
-
-            // A change from Sync updates the badges and leaves an open menu or Custom as it is.
-            if (_tagEditor is { } tagEditor && !tagEditor.Tags.SequenceEqual(task.Tags))
-            {
-                tagEditor.Tags = task.Tags;
-            }
         }
     }
 
-    private TagEditor NewTagControl()
+    // The task the right side shows: the selected one, or the one a description edit is of when a filter hides it.
+    private TaskItem? ShownTask() => _selected ?? _editing.Describing?.Started;
+
+    // A new control for each task, so selecting another drops what was typed in Custom. A change from Sync updates the pill and
+    // leaves an open menu or Custom as it is. During an edit of the task the pill shows the edit's tag, and Sync doesn't change it.
+    private TagEditor TagControlFor(TaskItem task)
     {
-        var control = new TagEditor(_tasks, _tagColors, _theme) { Tags = _selected!.Tags };
-        control.TagAdded += (_, tag) => ChangeTag(control, shown => _tagChanges.Add(shown, tag));
-        control.TagRemoved += (_, tag) => ChangeTag(control, shown => _tagChanges.Remove(shown, tag));
+        var tag = PillTagOf(task);
+        if (_tagEditor is null || _tagEditorId != task.Id)
+        {
+            _tagEditor = NewTagControl(task);
+            _tagEditorId = task.Id;
+        }
+        else if (_tagEditor.TaskTag != tag)
+        {
+            _tagEditor.TaskTag = tag;
+        }
+
+        return _tagEditor;
+    }
+
+    private string? PillTagOf(TaskItem task) =>
+        _editing.Current is { } edit && edit.Started.Id == task.Id ? edit.Tag : task.Tags.FirstOrDefault();
+
+    private TagEditor NewTagControl(TaskItem task)
+    {
+        var control = new TagEditor(_tasks, _tagColors, _theme) { TaskTag = PillTagOf(task) };
+        control.TagChanged += (_, tag) => ChangeTag(control, tag);
         return control;
     }
 
-    // The control already shows the change; when it can't be saved the badges go back to the task as shown.
-    private void ChangeTag(TagEditor control, Func<TaskItem, TaskItem?> change)
+    // During an edit the choice only changes the pill and the edit keeps it, for the edit's one save. Otherwise the control already
+    // shows the change, and when it can't be saved the pill goes back to the task as shown.
+    private void ChangeTag(TagEditor control, string? tag)
     {
         _header.ShowMessage(null);
-        if (_selected is not { } shown)
+        if (_editing.Current is { } edit)
+        {
+            edit.Tag = tag;
+            return;
+        }
+
+        if (ShownTask() is not { } shown)
         {
             return;
         }
 
-        if (change(shown) is null)
+        if ((tag is null ? _tagChanges.Clear(shown) : _tagChanges.Choose(shown, tag)) is null)
         {
-            control.Tags = shown.Tags;
+            control.TaskTag = shown.Tags.FirstOrDefault();
         }
         else
         {
@@ -455,6 +476,16 @@ internal sealed class TaskListWindow : Window
         {
             LeaveEdit();
         }
+        else
+        {
+            DropTagText();
+        }
+
+        // A title edit saves the whole task, so the task's own tag-change bar is finished first; its Undo would save the old tag over the edit.
+        if (title)
+        {
+            _tagChanges.FinishFor(task.Id);
+        }
 
         // A fresh description edit starts from a clean stage. When that can't be made the edit doesn't open, and nothing else
         // changes. A title edit has no images, so it leaves the stage, and the Undo of a description edit just left, alone.
@@ -474,6 +505,8 @@ internal sealed class TaskListWindow : Window
 
     private bool SaveEdit()
     {
+        // Text left in Custom becomes the pill's tag first, as Save does in Add; the edit's one save then carries it.
+        _tagEditor?.ChooseTypedText();
         if (!_editing.Save())
         {
             if (ShowEditInFull())
@@ -484,14 +517,25 @@ internal sealed class TaskListWindow : Window
             return false;
         }
 
+        DropTagText();
         Refresh();
         FocusSelectedRow();
         return true;
     }
 
+    // Whatever an edit ends by, text typed in Custom and never chosen goes with it, and Custom and the menu close. A tag control
+    // closes one part at a time, innermost first.
+    private void DropTagText()
+    {
+        while (_tagEditor?.CloseEdit() == true)
+        {
+        }
+    }
+
     // Closing the editor without saving: a clean description throws its images away; a dirty one can be brought back with Undo.
     private void LeaveEdit()
     {
+        DropTagText();
         var hadFocus = _previewing || _editing.Current!.Editor.IsKeyboardFocusWithin;
         _editing.Leave();
         Refresh();
@@ -726,6 +770,11 @@ internal sealed class TaskListWindow : Window
         {
             e.Handled = true;
         }
+        else if (key == Key.Escape && modifiers == ModifierKeys.None && _tagEditor is { } tagControl && tagControl.CloseEdit())
+        {
+            // The tag control's menu or Custom closes before an edit does, wherever the cursor is.
+            e.Handled = true;
+        }
         else if (key == Key.Escape && modifiers == ModifierKeys.None && _editing.Current is not null && !_editing.Contains(e.OriginalSource))
         {
             // Esc with the focus outside the open editor still takes the editor's steps. An editor out of the window, such as a
@@ -750,10 +799,11 @@ internal sealed class TaskListWindow : Window
     }
 
     // While a description is edited, Ctrl+Tab and Ctrl+Shift+Tab switch between Edit and Preview, from anywhere. In Preview no
-    // editor has the focus to see the Save shortcut, so the window saves on it.
+    // editor has the focus to see the Save shortcut, and in a title edit the tag control, on the right side, doesn't either, so
+    // the window saves on it.
     private bool TabKeys(ModifierKeys modifiers, Key key)
     {
-        if (_editing.Describing is null)
+        if (_editing.Current is null)
         {
             return false;
         }
@@ -765,7 +815,7 @@ internal sealed class TaskListWindow : Window
             return true;
         }
 
-        if (key == Key.Tab && modifiers is ModifierKeys.Control or (ModifierKeys.Control | ModifierKeys.Shift))
+        if (_editing.Describing is not null && key == Key.Tab && modifiers is ModifierKeys.Control or (ModifierKeys.Control | ModifierKeys.Shift))
         {
             SwitchTab(!_previewing);
             return true;

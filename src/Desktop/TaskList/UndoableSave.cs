@@ -16,8 +16,9 @@ internal sealed class UndoableSave(ITasks tasks, PendingUndo pending, EditCleanu
     /// </summary>
     public TaskItem? Run(TaskItem shown, string label, Func<TaskItem, TaskDraft> change, Func<TaskItem, TaskDraft> opposite)
     {
-        // Saving would move the images an earlier edit left into the clone, so they go first.
-        if (!cleanup.BeginFresh(shown.Id) || !TrySave(shown, change, out var saved))
+        // The earlier bar finishes first, even when this save fails; a discarded edit's bar deletes its images, so the save finds none to move.
+        cleanup.FinishBar();
+        if (!TrySave(shown, change, out var saved))
         {
             return null;
         }

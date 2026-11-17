@@ -25,7 +25,7 @@ public class AddWindowSaveTests
         var saved = Assert.Single(screen.Saved);
         Assert.Equal("Buy milk", saved.Title);
         Assert.Equal("Two litres", saved.Description);
-        Assert.Equal(["home", "errand"], saved.Tags);
+        Assert.Equal(["errand"], saved.Tags);
         Assert.False(screen.IsShowing);
     }
 
@@ -62,7 +62,7 @@ public class AddWindowSaveTests
 
     [WpfTheory]
     [InlineData(EditorFields.Description)]
-    [InlineData(EditorFields.AddTag)]
+    [InlineData(EditorFields.TagPill)]
     public void Ctrl_Enter_saves_from_any_field(string field)
     {
         using var screen = new AddScreen();
@@ -81,7 +81,7 @@ public class AddWindowSaveTests
         using var screen = new AddScreen();
         screen.Show();
         screen.Fill("Buy milk", "Two litres", "home");
-        screen.Focus(EditorFields.AddTag);
+        screen.Focus(EditorFields.TagPill);
 
         screen.SaveAndClear();
 
@@ -114,7 +114,7 @@ public class AddWindowSaveTests
     [WpfTheory]
     [InlineData(EditorFields.Title)]
     [InlineData(EditorFields.Description)]
-    [InlineData(EditorFields.AddTag)]
+    [InlineData(EditorFields.TagPill)]
     public void An_Escape_based_Save_shortcut_saves_instead_of_closing_Add_with_the_draft_kept(string field)
     {
         using var screen = new AddScreen();

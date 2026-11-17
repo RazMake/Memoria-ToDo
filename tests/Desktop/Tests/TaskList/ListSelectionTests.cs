@@ -62,7 +62,7 @@ public class ListSelectionTests
     [Fact]
     public void A_task_in_two_groups_is_selected_in_both_rows()
     {
-        var task = _tasks.Add("Buy milk", "", "home", "errand");
+        var task = _tasks.AddOlder("Buy milk", "", "home", "errand");
         _tasks.Add("Other", "", "home");
         _selection.Select(task.Id);
         var groups = TagGroups.Of(Snapshot().Open, new Memoria.ToDo.Shared.Fakes.FakeTagOrder());

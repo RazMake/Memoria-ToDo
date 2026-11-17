@@ -221,16 +221,16 @@ public class TaskListPreviewTabsTests
     }
 
     [WpfFact]
-    public void The_tags_show_as_read_only_badges_under_both_tabs()
+    public void The_tag_control_shows_under_both_tabs()
     {
         var services = new ListServices();
-        using var screen = Editing(services, "Oat milk", "home", "errand");
+        using var screen = Editing(services, "Oat milk", "home");
 
-        Assert.Equal(["home", "errand"], screen.BadgeTags("Buy milk"));
+        Assert.Equal("home", screen.PillTag("Buy milk"));
         screen.ClickTab("Preview");
 
-        Assert.Equal(["home", "errand"], screen.BadgeTags("Buy milk"));
-        Assert.Empty(screen.ControlTags("Buy milk"));
+        Assert.Equal("home", screen.PillTag("Buy milk"));
+        Assert.True(screen.ShowsTagControl("Buy milk"));
     }
 
     [WpfFact]

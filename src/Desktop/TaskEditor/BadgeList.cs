@@ -1,23 +1,17 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
-/// <summary>
-/// A wrapping row of tag badges that takes the tags' colors from <see cref="TagLook"/> and redraws when they or the theme
-/// change. An optional element ends the row, wrapping with the badges.
-/// </summary>
+/// <summary>A wrapping row of tag badges that takes the tags' colors from <see cref="TagLook"/> and redraws when they or the theme change.</summary>
 internal sealed class BadgeList : ItemsControl
 {
-    private readonly UIElement? _last;
     private IReadOnlyList<string> _tags = [];
 
-    public BadgeList(TagLook look, FrameworkElementFactory badge, Action<string> clicked, UIElement? last = null)
+    public BadgeList(TagLook look, FrameworkElementFactory badge, Action<string> clicked)
     {
-        _last = last;
         ClickableItems.Attach(this, badge, clicked);
-        look.Follow(this, Redraw);
+        look.Follow(this, () => Items.Refresh());
         Tags = [];
     }
 
@@ -29,20 +23,7 @@ internal sealed class BadgeList : ItemsControl
         {
             ArgumentNullException.ThrowIfNull(value);
             _tags = value;
-            ItemsSource = _last is null
-                ? value
-                : new CompositeCollection { new CollectionContainer { Collection = value }, _last };
-        }
-    }
-
-    // Drawing the badges again takes the last element out of the row for a moment, which would drop the cursor from it.
-    private void Redraw()
-    {
-        var hadCursor = _last?.IsKeyboardFocused == true;
-        Items.Refresh();
-        if (hadCursor)
-        {
-            KeyboardFocus.MoveTo(_last!);
+            ItemsSource = value;
         }
     }
 }

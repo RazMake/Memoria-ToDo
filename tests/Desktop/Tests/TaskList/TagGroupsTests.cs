@@ -52,7 +52,7 @@ public class TagGroupsTests
     [Fact]
     public void Shows_a_task_with_two_tags_in_both_groups()
     {
-        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.AddOlder("Buy milk", "", "home", "errand");
 
         var groups = Groups();
 
@@ -75,7 +75,7 @@ public class TagGroupsTests
     public void Lists_a_task_with_two_tags_at_its_own_rank_place_in_each_group()
     {
         _tasks.Add("D", "", "home");
-        _tasks.Add("Both", "", "work", "home");
+        _tasks.AddOlder("Both", "", "work", "home");
         _tasks.Add("B", "", "work");
         _tasks.Add("A", "", "home");
 
@@ -103,7 +103,7 @@ public class TagGroupsTests
     [Fact]
     public void Leaves_a_checked_task_out_of_every_group_at_once_and_counts_it_as_resolved()
     {
-        var task = _tasks.Add("Buy milk", "", "home", "errand");
+        var task = _tasks.AddOlder("Buy milk", "", "home", "errand");
         _tasks.Add("Other", "", "home");
 
         _tasks.Tasks.Resolve(task.Id);

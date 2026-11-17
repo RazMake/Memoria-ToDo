@@ -211,6 +211,97 @@ public class TaskListClosePromptTests
         Assert.All(images, image => Assert.False(services.Files.FileExists(image)));
     }
 
+    // A tag chosen in the edit is a change of it: closing asks, and the answers act on the text and the tag together.
+
+    private static TaskListScreen EditWithOnlyTheTagChanged(ListServices services)
+    {
+        services.Add("Buy milk", "Oat milk", "home");
+        services.Add("Call Ana", "", "work");
+        var screen = new TaskListScreen(services);
+        screen.PressOn("Buy milk", Key.F2);
+        screen.OpenTagMenu("Buy milk");
+        screen.ChooseMenuTag("work");
+        return screen;
+    }
+
+    [WpfFact]
+    public void Close_with_an_edit_whose_only_change_is_the_tag_asks_first()
+    {
+        var services = new ListServices();
+        using var screen = EditWithOnlyTheTagChanged(services);
+
+        var closed = Close(screen, ClosePrompt.Click("Cancel"));
+
+        Assert.False(closed);
+        Assert.Equal(1, _prompt.Shown);
+        Assert.True(screen.View.IsOpen);
+        Assert.True(screen.IsEditing("Buy milk"));
+        Assert.Equal("work", screen.PillTag("Buy milk"));
+        Assert.Equal(["home"], services.Tasks.All.Single(task => task.Title == "Buy milk").Tags);
+    }
+
+    [WpfFact]
+    public void Save_with_an_edit_whose_only_change_is_the_tag_saves_the_tag_in_one_save_and_closes()
+    {
+        var services = new ListServices();
+        using var screen = EditWithOnlyTheTagChanged(services);
+        var saves = 0;
+        services.Tasks.Changed += (_, _) => saves++;
+
+        var closed = Close(screen, ClosePrompt.Click("Save"));
+
+        Assert.True(closed);
+        Assert.False(screen.View.IsOpen);
+        Assert.Equal(["work"], services.Tasks.All.Single(task => task.Title == "Buy milk").Tags);
+        Assert.Equal(1, saves);
+    }
+
+    [WpfFact]
+    public void Discard_with_an_edit_whose_only_change_is_the_tag_saves_nothing_and_closes()
+    {
+        var services = new ListServices();
+        using var screen = EditWithOnlyTheTagChanged(services);
+        var started = services.Tasks.All.Single(task => task.Title == "Buy milk");
+
+        var closed = Close(screen, ClosePrompt.Click("Discard"));
+
+        Assert.True(closed);
+        Assert.False(screen.View.IsOpen);
+        Assert.Equal(started, services.Tasks.All.Single(task => task.Title == "Buy milk"));
+    }
+
+    [WpfFact]
+    public void Save_with_text_in_Custom_chooses_it_as_the_tag_first_and_makes_one_save_with_the_text_and_the_tag()
+    {
+        var services = new ListServices();
+        using var screen = ChangedDescriptionEdit(services);
+        screen.OpenTagMenu("Buy milk");
+        screen.ChooseCustom();
+        screen.TypeTags("pend");
+        var saves = 0;
+        services.Tasks.Changed += (_, _) => saves++;
+
+        var closed = Close(screen, ClosePrompt.Click("Save"));
+
+        var saved = services.Tasks.All.Single();
+        Assert.True(closed);
+        Assert.Equal(["pend"], saved.Tags);
+        Assert.Equal("Oat milk", saved.Description);
+        Assert.Equal(1, saves);
+    }
+
+    [WpfFact]
+    public void Cancel_keeps_the_edit_open_with_the_pills_tag_as_it_was()
+    {
+        var services = new ListServices();
+        using var screen = EditWithOnlyTheTagChanged(services);
+
+        Close(screen, ClosePrompt.Click("Cancel"));
+
+        Assert.True(screen.IsEditing("Buy milk"));
+        Assert.Equal("work", screen.PillTag("Buy milk"));
+    }
+
     [WpfFact]
     public void Cancel_keeps_Task_View_open_with_the_edit_as_it_was_and_the_cursor_in_the_editor()
     {

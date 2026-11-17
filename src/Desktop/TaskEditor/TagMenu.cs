@@ -8,9 +8,9 @@ using System.Windows.Media;
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
 /// <summary>
-/// The menu the + button opens, drawn from <see cref="TagMenuModel"/>: a popup under the + with the top tags as colored
+/// The menu the pill opens, drawn from <see cref="TagMenuModel"/>: a popup under the pill with the top tags as colored
 /// badges, Search, and Custom…, and a second popup beside Search for its matches. It takes its colors from the theme's
-/// resources and never takes the keyboard from the + unless the cursor goes into the Search box.
+/// resources and never takes the keyboard from the pill unless the cursor goes into the Search box.
 /// </summary>
 internal sealed class TagMenu : Popup
 {
@@ -103,7 +103,7 @@ internal sealed class TagMenu : Popup
         look.Follow(_items, Fill);
     }
 
-    /// <summary>Whether the element is part of the menu, its submenu, or the + that opens it.</summary>
+    /// <summary>Whether the element is part of the menu, its submenu, or the pill that opens it.</summary>
     public bool Covers(DependencyObject? element)
     {
         for (; element is not null; element = ParentOf(element))

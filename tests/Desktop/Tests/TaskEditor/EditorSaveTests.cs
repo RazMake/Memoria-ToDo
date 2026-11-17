@@ -20,7 +20,7 @@ public class EditorSaveTests
                 _events.Add("tags");
                 if (_tagsAdded)
                 {
-                    _draft = _draft with { Tags = [.. _draft.Tags, "typed"] };
+                    _draft = _draft with { Tags = ["typed"] };
                 }
 
                 return _tagsAdded;

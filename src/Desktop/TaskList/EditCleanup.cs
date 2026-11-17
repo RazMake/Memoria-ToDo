@@ -14,9 +14,15 @@ internal sealed class EditCleanup(ITasks tasks, PendingUndo pending, Action<stri
     /// </summary>
     public bool BeginFresh(string taskId)
     {
-        pending.CommitIfFor(taskId);
+        FinishDiscard(taskId);
         return Clean(taskId);
     }
+
+    /// <summary>Finishes the task's own pending discard, if any, which removes the images that edit left. Never removes the images of an edit still open.</summary>
+    public void FinishDiscard(string taskId) => pending.CommitIfFor(taskId);
+
+    /// <summary>Finishes the Undo bar that shows, about any task, keeping its change; a discarded edit's bar removes the images that edit left.</summary>
+    public void FinishBar() => pending.Commit();
 
     /// <summary>
     /// Closes the editor without saving. A clean one throws its images away now; a changed one can be brought back

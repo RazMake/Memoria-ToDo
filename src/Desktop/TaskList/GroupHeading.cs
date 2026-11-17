@@ -17,8 +17,6 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// </summary>
 internal sealed class GroupHeading : Border
 {
-    public const string NoTagName = "No tag";
-
     private readonly TextBlock _count = new() { VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
     private readonly Run _open = new();
     private readonly Run _number = new() { FontWeight = FontWeights.Bold };
@@ -41,9 +39,9 @@ internal sealed class GroupHeading : Border
         Margin = new Thickness(0, Gap, 0, 4);
         Cursor = Cursors.Hand;
         AutomationProperties.SetAutomationId(this, "GroupHeading");
-        AutomationProperties.SetName(this, tag ?? NoTagName);
+        AutomationProperties.SetName(this, tag ?? TagEditor.NoTagText);
         UIElement label = tag is null
-            ? new TextBlock { Text = NoTagName, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand }
+            ? new TextBlock { Text = TagEditor.NoTagText, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand }
             : new TagBadges(tagColors, theme) { Tags = [tag], HorizontalAlignment = HorizontalAlignment.Left };
         var line = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left };
         line.Children.Add(label);

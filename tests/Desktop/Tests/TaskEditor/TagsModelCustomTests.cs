@@ -257,6 +257,25 @@ public class TagsModelCustomTests
         Assert.False(_model.IsCustomOpen);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Choosing_the_tag_the_task_already_has_in_Custom_tells_observers_that_Custom_closed_though_it_raises_nothing(bool byColor)
+    {
+        _model.Tags = ["Home"];
+        _model.OpenCustom();
+        _model.TypedText = "home";
+        var customOpenWhenTold = new List<bool>();
+        _model.Changed += () => customOpenWhenTold.Add(_model.IsCustomOpen);
+
+        Assert.True(byColor ? _model.AddTypedTextInColor("green-3") : _model.AddTypedText());
+
+        Assert.NotEmpty(customOpenWhenTold);
+        Assert.All(customOpenWhenTold, open => Assert.False(open));
+        Assert.Empty(_added);
+        Assert.Equal(["Home"], _model.Tags);
+    }
+
     [Fact]
     public void Enter_with_nothing_typed_adds_no_tag_and_says_it_worked()
     {
@@ -432,30 +451,7 @@ public class TagsModelCustomTests
         Assert.Equal(["errand"], _model.Tags);
     }
 
-    // Removing.
-
-    [Fact]
-    public void Removing_a_tag_raises_TagRemoved_after_Tags_no_longer_holds_it()
-    {
-        _model.Tags = ["a", "b"];
-        var tagsThen = new List<IReadOnlyList<string>>();
-        _model.TagRemoved += _ => tagsThen.Add(_model.Tags);
-
-        _model.Remove("a");
-
-        Assert.Equal(["a"], _removed);
-        Assert.Equal(["b"], Assert.Single(tagsThen));
-    }
-
-    [Fact]
-    public void Backspace_in_the_empty_box_removes_the_last_tag_and_reports_it()
-    {
-        _model.Tags = ["a", "b"];
-
-        _model.Backspace();
-
-        Assert.Equal(["b"], _removed);
-    }
+    // Setting the tags raises nothing.
 
     [Fact]
     public void Setting_the_tags_raises_neither_TagAdded_nor_TagRemoved()

@@ -14,7 +14,7 @@ public sealed class TaskFileFormatTests
     [Fact]
     public void Writes_the_nine_fields_with_two_space_indents_in_the_designed_order()
     {
-        var task = f.AddTask("Buy milk", "Two litres", "home", "shop");
+        var task = f.AddTask("Buy milk", "Two litres", "home");
 
         var expected = $$"""
             {
@@ -23,8 +23,7 @@ public sealed class TaskFileFormatTests
               "description": "Two litres",
               "rank": "{{task.Rank}}",
               "tags": [
-                "home",
-                "shop"
+                "home"
               ],
               "created": "2026-11-12T08:30:15.123Z",
               "updated": "2026-11-12T08:30:15.123Z",

@@ -8,7 +8,7 @@ The Task editor is the Android app's Add screen: full screen, with the keyboard 
 
 ### Add opens full screen, with the keyboard up
 
-Add fills the screen, shows the keyboard, and puts the cursor in the Title. It has the same three fields as the [desktop Add window](../desktop/task-editor.md#add-opens-at-once-with-the-cursor-in-the-title): Title, Description, and Tags. Title and Description use the standard Android text field that [How the apps fit together](../overview.md#each-app-edits-in-its-own-text-box-with-shared-commands) picks.
+Add fills the screen, shows the keyboard, and puts the cursor in the Title. It has the same three fields as the [desktop Add window](../desktop/task-editor.md#add-opens-at-once-with-the-cursor-in-the-title): Title, Description, and Tag. Title and Description use the standard Android text field that [How the apps fit together](../overview.md#each-app-edits-in-its-own-text-box-with-shared-commands) picks.
 
 Proposed, each a decision to confirm:
 
@@ -48,14 +48,16 @@ Pictures are shrunk with Android's own image tools, as [Tasks](../tasks.md#image
 
 ### Tags sit as chips under the Title
 
-The five most-used tags show as chips under the Title, and tapping one adds it. They're counted as [Tasks](../tasks.md#tags-and-search-ignore-case) decides.
+The five most-used tags show as chips under the Title, and tapping one chooses it. They're counted as [Tasks](../tasks.md#tags-and-search-ignore-case) decides.
 
 Proposed, each a decision to confirm:
 
-- A chosen tag shows as a checked chip, and tapping it again removes it.
+- A chosen tag shows as a checked chip, and tapping it again clears it.
 - A "+" chip opens a field that suggests the tags in use, for a tag that isn't among the five.
 
-Deferred: the desktop now shows tags as [colored badges with a + menu](../desktop/task-editor.md#tags-show-as-colored-badges-and-the-plus-button-adds-one). [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color in the clone, so it reaches the phone, and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the 30 colors and picks a tag's default. When the Android app is built, this section decides whether the chips take each tag's color, show eight tags as the desktop's menu does, and let the user pick a color.
+The user decided that this design follows [one tag per task](../tasks.md#a-task-has-at-most-one-tag) now, before the app is built: one chip at most is checked. Tapping another chip, or choosing a tag in the "+" field, replaces the chosen tag. Tasks rejects two tags, so a design that checks several chips couldn't be built as written.
+
+Deferred: the desktop now shows a task's tag as [one colored pill with a tag menu](../desktop/task-editor.md#a-task-has-one-tag-shown-as-one-pill). [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color in the clone, so it reaches the phone, and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the 30 colors and picks a tag's default. When the Android app is built, this section decides whether the chips take each tag's color, show eight tags as the desktop's menu does, and let the user pick a color.
 
 ### Back keeps a draft on this phone
 
@@ -89,3 +91,4 @@ Shell and the Task list use these parts:
 The options below were considered and rejected.
 
 - **An expanding bottom sheet**, and **full screen with "/" only, and no toolbar**: offered, and not chosen.
+- **Following one tag per task only when the Android app is built**, with the Deferred tag questions: fewer edits now, but this page would describe several checked chips that Tasks rejects.

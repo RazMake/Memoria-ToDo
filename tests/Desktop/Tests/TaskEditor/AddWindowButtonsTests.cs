@@ -42,7 +42,7 @@ public class AddWindowButtonsTests
         var saved = Assert.Single(screen.Saved);
         Assert.Equal("Buy milk", saved.Title);
         Assert.Equal("Two litres", saved.Description);
-        Assert.Equal(["home", "errand"], saved.Tags);
+        Assert.Equal(["errand"], saved.Tags);
         Assert.False(screen.IsShowing);
     }
 
@@ -51,7 +51,7 @@ public class AddWindowButtonsTests
     {
         using var screen = Shown();
         screen.Fill("   ", "A description");
-        screen.Focus(EditorFields.AddTag);
+        screen.Focus(EditorFields.TagPill);
 
         screen.ClickSave();
 
@@ -77,7 +77,7 @@ public class AddWindowButtonsTests
     }
 
     [WpfFact]
-    public void Tab_goes_from_Clear_to_the_Title_through_the_fields_the_remove_buttons_and_the_plus_to_Save()
+    public void Tab_goes_from_Clear_to_the_Title_through_the_fields_the_pill_and_its_x_to_Save()
     {
         using var screen = Shown("home", "work");
         screen.Fill("Buy milk", "", "home");
@@ -88,8 +88,8 @@ public class AddWindowButtonsTests
             sequence.FindIndex(e => e == screen.ClearButton),
             sequence.FindIndex(e => IsInside(e, EditorFields.Field(screen.Window, EditorFields.Title))),
             sequence.FindIndex(e => IsInside(e, EditorFields.Field(screen.Window, EditorFields.Description))),
-            sequence.FindIndex(e => e == TagControls.RemoveButton(screen.Window, "home")),
-            sequence.FindIndex(e => e == TagControls.Plus(screen.Window)),
+            sequence.FindIndex(e => e == TagControls.PillButton(screen.Window)),
+            sequence.FindIndex(e => e == TagControls.ClearButton(screen.Window)),
             sequence.FindIndex(e => e == screen.SaveButton),
         };
         Assert.DoesNotContain(-1, order);

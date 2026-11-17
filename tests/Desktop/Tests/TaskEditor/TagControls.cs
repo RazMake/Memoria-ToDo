@@ -10,8 +10,10 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 /// <summary>
 /// How tests find and read the tag parts, by automation id, so they don't depend on the controls the parts are built from.
-/// A badge is the element with id <c>Badge {tag}</c>: its background is the color's value and the text block in it has the
-/// color's text color. A badge's remove button has id <c>Remove {tag}</c>. The + button has id <c>AddTag</c>. The menu is a
+/// A badge (read-only, in TagBadges and a group heading) is the element with id <c>Badge {tag}</c>: its background is the
+/// color's value and the text block in it has the color's text color. The tag control is one pill, the focusable element with
+/// id <c>TagPill</c>: it holds one text block, the tag or the words "No tag", and, with a tag, paints the tag's color. Its x is a
+/// separate focusable button with id <c>ClearTag</c>, which exists only while the task has a tag. The menu is a
 /// popup whose content has id <c>TagMenu</c> and is showing only while open; its items are buttons with ids <c>MenuTag {tag}</c>
 /// and <c>MenuCustom</c>, and the Search box, a text box labeled "Search:", has id <c>MenuSearch</c>. The matches submenu is a
 /// popup whose content has id <c>SearchMatches</c>, showing only while Search holds text; its items are buttons with ids
@@ -21,7 +23,8 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 /// </summary>
 internal static class TagControls
 {
-    public const string AddTag = EditorFields.AddTag;
+    public const string Pill = EditorFields.TagPill;
+    public const string ClearTag = EditorFields.ClearTag;
     public const string Menu = "TagMenu";
     public const string MenuCustom = "MenuCustom";
     public const string MenuSearch = "MenuSearch";
@@ -66,26 +69,44 @@ internal static class TagControls
     /// <summary>The fill the tag color has in the theme, as Rendering decides.</summary>
     public static TagFill Expected(TagColor color, bool dark) => dark ? color.Dark : color.Light;
 
-    /// <summary>The remove button of the tag's badge.</summary>
-    public static Button RemoveButton(DependencyObject root, string tag) => (Button)Part(root, RemovePrefix + tag);
-
-    /// <summary>The tags whose remove buttons exist, in the order they show.</summary>
+    /// <summary>The tags whose remove buttons exist, in the order they show. A read-only badge list has none.</summary>
     public static IReadOnlyList<string> RemovableTags(DependencyObject root) =>
         [.. WithIdPrefix(root, RemovePrefix).Select(element => IdOf(element)[RemovePrefix.Length..])];
 
-    /// <summary>The + button.</summary>
-    public static Button Plus(DependencyObject root) => (Button)Part(root, AddTag);
+    /// <summary>The pill of the tag control below <paramref name="root"/>.</summary>
+    public static Button PillButton(DependencyObject root) => (Button)Part(root, Pill);
+
+    /// <summary>The words the pill shows: the tag, or "No tag".</summary>
+    public static string PillText(DependencyObject root) =>
+        OpenWindows.TextOf(Visuals(PillButton(root)).OfType<TextBlock>().First(block => block.Text.Length > 0));
+
+    /// <summary>The x that clears the tag. Throws when the task has no tag, so it isn't there.</summary>
+    public static Button ClearButton(DependencyObject root) => (Button)Part(root, ClearTag);
+
+    /// <summary>Whether the pill shows an x, which it does only while the task has a tag.</summary>
+    public static bool HasClearButton(DependencyObject root) => TextFields.FindShowing(root, ClearTag) is not null;
+
+    /// <summary>The tag the pill shows, or null when it shows "No tag" and no x.</summary>
+    public static string? PillTag(DependencyObject root) => HasClearButton(root) ? PillText(root) : null;
+
+    /// <summary>The value and text color the pill paints now, as "#rrggbb".</summary>
+    public static TagFill PillFill(DependencyObject root)
+    {
+        var pill = PillButton(root);
+        var text = Visuals(pill).OfType<TextBlock>().FirstOrDefault(block => block.Text.Length > 0)?.Foreground ?? pill.Foreground;
+        return new TagFill(Hex(pill.Background), Hex(text));
+    }
 
     /// <summary>Whether the menu is showing.</summary>
     public static bool MenuIsOpen(DependencyObject root) => TextFields.FindShowing(root, Menu) is not null;
 
     /// <summary>
-    /// Whether the popup under the + button is open. A popup WPF closed itself, when its + left the window, keeps its content
+    /// Whether the popup under the pill is open. A popup WPF closed itself, when its pill left the window, keeps its content
     /// showing, so <see cref="MenuIsOpen"/> still says true; this reads the popup's own state.
     /// </summary>
     public static bool MenuPopupIsOpen(DependencyObject root) =>
         OpenWindows.Descendants(root).OfType<Popup>()
-            .Single(popup => popup.PlacementTarget is { } target && AutomationProperties.GetAutomationId(target) == AddTag).IsOpen;
+            .Single(popup => popup.PlacementTarget is { } target && AutomationProperties.GetAutomationId(target) == Pill).IsOpen;
 
     /// <summary>The tags the open menu lists, in order; empty while it is closed.</summary>
     public static IReadOnlyList<string> MenuTags(DependencyObject root) =>

@@ -49,54 +49,6 @@ public class TagsModelTests
     }
 
     [Fact]
-    public void Adding_a_tag_keeps_the_order_the_tags_were_added_in()
-    {
-        _model.Add("b");
-        _model.Add("a");
-
-        Assert.Equal(["b", "a"], _model.Tags);
-    }
-
-    [Fact]
-    public void Removing_a_tag_keeps_the_others_in_order()
-    {
-        _model.Tags = ["a", "b", "c"];
-
-        _model.Remove("b");
-
-        Assert.Equal(["a", "c"], _model.Tags);
-    }
-
-    [Fact]
-    public void Backspace_on_an_empty_line_removes_the_last_tag_and_is_handled()
-    {
-        _model.Tags = ["a", "b"];
-
-        Assert.True(_model.Backspace());
-
-        Assert.Equal(["a"], _model.Tags);
-    }
-
-    [Fact]
-    public void Backspace_on_an_empty_line_with_no_tags_is_handled_and_changes_nothing()
-    {
-        Assert.True(_model.Backspace());
-
-        Assert.Empty(_model.Tags);
-    }
-
-    [Fact]
-    public void Backspace_with_text_in_the_line_is_left_to_the_line()
-    {
-        _model.Tags = ["a"];
-        _model.TypedText = "x";
-
-        Assert.False(_model.Backspace());
-
-        Assert.Equal(["a"], _model.Tags);
-    }
-
-    [Fact]
     public void Setting_the_tags_clears_the_typed_text()
     {
         _model.TypedText = "half";
@@ -130,14 +82,6 @@ public class TagsModelTests
         _services.UseTag("home");
 
         Assert.Equal(["Work", "home"], _model.MenuTags);
-    }
-
-    [Fact]
-    public void Tags_the_task_already_has_keep_their_spelling()
-    {
-        _model.Tags = ["Work", "HOME"];
-
-        Assert.Equal(["Work", "HOME"], _model.Tags);
     }
 
     [Fact]

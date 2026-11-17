@@ -66,16 +66,14 @@ public class TagsModelMenuTests
     }
 
     [Fact]
-    public void Drops_a_tag_once_it_is_added_and_brings_it_back_when_it_is_removed()
+    public void Drops_the_tag_the_task_has_from_the_menu()
     {
         _services.UseTag("home", 2);
         _services.UseTag("work");
 
         _model.Add("home");
-        Assert.Equal(["work"], _model.MenuTags);
 
-        _model.Remove("home");
-        Assert.Equal(["home", "work"], _model.MenuTags);
+        Assert.Equal(["work"], _model.MenuTags);
     }
 
     [Fact]

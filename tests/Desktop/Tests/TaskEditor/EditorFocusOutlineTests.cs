@@ -27,7 +27,7 @@ public class EditorFocusOutlineTests
         UseTheKeyboard(host);
 
         var element = (UIElement)EditorFields.Field(host.Editor, field);
-        Keyboard.Focus(TagControls.Plus(host.Editor)); // Away from where the host put the focus, so the move to the field is a change.
+        Keyboard.Focus(TagControls.PillButton(host.Editor)); // Away from where the host put the focus, so the move to the field is a change.
         Keyboard.Focus(element);
 
         Assert.False(DrawsFocusOutline(host, element), "An outline frames the field.");
@@ -36,21 +36,21 @@ public class EditorFocusOutlineTests
     }
 
     [WpfFact]
-    public void The_tag_plus_button_draws_a_focus_outline_when_the_keyboard_moves_the_focus_to_it()
+    public void The_tag_pill_draws_a_focus_outline_when_the_keyboard_moves_the_focus_to_it()
     {
         using var host = new EditorHost();
 
-        Assert.True(OutlineAfterKeyboardFocus(host, TagControls.Plus(host.Editor)), "No outline frames +.");
+        Assert.True(OutlineAfterKeyboardFocus(host, TagControls.PillButton(host.Editor)), "No outline frames the pill.");
     }
 
     [WpfFact]
-    public void A_tag_badge_button_draws_a_focus_outline_when_the_keyboard_moves_the_focus_to_it()
+    public void The_tag_x_button_draws_a_focus_outline_when_the_keyboard_moves_the_focus_to_it()
     {
         using var host = new EditorHost();
         host.Editor.Value = host.Services.Tasks.StartDraft() with { Tags = ["home"] };
         host.Layout();
 
-        Assert.True(OutlineAfterKeyboardFocus(host, TagControls.RemoveButton(host.Editor, "home")), "No outline frames the badge button.");
+        Assert.True(OutlineAfterKeyboardFocus(host, TagControls.ClearButton(host.Editor)), "No outline frames the x button.");
     }
 
     private static bool OutlineAfterKeyboardFocus(EditorHost host, UIElement element)

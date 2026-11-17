@@ -19,16 +19,17 @@ public class AddWindowDraftTests
     {
         using var screen = new AddScreen();
         screen.Show();
-        screen.Fill("Buy milk", "Two litres", "home", "shop");
+        screen.Fill("Buy milk", "Two litres", "home");
         screen.Focus(EditorFields.Description);
 
         screen.PressEscape();
 
-        AssertKept(screen, "Buy milk", "Two litres", ["home", "shop"]);
+        AssertKept(screen, "Buy milk", "Two litres", ["home"]);
 
         screen.Show();
 
-        AssertFields(screen, "Buy milk", "Two litres", ["home", "shop"]);
+        AssertFields(screen, "Buy milk", "Two litres", ["home"]);
+        Assert.Equal("home", screen.ShownTag);
         Assert.Equal(EditorFields.Title, screen.FocusedField);
     }
 

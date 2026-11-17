@@ -80,24 +80,259 @@ public sealed class SaveEditTests
         TaskAssert.SameTask(saved, restarted.All.Single());
     }
 
+    // The tag: one at most. The edit's tag replaces every current tag only when it differs from the started one.
+
     [Fact]
-    public void Adds_a_tag_the_edit_added()
+    public void Sets_the_tag_the_edit_chose_when_the_task_had_none()
     {
-        var started = Seeded(tags: ["work"]);
+        var started = Seeded();
 
-        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["work", "home"]));
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["work"]));
 
-        Assert.Equal(["work", "home"], saved.Tags);
+        Assert.Equal(["work"], saved.Tags);
+        Assert.Equal(["work"], f.Tasks.All.Single().Tags);
     }
 
     [Fact]
-    public void Removes_a_tag_the_edit_removed_ignoring_case()
+    public void Replaces_the_tag_with_the_one_the_edit_chose()
+    {
+        var started = Seeded(tags: ["work"]);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["home"]));
+
+        Assert.Equal(["home"], saved.Tags);
+    }
+
+    [Fact]
+    public void Clears_the_tag_when_the_edit_has_none_and_the_started_task_had_one()
+    {
+        var started = Seeded(tags: ["work"]);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: []));
+
+        Assert.Empty(saved.Tags);
+        Assert.Empty(f.Tasks.All.Single().Tags);
+    }
+
+    [Fact]
+    public void Writes_the_replaced_tag_so_a_restart_reads_it()
+    {
+        var started = Seeded(tags: ["work"]);
+
+        f.Tasks.SaveEdit(started, Edit(started, tags: ["home"]));
+        var restarted = f.Restarted();
+        restarted.UseRepositoryFolder(f.Clone);
+
+        Assert.Equal(["home"], restarted.All.Single().Tags);
+    }
+
+    [Fact]
+    public void Replaces_a_tag_another_device_set_meanwhile_when_the_edit_changed_the_tag()
+    {
+        var started = Seeded(tags: ["work"]);
+        f.Seed(id, "Old title", "a0", "Old text", ["remote"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["home"]));
+
+        Assert.Equal(["home"], saved.Tags);
+    }
+
+    [Fact]
+    public void Keeps_a_tag_another_device_set_meanwhile_when_the_edit_kept_the_started_tag()
+    {
+        var started = Seeded(tags: ["work"]);
+        f.Seed(id, "Old title", "a0", "Old text", ["remote"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title"));
+
+        Assert.Equal(["remote"], saved.Tags);
+        Assert.Equal("New title", saved.Title);
+    }
+
+    [Fact]
+    public void Keeps_a_tag_another_device_set_meanwhile_when_the_started_task_had_no_tag_and_the_edit_none()
+    {
+        var started = Seeded();
+        f.Seed(id, "Old title", "a0", "Old text", ["remote"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title"));
+
+        Assert.Equal(["remote"], saved.Tags);
+    }
+
+    [Fact]
+    public void Treats_a_tag_that_differs_only_in_case_as_the_started_tag_and_keeps_the_current_tags()
+    {
+        var started = Seeded(tags: ["Work"]);
+        f.Seed(id, "Old title", "a0", "Old text", ["remote"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: ["WORK"]));
+
+        Assert.Equal(["remote"], saved.Tags);
+    }
+
+    [Fact]
+    public void Changes_nothing_when_the_edits_tag_differs_from_the_started_one_only_in_case()
+    {
+        var started = Seeded(tags: ["Work"]);
+        var before = f.ReadText(f.TaskFile(id));
+        var changes = f.CountChanges();
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["work"]));
+
+        Assert.Equal(started, saved);
+        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
+        Assert.Equal(0, changes.Count);
+    }
+
+    [Fact]
+    public void Spells_the_chosen_tag_as_the_matching_tag_in_use_and_trims_it()
+    {
+        var started = Seeded();
+        f.Seed(TasksFixture.Id(1), "Other", "a1", tags: ["Home"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["  home "]));
+
+        Assert.Equal(["Home"], saved.Tags);
+    }
+
+    [Fact]
+    public void Raises_one_notice_and_sets_updated_for_a_tag_only_change()
+    {
+        var started = Seeded(tags: ["work"]);
+        f.Time.Advance(TimeSpan.FromHours(2));
+        var changes = f.CountChanges();
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["home"]));
+
+        Assert.Equal(1, changes.Count);
+        Assert.Equal(f.Time.GetUtcNow(), saved.Updated);
+    }
+
+    [Fact]
+    public void A_tag_only_edit_keeps_the_title_and_description_changed_elsewhere_meanwhile()
+    {
+        var started = Seeded();
+        f.Seed(id, "Changed title", "a0", "Changed text");
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["work"]));
+
+        Assert.Equal("Changed title", saved.Title);
+        Assert.Equal("Changed text", saved.Description);
+        Assert.Equal(["work"], saved.Tags);
+    }
+
+    // A task saved with two or more tags before the one-tag rule keeps them until its tag is chosen or cleared. The
+    // editor shows its first tag, so the first tag is the tag the edit started with.
+
+    [Fact]
+    public void Keeps_every_older_tag_when_the_edit_keeps_the_first_one_the_editor_showed()
+    {
+        var started = Seeded(tags: ["work", "home", "errand"]);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: ["work"]));
+
+        Assert.Equal(["work", "home", "errand"], saved.Tags);
+        Assert.Equal("New title", saved.Title);
+    }
+
+    [Fact]
+    public void Keeps_every_older_tag_when_the_edit_keeps_the_first_one_in_another_case()
     {
         var started = Seeded(tags: ["Work", "home"]);
 
-        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["HOME"]));
+        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: ["WORK"]));
+
+        Assert.Equal(["Work", "home"], saved.Tags);
+    }
+
+    [Fact]
+    public void Replaces_every_older_tag_with_the_one_the_edit_chose()
+    {
+        var started = Seeded(tags: ["work", "home", "errand"]);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["urgent"]));
+
+        Assert.Equal(["urgent"], saved.Tags);
+    }
+
+    [Fact]
+    public void Replaces_every_older_tag_with_the_second_one_when_the_edit_chose_it()
+    {
+        var started = Seeded(tags: ["work", "home"]);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["home"]));
 
         Assert.Equal(["home"], saved.Tags);
+    }
+
+    [Fact]
+    public void Clears_every_older_tag_when_the_edit_has_none()
+    {
+        var started = Seeded(tags: ["work", "home"]);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: []));
+
+        Assert.Empty(saved.Tags);
+    }
+
+    [Fact]
+    public void Keeps_the_older_tags_a_save_finds_in_the_current_task_when_the_edit_kept_the_started_tag()
+    {
+        var started = Seeded(tags: ["work"]);
+        f.Seed(id, "Old title", "a0", "Old text", ["remote", "other"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title"));
+
+        Assert.Equal(["remote", "other"], saved.Tags);
+    }
+
+    [Fact]
+    public void Refuses_an_edit_that_still_holds_all_of_a_tasks_older_tags()
+    {
+        var started = Seeded(tags: ["work", "home"]);
+        var before = f.ReadText(f.TaskFile(id));
+
+        Assert.Throws<ArgumentException>(() => f.Tasks.SaveEdit(started, Edit(started, title: "New title")));
+
+        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
+    }
+
+    // Two or more tags in the edit are refused before anything changes.
+
+    [Theory]
+    [InlineData("work", "home")]
+    [InlineData("work", "home", "errand")]
+    public void Refuses_an_edit_with_two_or_more_tags_and_changes_nothing(params string[] tags)
+    {
+        var started = Seeded(tags: ["work"]);
+        var before = f.ReadText(f.TaskFile(id));
+        var changes = f.CountChanges();
+
+        Assert.Throws<ArgumentException>(() => f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: tags)));
+
+        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
+        Assert.Equal("Old title", f.Tasks.All.Single().Title);
+        Assert.Equal(0, changes.Count);
+    }
+
+    [Fact]
+    public void Refuses_an_edit_with_two_tags_before_moving_the_edits_images()
+    {
+        var started = Seeded();
+        var (markdown, _) = PasteImage();
+
+        Assert.Throws<ArgumentException>(() => f.Tasks.SaveEdit(started, Edit(started, description: markdown, tags: ["a", "b"])));
+
+        Assert.Empty(f.Files.AllFilesUnder(f.CloneImages(id)));
+        Assert.NotEmpty(f.Files.AllFilesUnder(f.Device));
     }
 
     [Fact]
@@ -302,5 +537,82 @@ public sealed class SaveEditTests
 
         Assert.Equal(markdown, saved.Description);
         Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)));
+    }
+
+    // Any save that changes something moves the waiting images, whichever field it changed.
+
+    [Fact]
+    public void Moves_the_waiting_images_for_a_tag_only_save()
+    {
+        var started = Seeded();
+        var (_, bytes) = PasteImage();
+
+        f.Tasks.SaveEdit(started, Edit(started, tags: ["work"]));
+
+        Assert.Equal(bytes, f.Files.ReadFile(Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)))));
+        Assert.Empty(f.Files.AllFilesUnder(f.Device));
+    }
+
+    [Fact]
+    public void Moves_the_waiting_images_for_a_clearing_tag_save()
+    {
+        var started = Seeded(tags: ["work"]);
+        var (_, bytes) = PasteImage();
+
+        f.Tasks.SaveEdit(started, Edit(started, tags: []));
+
+        Assert.Equal(bytes, f.Files.ReadFile(Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)))));
+        Assert.Empty(f.Files.AllFilesUnder(f.Device));
+    }
+
+    [Fact]
+    public void Moves_the_waiting_images_for_a_title_only_save()
+    {
+        var started = Seeded();
+        var (_, bytes) = PasteImage();
+
+        f.Tasks.SaveEdit(started, Edit(started, title: "New title"));
+
+        Assert.Equal(bytes, f.Files.ReadFile(Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)))));
+        Assert.Empty(f.Files.AllFilesUnder(f.Device));
+    }
+
+    [Fact]
+    public void Moves_the_waiting_images_before_writing_the_task_for_a_tag_only_save_that_fails_and_keeps_them_for_a_retry()
+    {
+        var started = Seeded();
+        var (_, bytes) = PasteImage();
+        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
+
+        Assert.ThrowsAny<Exception>(() => f.Tasks.SaveEdit(started, Edit(started, tags: ["work"])));
+
+        Assert.Equal(bytes, f.Files.ReadFile(Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)))));
+        Assert.Empty(f.Tasks.All.Single().Tags);
+    }
+
+    [Fact]
+    public void Moves_the_waiting_images_when_one_save_changes_the_description_and_the_tag()
+    {
+        var started = Seeded();
+        var (markdown, _) = PasteImage();
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, description: markdown, tags: ["work"]));
+
+        Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)));
+        Assert.Equal(["work"], saved.Tags);
+    }
+
+    [Fact]
+    public void Leaves_the_waiting_images_waiting_when_a_description_unchanged_save_changes_nothing()
+    {
+        var started = Seeded();
+        PasteImage();
+        var before = f.ReadText(f.TaskFile(id));
+
+        f.Tasks.SaveEdit(started, Edit(started));
+
+        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
+        Assert.Empty(f.Files.AllFilesUnder(f.CloneImages(id)));
+        Assert.Single(f.Files.AllFilesUnder(f.Device));
     }
 }

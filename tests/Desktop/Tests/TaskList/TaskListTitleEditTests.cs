@@ -142,7 +142,7 @@ public class TaskListTitleEditTests
     public void Edit_Title_on_the_second_row_of_a_task_with_two_tags_edits_and_focuses_that_row()
     {
         var services = new ListServices();
-        services.Add("Buy milk", "", "home", "work");
+        services.AddOlder("Buy milk", "", "home", "work");
         using var screen = new TaskListScreen(services);
 
         screen.ChooseContextItem("Buy milk", "Edit Title", group: "work");

@@ -8,13 +8,13 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 /// <summary>
-/// Custom on screen, on the common paths: type a tag and click a color, or press Enter. When the colors show, which one is
-/// marked, when a color is kept, and what a failure leaves are in the unit tests of the tags model; these check the control
-/// is wired to it, and how the colors are laid out.
+/// Custom on screen, on the common paths: type a tag and click a color, or press Enter. Either replaces the task's tag.
+/// When the colors show, which one is marked, when a color is kept, and what a failure leaves are in the unit tests of the
+/// tags model; these check the control is wired to it, and how the colors are laid out.
 /// </summary>
 [UX]
 [Collection(ScreenTests.Collection)]
-public class TagEditorCustomTests
+public class TagPillCustomTests
 {
     [WpfFact]
     public void Opening_Custom_puts_the_cursor_in_the_New_tag_box()
@@ -99,22 +99,7 @@ public class TagEditorCustomTests
     }
 
     [WpfFact]
-    public void Moves_the_mark_to_the_new_color_when_the_typed_tags_kept_color_changes()
-    {
-        using var host = new TagEditorWindow();
-        host.Services.UseTag("home");
-        host.Services.TagColors.Seed("home", "teal-2");
-        host.OpenCustom();
-        host.Type("home");
-        Assert.Equal("teal-2", TagControls.MarkedColor(host.Editor));
-
-        host.Services.TagColors.SetColor("home", "pink-1");
-
-        Assert.Equal("pink-1", TagControls.MarkedColor(host.Editor));
-    }
-
-    [WpfFact]
-    public void Clicking_a_color_keeps_it_for_the_tag_before_TagAdded_then_hides_Custom_and_returns_the_focus_to_the_plus()
+    public void Clicking_a_color_keeps_it_for_the_tag_before_TagChanged_then_replaces_the_tag_hides_Custom_and_returns_the_focus_to_the_pill()
     {
         using var host = new TagEditorWindow("mine");
         host.OpenCustom();
@@ -122,68 +107,113 @@ public class TagEditorCustomTests
 
         OpenWindows.Click(TagControls.ColorButton(host.Editor, "red-2"));
 
-        var (tag, tagsThen, keptThen) = Assert.Single(host.Added);
+        var (tag, tagThen, keptThen) = Assert.Single(host.Changes);
         Assert.Equal("errand", tag);
-        Assert.Equal(["mine", "errand"], tagsThen);
+        Assert.Equal("errand", tagThen);
         Assert.Equal([("errand", "red-2")], keptThen);
         Assert.False(TagControls.CustomIsOpen(host.Editor));
-        Assert.Equal(["mine", "errand"], TagControls.BadgeTags(host.Editor));
-        Assert.Equal(TagControls.AddTag, TagControls.FocusedId());
+        Assert.Equal("errand", host.PillText);
+        Assert.Equal(TagControls.Pill, TagControls.FocusedId());
     }
 
     [WpfFact]
-    public void Enter_in_the_box_adds_the_tag_and_writes_no_color()
+    public void Enter_in_the_box_replaces_the_tag_and_writes_no_color()
     {
-        using var host = new TagEditorWindow();
+        using var host = new TagEditorWindow("mine");
         host.OpenCustom();
         host.Type("errand");
         host.Focus(EditorFields.Tags);
 
         host.Press(Key.Enter);
 
-        Assert.Equal(["errand"], host.Editor.Tags);
+        Assert.Equal("errand", host.Editor.TaskTag);
+        Assert.Equal("errand", Assert.Single(host.Changes).Tag);
         Assert.Empty(host.Services.TagColors.Kept);
         Assert.False(TagControls.CustomIsOpen(host.Editor));
     }
 
     [WpfFact]
-    public void A_color_that_cant_be_kept_adds_no_tag_and_Custom_keeps_the_text_and_says_why_under_the_colors()
+    public void Enter_in_the_box_spells_the_tag_as_the_matching_tag_in_use()
     {
         using var host = new TagEditorWindow();
+        host.Services.UseTag("Work");
+        host.OpenCustom();
+        host.Type("WORK");
+        host.Focus(EditorFields.Tags);
+
+        host.Press(Key.Enter);
+
+        Assert.Equal("Work", host.Editor.TaskTag);
+    }
+
+    [WpfFact]
+    public void Choosing_the_current_tag_in_Custom_raises_nothing_ignoring_case()
+    {
+        using var host = new TagEditorWindow("Work");
+        host.OpenCustom();
+        host.Type("work");
+        host.Focus(EditorFields.Tags);
+
+        host.Press(Key.Enter);
+
+        Assert.Equal("Work", host.Editor.TaskTag);
+        Assert.Empty(host.Changes);
+    }
+
+    [WpfFact]
+    public void Choosing_the_current_tag_in_Custom_hides_Custom_and_the_pill_keeps_the_tag()
+    {
+        using var host = new TagEditorWindow("Work");
+        host.OpenCustom();
+        host.Type("work");
+        host.Focus(EditorFields.Tags);
+
+        host.Press(Key.Enter);
+
+        Assert.False(TagControls.CustomIsOpen(host.Editor));
+        Assert.Equal("Work", host.PillText);
+    }
+
+    [WpfFact]
+    public void A_color_that_cant_be_kept_chooses_no_tag_and_Custom_keeps_the_text_and_says_why_under_the_colors()
+    {
+        using var host = new TagEditorWindow("mine");
         host.Services.TagColors.Failure = new NoRepositoryFolderException();
         host.OpenCustom();
         host.Type("errand");
 
         OpenWindows.Click(TagControls.ColorButton(host.Editor, "red-2"));
 
-        Assert.Empty(host.Added);
-        Assert.Empty(host.Editor.Tags);
+        Assert.Empty(host.Changes);
+        Assert.Equal("mine", host.Editor.TaskTag);
         Assert.True(TagControls.CustomIsOpen(host.Editor));
         Assert.Equal("errand", host.Typed);
         Assert.Contains(host.Texts, text => text.Contains("Configure", StringComparison.Ordinal));
     }
 
     [WpfFact]
-    public void Setting_the_tags_leaves_Custom_open()
+    public void Setting_the_tag_leaves_Custom_open()
     {
         using var host = new TagEditorWindow();
         host.OpenCustom();
 
-        host.Editor.Tags = ["x"];
+        host.Editor.TaskTag = "x";
 
         Assert.True(TagControls.CustomIsOpen(host.Editor));
     }
 
     [WpfFact]
-    public void Backspace_in_the_empty_tag_box_removes_the_last_tag()
+    public void Backspace_in_the_empty_tag_box_does_nothing()
     {
-        using var host = new TagEditorWindow("a", "b");
+        using var host = new TagEditorWindow("a");
         host.OpenCustom();
         host.Focus(EditorFields.Tags);
 
         host.Press(Key.Back);
 
-        Assert.Equal(["a"], host.Editor.Tags);
-        Assert.Equal("b", Assert.Single(host.Removed).Tag);
+        Assert.Equal("a", host.Editor.TaskTag);
+        Assert.Equal("a", host.PillText);
+        Assert.Empty(host.Changes);
+        Assert.True(TagControls.CustomIsOpen(host.Editor));
     }
 }

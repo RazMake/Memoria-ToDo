@@ -91,7 +91,7 @@ public class GroupPlanTests
     [Fact]
     public void A_task_in_two_groups_is_hidden_only_from_the_collapsed_one()
     {
-        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.AddOlder("Buy milk", "", "home", "errand");
         _collapse.Toggle("home");
 
         var plan = Plan();
@@ -182,7 +182,7 @@ public class GroupPlanTests
     public void A_task_in_two_groups_has_a_place_in_each_and_the_group_decides_where_Down_goes()
     {
         _tasks.Add("Z", "", "work");
-        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.AddOlder("Buy milk", "", "home", "errand");
         _tasks.Add("Next", "", "errand");
 
         // errand shows "Next" then "Buy milk"; home shows "Buy milk" only.

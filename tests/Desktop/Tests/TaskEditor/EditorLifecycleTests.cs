@@ -28,23 +28,23 @@ public class EditorLifecycleTests
         host.Services.UseTag("hobby", 2);
         host.Put();
 
-        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.Plus(host.Editor));
+        Memoria.ToDo.Desktop.Fakes.OpenWindows.Click(TagControls.PillButton(host.Editor));
 
         Assert.Equal(["hobby", "home"], TagControls.MenuTags(host.Editor));
     }
 
     [WpfFact]
-    public void A_tag_editor_taken_out_of_its_window_with_the_plus_menu_open_opens_the_default_menu_with_one_click_when_put_back()
+    public void A_tag_editor_taken_out_of_its_window_with_the_menu_open_opens_the_default_menu_with_one_click_when_put_back()
     {
         using var host = new TagEditorWindow("work");
         host.Services.UseTag("home");
-        host.ClickPlus();
+        host.ClickPill();
         TextFields.Type(TagControls.SearchBox(host.Editor), "ho");
         host.Remove();
         host.Put();
         Assert.False(TagControls.MenuPopupIsOpen(host.Editor));
 
-        host.ClickPlus();
+        host.ClickPill();
 
         Assert.True(TagControls.MenuPopupIsOpen(host.Editor));
         Assert.Equal(["home"], TagControls.MenuTags(host.Editor));
@@ -88,7 +88,7 @@ public class EditorLifecycleTests
     }
 
     [WpfFact]
-    public void A_tag_editor_put_back_in_a_window_shows_badge_colors_for_the_tag_colors_and_theme_as_they_are_now()
+    public void A_tag_editor_put_back_in_a_window_shows_the_pill_color_for_the_tag_colors_and_theme_as_they_are_now()
     {
         using var host = new TagEditorWindow("home");
         host.Remove();
@@ -97,21 +97,21 @@ public class EditorLifecycleTests
 
         host.Put();
 
-        Assert.Equal(TagControls.Expected(TagColors.Find("blue-1")!, dark: true), TagControls.FillOf(host.Editor, "home"));
+        Assert.Equal(TagControls.Expected(TagColors.Find("blue-1")!, dark: true), TagControls.PillFill(host.Editor));
     }
 
     [WpfFact]
     public void A_tag_editor_taken_out_of_its_window_stops_following_the_theme_and_tag_colors()
     {
         using var host = new TagEditorWindow("home");
-        var before = TagControls.FillOf(host.Editor, "home");
+        var before = TagControls.PillFill(host.Editor);
         host.Remove();
 
         host.Services.TagColors.Seed("home", "blue-1");
         host.Services.TagColors.RaiseChanged();
         host.Services.Theme.Switch(true);
 
-        Assert.Equal(before, TagControls.FillOf(host.Editor, "home"));
+        Assert.Equal(before, TagControls.PillFill(host.Editor));
     }
 
     [WpfFact]
@@ -195,10 +195,10 @@ internal sealed class EditorWindow : IDisposable
 
     public void Put() => LoadSync.Put(Window, Editor);
 
-    /// <summary>Clicks + and then Custom, which opens the tag box.</summary>
+    /// <summary>Clicks the pill and then Custom, which opens the tag box.</summary>
     public void OpenCustom()
     {
-        OpenWindows.Click(TagControls.Plus(Editor));
+        OpenWindows.Click(TagControls.PillButton(Editor));
         OpenWindows.Click(TagControls.CustomItem(Editor));
     }
 

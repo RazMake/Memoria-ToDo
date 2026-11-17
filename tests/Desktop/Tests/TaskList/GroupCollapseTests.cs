@@ -95,7 +95,7 @@ public class GroupCollapseTests
     [Fact]
     public void Revealing_a_task_that_already_shows_in_an_expanded_group_changes_nothing()
     {
-        var task = _tasks.Add("Buy milk", "", "home", "errand");
+        var task = _tasks.AddOlder("Buy milk", "", "home", "errand");
         _collapse.Toggle("home");
 
         _collapse.Reveal(task);
@@ -107,7 +107,7 @@ public class GroupCollapseTests
     [Fact]
     public void Revealing_a_task_whose_groups_are_all_collapsed_expands_only_the_group_of_its_first_row_in_group_order()
     {
-        var task = _tasks.Add("Buy milk", "", "work", "home", "errand");
+        var task = _tasks.AddOlder("Buy milk", "", "work", "home", "errand");
         _collapse.Toggle("work");
         _collapse.Toggle("home");
         _collapse.Toggle("errand");
@@ -122,7 +122,7 @@ public class GroupCollapseTests
     [Fact]
     public void Group_order_for_a_reveal_ignores_the_case_of_the_tags()
     {
-        var task = _tasks.Add("Buy milk", "", "work", "Errand");
+        var task = _tasks.AddOlder("Buy milk", "", "work", "Errand");
         _collapse.Toggle("work");
         _collapse.Toggle("Errand");
 

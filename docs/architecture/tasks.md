@@ -40,7 +40,7 @@ Each task file is a JSON object with the nine fields in the table. Every time is
 | `title` | One line of Markdown |
 | `description` | Markdown, which can link images and other tasks |
 | `rank` | The [sort key](#rank-is-a-text-key-that-sorts-between-its-neighbors) |
-| `tags` | The task's tags |
+| `tags` | The task's tags: a list holding at most one, as [A task has at most one tag](#a-task-has-at-most-one-tag) says |
 | `created` | When the task was added |
 | `updated` | When the task last changed, on any device |
 | `resolved` | When the task was resolved, or `null` while it's open |
@@ -79,15 +79,16 @@ When two devices changed the same task, Tasks compares each version with the one
 | Case | Result |
 | --- | --- |
 | A field changed on one device only | That device's change |
-| Tags changed on both | Both devices' adds and removes apply |
-| Title, Description, or Rank changed on both | The later edit wins, and the other is dropped |
+| Title, Description, Tags, or Rank changed on both | The later edit wins, and the other is dropped |
 | One device deleted the task, and the other edited it | The edit wins: the task comes back, with the edit |
 | One device resolved the task, and the other edited it | The task stays resolved and keeps the edit |
 | Both deleted the task | It stays deleted |
 
 An edit can bring back a task that another device deleted. If that task is still resolved past the deletion delay, the next sync deletes it again, unless the user reopens it first.
 
-Saving an edit changes only what the edit changed, so it never undoes a change that arrived while the edit was open. Tasks compares the edit with the version the editor started from: a Title or Description the edit changed replaces the current one, and the tags the edit added or removed are added to or removed from the current tags. Every field the edit didn't touch keeps its current value.
+Saving an edit changes only what the edit changed, so it never undoes a change that arrived while the edit was open. Tasks compares the edit with the version the editor started from: a Title, Description, or tag the edit changed replaces the current one, as [A task has at most one tag](#a-task-has-at-most-one-tag) says for the tag. Every field the edit didn't touch keeps its current value.
+
+The user decided that a task's tags merge as a Title does: a change on one device wins, and when both changed them, the later edit wins.
 
 Proposed, each a decision to confirm:
 
@@ -244,15 +245,38 @@ Proposed, each a decision to confirm:
 
 ### Tags and search ignore case
 
-A tag is one trimmed, non-empty line. Tags that differ only in case are the same tag, and a new tag takes the spelling of a matching tag in use. A tag suggestion is a tag in use that contains the text typed so far anywhere, ignoring case, so `ork` suggests `work`, and both apps suggest the same tags. The user decided it matches anywhere, not only at the start, for the desktop's tag [Search](desktop/task-editor.md#the--menu-adds-a-top-tag-or-one-found-by-search).
+A tag is one trimmed, non-empty line. Tags that differ only in case are the same tag, and a new tag takes the spelling of a matching tag in use. A tag suggestion is a tag in use that contains the text typed so far anywhere, ignoring case, so `ork` suggests `work`, and both apps suggest the same tags. The user decided it matches anywhere, not only at the start, for the desktop's tag [Search](desktop/task-editor.md#a-click-on-the-pill-opens-the-tag-menu).
 
 Proposed, each a decision to confirm:
 
 - Tags in use count open and resolved tasks, and list the most-used first, with ties in alphabetical order. Suggestions follow the same order, leave out the tags the task already has, and are empty while nothing is typed.
-- A task keeps its tags in the order they were added, and adding a tag it already has changes nothing.
+- A task kept with several tags from before [one tag per task](#a-task-has-at-most-one-tag) keeps them in the order they were added.
 - When tasks spell one tag differently, such as after two offline devices added it, the tags in use and the suggestions spell it as most of those tasks do, and on a tie as the first in alphabetical order.
 - Search matches a task when every word typed appears in its title, description, or tags. Empty search text matches every task, and matches come in rank order.
 - The tag filter shows the tasks that have the tag.
+
+### A task has at most one tag
+
+The user decided that a task has at most one tag. The desktop shows it as [one pill](desktop/task-editor.md#a-task-has-one-tag-shown-as-one-pill), and choosing another tag replaces it.
+
+The user decided each of these rules:
+
+- **Tasks keeps the rule**, so both apps and every merge hold it, not only one screen.
+- **The file's `tags` field stays a list, holding at most one tag, and the file `version` stays 1.** So an app not yet updated still reads every task, rather than [skipping a newer version](#failure-modes).
+- **Adding a task with two or more tags fails** with `ArgumentException`, before any file is written. So does saving an edit whose tags hold two or more.
+- **Two versions' tags merge as one field**, as a Title does: a change on one device wins, and when both changed them, the later edit wins.
+- **A task saved with two or more tags before this rule keeps them** until the user chooses or clears its tag; then the one choice replaces them all. Its first tag, the one added first, is the tag each app's editor shows.
+- **A kept draft with two or more tags loads with its first tag only**, since Add couldn't save it otherwise. A draft never leaves the device, so nothing synced changes.
+
+Proposed, each a decision to confirm:
+
+- **Saving an edit replaces the tag only when the edit changed it.** Tasks compares the edit's tag with the one the editor started with, ignoring case, where no tag counts as a value. When they differ, the edit's tag, or none, replaces every current tag. Otherwise the current tags stay, so a tag set meanwhile, such as on another device while the edit was open, stays.
+- **The merge compares the tag lists in order, ignoring case.**
+- **Search, the tag filter, and the desktop's [tag groups](desktop/task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) still see all of an older task's tags.**
+
+The desktop's tag control saves a tag through `SaveEdit`. Outside an edit, it saves at once; during a description or title edit, the tag [joins that edit's one save](desktop/task-list.md#a-tag-chosen-during-an-edit-saves-with-the-edit), so the text and the tag save or fail together. The user decided that **`SaveEdit` moves the images waiting for the task's open edit into the clone on any save that changes something**, as before one tag per task.
+
+No signature changes: `TaskItem.Tags` and `TaskDraft.Tags` stay lists, and `WithTag` and `SuggestTags` keep their meaning. Only the documented behavior of `Add`, `SaveEdit`, the task merge, and `LoadDraft` changes.
 
 ### Each tag's color is kept in one synced file
 
@@ -402,13 +426,13 @@ public interface ITasks
     void DiscardEditImages(string taskId);
 
     /// Saves an edit of started, the task as the editor got it, onto the task as it is now.
-    /// A Title or Description that differs from started's replaces the current one; the tags edited
-    /// added or removed, ignoring case, are added to or removed from the current tags. Every other
+    /// A Title or Description that differs from started's replaces the current one; a tag that
+    /// differs from started's, ignoring case, replaces the current tags. Every other
     /// field keeps its current value. Moves the edit's images into the clone, then writes the file
     /// and sets Updated, unless nothing changed. Returns the task as saved.
     /// Throws, before any change: NoRepositoryFolderException when no folder is set;
     /// TaskNotFoundException when the task isn't in All; ArgumentException when edited.TaskId isn't
-    /// started.Id, or for an empty or multi-line title or an invalid tag.
+    /// started.Id, or for an empty or multi-line title, an invalid tag, or two or more tags.
     TaskItem SaveEdit(TaskItem started, TaskDraft edited);
 
     /// Gives the task a rank that shows it after previousTaskId and before nextTaskId; a null ID
@@ -504,9 +528,11 @@ remains a separate data error. This uses Tasks' existing canonical-ID validation
 
 Proposed: `SaveImage`'s two exceptions, so the editor can say why an image wasn't saved. This is a decision to confirm.
 
+Row 14 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) brings [one tag per task](#a-task-has-at-most-one-tag). The user decided that `Add` and `SaveEdit` also throw `ArgumentException` for two or more tags, before any change, and that `LoadDraft` returns a kept draft's first tag only. Proposed: `SaveEdit`'s tag rule, as its comment above says. This is a decision to confirm. No declaration changes.
+
 Also proposed for step 4, each a decision to confirm:
 
-- `SaveEdit` compares a Title after trimming, and a Description after storing its line breaks as `\n`, so only a real change counts. It adds tags in the edit's order, spelled as `WithTag` spells them.
+- `SaveEdit` compares a Title after trimming, and a Description after storing its line breaks as `\n`, so only a real change counts. It replaces the tags as [A task has at most one tag](#a-task-has-at-most-one-tag) says, spelling the new one as `WithTag` spells it.
 - `SaveEdit` of a task that's no longer in `All` throws, so a save never undoes a deletion that arrived while the edit was open. The editor keeps the text, so the user can copy it.
 - `SaveEdit` moves the edit's images first, so a failed write leaves them in the task's folder, and a retry works. An image in the task's folder with no link is kept, as the rule above says.
 - When `Move`'s neighbors share a rank, which only two offline devices adding tasks can cause, no key sorts between them, and a move changes only its own file. So `Move` refuses, unless the task already shows there, and the Task list shows the move failed. A later design can re-rank a neighbor instead.
@@ -712,3 +738,13 @@ The options below were considered and rejected, grouped by decision.
   - **After every placed tag, in alphabetical order**: the user chose the top, as for a new task.
 - How the tag order is published:
   - **Sorting and moving on `ITagColors`**: a caller that needs only colors, such as the desktop's Task editor, would get the order too.
+- Where the one-tag rule lives:
+  - **A new single `tag` field in file version 2**: [an app that finds a newer version skips the file](#each-task-file-holds-nine-fields), so a device not yet updated would lose every task from view, and `TaskItem`, `TaskDraft`, the draft file, `WithTag`, `SuggestTags`, and both apps' callers would change.
+  - **Only in the desktop's tag control**: the merge and saving an edit would still add tags, so a task could still end up with two, and every screen would handle many tags forever.
+- Tasks that already have two or more tags:
+  - **Tasks reads only the first tag**, and the next save drops the rest: tags would vanish with no word to the user.
+  - **A one-time change during sync rewrites every such task to its first tag**: a migration step, with a commit that touches many files, and the same silent loss.
+- How two devices' tag changes merge:
+  - **Both devices' adds and removes, then the first tag only**: which tag survives would depend on the order the tags were added, not on which change is newer.
+- Which waiting images saving an edit moves:
+  - **Move waiting images only on a Description change**: needed only for tag saves during an edit, which the atomic save removed.

@@ -113,7 +113,8 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             if (set.Contains(draft.TaskId) || folder.FileExists(root, draft.TaskId))
                 throw new ArgumentException("A task with this ID exists.", nameof(draft));
             var title = TaskText.SingleLine(draft.Title, nameof(draft));
-            var tags = draft.Tags.Aggregate((IReadOnlyList<string>)[], (all, tag) => set.Tags.With(all, tag));
+            var tag = OneTag(draft.Tags, nameof(draft));
+            var tags = tag is null ? [] : set.Tags.With([], tag);
             var now = Now();
             var rank = RankKey.Before(set.Items.Count == 0 ? null : set.Items[0].Rank);
             task = new TaskItem(draft.TaskId, title, TaskText.LineFeeds(draft.Description), rank, tags, now, now, null);
@@ -209,14 +210,16 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
                 throw new ArgumentException("The edit is of another task.", nameof(edited));
             var title = TaskText.SingleLine(edited.Title, nameof(edited));
             var description = TaskText.LineFeeds(edited.Description);
-            var editedTags = edited.Tags.Select(tag => TaskText.SingleLine(tag, nameof(edited))).ToList();
+            var editedTag = OneTag(edited.Tags, nameof(edited));
             var current = Find(started.Id);
 
             var changed = current with
             {
                 Title = title == started.Title ? current.Title : title,
                 Description = description == started.Description ? current.Description : description,
-                Tags = ApplyTagEdit(current.Tags, started.Tags, editedTags),
+                Tags = string.Equals(editedTag, started.Tags.FirstOrDefault(), StringComparison.OrdinalIgnoreCase)
+                    ? current.Tags
+                    : editedTag is null ? [] : set.Tags.With([], editedTag),
             };
             if (changed.Title == current.Title && changed.Description == current.Description && changed.Tags.SequenceEqual(current.Tags))
                 return current;
@@ -232,13 +235,10 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         return saved;
     }
 
-    /// <summary>The current tags without those the edit removed, then with those it added, ignoring case.</summary>
-    private IReadOnlyList<string> ApplyTagEdit(IReadOnlyList<string> current, IReadOnlyList<string> started, IReadOnlyList<string> edited)
-    {
-        var removed = started.Where(tag => !TagCatalog.Has(edited, tag)).ToList();
-        var tags = (IReadOnlyList<string>)[.. current.Where(tag => !TagCatalog.Has(removed, tag))];
-        return edited.Where(tag => !TagCatalog.Has(started, tag)).Aggregate(tags, (all, tag) => set.Tags.With(all, tag));
-    }
+    /// <summary>The one tag of the draft, trimmed, or null for none. Throws <see cref="ArgumentException"/> for two or more tags or an invalid one.</summary>
+    private static string? OneTag(IReadOnlyList<string> tags, string paramName) =>
+        tags.Count > 1 ? throw new ArgumentException("A task has at most one tag.", paramName)
+            : tags.Count == 0 ? null : TaskText.SingleLine(tags[0], paramName);
 
     public TaskItem Move(string taskId, string? previousTaskId, string? nextTaskId)
     {
@@ -355,10 +355,13 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         lock (gate)
         {
             var draft = drafts.Load();
-            if (draft is null || !set.Contains(draft.TaskId))
-                return draft;
-            drafts.Discard();
-            return null;
+            if (draft is not null && set.Contains(draft.TaskId))
+            {
+                drafts.Discard();
+                return null;
+            }
+
+            return draft is null ? null : draft with { Tags = [.. draft.Tags.Take(1)] };
         }
     }
 
