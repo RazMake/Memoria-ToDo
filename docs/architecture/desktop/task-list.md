@@ -36,7 +36,7 @@ Proposed, each a decision to confirm:
 - **A link in a title opens as a link**, and doesn't select the task.
 - **The checkbox's middle sits at the middle of the title's first line**, at any text size.
 - **Nothing is selected when Task View opens**, and the right side says "Select a task to see its description." It says that again when the selected task is deleted, hidden by search, or gone after a sync. A selected task with no description shows "No description." above its tags.
-- **Task View opens wide enough for both sides**, and can't be made so narrow that either side becomes unreadable: it opens at 1100 by 720 pixels with the sides split evenly, and is at least 680 pixels wide, with the left side at least 300 and the right side at least 340. A bar between the sides moves the split, by mouse only: the user decided it's never a keyboard stop, so it never shows a focus rectangle. Task View opens where [Single window](README.md#a-closed-window-is-made-again-on-the-next-show) places it and remembers neither its size, its split, nor its place, since remembering needs a saved setting that no design has yet.
+- **Task View opens wide enough for both sides**, and can't be made so narrow that either side becomes unreadable: it opens at 1100 by 720 pixels with the left side taking 68% of the width and the right side 32%, as the user decided, and is at least 680 pixels wide, with the left side at least 300 and the right side at least 340. A bar between the sides moves the split, by mouse only: the user decided it's never a keyboard stop, so it never shows a focus rectangle. Task View opens where [Single window](README.md#a-closed-window-is-made-again-on-the-next-show) places it and remembers neither its size, its split, nor its place, since remembering needs a saved setting that no design has yet.
 - **Each side scrolls on its own.** The description shows at its full height inside the right side, so the right side scrolls, not the web view.
 - The web view starts in the background when Task View opens, and is released when it closes, so the tray app holds no browser while Task View is closed. Microsoft recommends creating WebView2 only for real web content, and no more instances than needed ([WebView2 performance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/performance)).
 - A link to a deleted task shows "This task no longer exists." in the message line. A link to a resolved task shows the resolved tasks and selects it. A link to a hidden task clears the search if the search hides it, and [reveals its row](#a-click-on-a-groups-tag-collapses-or-expands-it) if every group it's in is collapsed, then selects it. The left side scrolls to the task's first row.
@@ -49,11 +49,11 @@ The user asked for these rules:
 
 - **A group's rows sit indented under its heading**, so the heading reads as the group's title.
 - **A click on a group's tag badge collapses the group**, hiding its rows, and another click expands it. The badge shows the hand pointer. The "No tag" heading works the same way.
-- **A collapsed heading's count is discreet**: "(3)" sits centered vertically on the badge, in the theme's secondary text color, with only the number bold. So it reads as a note beside the tag, not a second title.
+- **A collapsed heading's count is discreet**: "( 3 )", spaced as the user decided, sits centered vertically on the badge, in the theme's secondary text color, with only the number bold. So it reads as a note beside the tag, not a second title.
 
 Proposed, each a decision to confirm:
 
-- **A collapsed heading shows how many of its tasks it hides**, such as "(3)", so a collapsed group isn't mistaken for an empty one.
+- **A collapsed heading shows how many of its tasks it hides**, such as "( 3 )", so a collapsed group isn't mistaken for an empty one.
 - **Every group starts expanded when Task View opens.** The user decided that a collapsed group stays collapsed only until Task View closes: nothing stores it, so no file, format, or other device changes.
 - **Collapsing a group keeps the selection**, and the right side still shows the selected task, even when its row is hidden. A task in two groups still shows in its other, expanded group.
 - **Up and Down skip a collapsed group's rows**, and Alt+Up and Alt+Down move a task only among rows that show.
@@ -157,13 +157,14 @@ The table lists each action on the selected task, by mouse and by key. Proposed:
 | Move a group among the groups | Drag its heading | None |
 | Resolve, or reopen a resolved task | Click the checkbox | Ctrl+D |
 | Delete | The right-click menu | Delete |
-| Search | The magnifier button | Ctrl+F moves to the search box, and Enter there searches |
+| Search | Type in the search box | Ctrl+F, from anywhere in the window, even a row's open right-click menu, moves to the search box and selects its text. There, Down selects the top row and Up the bottom one. Up on the top row and Down on the bottom row go back to the search box |
 | Sync | The Sync button in the status bar | F5 |
 
 Also proposed, each a decision to confirm:
 
 - The right-click menu holds Edit Title, Edit Description, and Delete, each with its key beside it, so rows hold no buttons.
-- **Rows are the keyboard's stops, not their checkboxes.** Up and Down select the next row across group headings, skipping rows of collapsed groups, and Enter selects the focused row. When an edit ends with the focus inside the editor, the focus goes back to the selected task's row.
+- **Rows are the keyboard's stops, not their checkboxes.** Up and Down select the next row across group headings, skipping rows of collapsed groups, and Enter selects the focused row. The user decided that Up on the top row and Down on the bottom row move the cursor to the search box, with its text selected, and keep the selection.
+- **Ctrl+F always searches in Task View**, the user decided, even when the user made it the [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window): it moves to the search box and leaves an open edit open. In a row's right-click menu, it closes the menu first. When an edit ends with the focus inside the editor, the focus goes back to the selected task's row.
 - **The row keys work from the right side too**, the user decided. A click on the right side, such as on the description, gives it the focus, and then each row key in the table acts on the selected task as on its row. Proposed, each a decision to confirm: Alt+Up and Alt+Down move the task in the first group that shows it; the keys act only while the right side itself has the focus and shows the selected task, so keys in the tag control and in an open description edit, its Preview included, keep their own meaning. When a collapsed group hides every row of the selected task, its description still shows, and the user decided the keys still act on it: Shift+F2 expands the group to edit the title in its row, Alt+Up and Alt+Down do nothing, and the other keys act as usual.
 - **The list itself is never a keyboard stop**, the user decided, so it never shows a focus rectangle around the whole list. Tab goes straight to a row. Proposed: a focused row shows only its selection, with no dashed focus rectangle of its own. This is a decision to confirm.
 - Delete asks for no confirmation. The task disappears at once, and an Undo bar shows for about 10 seconds.
@@ -210,14 +211,15 @@ The user decided that Esc closes every window, one step per press, so one key pr
 
 1. **It closes an open list or menu**, such as the editor's snippet picker, the tag control's + menu, or its Custom box and colors, which drop what was typed there, as in [Add](task-editor.md#tags-show-as-colored-badges-and-the-plus-button-adds-one).
 2. **It leaves an edit**, with its Undo bar when a description edit had changes, as [Edit Description](#edit-description-turns-the-right-side-into-the-editor) and [Edit Title](#edit-title-edits-the-title-in-its-row) say.
-3. **It closes Task View**, as its close button does, so a pending Undo finishes, as above.
+3. **It empties the search when the search box holds text**, from anywhere in the window, so every task shows again and Task View stays open. The user asked for this.
+4. **It closes Task View**, as its close button does, so a pending Undo finishes, as above.
 
-Closing from an edit takes two presses. The window closes through the desktop platform's [Esc part](README.md#window-modules-read-keys-through-the-platform), so every step before it marks the key handled. Esc never closes the window while an edit is open, so it never shows the [close prompt](#closing-task-view-asks-before-it-drops-a-changed-edit).
+Closing from an edit takes two presses, and so does closing while the search holds text. The window closes through the desktop platform's [Esc part](README.md#window-modules-read-keys-through-the-platform), so every step before it marks the key handled. Esc never closes the window while an edit is open, so it never shows the [close prompt](#closing-task-view-asks-before-it-drops-a-changed-edit).
 
 Proposed, each a decision to confirm:
 
-- **Esc in the search box closes the window**, rather than clearing the search first. Task View is [made again](README.md#a-closed-window-is-made-again-on-the-next-show) each time it opens, so the search starts empty and hides nothing next time.
-- **Esc doesn't clear the selection**: with no list or edit open, it closes Task View, as the user's three steps say.
+- **Esc empties the search from anywhere in the window**, not only from the search box, since the search hides tasks wherever the focus is. An open edit ends first, so Esc during an edit keeps the search.
+- **Esc doesn't clear the selection**: with no list, edit, or search text, it closes Task View, as the user's steps say.
 - **Esc works while the description has focus.** The user decided that every key reaches the window, so Esc takes the same steps there as anywhere in Task View, and so do the function keys, such as F5 for Sync, and the Save shortcut and Ctrl+Tab in an edit's [Preview](#edit-description-has-an-edit-tab-and-a-preview-tab). Keys reach the window because the description's page [never holds the keyboard focus](formatted-view.md#the-page-never-holds-the-keyboard-focus): a click on it leaves the focus on the right side's pane. Its arrow keys and Page Up and Page Down scroll the pane.
 
 ### Closing Task View asks before it drops a changed edit
@@ -259,25 +261,30 @@ Proposed, each a decision to confirm:
 
 ### Search narrows the list
 
-[Tasks](../tasks.md#tags-and-search-ignore-case) decides how search matches tasks. The user decided that Task View has no tag filter, and that the search box sits after a "Search:" label, with a magnifier button after it that runs the search. Enter in the box runs it too.
+[Tasks](../tasks.md#tags-and-search-ignore-case) decides how search matches tasks. The user decided that Task View has no tag filter, that the search box sits after a "Search:" label with no button, and that the list narrows as the user types.
+
+The user also decided:
+
+- **The search box has the focus when Task View opens.** Down there selects the top row, and Up the bottom row; the list scrolls to it, and the row takes the focus.
+- **Task View's shortcut, while the window is open, brings it forward**, empties the search, and puts the cursor in the box, as [Shell](shell.md#a-shortcut-switches-between-add-and-task-view) says.
+- **Ctrl+F works anywhere in the window**, an open editor too, and selects the box's text.
 
 Proposed, each a decision to confirm:
 
-- Search looks in titles, descriptions, and tags. Each group shows only its tasks that match, and a group with none is hidden.
-- The magnifier button's tooltip says "Search (Enter)".
-- The user decided that only Enter or the magnifier button searches: typing alone doesn't narrow the list, so the list never changes under the user mid-word. Searching with an empty box shows every task again.
+- Search looks in titles, descriptions, and tags. Each group shows only its tasks that match, and a group with none is hidden. An empty box shows every task.
+- Opening Task View from the tray while it is open also empties the search, since the tray and the shortcut share the window's Show.
 - The resolved count, below, counts only the resolved tasks that match the search.
 
 ### The search bar spans the window in its own shade
 
 The user asked for a shorter search bar that stretches across the whole window, in a color slightly different from the window's, and decided the search bar is the whole band below. Proposed, each a decision to confirm:
 
-- **The search bar is the band at Task View's top that holds the "Search:" label, the search box, and the magnifier button.** It runs from the window's left edge to its right edge.
+- **The search bar is the band at Task View's top that holds the "Search:" label and the search box.** It runs from the window's left edge to its right edge.
 - **Its background is the same theme resource as the [status bar's](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar)**, so the two bars match and follow the theme.
-- **The search box takes the band's free width** between the label and the magnifier button, and grows and shrinks with the window. It keeps a smallest width for typing.
+- **The user decided the search box is 180 pixels wide**, whatever the window's width.
 - **The band is one row of controls tall**, with small padding.
 - **The message line and the Undo bar stay under the band**, outside it. The Undo bar keeps its own card look.
-- Proposed, each a decision to confirm: the band's height is the search box's plus at most 12 pixels of padding, and the search box keeps its smallest width of 160 pixels.
+- Proposed, a decision to confirm: the band's height is the search box's plus at most 12 pixels of padding.
 
 ### Resolved tasks wait behind a count at the bottom
 

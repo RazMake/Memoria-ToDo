@@ -9,7 +9,7 @@ internal readonly record struct RowPosition(string? Tag, string TaskId);
 internal sealed record PlannedGroup(string? Tag, int TaskCount, bool Collapsed, IReadOnlyList<TaskItem> Rows)
 {
     /// <summary>The count a collapsed heading shows, such as "(3)", or empty while the group is expanded.</summary>
-    public string CountText => Collapsed ? $"({TaskCount})" : "";
+    public string CountText => Collapsed ? $"( {TaskCount} )" : "";
 }
 
 /// <summary>Which rows the groups show, given what the user has collapsed, and how the keyboard moves between them.</summary>

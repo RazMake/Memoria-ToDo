@@ -44,6 +44,8 @@ internal static class TagBadgeVisuals
 
         var row = new FrameworkElementFactory(typeof(StackPanel));
         row.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+        row.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        row.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         row.AppendChild(Name(look));
         row.AppendChild(remove);
 
@@ -91,6 +93,8 @@ internal static class TagBadgeVisuals
         name.SetBinding(TextBlock.TextProperty, new Binding("."));
         name.SetBinding(TextBlock.ForegroundProperty, TextOf(look));
         name.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        name.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        name.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
         return name;
     }
 

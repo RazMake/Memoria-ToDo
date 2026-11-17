@@ -66,14 +66,14 @@ public class TrayAppConfigureShortcutTests
     }
 
     [Fact]
-    public void While_Configure_is_open_does_nothing()
+    public void While_Configure_is_open_brings_it_forward_and_closes_nothing()
     {
         var app = Started();
         app.Configure.IsOpen = true;
 
         app.GlobalShortcut.Press(TestShortcut.A);
 
-        Assert.Empty(app.Shown);
+        Assert.Equal(["Configure"], app.Shown);
     }
 
     [Fact]

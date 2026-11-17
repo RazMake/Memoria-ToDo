@@ -9,7 +9,7 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// The search band at the top of Task View: the band behind the "Search:" label, the search box, and its button, how wide and tall it is, and
+/// The search band at the top of Task View: the band behind the "Search:" label and the search box, how wide and tall it is, and
 /// the message line and Undo bar under it. Measured in a bare container with no window or theme, so the numbers are the
 /// header's own; the container holds the theme resource the band's color comes from.
 /// </summary>
@@ -17,7 +17,6 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 public class ListHeaderTests
 {
     private const string BandKey = "CardBackgroundFillColorDefaultBrush";
-    private const double SmallestSearchWidth = 160;
     private const double MostExtraBandHeight = 12;
 
     [WpfFact]
@@ -42,21 +41,34 @@ public class ListHeaderTests
         Assert.Equal(Colors.Blue, host.BandColor);
     }
 
-    [WpfFact]
-    public void The_search_box_takes_the_free_width_between_the_label_and_the_button()
+    [WpfTheory]
+    [InlineData(200)]
+    [InlineData(1000)]
+    public void The_search_box_is_180_wide_whatever_the_band_width(double width)
     {
-        var narrower = new Host(width: 700).Search.ActualWidth;
-        var wider = new Host(width: 1000).Search.ActualWidth;
+        var host = new Host(width);
 
-        Assert.True(wider - narrower >= 250, $"The box grew from {narrower} to {wider} when the band grew by 300.");
+        Assert.InRange(host.Search.ActualWidth, 179.5, 180.5);
     }
 
     [WpfFact]
-    public void The_search_box_keeps_a_smallest_width_in_a_narrow_window()
+    public void The_band_has_no_button()
     {
-        var host = new Host(width: 200);
+        var host = new Host(width: 800);
 
-        Assert.True(host.Search.ActualWidth >= SmallestSearchWidth, $"The box shrank to {host.Search.ActualWidth}.");
+        Assert.DoesNotContain(OpenWindows.Descendants(host.Header).OfType<Button>(), button => host.IsInside(button, host.Band));
+    }
+
+    [WpfFact]
+    public void Each_change_to_the_box_sets_the_search_at_once()
+    {
+        var host = new Host(width: 800);
+
+        host.Search.Text = "mi";
+        Assert.Equal("mi", host.Filter.SearchText);
+
+        host.Search.Text = "";
+        Assert.Equal("", host.Filter.SearchText);
     }
 
     [WpfFact]
@@ -64,9 +76,7 @@ public class ListHeaderTests
     {
         var host = new Host(width: 1000);
 
-        Assert.InRange(host.TopOf(host.RunSearch) - host.TopOf(host.Search), -1, 1);
-        var controls = Math.Max(host.Search.ActualHeight, host.RunSearch.ActualHeight);
-        Assert.InRange(host.Band.ActualHeight - controls, 0, MostExtraBandHeight);
+        Assert.InRange(host.Band.ActualHeight - host.Search.ActualHeight, 0, MostExtraBandHeight);
     }
 
     [WpfFact]
@@ -91,7 +101,7 @@ public class ListHeaderTests
     {
         public Host(double width)
         {
-            Header = new ListHeader(new ListFilter());
+            Header = new ListHeader(Filter);
             Container = new DockPanel { LastChildFill = false, Width = width };
             Container.Resources[BandKey] = new SolidColorBrush(Colors.Red);
             DockPanel.SetDock(Header, Dock.Top);
@@ -99,13 +109,13 @@ public class ListHeaderTests
             Layout(width);
         }
 
+        public ListFilter Filter { get; } = new();
+
         public ListHeader Header { get; }
 
         public DockPanel Container { get; }
 
         public TextBox Search => OpenWindows.Descendants(Header).OfType<TextBox>().Single(box => AutomationProperties.GetName(box) == "Search");
-
-        public Button RunSearch => OpenWindows.Descendants(Header).OfType<Button>().Single(button => AutomationProperties.GetName(button) == "Run search");
 
         /// <summary>The element behind the search box that has a background: the band.</summary>
         public FrameworkElement Band

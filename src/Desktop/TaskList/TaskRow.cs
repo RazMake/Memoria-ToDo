@@ -93,6 +93,9 @@ internal sealed class TaskRow : Border
 
     public event EventHandler? DeleteRequested;
 
+    /// <summary>Raised on Ctrl+F in the row's menu, which closes first, since the menu keeps its keys from the window.</summary>
+    public event EventHandler? SearchRequested;
+
     /// <summary>Raised with true when the user ticks the checkbox, and false when they untick it.</summary>
     public event EventHandler<bool>? ResolveToggled;
 
@@ -140,7 +143,29 @@ internal sealed class TaskRow : Border
         edit.Click += (_, _) => EditRequested?.Invoke(this, EventArgs.Empty);
         var delete = new MenuItem { Header = "Delete", InputGestureText = "Del" };
         delete.Click += (_, _) => DeleteRequested?.Invoke(this, EventArgs.Empty);
-        return new ContextMenu { Items = { editTitle, edit, delete } };
+        var menu = new ContextMenu { Items = { editTitle, edit, delete } };
+        // The menu is a popup, so its keys never reach the window, which tracks the held modifiers for its own keys.
+        var held = new HeldModifierKeys();
+        menu.PreviewKeyDown += (_, e) =>
+        {
+            var key = EventKey.Of(e);
+            if (ModifierKey.Of(key) != ModifierKeys.None)
+            {
+                held.Pressed(key);
+                return;
+            }
+
+            held.OtherKeyReached();
+            if (held.Modifiers == ModifierKeys.Control && key == Key.F)
+            {
+                e.Handled = true;
+                menu.IsOpen = false;
+                SearchRequested?.Invoke(this, EventArgs.Empty);
+            }
+        };
+        menu.PreviewKeyUp += (_, e) => held.Released(EventKey.Of(e));
+        menu.Closed += (_, _) => held.Clear();
+        return menu;
     }
 
     /// <summary>

@@ -22,7 +22,7 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 /// <item>The right side is the element with automation id "Details": it holds the selected task's description, its tag control, the editor, or the placeholder text.</item>
 /// <item>A row's right-click menu is its <c>ContextMenu</c>, with the items Edit Description and Delete, each with its key as the gesture text.</item>
 /// <item>Buttons are found by their label: the automation name, or the text of the content: Undo, "N resolved".</item>
-/// <item>The search box is a text box named "Search"; the magnifier button next to it has the tooltip "Search (Enter)". The status bar has automation id "StatusBar" and holds the Sync button (name "Sync"), the error text and the version.</item>
+/// <item>The search box is a text box named "Search". The status bar has automation id "StatusBar" and holds the Sync button (name "Sync"), the error text and the version.</item>
 /// <item>The editor's Title field has automation id "Title".</item>
 /// </list>
 /// </summary>
@@ -105,6 +105,17 @@ internal sealed partial class TaskListScreen : IDisposable
                 left,
                 left + splitter.ActualWidth,
                 Details.TranslatePoint(new Point(0, 0), Window).X);
+        }
+    }
+
+    /// <summary>The rows' side's share of the width the two sides take, leaving out the bar between them.</summary>
+    public double RowsSideShare
+    {
+        get
+        {
+            var edges = SideEdges;
+            var right = ((FrameworkElement)Window.Content).ActualWidth - edges.SplitterRight;
+            return edges.SplitterLeft / (edges.SplitterLeft + right);
         }
     }
 
@@ -217,6 +228,32 @@ internal sealed partial class TaskListScreen : IDisposable
         [.. (Row(title, group).ContextMenu?.Items.OfType<MenuItem>()
             ?? throw new InvalidOperationException($"The row \"{title}\" has no right-click menu."))
             .Select(item => ((string)item.Header, item.InputGestureText))];
+
+    /// <summary>Opens the row's right-click menu with the keyboard focus on its first item, as opening it from the keyboard does.</summary>
+    public void OpenContextMenu(string title)
+    {
+        var menu = RowMenu(title);
+        menu.PlacementTarget = Row(title);
+        menu.IsOpen = true;
+        Refresh();
+        Keyboard.Focus(menu.Items.OfType<MenuItem>().First());
+        Refresh();
+    }
+
+    /// <summary>Presses the keys on the focused item of the row's open menu, which keeps its keys from the window.</summary>
+    public void PressInContextMenu(string title, params Key[] keys)
+    {
+        var menu = RowMenu(title);
+        var item = menu.Items.OfType<MenuItem>().FirstOrDefault(i => i.IsKeyboardFocusWithin)
+            ?? throw new InvalidOperationException($"No item of the row \"{title}\"'s menu has the focus.");
+        SimulatedKey.Chord(item, keys);
+        Refresh();
+    }
+
+    public bool ContextMenuIsOpen(string title) => RowMenu(title).IsOpen;
+
+    private ContextMenu RowMenu(string title) =>
+        Row(title).ContextMenu ?? throw new InvalidOperationException($"The row \"{title}\" has no right-click menu.");
 
     /// <summary>Chooses the item of the row's right-click menu, as clicking it does.</summary>
     public void ChooseContextItem(string title, string label, string? group = null)
@@ -365,23 +402,19 @@ internal sealed partial class TaskListScreen : IDisposable
     /// <summary>Whether the row's checkbox shows ticked.</summary>
     public bool CheckBoxIsTicked(string title, string? group = null) => Visuals(Row(title, group)).OfType<CheckBox>().Single().IsChecked == true;
 
-    /// <summary>Types the text into the search box and presses Enter in it, which searches. Ctrl+F gives the box the focus.</summary>
-    public void Search(string text)
-    {
-        TypeSearch(text);
-        var box = SearchBox;
-        box.Focus();
-        Keyboard.Focus(box);
-        Press(Key.Enter);
-    }
+    /// <summary>Types the text into the search box, which searches as it changes.</summary>
+    public void Search(string text) => TypeSearch(text);
 
-    /// <summary>Puts the text into the search box, as typing does, without searching.</summary>
+    /// <summary>Puts the text into the search box, as typing does.</summary>
     public void TypeSearch(string text)
     {
         Refresh();
         SearchBox.Text = text;
         Refresh();
     }
+
+    /// <summary>The part of the search box's text that shows selected.</summary>
+    public string SearchSelectedText => SearchBox.SelectedText;
 
     /// <summary>Whether the search box holds the keyboard focus.</summary>
     public bool SearchHasFocus =>
@@ -531,6 +564,22 @@ internal sealed partial class TaskListScreen : IDisposable
     {
         Window.Width = width;
         Refresh();
+    }
+
+    /// <summary>Whether the row lies wholly inside the visible part of the list that scrolls it.</summary>
+    public bool RowIsScrolledIntoView(string title, string? group = null)
+    {
+        Refresh();
+        var row = Row(title, group);
+        DependencyObject current = row;
+        while (current is not ScrollViewer)
+        {
+            current = VisualTreeHelper.GetParent(current) ?? throw new InvalidOperationException("The row isn't in a scrolled list.");
+        }
+
+        var viewer = (ScrollViewer)current;
+        var top = row.TranslatePoint(new Point(0, 0), viewer).Y;
+        return top >= -0.5 && top + row.ActualHeight <= viewer.ViewportHeight + 0.5;
     }
 
     /// <summary>

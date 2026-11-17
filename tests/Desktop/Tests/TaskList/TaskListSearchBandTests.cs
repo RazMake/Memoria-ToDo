@@ -66,15 +66,15 @@ public class TaskListSearchBandTests
     }
 
     [WpfFact]
-    public void The_search_box_grows_with_the_window()
+    public void The_search_box_stays_180_wide_as_the_window_grows()
     {
         using var screen = Open();
         screen.ResizeTo(700);
-        var narrower = screen.SearchBox.ActualWidth;
+        Assert.InRange(screen.SearchBox.ActualWidth, 179.5, 180.5);
 
         screen.ResizeTo(1000);
 
-        Assert.True(screen.SearchBox.ActualWidth - narrower >= 250, $"The box went from {narrower} to {screen.SearchBox.ActualWidth}.");
+        Assert.InRange(screen.SearchBox.ActualWidth, 179.5, 180.5);
     }
 
     [WpfFact]

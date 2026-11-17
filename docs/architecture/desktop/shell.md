@@ -39,14 +39,14 @@ sign-in, so setup or its error is visible.
 
 ### A shortcut switches between Add and Task View
 
-The user decided that pressing the other window's shortcut closes the open window and opens the other one, and pressing the open window's own shortcut does nothing. The table lists what each shortcut does, by the window that's open:
+The user decided that pressing the other window's shortcut closes the open window and opens the other one, and pressing the open window's own shortcut brings it to the front, even from behind other windows. The table lists what each shortcut does, by the window that's open:
 
 | Open window | Add new task shortcut | Task View shortcut | Configure shortcut |
 | --- | --- | --- | --- |
 | None | Opens Add | Opens Task View | Opens Configure |
-| Add | Nothing | Closes Add, keeping its [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Esc does, then opens Task View | Closes Add, keeping its draft, then opens Configure |
-| Task View | Closes Task View, asking first about a changed edit, then opens Add once it's closed | Nothing, even while Task View is behind other windows | Closes Task View, asking first about a changed edit, then opens Configure once it's closed |
-| Configure | Nothing | Nothing | Nothing, even while Configure is behind other windows |
+| Add | Brings Add to the front | Closes Add, keeping its [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Esc does, then opens Task View | Closes Add, keeping its draft, then opens Configure |
+| Task View | Closes Task View, asking first about a changed edit, then opens Add once it's closed | Brings Task View to the front, empties its search, and puts the cursor there | Closes Task View, asking first about a changed edit, then opens Configure once it's closed |
+| Configure | Nothing | Nothing | Brings Configure to the front |
 
 The user decided the Configure shortcut's column.
 
@@ -54,8 +54,9 @@ Closing Task View this way works as its close button does: a pending Undo finish
 
 Proposed, each a decision to confirm:
 
-- **While Configure is open, Add's and Task View's shortcuts do nothing**, as before, since Configure is where the shortcuts change.
-- **While both Add and Task View are open, a shortcut does nothing.** Only the tray can open the second one, and either shortcut's own window is then already open.
+- **A shortcut whose window is open brings that window forward**, the user decided, even while Configure is open; for Task View it also empties the search and puts the cursor there.
+- **While Configure is open, the shortcut of a window that isn't open does nothing**, as before, since Configure is where the shortcuts change.
+- **While both Add and Task View are open, a shortcut brings its own window forward**, and the other's shortcut does nothing.
 - **The tray menu and a left click on the tray icon keep opening their window** without closing another, since the user's rule is about the shortcuts.
 - **Until the device is configured, every shortcut opens Configure**, as the setup rule above decides.
 

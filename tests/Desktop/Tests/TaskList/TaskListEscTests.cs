@@ -5,8 +5,8 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Esc in Task View goes back one step, then closes the window: it closes an open list, then leaves an edit, then closes
-/// Task View. The rule for which edits show the Undo bar is unit-tested in EditCleanupTests, and Esc on a changed edit with
+/// Esc in Task View goes back one step, then closes the window: it closes an open list, then leaves an edit, then empties
+/// the search, then closes Task View. The rule for which edits show the Undo bar is unit-tested in EditCleanupTests, and Esc on a changed edit with
 /// its Undo is in TaskListEditTests. Task View has the Description editor's snippet list and the tag control's + menu and its Custom box;
 /// Esc with the menu or Custom open is in TaskListTagEscTests. Esc from the real
 /// description web view is an integration test, ViewTasksEscWithRealWebViewTests.
@@ -30,6 +30,67 @@ public class TaskListEscTests
         Assert.Empty(screen.ShownSnippets);
         Assert.True(screen.IsEditing("Buy milk"));
         Assert.True(screen.View.IsOpen);
+    }
+
+    [WpfFact]
+    public void Esc_with_text_in_the_search_box_empties_it_and_keeps_the_window()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk");
+        services.Add("Call Ana");
+        using var screen = new TaskListScreen(services);
+        screen.TypeSearch("milk");
+
+        screen.Press(Key.Escape);
+
+        Assert.True(screen.View.IsOpen);
+        Assert.Equal("", screen.SearchText);
+        Assert.Equal(["Call Ana", "Buy milk"], screen.RowTitles);
+    }
+
+    [WpfFact]
+    public void Esc_on_a_row_while_the_search_has_text_empties_the_search_and_keeps_the_window()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk");
+        services.Add("Call Ana");
+        using var screen = new TaskListScreen(services);
+        screen.TypeSearch("milk");
+        screen.Select("Buy milk");
+
+        screen.Press(Key.Escape);
+
+        Assert.True(screen.View.IsOpen);
+        Assert.Equal("", screen.SearchText);
+    }
+
+    [WpfFact]
+    public void Esc_after_the_search_emptied_closes_Task_View()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk");
+        using var screen = new TaskListScreen(services);
+        screen.TypeSearch("milk");
+        screen.Press(Key.Escape);
+
+        screen.PressToClose(Key.Escape);
+
+        Assert.False(screen.View.IsOpen);
+    }
+
+    [WpfFact]
+    public void Esc_with_an_edit_open_and_text_in_the_search_leaves_the_edit_and_keeps_the_search()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk");
+        using var screen = new TaskListScreen(services);
+        screen.TypeSearch("milk");
+        screen.PressOn("Buy milk", Key.F2);
+
+        screen.Press(Key.Escape);
+
+        Assert.False(screen.IsEditingAny);
+        Assert.Equal("milk", screen.SearchText);
     }
 
     [WpfFact]
@@ -179,21 +240,6 @@ public class TaskListEscTests
 
         Assert.False(screen.View.IsOpen);
         Assert.Empty(services.Tasks.All);
-    }
-
-    [WpfFact]
-    public void Esc_in_the_search_box_closes_Task_View_instead_of_clearing_the_search()
-    {
-        var services = new ListServices();
-        services.Add("Buy milk");
-        using var screen = new TaskListScreen(services);
-        screen.Press(Key.LeftCtrl, Key.F);
-        screen.Search("milk");
-        Assert.True(screen.SearchHasFocus);
-
-        screen.PressToClose(Key.Escape);
-
-        Assert.False(screen.View.IsOpen);
     }
 
     [WpfFact]

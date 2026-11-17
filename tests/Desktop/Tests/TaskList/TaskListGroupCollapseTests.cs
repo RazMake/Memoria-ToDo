@@ -65,7 +65,7 @@ public class TaskListGroupCollapseTests
 
         screen.ToggleGroup("work");
 
-        Assert.Contains("(2)", screen.HeadingText("work"));
+        Assert.Contains("( 2 )", screen.HeadingText("work"));
     }
 
     [WpfTheory]
@@ -79,7 +79,7 @@ public class TaskListGroupCollapseTests
 
         var pieces = screen.HeadingCountPieces(group);
         Assert.Equal(group == "work" ? "2" : "1", string.Concat(pieces.Where(p => p.Weight >= FontWeights.Bold).Select(p => p.Text)));
-        Assert.Equal("()", string.Concat(pieces.Where(p => p.Weight < FontWeights.Bold).Select(p => p.Text)));
+        Assert.Equal("(  )", string.Concat(pieces.Where(p => p.Weight < FontWeights.Bold).Select(p => p.Text)));
     }
 
     [WpfTheory]

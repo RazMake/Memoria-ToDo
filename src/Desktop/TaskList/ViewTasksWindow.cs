@@ -79,7 +79,15 @@ public static class ViewTasksWindow
             });
         }
 
-        public void Show() => _window.Show();
+        public void Show()
+        {
+            var wasOpen = _window.IsOpen;
+            _window.Show();
+            if (wasOpen)
+            {
+                _current?.StartSearch();
+            }
+        }
 
         public bool IsOpen => _window.IsOpen;
 

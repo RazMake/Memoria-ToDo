@@ -6,8 +6,8 @@ namespace Memoria.ToDo.Desktop.Shell;
 internal readonly record struct OtherWindow(Func<bool> IsOpen, Func<bool> Close);
 
 /// <summary>
-/// One window's shortcut, by the shell design's switching table. Does nothing while Configure or its own window is
-/// open. Otherwise it closes the one other window that is open, if any, and shows its own window only if that closed.
+/// One window's shortcut, by the shell design's switching table. Brings its own window forward when it is open, and
+/// does nothing while Configure is open. Otherwise it closes the one other window that is open, if any, and shows its own window only if that closed.
 /// With two of the other windows open it does nothing.
 /// </summary>
 /// <param name="configureOpen">Whether Configure is open.</param>
@@ -23,7 +23,13 @@ internal sealed class ShortcutSwitch(
     /// <summary>Runs the shortcut's press.</summary>
     public void Press()
     {
-        if (configureOpen() || ownOpen())
+        if (ownOpen())
+        {
+            showOwn();
+            return;
+        }
+
+        if (configureOpen())
         {
             return;
         }

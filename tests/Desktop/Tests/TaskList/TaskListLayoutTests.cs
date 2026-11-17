@@ -29,6 +29,18 @@ public class TaskListLayoutTests
     }
 
     [WpfFact]
+    public void The_rows_side_starts_with_68_percent_of_the_width_and_the_description_with_32()
+    {
+        var services = new ListServices();
+        services.Add("Buy milk");
+        using var screen = new TaskListScreen(services);
+
+        screen.ResizeTo(1600);
+
+        Assert.InRange(screen.RowsSideShare, 0.67, 0.69);
+    }
+
+    [WpfFact]
     public void Dragging_the_bar_to_the_right_makes_the_rows_side_wider()
     {
         var services = new ListServices();

@@ -195,6 +195,12 @@ internal sealed class GroupedRows : StackPanel
         return key == default || key.Resolved ? null : new RowPosition(key.Tag, key.Id);
     }
 
+    /// <summary>The top row of the list, or null when no row shows.</summary>
+    public TaskRow? FirstRow => _shown.Count == 0 ? null : _shown[0].Row;
+
+    /// <summary>The bottom row of the list, or null when no row shows.</summary>
+    public TaskRow? LastRow => _shown.Count == 0 ? null : _shown[^1].Row;
+
     /// <summary>The first row that shows the task, or null when none does.</summary>
     public TaskRow? FirstRowOf(string id) => _shown.Select(shown => shown.Row).FirstOrDefault(row => row.Task.Id == id);
 

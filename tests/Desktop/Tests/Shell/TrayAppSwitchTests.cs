@@ -58,7 +58,7 @@ public class TrayAppSwitchTests
     [Theory]
     [InlineData(ShortcutKind.AddNewTask)]
     [InlineData(ShortcutKind.ManageTasks)]
-    public void A_windows_own_shortcut_while_it_is_open_does_nothing(ShortcutKind kind)
+    public void A_windows_own_shortcut_while_it_is_open_brings_it_forward_and_closes_nothing(ShortcutKind kind)
     {
         var app = Started(kind);
         app.Add.IsOpen = kind == ShortcutKind.AddNewTask;
@@ -66,13 +66,13 @@ public class TrayAppSwitchTests
 
         app.GlobalShortcut.Press(TestShortcut.A);
 
-        Assert.Empty(app.Shown);
+        Assert.Equal([kind == ShortcutKind.AddNewTask ? "Add" : "Task View"], app.Shown);
     }
 
     [Theory]
     [InlineData(ShortcutKind.AddNewTask)]
     [InlineData(ShortcutKind.ManageTasks)]
-    public void A_shortcut_while_both_Add_and_Task_View_are_open_does_nothing(ShortcutKind kind)
+    public void A_shortcut_while_both_Add_and_Task_View_are_open_brings_its_own_window_forward(ShortcutKind kind)
     {
         var app = Started(kind);
         app.Add.IsOpen = true;
@@ -80,7 +80,7 @@ public class TrayAppSwitchTests
 
         app.GlobalShortcut.Press(TestShortcut.A);
 
-        Assert.Empty(app.Shown);
+        Assert.Equal([kind == ShortcutKind.AddNewTask ? "Add" : "Task View"], app.Shown);
     }
 
     [Theory]

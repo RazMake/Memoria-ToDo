@@ -151,6 +151,7 @@ Proposed, each a decision to confirm:
 Proposed, each a decision to confirm:
 
 - **Each badge has a button that removes its tag.** Badges wrap onto more lines when a task has many.
+- **A badge's text sits in its middle, across and down**, the user decided, with its remove button when it has one.
 - **The + button follows the last badge, in the same row**, and wraps with the badges, so it always sits where the next tag will go. With no tags, it starts the row.
 - **A color belongs to the tag, not to one task.** Choosing a color for a tag already in use changes it on every task, and on every device after a sync.
 - **A tag with no color kept shows its default color**, which [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) picks from the tag's text with case ignored, so a tag looks the same in every window and on every device. A color name this app doesn't know, such as one a newer app wrote, shows the default and is kept as it is.

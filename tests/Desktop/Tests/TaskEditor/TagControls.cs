@@ -42,6 +42,10 @@ internal static class TagControls
     /// <summary>The badge for the tag.</summary>
     public static FrameworkElement Badge(DependencyObject root, string tag) => Part(root, BadgePrefix + tag);
 
+    /// <summary>The text block in the badge that shows the tag's name.</summary>
+    public static TextBlock BadgeText(DependencyObject root, string tag) =>
+        Visuals(Badge(root, tag)).OfType<TextBlock>().First(text => text.Text == tag);
+
     /// <summary>The badge's value and text color as "#rrggbb", read from what the badge paints.</summary>
     public static TagFill FillOf(DependencyObject root, string tag)
     {

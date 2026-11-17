@@ -8,16 +8,14 @@ using Memoria.ToDo.Desktop.Fakes;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// How a Task View test reaches the status bar, the search button, the group headings' collapse, and the focus rules.
+/// How a Task View test reaches the status bar, the group headings' collapse, and the focus rules.
 /// The status bar is Updates' <see cref="Updates.UpdateStatusBar"/> (see TaskListScreen.Updates); its start holds the Sync button, named "Sync" with a tooltip, then the error, and the version, as text.
-/// The search button has the tooltip "Search (Enter)". A group's tag badge has the automation id "Badge {tag}" (see
+/// A group's tag badge has the automation id "Badge {tag}" (see
 /// <see cref="TaskEditor.Tests.TagControls"/>); the "No tag" heading has no badge, so a click lands on the heading itself.
 /// Shared test setup.
 /// </summary>
 internal sealed partial class TaskListScreen
 {
-    private const string SearchTooltip = "Search (Enter)";
-
     /// <summary>The status bar's Sync button.</summary>
     public ButtonBase SyncButton => Buttons(StatusBar).Single(button => LabelOf(button) == "Sync");
 
@@ -50,14 +48,6 @@ internal sealed partial class TaskListScreen
 
     /// <summary>Whether Tab lands on the status bar itself, as it does on its Sync button.</summary>
     public bool StatusBarIsTabStop => IsKeyboardStop(StatusBar);
-
-    /// <summary>Clicks the search button next to the search box.</summary>
-    public void PressSearchButton() => Activate(SearchButton);
-
-    /// <summary>The tooltip of the search button.</summary>
-    public string? SearchButtonTooltip => SearchButton.ToolTip as string;
-
-    private ButtonBase SearchButton => Buttons(Window).Single(button => button.ToolTip as string == SearchTooltip);
 
     /// <summary>Whether a text with the words shows next to the search box as its label.</summary>
     public bool ShowsSearchLabel => ShowsText("Search:");
@@ -115,7 +105,7 @@ internal sealed partial class TaskListScreen
         Refresh();
         var heading = Headings().Single(h => AutomationProperties.GetName(h) == group);
         return Visuals(heading).OfType<TextBlock>()
-            .Single(block => block.IsVisible && System.Text.RegularExpressions.Regex.IsMatch(OpenWindows.TextOf(block), @"^\(\d+\)$"));
+            .Single(block => block.IsVisible && System.Text.RegularExpressions.Regex.IsMatch(OpenWindows.TextOf(block), @"^\( \d+ \)$"));
     }
 
     // The badge of a tag's heading, or the words of the "No tag" heading.

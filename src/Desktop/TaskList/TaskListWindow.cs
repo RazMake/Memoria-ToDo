@@ -111,6 +111,8 @@ internal sealed class TaskListWindow : Window
         _header.ShowMessage(message);
         _filter.Changed += (_, _) => Refresh();
         _header.UndoClicked += (_, _) => _pending.Undo();
+        _header.EdgeRowRequested += (_, last) => SelectEdgeRow(last);
+        Loaded += (_, _) => _header.FocusSearch();
         _rows.ResolvedClicked += (_, _) =>
         {
             _content.ShowResolved = !_content.ShowResolved;
@@ -205,9 +207,9 @@ internal sealed class TaskListWindow : Window
         };
         splitter.SetResourceReference(BackgroundProperty, "CardStrokeColorDefaultBrush");
         var sides = new Grid();
-        sides.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 300 });
+        sides.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(68, GridUnitType.Star), MinWidth = 300 });
         sides.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        sides.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 340 });
+        sides.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32, GridUnitType.Star), MinWidth = 340 });
         Grid.SetColumn(splitter, 1);
         Grid.SetColumn(_details, 2);
         sides.Children.Add(left);
@@ -345,6 +347,7 @@ internal sealed class TaskListWindow : Window
         row.EditRequested += (_, _) => BeginEditOf(row.Task, row);
         row.EditTitleRequested += (_, _) => BeginTitleEditOf(row.Task, row);
         row.DeleteRequested += (_, _) => Delete(row.Task);
+        row.SearchRequested += (_, _) => _header.FocusSearch();
         row.ResolveToggled += (_, on) => Resolve(row.Task, row, on);
         row.LinkClicked += (_, address) => FollowLink(address);
         row.OpenFailed += (_, failure) => Report(failure.Message);
@@ -376,6 +379,26 @@ internal sealed class TaskListWindow : Window
 
         _selection.Select(id);
         Refresh();
+    }
+
+    /// <summary>Empties the search and puts the cursor in it, as when the window's shortcut brings it forward.</summary>
+    public void StartSearch()
+    {
+        _filter.ClearSearch();
+        _header.FocusSearch();
+    }
+
+    // Down in the search box selects the top row, Up the bottom one, and the list scrolls to it.
+    private void SelectEdgeRow(bool last)
+    {
+        if ((last ? _rows.LastRow : _rows.FirstRow) is not { } row)
+        {
+            return;
+        }
+
+        // Focus scrolls the row into view; this row, not the task's first one, since a task can show in two groups.
+        Keyboard.Focus(row);
+        SelectTask(row.Task.Id);
     }
 
     private void FocusSelectedRow()
@@ -693,7 +716,13 @@ internal sealed class TaskListWindow : Window
         }
 
         var modifiers = _held.Modifiers;
-        if (TabKeys(modifiers, key))
+        // Ctrl+F comes before TabKeys, so it searches even when the user made it a Save key.
+        if (modifiers == ModifierKeys.Control && key == Key.F)
+        {
+            _header.FocusSearch();
+            e.Handled = true;
+        }
+        else if (TabKeys(modifiers, key))
         {
             e.Handled = true;
         }
@@ -707,11 +736,6 @@ internal sealed class TaskListWindow : Window
                 LeaveEdit();
                 e.Handled = true;
             }
-        }
-        else if (modifiers == ModifierKeys.Control && key == Key.F && !_editing.Contains(e.OriginalSource))
-        {
-            _header.FocusSearch();
-            e.Handled = true;
         }
         else if (e.OriginalSource is TaskRow row)
         {
@@ -765,6 +789,10 @@ internal sealed class TaskListWindow : Window
                 Keyboard.Focus(next);
                 SelectTask(next.Task.Id);
             }
+            else
+            {
+                _header.FocusSearch();
+            }
 
             return true;
         }
@@ -781,6 +809,18 @@ internal sealed class TaskListWindow : Window
 
         _rowActions[action](task, row);
         return true;
+    }
+
+    // Esc that no list, menu, or edit took empties the search before it may close the window. This class handler runs
+    // before the platform's Esc handler.
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (!e.Handled && EventKey.Of(e) == Key.Escape && _held.Modifiers == ModifierKeys.None && _filter.SearchText.Length > 0)
+        {
+            _filter.ClearSearch();
+            e.Handled = true;
+        }
     }
 
     private async void SyncOnKey() => await _sync.SyncAsync();

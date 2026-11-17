@@ -59,7 +59,7 @@ public class GroupPlanTests
         Assert.True(group.Collapsed);
         Assert.Empty(group.Rows);
         Assert.Equal(3, group.TaskCount);
-        Assert.Equal("(3)", group.CountText);
+        Assert.Equal("( 3 )", group.CountText);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class GroupPlanTests
         Assert.Equal(["home", null], plan.Select(group => group.Tag));
         Assert.False(plan[0].Collapsed);
         Assert.True(plan[1].Collapsed);
-        Assert.Equal("(1)", plan[1].CountText);
+        Assert.Equal("( 1 )", plan[1].CountText);
     }
 
     [Fact]

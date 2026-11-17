@@ -24,6 +24,19 @@ public class TagEditorBadgeTests
     }
 
     [WpfFact]
+    public void Centers_the_tag_name_and_its_remove_button_in_the_badge_both_ways()
+    {
+        using var host = new TagEditorWindow("work", "home");
+
+        var badge = TagControls.BoundsIn(host.Editor, TagControls.Badge(host.Editor, "work"));
+        var name = TagControls.BoundsIn(host.Editor, TagControls.BadgeText(host.Editor, "work"));
+        var remove = TagControls.BoundsIn(host.Editor, TagControls.RemoveButton(host.Editor, "work"));
+
+        Assert.InRange(name.Top - badge.Top - (badge.Bottom - name.Bottom), -1, 1);
+        Assert.InRange(name.Left - badge.Left - (badge.Right - remove.Right), -1, 1);
+    }
+
+    [WpfFact]
     public void Shows_a_tag_in_its_kept_color_or_its_default_for_the_theme()
     {
         using var host = new TagEditorWindow();

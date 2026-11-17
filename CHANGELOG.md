@@ -10,6 +10,10 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - In Configure, the settings window, Git Access now appears before Repository. Generate key copies the new public key, Copy public key only copies, and Forget key deletes this device's key after confirmation.
 - Set key, beside Clone, copies your public key and opens the Git provider's settings for the repository address you entered. The host-key details string is no longer shown.
 - In Task View, the window that lists your tasks, you can now drag a tag's group to a new position by its heading, and the order is kept on every device you sync. A line shows where a dragged task or group will land, and the list scrolls while you drag near its top or bottom edge. Until older versions of the app are updated, they show default tag colors after this change.
+- Task View now searches as you type; the magnifier button is gone, and the search box is narrower. The cursor starts in the search box: Down there selects the first task, and Up the last. Ctrl+F jumps to the search box from anywhere in the window and selects its text, even from a task's right-click menu or when you made Ctrl+F your Save shortcut.
+- In Task View's list, Up on the first task and Down on the last one take you back to the search box. Esc now first clears the search when it holds text, and closes the window on the next press.
+- Pressing a window's shortcut while it's open behind other windows now brings it to the front. For Task View, it also clears the search and puts the cursor there.
+- Task View's list now takes about two thirds of the window at first. A collapsed group's count reads "( 3 )", and tag names sit centered in their colored tags.
 
 ## 1.0.0
 
