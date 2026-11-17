@@ -4,7 +4,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 <!-- How to write entries, and when: docs/contributing/changelog.md -->
 
-## Unreleased
+## 1.1.1
 
 - The app no longer shows a "Cannot access a disposed object" error when the tray icon's sync status changes more than once, such as when sync goes offline or shows a warning and then recovers.
 
