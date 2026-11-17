@@ -4,7 +4,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 <!-- How to write entries, and when: docs/contributing/changelog.md -->
 
-## Unreleased
+## 1.1.0
 
 - In Configure, Git Access no longer has Forget host key. Accept host key now also replaces the saved key of a custom host when that host's key has changed.
 - In Configure, the settings window, Git Access now appears before Repository. Generate key copies the new public key, Copy public key only copies, and Forget key deletes this device's key after confirmation.
