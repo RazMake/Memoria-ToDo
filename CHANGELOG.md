@@ -4,6 +4,10 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 <!-- How to write entries, and when: docs/contributing/changelog.md -->
 
+## Unreleased
+
+- The app no longer shows a "Cannot access a disposed object" error when the tray icon's sync status changes more than once, such as when sync goes offline or shows a warning and then recovers.
+
 ## 1.1.0
 
 - In Configure, Git Access no longer has Forget host key. Accept host key now also replaces the saved key of a custom host when that host's key has changed.

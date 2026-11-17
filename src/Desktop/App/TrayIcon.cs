@@ -90,7 +90,6 @@ internal sealed class TrayIcon : ITrayIcon
     private sealed class Shown : IDisposable
     {
         private readonly System.Drawing.Icon _plain;
-        private IntPtr _badgedHandle;
 
         public Shown(System.Drawing.Icon plain)
         {
@@ -102,40 +101,20 @@ internal sealed class TrayIcon : ITrayIcon
 
         public Action? ErrorClicked { get; set; }
 
+        // The library disposes the icon it's replacing, so each assignment gets an icon of its own; _plain is only the source image.
         public void ShowBadge(TraySyncBadge badge)
         {
-            var oldHandle = _badgedHandle;
-            if (badge == TraySyncBadge.None)
-            {
-                _badgedHandle = IntPtr.Zero;
-                Icon.Icon = _plain;
-            }
-            else
-            {
-                _badgedHandle = DrawBadged(_plain, badge);
-                Icon.Icon = System.Drawing.Icon.FromHandle(_badgedHandle);
-            }
-
-            if (oldHandle != IntPtr.Zero)
-            {
-                DestroyIcon(oldHandle);
-            }
+            Icon.Icon = badge == TraySyncBadge.None ? (System.Drawing.Icon)_plain.Clone() : DrawBadged(_plain, badge);
         }
 
         public void Dispose()
         {
             Icon.Dispose();
-            if (_badgedHandle != IntPtr.Zero)
-            {
-                DestroyIcon(_badgedHandle);
-                _badgedHandle = IntPtr.Zero;
-            }
-
             _plain.Dispose();
         }
 
         // The app icon with a dot in its lower-right corner: amber for offline, red for a warning.
-        private static IntPtr DrawBadged(System.Drawing.Icon plain, TraySyncBadge badge)
+        private static System.Drawing.Icon DrawBadged(System.Drawing.Icon plain, TraySyncBadge badge)
         {
             using var bitmap = plain.ToBitmap();
             using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
@@ -147,7 +126,17 @@ internal sealed class TrayIcon : ITrayIcon
                 graphics.FillEllipse(brush, bitmap.Width - diameter, bitmap.Height - diameter, diameter - 1, diameter - 1);
             }
 
-            return bitmap.GetHicon();
+            // FromHandle doesn't own the handle; its clone copies the image into one it owns.
+            var handle = bitmap.GetHicon();
+            try
+            {
+                using var borrowed = System.Drawing.Icon.FromHandle(handle);
+                return (System.Drawing.Icon)borrowed.Clone();
+            }
+            finally
+            {
+                DestroyIcon(handle);
+            }
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]

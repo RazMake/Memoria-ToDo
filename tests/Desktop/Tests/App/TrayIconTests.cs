@@ -38,6 +38,39 @@ public class TrayIconTests
     }
 
     [WpfFact]
+    public async Task The_badge_can_change_again_after_it_was_shown_and_cleared()
+    {
+        ITrayIcon icon = new TrayIcon();
+        var dispatcher = Dispatcher.CurrentDispatcher;
+        var failures = new List<Exception>();
+
+        // The update runs through BeginInvoke, so a failure in it would end the test host instead of this test.
+        void OnUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            failures.Add(e.Exception);
+            e.Handled = true;
+        }
+
+        dispatcher.UnhandledException += OnUnhandled;
+        icon.Show("Memoria", Menu, () => { });
+        try
+        {
+            foreach (var badge in new[] { TraySyncBadge.Offline, TraySyncBadge.None, TraySyncBadge.Warning, TraySyncBadge.None })
+            {
+                icon.UpdateStatus("Memoria", badge);
+                await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+            }
+        }
+        finally
+        {
+            icon.Remove();
+            dispatcher.UnhandledException -= OnUnhandled;
+        }
+
+        Assert.Empty(failures);
+    }
+
+    [WpfFact]
     public void Shows_removes_and_shows_the_icon_again_and_removing_twice_or_before_showing_does_nothing()
     {
         var icon = new TrayIcon();
