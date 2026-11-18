@@ -295,8 +295,9 @@ The Android app runs the same code with the same libgit2, so it needs nothing mo
 
 The app remains the only owner of the selected path. Sync receives a small
 [selection port](../../src/Shared/Sync/IRepositorySelection.cs) implemented beside App's composition root.
-It adapts the existing selection operation: persist `repository-folder.txt` once and load that same folder into
-Tasks. Sync does not write another selected-path setting. Initial loading follows the
+It adapts the existing selection operation: persist `repository-folder.txt` once and select that same folder through
+the [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), which
+loads every store. Sync does not write another selected-path setting. Initial loading follows the
 [approved initialization boundary](#public-interface); subsequent setup selections go through Sync's serialized
 operation. Git and SSH stay inside Sync, not in this adapter.
 
@@ -370,27 +371,15 @@ Transport registration is process-wide, but each callback must resolve its own o
 and trust context; never reuse the proof's mutable global "current key" or host-pin dictionary.
 
 The implementation adds this one concrete construction entry point; the contracts checkpoint adds no throwing
-factory stub or unusable partial method:
-
-```csharp
-ISyncService SyncService.Create(
-    ITaskSynchronization tasks,
-    IFileSystem files,
-    IDeviceKeyStore keys,
-    IRepositorySelection repositories,
-    TimeProvider time,
-    string deviceFolder,
-    string defaultDeviceName,
-    TimeSpan? periodicInterval)
-```
-
-Proposed, with [Contacts](contacts.md#public-interface) and the synced repository, a decision to confirm: `Create` takes the repository's Sync side first, then Tasks' and Contacts' file capabilities. The repository gives the selected folder, the lock, the reload, the skipped files, and the local-save notice that `ITaskSynchronization` gave before. This is not implemented:
+factory stub or unusable partial method. It takes the
+[synced repository's](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) Sync side
+first, then Tasks' file capabilities. The repository gives the selected folder, the lock, the reload, the skipped
+files, and the local-save notice:
 
 ```csharp
 ISyncService SyncService.Create(
     ISyncedRepository repository,
     ITaskSynchronization tasks,
-    IContactFileRules contacts,
     IFileSystem files,
     IDeviceKeyStore keys,
     IRepositorySelection repositories,
@@ -399,6 +388,8 @@ ISyncService SyncService.Create(
     string defaultDeviceName,
     TimeSpan? periodicInterval)
 ```
+
+Proposed, with [Contacts](contacts.md#public-interface), a decision to confirm: `Create` takes Contacts' file capability, `IContactFileRules contacts`, right after `tasks`. This is not implemented.
 
 App supplies and wires all arguments. Creation validates arguments and creates the service, with no I/O or worker
 started. The interval is positive or null: App supplies 30 minutes on desktop and null on Android. There is no public

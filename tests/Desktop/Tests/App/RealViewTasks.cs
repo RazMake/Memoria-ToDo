@@ -37,7 +37,7 @@ internal sealed class RealViewTasks : IDisposable
         var clone = Path.Combine(_root, "clone");
         Directory.CreateDirectory(clone);
         var files = new FakeFileSystem();
-        var store = TaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device"));
+        var store = TestTaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device"));
         Tasks = store;
         _rules = store.Synchronization.Files;
         Tasks.UseRepositoryFolder(clone);

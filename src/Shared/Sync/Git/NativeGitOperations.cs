@@ -1,10 +1,11 @@
 using LibGit2Sharp;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>The LibGit2Sharp and SSH.NET implementation of <see cref="IGitOperations"/>. Its native calls run on the caller's worker thread.</summary>
-internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvider time, OwnedWorker worker) : IGitOperations
+internal sealed class NativeGitOperations(ISyncedRepository repository, ITaskSynchronization tasks, TimeProvider time, OwnedWorker worker) : IGitOperations
 {
     private const string SyncedKey = "memoria.lastSuccessfulSync";
     private const string FingerprintKey = "memoria.deviceKeyFingerprint";
@@ -100,7 +101,7 @@ internal sealed class NativeGitOperations(ITaskSynchronization tasks, TimeProvid
 
     public async Task<GitPassResult> RunPass(GitConnection connection, string folder, CancellationToken cancellationToken)
     {
-        var pass = new GitPass(tasks, time, folder, connection, cancellationToken);
+        var pass = new GitPass(repository, tasks, time, folder, connection, cancellationToken);
         try
         {
             return await Run(connection, cancellationToken, pass.Run).ConfigureAwait(false);

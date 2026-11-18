@@ -6,7 +6,7 @@ public interface ISyncService : IAsyncDisposable
     ISyncStatus Status { get; }
     ISyncSetup Setup { get; }
 
-    /// <summary>Raised after a status change, outside Tasks' lock, on any thread.</summary>
+    /// <summary>Raised after a status change, outside the repository's lock, on any thread.</summary>
     event EventHandler? StatusChanged;
 
     /// <summary>

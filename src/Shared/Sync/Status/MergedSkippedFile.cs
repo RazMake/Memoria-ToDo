@@ -1,8 +1,8 @@
-using Memoria.ToDo.Shared.Tasks;
+using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Sync;
 
-/// <summary>A file both the Git pass and the Tasks reload skipped: the merge's reason, plus the reload's newer-version hint.</summary>
+/// <summary>A file both the Git pass and the repository's reload skipped: the merge's reason, plus the reload's newer-version hint.</summary>
 internal sealed record MergedSkippedFile(string RelativePath, string Reason, bool RequiresUpdate) : ISkippedRepositoryFile
 {
     /// <summary>One entry per path. The first list's reason wins; <see cref="ISkippedRepositoryFile.RequiresUpdate"/> is true if either list says so.</summary>

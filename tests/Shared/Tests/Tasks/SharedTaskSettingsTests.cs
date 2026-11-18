@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -19,7 +20,7 @@ public sealed class SharedTaskSettingsTests
         var settings = 0;
         var saved = 0;
         Settings.Changed += (_, _) => settings++;
-        f.Store.Synchronization.LocalSaved += (_, _) => saved++;
+        f.Repository.LocalSaved += (_, _) => saved++;
         return (() => settings, () => saved);
     }
 
@@ -463,7 +464,7 @@ public sealed class SharedTaskSettingsTests
     private (ITaskStore Store, UnprobeableFileSystem Files) OpenWithSettingsFileHidden()
     {
         var files = new UnprobeableFileSystem(f.Files, f.SettingsFile);
-        var store = Assert.IsAssignableFrom<ITaskStore>(TaskStore.Create(files, f.Encoder, f.Time, f.Device));
+        var store = Assert.IsAssignableFrom<ITaskStore>(TestTaskStore.Create(files, f.Encoder, f.Time, f.Device));
         store.UseRepositoryFolder(f.Clone);
         return (store, files);
     }
@@ -567,7 +568,7 @@ public sealed class SharedTaskSettingsTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var (settings, saved) = CountNotices();
 
-        f.Store.Synchronization.UpdateRepository(f.Clone, () => f.SeedSettings(days: 60));
+        f.Repository.Update(f.Clone, () => f.SeedSettings(days: 60));
 
         Assert.Equal(60, Settings.DeletionDelayDays);
         Assert.Equal(1, settings());

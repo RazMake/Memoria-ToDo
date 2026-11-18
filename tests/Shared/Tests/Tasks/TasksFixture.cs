@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks.Tests;
 
@@ -18,8 +19,11 @@ internal sealed class TasksFixture
     public TasksFixture()
     {
         Time = new FakeTimeProvider(Start);
-        Tasks = TaskStore.Create(Files, Encoder, Time, Device);
+        Tasks = TestTaskStore.Create(Files, Encoder, Time, Device, Repository);
     }
+
+    /// <summary>The synced repository Tasks joined, as Sync sees it.</summary>
+    public SyncedRepository Repository { get; } = new();
 
     public FakeFileSystem Files { get; } = new();
     public FakeImageEncoder Encoder { get; } = new();
@@ -46,8 +50,8 @@ internal sealed class TasksFixture
     public string DraftImages(string id) => Path.Combine(Device, "images", id);
     public string CloneImages(string id) => Path.Combine(Clone, "images", id);
 
-    /// <summary>Another Tasks over the same files, as after the app restarts.</summary>
-    public ITasks Restarted() => TaskStore.Create(Files, Encoder, Time, Device);
+    /// <summary>Another Tasks over the same files and a fresh repository, as after the app restarts.</summary>
+    public ITasks Restarted() => TestTaskStore.Create(Files, Encoder, Time, Device);
 
     public string SettingsFile => Path.Combine(Clone, "settings.json");
 

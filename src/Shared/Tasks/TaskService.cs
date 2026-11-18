@@ -2,17 +2,19 @@ using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
-/// <summary>The <see cref="ITaskStore"/> an app gets from <see cref="TaskStore"/>. Every call, and Sync's repository updates, run under one lock.</summary>
-internal sealed partial class TaskService(IFileSystem files, IImageEncoder encoder, TimeProvider time, string deviceFolder) : ITaskStore
+/// <summary>
+/// The <see cref="ITaskStore"/> an app gets from <see cref="TaskStore"/>, and a part of the synced repository.
+/// Every call runs under the repository's lock.
+/// </summary>
+internal sealed partial class TaskService(IFileSystem files, IImageEncoder encoder, TimeProvider time, string deviceFolder, IRepositoryAccess repository) : ITaskStore, IRepositoryPart
 {
-    private readonly Lock gate = new();
+    private readonly IRepositoryAccess repository = repository;
     private readonly TaskFolder folder = new(files);
     private readonly SettingsFolder settingsFolder = new(files);
     private readonly TagColorsFolder tagColorsFolder = new(files);
     private readonly DraftStore drafts = new(files, deviceFolder);
     private readonly EditImageStore editImages = new(files, deviceFolder);
     private readonly ImageShrinker shrinker = new(encoder);
-    private string? clone;
     private TaskSet set = TaskSet.Empty;
     private FileLoad<SharedSettings> settings = new(SharedSettings.Defaults, false, null);
     private FileLoad<TagColorSet> tagColors = new(TagColorSet.Empty, false, null);
@@ -22,28 +24,17 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
 
     public string EditImagesFolder => RepositoryLayout.EditImagesRoot(deviceFolder);
 
-    public IReadOnlyList<TaskItem> All
+    public IReadOnlyList<TaskItem> All => repository.Locked(_ => set.Items);
+
+    IReadOnlyList<ISkippedRepositoryFile> IRepositoryPart.SkippedFiles => skipped;
+
+    Action IRepositoryPart.Load(string? root)
     {
-        get
-        {
-            lock (gate)
-                return set.Items;
-        }
+        var loaded = root is null ? Loaded.Empty : Read(root);
+        return () => Apply(loaded);
     }
 
-    public void UseRepositoryFolder(string? repositoryFolder)
-    {
-        if (repositoryFolder is not null && string.IsNullOrWhiteSpace(repositoryFolder))
-            throw new ArgumentException("Must be a folder path, or null.", nameof(repositoryFolder));
-        lock (gate)
-        {
-            var loaded = repositoryFolder is null ? Loaded.Empty : Load(repositoryFolder);
-            clone = repositoryFolder;
-            Apply(loaded);
-        }
-
-        Announce(Notice.Tasks | Notice.Settings | Notice.TagColors | Notice.TagOrder);
-    }
+    void IRepositoryPart.Loaded() => Announce(Notice.Tasks | Notice.Settings | Notice.TagColors | Notice.TagOrder);
 
     /// <summary>Everything a reload reads, built whole so a failure leaves the current state untouched.</summary>
     private sealed record Loaded(TaskSet Set, FileLoad<SharedSettings> Settings, FileLoad<TagColorSet> TagColors, IReadOnlyList<ISkippedRepositoryFile> Skipped)
@@ -51,7 +42,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         public static readonly Loaded Empty = new(TaskSet.Empty, new(SharedSettings.Defaults, false, null), new(TagColorSet.Empty, false, null), []);
     }
 
-    private Loaded Load(string root)
+    private Loaded Read(string root)
     {
         var (tasks, skippedTasks) = folder.Read(root);
         var loadedSettings = settingsFolder.Read(root);
@@ -94,19 +85,17 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         if (notice.HasFlag(Notice.TagOrder))
             tagOrderChanged?.Invoke(this, EventArgs.Empty);
         if (notice.HasFlag(Notice.LocalSaved))
-            localSaved?.Invoke(this, EventArgs.Empty);
+            repository.ReportLocalSave();
     }
 
-    private EventHandler? settingsChanged;
-    private EventHandler? tagColorsChanged;
-    private EventHandler? tagOrderChanged;
-    private EventHandler? localSaved;
+    private event EventHandler? settingsChanged;
+    private event EventHandler? tagColorsChanged;
+    private event EventHandler? tagOrderChanged;
 
     public TaskItem Add(TaskDraft draft)
     {
         ArgumentNullException.ThrowIfNull(draft);
-        TaskItem task;
-        lock (gate)
+        var task = repository.LockedChange(clone =>
         {
             var root = clone ?? throw new NoRepositoryFolderException();
             TaskId.ThrowIfInvalid(draft.TaskId, nameof(draft));
@@ -117,11 +106,12 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             var tags = tag is null ? [] : set.Tags.With([], tag);
             var now = Now();
             var rank = RankKey.Before(set.Items.Count == 0 ? null : set.Items[0].Rank);
-            task = new TaskItem(draft.TaskId, title, TaskText.LineFeeds(draft.Description), rank, tags, now, now, null);
+            var added = new TaskItem(draft.TaskId, title, TaskText.LineFeeds(draft.Description), rank, tags, now, now, null);
 
-            Publish(root, task);
-            set = set.WithTask(task);
-        }
+            Publish(root, added);
+            set = set.WithTask(added);
+            return added;
+        });
 
         Announce(Notice.Tasks | Notice.LocalSaved);
         return task;
@@ -167,43 +157,28 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         }
     }
 
-    public IReadOnlyList<TagUse> TagsInUse()
-    {
-        lock (gate)
-            return set.Tags.InUse;
-    }
+    public IReadOnlyList<TagUse> TagsInUse() => repository.Locked(_ => set.Tags.InUse);
 
-    public IReadOnlyList<string> WithTag(IReadOnlyList<string> tags, string typed)
-    {
-        lock (gate)
-            return set.Tags.With(tags, typed);
-    }
+    public IReadOnlyList<string> WithTag(IReadOnlyList<string> tags, string typed) =>
+        repository.Locked(_ => set.Tags.With(tags, typed));
 
-    public IReadOnlyList<string> SuggestTags(string typed, IReadOnlyList<string> tags)
-    {
-        lock (gate)
-            return set.Tags.Suggest(typed, tags);
-    }
+    public IReadOnlyList<string> SuggestTags(string typed, IReadOnlyList<string> tags) =>
+        repository.Locked(_ => set.Tags.Suggest(typed, tags));
 
-    public IReadOnlyList<TaskItem> Search(string text)
-    {
-        lock (gate)
-            return set.Search(text);
-    }
+    public IReadOnlyList<TaskItem> Search(string text) => repository.Locked(_ => set.Search(text));
 
     public IReadOnlyList<TaskItem> Search(string text, string tag)
     {
         var wanted = TaskText.SingleLine(tag, nameof(tag));
-        lock (gate)
-            return set.Search(text, wanted);
+        return repository.Locked(_ => set.Search(text, wanted));
     }
 
     public TaskItem SaveEdit(TaskItem started, TaskDraft edited)
     {
         ArgumentNullException.ThrowIfNull(started);
         ArgumentNullException.ThrowIfNull(edited);
-        TaskItem saved;
-        lock (gate)
+        var written = false;
+        var result = repository.LockedChange(clone =>
         {
             var root = clone ?? throw new NoRepositoryFolderException();
             if (edited.TaskId != started.Id)
@@ -224,15 +199,18 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             if (changed.Title == current.Title && changed.Description == current.Description && changed.Tags.SequenceEqual(current.Tags))
                 return current;
 
-            saved = changed with { Updated = Now() };
+            var saved = changed with { Updated = Now() };
             foreach (var (from, to) in editImages.ImageMoves(saved.Id, root))
                 files.MoveFile(from, to);
             folder.Write(root, saved);
             set = set.ReplacingTask(saved);
-        }
+            written = true;
+            return saved;
+        });
 
-        Announce(Notice.Tasks | Notice.LocalSaved);
-        return saved;
+        if (written)
+            Announce(Notice.Tasks | Notice.LocalSaved);
+        return result;
     }
 
     /// <summary>The one tag of the draft, trimmed, or null for none. Throws <see cref="ArgumentException"/> for two or more tags or an invalid one.</summary>
@@ -278,11 +256,11 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         var removed = false;
         try
         {
-            lock (gate)
+            repository.LockedChange(clone =>
             {
                 Find(taskId);
-                RemoveTask(taskId, ref removed);
-            }
+                RemoveTask(clone!, taskId, ref removed);
+            });
         }
         finally
         {
@@ -293,31 +271,34 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     }
 
     /// <summary>Deletes the task's file, then its images. Call under the lock; <paramref name="removed"/> is set once the file is gone.</summary>
-    private void RemoveTask(string taskId, ref bool removed)
+    private void RemoveTask(string root, string taskId, ref bool removed)
     {
-        folder.Delete(clone!, taskId);
+        folder.Delete(root, taskId);
         set = set.WithoutTask(taskId);
         removed = true;
-        files.DeleteFolder(RepositoryLayout.ImagesFolder(clone!, taskId));
+        files.DeleteFolder(RepositoryLayout.ImagesFolder(root, taskId));
         editImages.Discard(taskId);
     }
 
     /// <summary>Saves what <paramref name="change"/> makes of the task, unless it returns the task itself. Raises <see cref="Changed"/> after a save.</summary>
     private TaskItem Change(string taskId, Func<TaskItem, TaskItem> change)
     {
-        TaskItem saved;
-        lock (gate)
+        var written = false;
+        var result = repository.LockedChange(clone =>
         {
             var task = Find(taskId);
-            saved = change(task);
+            var saved = change(task);
             if (ReferenceEquals(saved, task))
                 return task;
             folder.Write(clone!, saved);
             set = set.ReplacingTask(saved);
-        }
+            written = true;
+            return saved;
+        });
 
-        Announce(Notice.Tasks | Notice.LocalSaved);
-        return saved;
+        if (written)
+            Announce(Notice.Tasks | Notice.LocalSaved);
+        return result;
     }
 
     /// <summary>The task in <see cref="All"/>. Call under the lock.</summary>
@@ -350,9 +331,8 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
 
     public TaskDraft StartDraft() => new(TaskId.New(time), "", "", []);
 
-    public TaskDraft? LoadDraft()
-    {
-        lock (gate)
+    public TaskDraft? LoadDraft() =>
+        repository.Locked<TaskDraft?>(_ =>
         {
             var draft = drafts.Load();
             if (draft is not null && set.Contains(draft.TaskId))
@@ -362,27 +342,20 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             }
 
             return draft is null ? null : draft with { Tags = [.. draft.Tags.Take(1)] };
-        }
-    }
+        });
 
     public void KeepDraft(TaskDraft draft)
     {
         ArgumentNullException.ThrowIfNull(draft);
-        lock (gate)
-            drafts.Keep(draft);
+        repository.Locked(_ => drafts.Keep(draft));
     }
 
-    public void DiscardDraft()
-    {
-        lock (gate)
-            drafts.Discard();
-    }
+    public void DiscardDraft() => repository.Locked(_ => drafts.Discard());
 
     public void DiscardEditImages(string taskId)
     {
         TaskId.ThrowIfInvalid(taskId, nameof(taskId));
-        lock (gate)
-            editImages.Discard(taskId);
+        repository.Locked(_ => editImages.Discard(taskId));
     }
 
     public string SaveImage(string taskId, byte[] image, string altText)
@@ -390,7 +363,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         TaskId.ThrowIfInvalid(taskId, nameof(taskId));
         ArgumentNullException.ThrowIfNull(image);
         ArgumentNullException.ThrowIfNull(altText);
-        lock (gate)
+        return repository.Locked(_ =>
         {
             var encoded = shrinker.Shrink(image);
             var fileName = $"{TaskId.New(time)}.{encoded.Extension}";
@@ -399,6 +372,6 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             else
                 drafts.SaveImage(taskId, fileName, encoded.Bytes);
             return ImageMarkdown.Of(altText, taskId, fileName);
-        }
+        });
     }
 }

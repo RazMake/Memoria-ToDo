@@ -75,7 +75,7 @@ public sealed class SafeStateIntegrationTests
         Repository.Clone(world.Origin.Path, candidate);
         MakeUnsafe(candidate, state);
         var gitConfigBefore = File.ReadAllText(Path.Combine(candidate, ".git", "config"));
-        var selectedBefore = a.Store.Synchronization.RepositoryFolder;
+        var selectedBefore = a.Repository.Folder;
         var originBefore = world.Origin.MainTip;
         Assert.True(a.Sync.Setup.State.IsConfigured);
 
@@ -83,7 +83,7 @@ public sealed class SafeStateIntegrationTests
 
         Assert.Equal(SyncFailure.Repository, a.Sync.Status.Failure);
         Assert.Equal(gitConfigBefore, File.ReadAllText(Path.Combine(candidate, ".git", "config")));
-        Assert.Equal(selectedBefore, a.Store.Synchronization.RepositoryFolder);
+        Assert.Equal(selectedBefore, a.Repository.Folder);
         Assert.True(a.Sync.Setup.State.IsConfigured);
         Assert.Equal(originBefore, world.Origin.MainTip);
     }

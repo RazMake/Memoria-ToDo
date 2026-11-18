@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Platform;
+
 namespace Memoria.ToDo.Shared.Tasks;
 
 internal sealed partial class TaskService
@@ -21,16 +23,8 @@ internal sealed partial class TaskService
 
         public event EventHandler? Changed
         {
-            add
-            {
-                lock (owner.gate)
-                    owner.settingsChanged += value;
-            }
-            remove
-            {
-                lock (owner.gate)
-                    owner.settingsChanged -= value;
-            }
+            add => owner.settingsChanged += value;
+            remove => owner.settingsChanged -= value;
         }
 
         public void SetDeletionDelayDays(int days)
@@ -67,17 +61,14 @@ internal sealed partial class TaskService
                 ? settings
                 : settings with { ConfigureShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
-        private T Read<T>(Func<SharedSettings, T> read)
-        {
-            lock (owner.gate)
-                return read(owner.settings.Require());
-        }
+        private T Read<T>(Func<SharedSettings, T> read) => owner.repository.Locked(_ => read(owner.settings.Require()));
     }
 
     /// <summary>Writes what <paramref name="edit"/> makes of the settings, unless it returns them unchanged.</summary>
     private void ChangeSettings(Func<SharedSettings, SharedSettings> edit)
     {
-        lock (gate)
+        var written = false;
+        repository.LockedChange(clone =>
         {
             var root = clone ?? throw new NoRepositoryFolderException();
             var changed = edit(settings.Require());
@@ -85,8 +76,10 @@ internal sealed partial class TaskService
                 return;
             settingsFolder.Write(root, changed);
             settings = new FileLoad<SharedSettings>(changed, true, null);
-        }
+            written = true;
+        });
 
-        Announce(Notice.Settings | Notice.LocalSaved);
+        if (written)
+            Announce(Notice.Settings | Notice.LocalSaved);
     }
 }

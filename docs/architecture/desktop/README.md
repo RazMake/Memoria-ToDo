@@ -151,27 +151,27 @@ alive until cleanup finishes. These paths share the once-only cleanup, not the s
 
 When the app starts, the composition root calls the create part of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), giving Configure its [Start with Windows port](configure.md#public-interface), and the Task list the [Formatted view's](formatted-view.md#the-app-supplies-the-web-view-and-the-browser) web view and default browser. It builds Shell's lifetime from the results, the implementations of [Shell's ports](shell.md#public-interface), and whether the app started at sign-in, and passes it to Run the app. The windows themselves stay `internal`, as all of a module's code does ([Modules](../modules.md#a-module-is-one-capability-behind-a-small-interface)).
 
-For the Sync step, App creates one `ITaskStore` and constructs one
-[`ISyncService`](../../../src/Shared/Sync/ISyncService.cs) with that store's synchronization capability, the system
+For the Sync step, App creates one
+[synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) first,
+then one `ITaskStore` on it, and constructs one [`ISyncService`](../../../src/Shared/Sync/ISyncService.cs) with the
+repository, that store's synchronization capability, the system
 clock, the device data folder, the machine name, and the desktop interval specified by [Sync](../sync.md#public-interface).
 Only App chooses the filesystem, secure-key, repository-selection, and setup-action adapters. It passes Tasks'
 typed settings to Configure and the same Sync instance to Configure, Task list, and Shell. No factory gets a dummy
 service, optional test switch, or old overload unused by production. For colored tags, it passes the store's
 [tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own) to the Task editor and the Task list.
 
-Proposed, with [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), a decision to confirm: App creates one
-[synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) first,
-and gives it to the Tasks store, to a new Contacts store, and to Sync, with the Contacts store's file rules. It passes
-the Contacts store's `IContacts` to the [Contact list](contact-list.md#public-interface), the
-[Task editor](task-editor.md#public-interface), and the [Task list](task-list.md#public-interface), and the Contacts
-window to Shell. The selection adapter selects through the synced repository instead of Tasks, so both stores load
-the same folder at once.
+Proposed, with [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), a
+decision to confirm: App also gives the repository to a new Contacts store, and Sync the Contacts store's file rules,
+so both stores load the same folder at once. It passes the Contacts store's `IContacts` to the
+[Contact list](contact-list.md#public-interface), the [Task editor](task-editor.md#public-interface), and the
+[Task list](task-list.md#public-interface), and the Contacts window to Shell. This is not implemented.
 
-The selection adapter reuses `repository-folder.txt`, loads Tasks, and never clones, invokes Git, or
-stores a second path. Failed adoption restores the previous saved path and Tasks selection; rollback failures
+The selection adapter reuses `repository-folder.txt`, selects through the synced repository, and never clones, invokes Git, or
+stores a second path. Failed adoption restores the previous saved path and selection; rollback failures
 retain the original error too. Its initial load follows [Sync's approved initialization boundary](../sync.md#public-interface),
 not composition. Client Git/SSH operations belong only to Sync. The web-view factory reads the
-selected folder from Tasks when making each new web view, and gives it the store's
+selected folder from the synced repository when making each new web view, and gives it the store's
 [folder of waiting edit images](../tasks.md#step-5-publishes-small-capabilities-without-growing-task-operations) too, so an edit's
 Preview shows [images not saved yet](formatted-view.md#the-clones-address-also-serves-an-open-edits-waiting-images). The setup-action adapter reuses App's existing clipboard
 and default-browser components, without adding dependencies between Configure and the window modules.
@@ -524,13 +524,14 @@ The table lists each step, what it builds, and its status:
 | 12 | Configure's Application section and its shortcut | Configure's [Application section](configure.md#the-window-shows-its-settings-in-labeled-sections), with the [Update card](configure.md#the-update-card-leads-the-application-section) and the Shortcuts card; the [Configure shortcut](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) in Configure and Shell; and Tasks' [Configure shortcut setting](../tasks.md#one-versioned-file-holds-the-three-shared-settings). | Implemented |
 | 13 | Group order and the drop line | Task View's [group drag, drop line, and scrolling during a drag](task-list.md#drag-and-drop-moves-tasks-and-groups-and-a-line-shows-where-they-land), with its groups in [the tags' order](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description); Tasks' [tag order](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips) in `tags.json` version 2, with its [capability](../tasks.md#tag-order-is-a-capability-of-its-own) and merge. Sync carries `tags.json` as before, with no change. The Android app's [tag chips](../android/task-list.md#tags-and-search-narrow-the-list) follow the order when the Android app is built. | Not scheduled |
 | 14 | One tag per task | Tasks' [one-tag rule](../tasks.md#a-task-has-at-most-one-tag) in `Add`, saving an edit, the merge, and kept drafts; the Task editor's [tag pill](task-editor.md#a-task-has-one-tag-shown-as-one-pill) and its [menu](task-editor.md#a-click-on-the-pill-opens-the-tag-menu), with the `TagEditor` interface the user decided; and the Task list's [tag changes without Edit](task-list.md#tags-show-as-colored-badges-and-change-without-edit), a [tag that joins an open edit's one save](task-list.md#a-tag-chosen-during-an-edit-saves-with-the-edit), and one group per task. | Next |
-| 15 | Contacts | Built in slices, in this order, each reviewed on its own: (a) the platform's [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), with Tasks, Sync, and App moved onto it and no change users notice; (b) the shared [Contacts](../contacts.md) module; (c) Sync [carrying contact files](../sync.md#sync-manages-contact-files-through-contacts-rules); (d) the platform's [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), with Task View moved onto them unchanged; (e) the [Contact list](contact-list.md), with Shell's and Configure's [Contacts shortcut](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) and tray item; (f) Rendering's [mentions](../rendering.md#a-mention-shows-on-a-colored-background) and Editing's [mention list](../editing.md#typing-an-at-sign-opens-the-mention-list); (g) the [Task editor's "@" list and chips](task-editor.md#typing-an-at-sign-mentions-a-contact), then Task View's [live mention text](task-list.md#mentions-show-each-contacts-current-details). The Android app's mentions come when the Android app is built. | Not scheduled |
+| 15 | Contacts | Built in slices, in this order, each reviewed on its own: (a) the platform's [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), with Tasks, Sync, and App moved onto it and no change users notice; (b) the shared [Contacts](../contacts.md) module; (c) Sync [carrying contact files](../sync.md#sync-manages-contact-files-through-contacts-rules); (d) the platform's [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), with Task View moved onto them unchanged; (e) the [Contact list](contact-list.md), with Shell's and Configure's [Contacts shortcut](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) and tray item; (f) Rendering's [mentions](../rendering.md#a-mention-shows-on-a-colored-background) and Editing's [mention list](../editing.md#typing-an-at-sign-opens-the-mention-list); (g) the [Task editor's "@" list and chips](task-editor.md#typing-an-at-sign-mentions-a-contact), then Task View's [live mention text](task-list.md#mentions-show-each-contacts-current-details). The Android app's mentions come when the Android app is built. | Next |
 
 The remaining work follows this order:
 
-1. One tag per task (step 14). The user decided it's the next row built, ahead of step 11.
-2. Task View refinements (step 11), which you asked for ahead of the rest.
-3. Install and updates (step 6).
-4. Review and refine [Tasks View](task-list.md), including its decisions awaiting confirmation. This review is deferred, not waived.
-5. Add the [Add window's formatted preview](task-editor.md).
-6. Build the [Android app](../android/README.md).
+1. Contacts (step 15), slice by slice from (a). The user started it ahead of the rest.
+2. One tag per task (step 14). The user decided it's built ahead of step 11.
+3. Task View refinements (step 11), which you asked for ahead of the rest.
+4. Install and updates (step 6).
+5. Review and refine [Tasks View](task-list.md), including its decisions awaiting confirmation. This review is deferred, not waived.
+6. Add the [Add window's formatted preview](task-editor.md).
+7. Build the [Android app](../android/README.md).

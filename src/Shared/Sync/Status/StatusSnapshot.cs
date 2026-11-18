@@ -1,4 +1,4 @@
-using Memoria.ToDo.Shared.Tasks;
+using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Sync;
 

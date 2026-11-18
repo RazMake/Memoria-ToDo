@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -18,7 +20,7 @@ public sealed class TagColorsTests
         var colors = 0;
         var saved = 0;
         Colors.Changed += (_, _) => colors++;
-        f.Store.Synchronization.LocalSaved += (_, _) => saved++;
+        f.Repository.LocalSaved += (_, _) => saved++;
         return (() => colors, () => saved);
     }
 
@@ -276,7 +278,7 @@ public sealed class TagColorsTests
 
         Assert.Equal(["Readable"], f.Titles);
         Assert.Null(Colors.ColorOf("work"));
-        var skipped = Assert.Single(f.Store.Synchronization.SkippedFiles);
+        var skipped = Assert.Single(f.Repository.SkippedFiles);
         Assert.Equal("tags.json", skipped.RelativePath);
         Assert.False(skipped.RequiresUpdate);
         Assert.False(string.IsNullOrWhiteSpace(skipped.Reason));
@@ -293,7 +295,7 @@ public sealed class TagColorsTests
 
         Assert.Equal(["Readable"], f.Titles);
         Assert.Null(Colors.ColorOf("work"));
-        var skipped = Assert.Single(f.Store.Synchronization.SkippedFiles);
+        var skipped = Assert.Single(f.Repository.SkippedFiles);
         Assert.Equal("tags.json", skipped.RelativePath);
         Assert.True(skipped.RequiresUpdate);
     }
@@ -320,7 +322,7 @@ public sealed class TagColorsTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var (colors, saved) = CountNotices();
 
-        f.Store.Synchronization.UpdateRepository(f.Clone, () => f.SeedTagColors(1, ("work", "gold", NowText)));
+        f.Repository.Update(f.Clone, () => f.SeedTagColors(1, ("work", "gold", NowText)));
 
         Assert.Equal("gold", Colors.ColorOf("work"));
         Assert.Equal(1, colors());

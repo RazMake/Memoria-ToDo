@@ -1,4 +1,4 @@
-using Memoria.ToDo.Shared.Tasks;
+using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Sync;
 
@@ -6,7 +6,7 @@ namespace Memoria.ToDo.Shared.Sync;
 /// Builds the cached setup view from the clone, the device files, and the key, on the owned worker. It remembers the
 /// public key once seen, so refreshing never opens the key again.
 /// </summary>
-internal sealed class SetupModel(ITaskSynchronization tasks, IGitOperations git, IDeviceKeyStore keys, DeviceMetadata metadata, HostTrust trust, OwnedWorker worker)
+internal sealed class SetupModel(ISyncedRepository repository, IGitOperations git, IDeviceKeyStore keys, DeviceMetadata metadata, HostTrust trust, OwnedWorker worker)
 {
     private byte[]? publicKey;
     // The name of the last read: empty when it failed, null before any read.
@@ -14,7 +14,7 @@ internal sealed class SetupModel(ITaskSynchronization tasks, IGitOperations git,
 
     // The first view is built in memory; Start loads the rest on the worker.
     public Published<SetupSnapshot> Snapshot { get; } =
-        new(new SetupSnapshot(tasks.RepositoryFolder, null, metadata.DefaultName, null, null, null, false));
+        new(new SetupSnapshot(repository.Folder, null, metadata.DefaultName, null, null, null, false));
 
     /// <summary>Remembers the public key of an open handle. Call on the worker.</summary>
     public void Observe(IDeviceSigningKey key) => publicKey ??= key.PublicKeyBlob.ToArray();
@@ -54,7 +54,7 @@ internal sealed class SetupModel(ITaskSynchronization tasks, IGitOperations git,
 
     private SetupSnapshot Build()
     {
-        var folder = tasks.RepositoryFolder;
+        var folder = repository.Folder;
         lastNameRead = "";
         var name = metadata.LoadName();
         lastNameRead = name;

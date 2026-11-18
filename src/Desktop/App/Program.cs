@@ -5,6 +5,7 @@ using Memoria.ToDo.Desktop.Shell;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
 using Memoria.ToDo.Desktop.Updates;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
@@ -35,21 +36,23 @@ internal static class Program
         return AppRunner.Run(() =>
         {
             var files = new WindowsFileSystem();
-            var tasks = TaskStore.Create(files, new WpfImageEncoder(), TimeProvider.System, DraftFolder());
+            var repository = new SyncedRepository();
+            var tasks = TaskStore.Create(files, new WpfImageEncoder(), TimeProvider.System, DraftFolder(), repository);
             var theme = new WindowsTheme(new WindowsThemeSetting());
             var clipboard = new WpfClipboard();
             var imageFiles = new WpfImageFileChooser();
             var browser = new ShellDefaultBrowser();
             var deviceFolder = DeviceFolder();
-            var repositories = new RepositorySelection(files, tasks.UseRepositoryFolder, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
+            var repositories = new RepositorySelection(files, repository.Select, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
             var closeWindowKeys = new CloseWindowKeys();
             // Each open of a description web view serves the folder the repository is in then.
             Func<IDescriptionWebView> createWebView = () => new WpfDescriptionWebView(
-                tasks.Synchronization.RepositoryFolder, tasks.EditImagesFolder, BrowserDataFolder(), files, tasks.Synchronization.Files);
+                repository.Folder, tasks.EditImagesFolder, BrowserDataFolder(), files, tasks.Synchronization.Files);
             var updates = AppUpdates.Create(
                 new VelopackUpdates(RepositoryUrl), files, deviceFolder, TimeProvider.System, theme, createWebView, browser, closeWindowKeys);
             var saveKeys = new SaveKeys();
             var sync = SyncService.Create(
+                repository,
                 tasks.Synchronization,
                 files,
                 new WindowsDeviceKeyStore(files, new WindowsUserProtection(), deviceFolder),

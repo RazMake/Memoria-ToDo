@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Platform;
+
 namespace Memoria.ToDo.Shared.Tasks;
 
 internal sealed partial class TaskService
@@ -10,22 +12,13 @@ internal sealed partial class TaskService
         public string? ColorOf(string tag)
         {
             ArgumentNullException.ThrowIfNull(tag);
-            lock (owner.gate)
-                return owner.tagColors.Failure is null ? owner.tagColors.Value.Find(tag)?.Color?.Value : null;
+            return owner.repository.Locked(_ => owner.tagColors.Failure is null ? owner.tagColors.Value.Find(tag)?.Color?.Value : null);
         }
 
         public event EventHandler? Changed
         {
-            add
-            {
-                lock (owner.gate)
-                    owner.tagColorsChanged += value;
-            }
-            remove
-            {
-                lock (owner.gate)
-                    owner.tagColorsChanged -= value;
-            }
+            add => owner.tagColorsChanged += value;
+            remove => owner.tagColorsChanged -= value;
         }
 
         public void SetColor(string tag, string colorName)
@@ -36,9 +29,10 @@ internal sealed partial class TaskService
                 throw new ArgumentException("Must be one non-empty line with no spaces around it.", nameof(tag));
             if (!TaskText.IsSingleLine(colorName))
                 throw new ArgumentException("Must be one non-empty line.", nameof(colorName));
-            lock (owner.gate)
+            var written = false;
+            owner.repository.LockedChange(clone =>
             {
-                var root = owner.clone ?? throw new NoRepositoryFolderException();
+                var root = clone ?? throw new NoRepositoryFolderException();
                 var colors = owner.tagColors.Require();
                 var existing = colors.Find(tag);
                 if (existing?.Color?.Value == colorName)
@@ -47,9 +41,11 @@ internal sealed partial class TaskService
                 var changed = colors.With([entry]);
                 owner.tagColorsFolder.Write(root, changed);
                 owner.tagColors = new FileLoad<TagColorSet>(changed, true, null);
-            }
+                written = true;
+            });
 
-            owner.Announce(Notice.TagColors | Notice.LocalSaved);
+            if (written)
+                owner.Announce(Notice.TagColors | Notice.LocalSaved);
         }
     }
 }

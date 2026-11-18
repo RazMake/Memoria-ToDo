@@ -11,7 +11,7 @@ public interface ISyncSetup
     ISyncSetupState State { get; }
 
     /// <summary>
-    /// Raised after the cached setup snapshot is published, on any thread and outside Tasks' lock.
+    /// Raised after the cached setup snapshot is published, on any thread and outside the repository's lock.
     /// Also signals completion of initial local loading on success or failure, even when the snapshot is unchanged.
     /// On initialization failure, status reports the error before this publication.
     /// </summary>

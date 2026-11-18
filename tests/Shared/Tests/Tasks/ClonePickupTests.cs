@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -19,11 +21,11 @@ public sealed class ClonePickupTests
     {
         Action create = argument switch
         {
-            "a null file system" => () => TaskStore.Create(null!, f.Encoder, f.Time, f.Device),
-            "a null image encoder" => () => TaskStore.Create(f.Files, null!, f.Time, f.Device),
-            "a null time provider" => () => TaskStore.Create(f.Files, f.Encoder, null!, f.Device),
-            "a null device folder" => () => TaskStore.Create(f.Files, f.Encoder, f.Time, null!),
-            _ => () => TaskStore.Create(f.Files, f.Encoder, f.Time, ""),
+            "a null file system" => () => TaskStore.Create(null!, f.Encoder, f.Time, f.Device, new SyncedRepository()),
+            "a null image encoder" => () => TaskStore.Create(f.Files, null!, f.Time, f.Device, new SyncedRepository()),
+            "a null time provider" => () => TaskStore.Create(f.Files, f.Encoder, null!, f.Device, new SyncedRepository()),
+            "a null device folder" => () => TaskStore.Create(f.Files, f.Encoder, f.Time, null!, new SyncedRepository()),
+            _ => () => TaskStore.Create(f.Files, f.Encoder, f.Time, "", new SyncedRepository()),
         };
 
         Assert.ThrowsAny<ArgumentException>(create);
@@ -32,7 +34,7 @@ public sealed class ClonePickupTests
     [Fact]
     public void Refuses_to_create_with_a_device_folder_that_is_not_fully_qualified()
     {
-        Assert.Throws<ArgumentException>(() => TaskStore.Create(f.Files, f.Encoder, f.Time, Path.Combine("relative", "device")));
+        Assert.Throws<ArgumentException>(() => TaskStore.Create(f.Files, f.Encoder, f.Time, Path.Combine("relative", "device"), new SyncedRepository()));
     }
 
     [Fact]

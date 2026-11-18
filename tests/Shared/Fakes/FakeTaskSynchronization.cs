@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -10,22 +11,27 @@ public sealed record FakeSkippedFile(string RelativePath, string Reason, bool Re
 /// The shared fake of Sync's access to Tasks, for tests that don't run Git. Its layout rules are not used by Sync's
 /// scheduling and setup, so they refuse every call.
 /// </summary>
-public sealed class FakeTaskSynchronization : ITaskSynchronization
+public sealed class FakeTaskSynchronization(SyncedRepository repository, FakeRepositoryPart part) : ITaskSynchronization
 {
-    /// <inheritdoc />
-    public string? RepositoryFolder { get; set; }
+    /// <summary>Test shortcut: the folder the synced repository has selected; setting it selects that folder.</summary>
+    public string? RepositoryFolder
+    {
+        get => repository.Folder;
+        set => repository.Select(value);
+    }
+
+    /// <summary>Test shortcut: the skipped files the repository's one fake part reports.</summary>
+    public IReadOnlyList<ISkippedRepositoryFile> SkippedFiles
+    {
+        get => part.SkippedFiles;
+        set => part.SkippedFiles = value;
+    }
+
+    /// <summary>Test shortcut: reports a local save to the synced repository, as Tasks does after a saved edit.</summary>
+    public void RaiseLocalSaved() => repository.ReportLocalSave();
 
     /// <inheritdoc />
     public IRepositoryFileRules Files { get; } = new UnusedRules();
-
-    /// <inheritdoc />
-    public IReadOnlyList<ISkippedRepositoryFile> SkippedFiles { get; set; } = [];
-
-    /// <inheritdoc />
-    public event EventHandler? LocalSaved;
-
-    /// <summary>Raises <see cref="LocalSaved"/>, as Tasks does after a saved edit.</summary>
-    public void RaiseLocalSaved() => LocalSaved?.Invoke(this, EventArgs.Empty);
 
     /// <inheritdoc />
     public void EnsureSettings()
@@ -35,14 +41,6 @@ public sealed class FakeTaskSynchronization : ITaskSynchronization
     /// <inheritdoc />
     public void DeleteExpiredTasks()
     {
-    }
-
-    /// <inheritdoc />
-    public void UpdateRepository(string expectedFolder, Action update)
-    {
-        if (expectedFolder != RepositoryFolder)
-            throw new InvalidOperationException("The folder is no longer selected.");
-        update();
     }
 
     private sealed class UnusedRules : IRepositoryFileRules
@@ -64,8 +62,8 @@ public sealed class FakeTaskSynchronization : ITaskSynchronization
     }
 }
 
-/// <summary>The shared fake selected-folder owner: records each selection and makes it current in the fake Tasks, as the real adapter does.</summary>
-public sealed class FakeRepositorySelection(FakeTaskSynchronization tasks) : IRepositorySelection
+/// <summary>The shared fake selected-folder owner: records each selection and makes it current in the synced repository, as the real adapter does.</summary>
+public sealed class FakeRepositorySelection(SyncedRepository repository) : IRepositorySelection
 {
     private readonly List<string> selected = [];
 
@@ -103,7 +101,7 @@ public sealed class FakeRepositorySelection(FakeTaskSynchronization tasks) : IRe
             throw failure;
         }
 
+        repository.Select(folder);
         lock (selected) { selected.Add(folder); }
-        tasks.RepositoryFolder = folder;
     }
 }

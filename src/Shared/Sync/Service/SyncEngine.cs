@@ -1,4 +1,4 @@
-using Memoria.ToDo.Shared.Tasks;
+using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Sync;
 
@@ -6,7 +6,7 @@ namespace Memoria.ToDo.Shared.Sync;
 internal sealed class SyncEngine : ISyncService
 {
     private readonly object gate = new();
-    private readonly ITaskSynchronization tasks;
+    private readonly ISyncedRepository repository;
     private readonly IGitOperations git;
     private readonly IDeviceKeyStore keys;
     private readonly TimeProvider time;
@@ -23,7 +23,7 @@ internal sealed class SyncEngine : ISyncService
     private Task? initialization;
 
     public SyncEngine(
-        ITaskSynchronization tasks,
+        ISyncedRepository repository,
         IGitOperations git,
         IDeviceKeyStore keys,
         TimeProvider time,
@@ -39,7 +39,7 @@ internal sealed class SyncEngine : ISyncService
     {
         this.repositories = repositories;
         this.boundary = boundary;
-        this.tasks = tasks;
+        this.repository = repository;
         this.git = git;
         this.keys = keys;
         this.time = time;
@@ -50,7 +50,7 @@ internal sealed class SyncEngine : ISyncService
         this.status = status;
         Setup = setup;
         scheduler = new Scheduler(time, periodicInterval, RequestPass);
-        tasks.LocalSaved += OnLocalSaved;
+        repository.LocalSaved += OnLocalSaved;
     }
 
     public ISyncStatus Status => status.Current;
@@ -116,7 +116,7 @@ internal sealed class SyncEngine : ISyncService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        tasks.LocalSaved -= OnLocalSaved;
+        repository.LocalSaved -= OnLocalSaved;
         scheduler.Dispose();
         await operations.StopAsync(cancellationToken).ConfigureAwait(false);
         Task? starting;
@@ -212,7 +212,7 @@ internal sealed class SyncEngine : ISyncService
         string folder;
         try
         {
-            folder = tasks.RepositoryFolder ?? throw new InvalidOperationException("No repository is selected.");
+            folder = repository.Folder ?? throw new InvalidOperationException("No repository is selected.");
         }
         catch (ArgumentException ex) when (!IsStopping(token))
         {
@@ -348,7 +348,7 @@ internal sealed class SyncEngine : ISyncService
             throw new PassFailedException(ex, pending);
         }
 
-        var skipped = MergedSkippedFile.Combine(result.Skipped, tasks.SkippedFiles);
+        var skipped = MergedSkippedFile.Combine(result.Skipped, repository.SkippedFiles);
         if (skipped.Count > 0)
         {
             return (s => s.Succeeded(now, result.HasPendingChanges)

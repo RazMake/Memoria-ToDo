@@ -14,6 +14,7 @@ public static class SyncService
     /// <param name="defaultDeviceName">The device name used until the user saves another.</param>
     /// <param name="periodicInterval">How often to sync when idle, or null for no periodic sync.</param>
     public static ISyncService Create(
+        ISyncedRepository repository,
         ITaskSynchronization tasks,
         IFileSystem files,
         IDeviceKeyStore keys,
@@ -24,10 +25,11 @@ public static class SyncService
         TimeSpan? periodicInterval)
     {
         var worker = new OwnedWorker();
-        return Create(tasks, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, new NativeGitOperations(tasks, time, worker), worker);
+        return Create(repository, tasks, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, new NativeGitOperations(repository, tasks, time, worker), worker);
     }
 
     internal static ISyncService Create(
+        ISyncedRepository repository,
         ITaskSynchronization tasks,
         IFileSystem files,
         IDeviceKeyStore keys,
@@ -37,9 +39,10 @@ public static class SyncService
         string defaultDeviceName,
         TimeSpan? periodicInterval,
         IGitOperations git) =>
-        Create(tasks, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, git, new OwnedWorker());
+        Create(repository, tasks, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, git, new OwnedWorker());
 
     private static ISyncService Create(
+        ISyncedRepository repository,
         ITaskSynchronization tasks,
         IFileSystem files,
         IDeviceKeyStore keys,
@@ -51,6 +54,7 @@ public static class SyncService
         IGitOperations git,
         OwnedWorker worker)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(keys);
@@ -67,11 +71,11 @@ public static class SyncService
         var operations = new Operations(worker);
         var metadata = new DeviceMetadata(files, deviceFolder, defaultDeviceName.Trim());
         var trust = new HostTrust(HostPins.BuiltIn, new KnownHostsFile(files, metadata.KnownHostsPath), () => { });
-        var model = new SetupModel(tasks, git, keys, metadata, trust, worker);
+        var model = new SetupModel(repository, git, keys, metadata, trust, worker);
         var session = new GitSession(worker, keys, metadata, trust, model);
         var status = new Published<StatusSnapshot>(StatusSnapshot.Initial);
         var boundary = new DeviceFolderBoundary(files, deviceFolder);
         var setup = new SyncSetup(git, keys, repositories, boundary, worker, operations, session, model, metadata, trust, status);
-        return new SyncEngine(tasks, git, keys, time, periodicInterval, worker, operations, session, model, status, setup, boundary, repositories);
+        return new SyncEngine(repository, git, keys, time, periodicInterval, worker, operations, session, model, status, setup, boundary, repositories);
     }
 }

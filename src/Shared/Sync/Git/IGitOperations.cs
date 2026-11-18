@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Platform;
+
 namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>
@@ -55,7 +57,7 @@ internal interface ITransportCleanup
 /// </summary>
 internal sealed record GitPassResult(bool HasPendingChanges)
 {
-    public IReadOnlyList<Tasks.ISkippedRepositoryFile> Skipped { get; init; } = [];
+    public IReadOnlyList<ISkippedRepositoryFile> Skipped { get; init; } = [];
 }
 
 internal delegate HostKeyVerdict HostKeyVerifier(string host, int port, string algorithm, string fingerprint);

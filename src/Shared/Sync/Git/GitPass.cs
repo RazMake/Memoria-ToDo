@@ -1,10 +1,11 @@
 using LibGit2Sharp;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>One sync pass on the worker: check, delete, commit, then fetch, merge and push until the remote accepts.</summary>
-internal sealed class GitPass(ITaskSynchronization tasks, TimeProvider time, string folder, GitConnection connection, CancellationToken token)
+internal sealed class GitPass(ISyncedRepository repository, ITaskSynchronization tasks, TimeProvider time, string folder, GitConnection connection, CancellationToken token)
 {
     private const int MaxPushAttempts = 3;
     private const string FallbackBranch = "main";
@@ -62,7 +63,7 @@ internal sealed class GitPass(ITaskSynchronization tasks, TimeProvider time, str
         var branch = ResolveBranch(repo, remote, out var remoteHasBranch);
         PrepareFiles();
         var merge = new DomainMerge(repo, tasks.Files, time, connection.DeviceName);
-        tasks.UpdateRepository(folder, () => commit.Run());
+        repository.Update(folder, () => commit.Run());
 
         for (var attempt = 1; ; attempt++)
         {
@@ -73,7 +74,7 @@ internal sealed class GitPass(ITaskSynchronization tasks, TimeProvider time, str
                 Fetch(repo, branch);
                 tip = repo.Branches[$"origin/{branch}"]?.Tip;
                 knownRemoteTip = tip;
-                tasks.UpdateRepository(folder, () =>
+                repository.Update(folder, () =>
                 {
                     commit.Run();
                     if (tip is not null && repo.Head.Tip is { } local)

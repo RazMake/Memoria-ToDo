@@ -20,8 +20,14 @@ public sealed class ServiceLifecycleTests
     [Fact]
     public void Rejects_a_blank_default_device_name_or_relative_device_folder()
     {
-        Assert.ThrowsAny<ArgumentException>(() => SyncService.Create(f.Tasks, f.Files, f.Keys, f.Selection, f.Time, f.DeviceFolder, " ", null, f.Git));
-        Assert.ThrowsAny<ArgumentException>(() => SyncService.Create(f.Tasks, f.Files, f.Keys, f.Selection, f.Time, "relative", "Laptop", null, f.Git));
+        Assert.ThrowsAny<ArgumentException>(() => SyncService.Create(f.Repository, f.Tasks, f.Files, f.Keys, f.Selection, f.Time, f.DeviceFolder, " ", null, f.Git));
+        Assert.ThrowsAny<ArgumentException>(() => SyncService.Create(f.Repository, f.Tasks, f.Files, f.Keys, f.Selection, f.Time, "relative", "Laptop", null, f.Git));
+    }
+
+    [Fact]
+    public void Rejects_a_missing_synced_repository()
+    {
+        Assert.Throws<ArgumentNullException>(() => SyncService.Create(null!, f.Tasks, f.Files, f.Keys, f.Selection, f.Time, f.DeviceFolder, "Laptop", null, f.Git));
     }
 
     [Fact]

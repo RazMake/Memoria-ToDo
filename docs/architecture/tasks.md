@@ -209,8 +209,6 @@ selection, imported updates, sync's settings initialization, drafts, and images 
 continues to refresh screens; settings and tag colors each have their own notice. A reload never starts another sync by pretending to be
 a local save. Skipped-file snapshots name corrupt, unreadable, and newer-version files without deleting them.
 
-Proposed, a decision to confirm: this lock and reload move from Tasks to the platform without changing their rules, since Contacts is their second user, as [Contacts](contacts.md#contacts-is-a-shared-module-of-its-own) decides.
-
 Decisions to confirm: a reload always raises the settings-change notice, even when values are unchanged;
 `EnsureSettings` raises no `LocalSaved` notice because initialization is already part of a sync pass. Proposed: a reload
 always raises the tag-color notice too, the same way. This is a decision to confirm.
@@ -384,9 +382,6 @@ public static class TaskStore
 /// Safe to call from any thread; runs one call at a time.
 public interface ITasks
 {
-    /// Reads the clone's tasks, then raises Changed. Null means no folder is set: the list is empty.
-    void UseRepositoryFolder(string? folder);
-
     /// Every task, open and resolved, in rank order; tasks with the same rank in ID order.
     IReadOnlyList<TaskItem> All { get; }
 
@@ -515,20 +510,20 @@ this section describes the design, not a claim that final validation or delivery
 | --- | --- |
 | [`ITaskStore`](../../src/Shared/Tasks/ITaskStore.cs) | Existing `ITasks` operations, plus `Settings` and `Synchronization` |
 | [`ISharedTaskSettings`](../../src/Shared/Tasks/ISharedTaskSettings.cs) | Typed values, one setter each, and a settings-change notice |
-| [`ITaskSynchronization`](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs) | Selected folder, skipped files, local-save notice, settings initialization, automatic deletion, and exclusive local updates |
+| [`ITaskSynchronization`](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs) | The file rules, settings initialization, and automatic deletion; the selected folder, skipped files, local-save notice, and exclusive updates come from the [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) |
 | [`IRepositoryFileRules`](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs) | Canonical managed paths and pure three-version task/settings byte merges |
-| [`ISkippedRepositoryFile`](../../src/Shared/Tasks/Synchronization/ISkippedRepositoryFile.cs) | Immutable relative path, reason, and whether updating the app is needed |
+| [`ISkippedRepositoryFile`](../../src/Shared/Platform/ISkippedRepositoryFile.cs), in the shared platform | Immutable relative path, reason, and whether updating the app is needed |
 
 The [factory contract](../../src/Shared/Tasks/TaskStore.cs) exposes these capabilities through `ITaskStore`.
 Existing callers can still use the result as `ITasks`; Configure receives only `Settings`, and
 Sync receives only `Synchronization`. No caller casts a concrete implementation or creates another store.
 
-Proposed, with the [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), each a decision to confirm. This is not implemented:
+With the [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), the user decided these changes:
 
 - `TaskStore.Create` takes the repository's store side, `IRepositoryAccess repository`, as its new last argument, and adds the store as one of its parts.
 - `ITasks.UseRepositoryFolder` goes: the composition root selects through the repository instead.
 - `ITaskSynchronization` keeps `Files`, `EnsureSettings`, and `DeleteExpiredTasks`. `RepositoryFolder`, `SkippedFiles`, `LocalSaved`, and `UpdateRepository` move to the repository's Sync side, `ISyncedRepository`, with the same rules.
-- `ISkippedRepositoryFile` and `NoRepositoryFolderException` move to `Memoria.ToDo.Shared.Platform` unchanged.
+- `ISkippedRepositoryFile` and `NoRepositoryFolderException` move to `Memoria.ToDo.Shared.Platform` with the same members.
 - No task behavior changes; tests change only how they select a folder.
 
 ```csharp
@@ -635,7 +630,7 @@ public enum RepositoryFileKind
 }
 ```
 
-The other contracts keep their members and cover the new file too: `SkippedFiles` names a `tags.json` that can't be read or has a newer version, and `UpdateRepository` reloads tag colors with tasks and settings.
+The other contracts keep their members and cover the new file too: `SkippedFiles` names a `tags.json` that can't be read or has a newer version, and the repository's update reloads tag colors with tasks and settings.
 
 Proposed: `ColorOf` answers null while `tags.json` can't be read, rather than failing, so every badge shows its default color and the sync status names the file. A failure there would stop every screen that shows a tag, and a tag's default color is always a valid color. This is a decision to confirm.
 

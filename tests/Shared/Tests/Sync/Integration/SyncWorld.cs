@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Memoria.ToDo.Desktop.App;
 using LibGit2Sharp;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Xunit;
 
@@ -161,9 +162,13 @@ internal sealed class Device : IAsyncDisposable
         CloneFolder = Path.Combine(folder, "clone");
         Time = new FakeTimeProvider();
         Keys = FakeDeviceKeyStore.Signing();
-        Store = TaskStore.Create(Files, new FakeImageEncoder(), Time, DeviceFolder);
-        Sync = SyncService.Create(Store.Synchronization, Files, syncKeys ?? Keys, new StoreSelection(Store), syncClock ?? Time, DeviceFolder, name, periodicInterval: null);
+        Repository = new SyncedRepository();
+        Store = TestTaskStore.Create(Files, new FakeImageEncoder(), Time, DeviceFolder, Repository);
+        Sync = SyncService.Create(Repository, Store.Synchronization, Files, syncKeys ?? Keys, new StoreSelection(Repository), syncClock ?? Time, DeviceFolder, name, periodicInterval: null);
     }
+
+    /// <summary>The synced repository the device's Tasks store and Sync share.</summary>
+    public SyncedRepository Repository { get; }
 
     public WindowsFileSystem Files { get; } = new();
 
@@ -240,10 +245,10 @@ internal sealed class Device : IAsyncDisposable
 
     public ValueTask DisposeAsync() => Sync.DisposeAsync();
 
-    private sealed class StoreSelection(ITaskStore store) : IRepositorySelection
+    private sealed class StoreSelection(SyncedRepository repository) : IRepositorySelection
     {
         public void Load() { }
 
-        public void Select(string folder) => store.UseRepositoryFolder(folder);
+        public void Select(string folder) => repository.Select(folder);
     }
 }

@@ -31,7 +31,7 @@ internal class ListTasks
 
     public ListTasks()
     {
-        Tasks = TaskStore.Create(Files, new FakeImageEncoder(), Time, Path.Combine(Root, "device"));
+        Tasks = TestTaskStore.Create(Files, new FakeImageEncoder(), Time, Path.Combine(Root, "device"));
         Tasks.UseRepositoryFolder(Clone);
     }
 

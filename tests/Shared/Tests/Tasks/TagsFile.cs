@@ -52,7 +52,7 @@ internal static class TagsFile
         var saved = 0;
         f.Store.TagColors.Changed += (_, _) => colors++;
         f.Store.TagOrder.Changed += (_, _) => order++;
-        f.Store.Synchronization.LocalSaved += (_, _) => saved++;
+        f.Repository.LocalSaved += (_, _) => saved++;
         return (() => colors, () => order, () => saved);
     }
 

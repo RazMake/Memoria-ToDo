@@ -1,10 +1,11 @@
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
 using Xunit;
 
 namespace Memoria.ToDo.Shared.Tasks.Tests;
 
-/// <summary>Sync's access to Tasks: skipped files, automatic deletion, and exclusive local updates.</summary>
+/// <summary>Sync's access to Tasks: automatic deletion and settings, and the repository's skipped files and exclusive updates with Tasks as a part.</summary>
 [Unit]
 public sealed class TaskSynchronizationTests
 {
@@ -21,7 +22,7 @@ public sealed class TaskSynchronizationTests
         var counts = new Counts();
         f.Tasks.Changed += (_, _) => counts.Changed++;
         f.Store.Settings.Changed += (_, _) => counts.SettingsChanged++;
-        Sync.LocalSaved += (_, _) => counts.Saved++;
+        f.Repository.LocalSaved += (_, _) => counts.Saved++;
         return counts;
     }
 
@@ -37,11 +38,11 @@ public sealed class TaskSynchronizationTests
     [Fact]
     public void Reports_the_selected_folder_or_none()
     {
-        Assert.Null(Sync.RepositoryFolder);
+        Assert.Null(f.Repository.Folder);
 
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Equal(f.Clone, Sync.RepositoryFolder);
+        Assert.Equal(f.Clone, f.Repository.Folder);
     }
 
     [Fact]
@@ -54,7 +55,7 @@ public sealed class TaskSynchronizationTests
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         Assert.Equal(["Readable"], f.Titles);
-        var skipped = Assert.Single(Sync.SkippedFiles);
+        var skipped = Assert.Single(f.Repository.SkippedFiles);
         Assert.Equal($"tasks/{corrupt}.json", skipped.RelativePath);
         Assert.False(skipped.RequiresUpdate);
         Assert.False(string.IsNullOrWhiteSpace(skipped.Reason));
@@ -72,7 +73,7 @@ public sealed class TaskSynchronizationTests
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         Assert.Equal(["Readable"], f.Titles);
-        var skipped = Assert.Single(Sync.SkippedFiles);
+        var skipped = Assert.Single(f.Repository.SkippedFiles);
         Assert.Equal($"tasks/{newer}.json", skipped.RelativePath);
         Assert.True(skipped.RequiresUpdate);
         Assert.False(string.IsNullOrWhiteSpace(skipped.Reason));
@@ -86,7 +87,7 @@ public sealed class TaskSynchronizationTests
 
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var skipped = Assert.Single(Sync.SkippedFiles);
+        var skipped = Assert.Single(f.Repository.SkippedFiles);
         Assert.Equal("settings.json", skipped.RelativePath);
         Assert.False(skipped.RequiresUpdate);
         Assert.Equal("{ not json", f.ReadText(f.SettingsFile));
@@ -124,7 +125,7 @@ public sealed class TaskSynchronizationTests
 
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var file = Assert.Single(Sync.SkippedFiles);
+        var file = Assert.Single(f.Repository.SkippedFiles);
         Assert.Equal("settings.json", file.RelativePath);
         Assert.True(file.RequiresUpdate);
     }
@@ -137,7 +138,7 @@ public sealed class TaskSynchronizationTests
 
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Empty(Sync.SkippedFiles);
+        Assert.Empty(f.Repository.SkippedFiles);
     }
 
     // Automatic deletion
@@ -221,9 +222,9 @@ public sealed class TaskSynchronizationTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var ran = false;
 
-        Assert.Throws<InvalidOperationException>(() => Sync.UpdateRepository(Path.Combine(f.Clone, "other"), () => ran = true));
+        Assert.Throws<InvalidOperationException>(() => f.Repository.Update(Path.Combine(f.Clone, "other"), () => ran = true));
         f.Tasks.UseRepositoryFolder(null);
-        Assert.Throws<InvalidOperationException>(() => Sync.UpdateRepository(f.Clone, () => ran = true));
+        Assert.Throws<InvalidOperationException>(() => f.Repository.Update(f.Clone, () => ran = true));
 
         Assert.False(ran);
     }
@@ -235,7 +236,7 @@ public sealed class TaskSynchronizationTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var counts = Count();
 
-        Sync.UpdateRepository(f.Clone, () =>
+        f.Repository.Update(f.Clone, () =>
         {
             f.Seed(id, "Imported");
             f.Seed(TasksFixture.Id(2), "New");
@@ -252,9 +253,9 @@ public sealed class TaskSynchronizationTests
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Sync.UpdateRepository(f.Clone, () => f.WriteText(f.TaskFile(id), "{ not json"));
+        f.Repository.Update(f.Clone, () => f.WriteText(f.TaskFile(id), "{ not json"));
 
-        Assert.Equal($"tasks/{id}.json", Assert.Single(Sync.SkippedFiles).RelativePath);
+        Assert.Equal($"tasks/{id}.json", Assert.Single(f.Repository.SkippedFiles).RelativePath);
     }
 
     [Fact]
@@ -265,7 +266,7 @@ public sealed class TaskSynchronizationTests
         f.Tasks.Changed += (_, _) =>
             otherThreadFinished = Task.Run(() => f.Tasks.All.Count).Wait(TestWait.ForSignal);
 
-        Sync.UpdateRepository(f.Clone, () => f.Seed(id));
+        f.Repository.Update(f.Clone, () => f.Seed(id));
 
         Assert.True(otherThreadFinished);
     }
@@ -278,7 +279,7 @@ public sealed class TaskSynchronizationTests
         var started = new ManualResetEventSlim();
         Task<TaskItem>? add = null;
 
-        Sync.UpdateRepository(f.Clone, () =>
+        f.Repository.Update(f.Clone, () =>
         {
             add = Task.Run(() =>
             {
@@ -300,7 +301,7 @@ public sealed class TaskSynchronizationTests
         var counts = Count();
         var failure = new InvalidOperationException("merge failed");
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => Sync.UpdateRepository(f.Clone, () =>
+        var thrown = Assert.Throws<InvalidOperationException>(() => f.Repository.Update(f.Clone, () =>
         {
             f.Seed(id, "Half applied");
             throw failure;
@@ -319,7 +320,7 @@ public sealed class TaskSynchronizationTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var failure = new InvalidOperationException("merge failed");
 
-        var thrown = Assert.Throws<AggregateException>(() => Sync.UpdateRepository(f.Clone, () =>
+        var thrown = Assert.Throws<AggregateException>(() => f.Repository.Update(f.Clone, () =>
         {
             // A file where the tasks folder should be stops the whole reload, not just one file.
             f.Files.WriteFile(Path.Combine(f.Clone, "tasks"), [1]);
@@ -336,9 +337,9 @@ public sealed class TaskSynchronizationTests
         f.Seed(id, "Existing");
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Sync.UpdateRepository(f.Clone, () => f.Files.FailReadsUnder(f.Clone));
+        f.Repository.Update(f.Clone, () => f.Files.FailReadsUnder(f.Clone));
 
         Assert.Empty(f.Titles);
-        Assert.Equal($"tasks/{id}.json", Assert.Single(Sync.SkippedFiles).RelativePath);
+        Assert.Equal($"tasks/{id}.json", Assert.Single(f.Repository.SkippedFiles).RelativePath);
     }
 }

@@ -28,7 +28,7 @@ public class TaskWindowsWiringTests : IDisposable
 
     public TaskWindowsWiringTests()
     {
-        _tasks = TaskStore.Create(_files, new FakeImageEncoder(), new FakeTimeProvider(), Path.GetFullPath("device-folder"));
+        _tasks = TestTaskStore.Create(_files, new FakeImageEncoder(), new FakeTimeProvider(), Path.GetFullPath("device-folder"));
         _tasks.UseRepositoryFolder("clone");
     }
 

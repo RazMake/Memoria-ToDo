@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 using static Memoria.ToDo.Shared.Tasks.Tests.TagsFile;
@@ -38,7 +39,7 @@ public sealed class TagOrderFileTests
         Assert.Equal(["Readable"], f.Titles);
         Assert.Equal(["apple", "zed"], Order.Sort(["zed", "apple"]));
         Assert.Null(f.Store.TagColors.ColorOf("apple"));
-        Assert.Equal("tags.json", Assert.Single(f.Store.Synchronization.SkippedFiles).RelativePath);
+        Assert.Equal("tags.json", Assert.Single(f.Repository.SkippedFiles).RelativePath);
         Assert.Equal(content, f.ReadText(f.TagColorsFile));
     }
 
@@ -91,7 +92,7 @@ public sealed class TagOrderFileTests
         Assert.Equal(["b", "a"], Order.Sort(["a", "b"]));
         var (colors, order, saved) = f.CountNotices();
 
-        f.Store.Synchronization.UpdateRepository(f.Clone, () => f.SeedTags(Placed("a", "a0"), Placed("b", "a1")));
+        f.Repository.Update(f.Clone, () => f.SeedTags(Placed("a", "a0"), Placed("b", "a1")));
 
         Assert.Equal(["a", "b"], Order.Sort(["a", "b"]));
         Assert.Equal((1, 1, 0), (colors(), order(), saved()));

@@ -11,7 +11,7 @@ internal sealed class ConfigureServices
     {
         StartWithWindows = startWithWindows ?? new FakeStartWithWindows();
         Sync = sync ?? new FakeSyncService();
-        Store = TaskStore.Create(new FakeFileSystem(), new FakeImageEncoder(), new FakeTimeProvider(), @"C:\Configure tests\device");
+        Store = TestTaskStore.Create(new FakeFileSystem(), new FakeImageEncoder(), new FakeTimeProvider(), @"C:\Configure tests\device");
         Store.UseRepositoryFolder(@"C:\Configure tests\clone");
     }
 

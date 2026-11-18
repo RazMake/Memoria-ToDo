@@ -40,7 +40,7 @@ internal sealed class EditorServices
 
     public ITasks Tasks { get; }
 
-    public EditorServices() => Tasks = TaskStore.Create(Files, Encoder, Time, Device);
+    public EditorServices() => Tasks = TestTaskStore.Create(Files, Encoder, Time, Device);
 
     /// <summary>Gives Tasks its repository folder, as Configure's choice does.</summary>
     public void UseRepository() => Tasks.UseRepositoryFolder(Clone);

@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Xunit;
 
 namespace Memoria.ToDo.Shared.Sync.Tests;
@@ -10,7 +11,13 @@ internal sealed class SyncFixture
 
     public FakeTimeProvider Time { get; } = new();
 
-    public FakeTaskSynchronization Tasks { get; } = new();
+    public FakeTaskSynchronization Tasks { get; }
+
+    /// <summary>The synced repository Sync works on, with <see cref="Part"/> as its one part.</summary>
+    public SyncedRepository Repository { get; } = new();
+
+    /// <summary>The one store in <see cref="Repository"/>; set its skipped files to have Sync report them.</summary>
+    public FakeRepositoryPart Part { get; } = new();
 
     public FakeRepositorySelection Selection { get; }
 
@@ -31,17 +38,19 @@ internal sealed class SyncFixture
 
     public SyncFixture()
     {
-        Selection = new FakeRepositorySelection(Tasks);
+        Repository.Add(Part);
+        Tasks = new FakeTaskSynchronization(Repository, Part);
+        Selection = new FakeRepositorySelection(Repository);
     }
 
     public ISyncService Create(TimeSpan? periodicInterval = null) =>
-        SyncService.Create(Tasks, Files, Keys, Selection, Time, DeviceFolder, DefaultDeviceName, periodicInterval, Git);
+        SyncService.Create(Repository, Tasks, Files, Keys, Selection, Time, DeviceFolder, DefaultDeviceName, periodicInterval, Git);
 
     /// <summary>A device with a key and a selected, previously set up clone, which can sync.</summary>
     public SyncFixture Ready()
     {
         Keys.SeedKey();
-        Tasks.RepositoryFolder = CloneFolder;
+        Repository.Select(CloneFolder);
         Git.SeedClone(CloneFolder, Address);
         return this;
     }

@@ -78,13 +78,17 @@ public interface IFileSystem
 
 Tasks and [Contacts](contacts.md#contacts-is-a-shared-module-of-its-own) both keep files in the same clone, and Sync updates both. So the shared platform, not Tasks, owns what they share: the selected folder, the lock that runs one change at a time, the reload after a sync, the list of skipped files, and the notice that a local change needs a sync. Each store is a part of the repository; neither knows the other, and Sync knows the repository, not how each store loads.
 
-- **Selecting a folder loads every part, in the order they were added**, under the lock, then raises each part's notices after releasing it. With no folder, each part is empty. A part that fails to load doesn't stop the others; the selection then fails with every failure.
+- **Selecting a folder loads every part, in the order they were added**, under the lock, then raises each part's notices after releasing it. With no folder, each part is empty.
+- **A selection changes all or nothing**, the user's choice, since every part's files live in the one clone and change through the one sync, as Tasks' do today. Each part first reads the folder without using it; only when every part read does each make what it read current. A part that fails to read doesn't stop the others from reading; the selection then changes nothing, keeping the old folder, every part as it was, and no notices, and fails with every failure.
 - **A store runs each read and write under the lock**, and after a write that Sync should carry, reports a local save, outside the lock.
+- **A change that raises notices never runs inside another lock call**, the user's choice: it takes the lock through `LockedChange`, which fails before running when the thread already holds the lock. Otherwise the change would save, then fail to report it, and its notices would run under the lock.
+- **Making what a part read current never fails**, the user's choice, so a selection can't change one part and not another. Everything that can fail runs in the read.
+- **Every reloaded part raises its notices, even when another part's notices throw.** The failures are kept, after the selection's or update's own.
 - **Sync's update keeps today's rules**: it checks the folder is still the selected one before running, runs the update under the lock, reloads every part even when the update fails, raises no local-save notice, and raises the parts' notices after releasing the lock. A failed update and a failed reload are kept together.
 - **The skipped files are every part's**, in the order the parts were added, so Sync's status lists Tasks' and Contacts' problems alike.
 - **The composition root creates one repository**, gives it to each store and to Sync, and selects the folder through it.
 
-Proposed, each a decision to confirm: these declarations, and that `ISkippedRepositoryFile` and `NoRepositoryFolderException` move from Tasks into the platform unchanged. This is not implemented:
+The user confirmed these declarations, and that `ISkippedRepositoryFile` and `NoRepositoryFolderException` move from Tasks into the platform with the same members. Their summaries stop naming tasks and Sync, since the platform names no module:
 
 ```csharp
 namespace Memoria.ToDo.Shared.Platform;
@@ -92,8 +96,10 @@ namespace Memoria.ToDo.Shared.Platform;
 /// One store's files in the clone, as the repository loads them.
 public interface IRepositoryPart
 {
-    /// Reads the folder's files, or empties the part for null. Runs under the lock; raises no notice.
-    void Load(string? folder);
+    /// Reads the folder's files, or nothing for null, without using them, and returns the call that
+    /// makes what it read current, or empties the part for null. Both run under the lock and raise
+    /// no notice. A failed read leaves the part as it was. The returned call never throws.
+    Action Load(string? folder);
 
     /// Raises the part's change notices. Runs after the lock is released.
     void Loaded();
@@ -108,14 +114,21 @@ public interface IRepositoryAccess
     /// The selected folder, or null.
     string? Folder { get; }
 
-    /// Adds a part. Throws InvalidOperationException after the first Select.
+    /// Adds a part. Throws InvalidOperationException after the first Select, even one that failed,
+    /// and ArgumentException when the part was already added.
     void Add(IRepositoryPart part);
 
     /// Runs the call under the lock with the selected folder, which may be null. Reentrant on one thread.
     T Locked<T>(Func<string?, T> call);
     void Locked(Action<string?> call);
 
-    /// Raises LocalSaved. Call it outside the lock, after a change Sync should carry.
+    /// Runs a change that raises notices under the lock with the selected folder.
+    /// Throws InvalidOperationException, before running, when the thread already holds the lock.
+    T LockedChange<T>(Func<string?, T> call);
+    void LockedChange(Action<string?> call);
+
+    /// Raises LocalSaved on the calling thread, after a change Sync should carry.
+    /// Throws InvalidOperationException when called under the lock.
     void ReportLocalSave();
 }
 
@@ -124,8 +137,12 @@ public interface ISyncedRepository
 {
     string? Folder { get; }
 
-    /// Throws InvalidOperationException, before update runs, when expectedFolder isn't selected.
-    /// Reloads every part under the lock, also when update fails; AggregateException keeps both failures.
+    /// Throws InvalidOperationException, before update runs, when expectedFolder isn't selected
+    /// or when called under the lock.
+    /// Reloads every part under the lock, also when update fails, then raises the notices of each part
+    /// that reloaded; a part that failed keeps its state and raises none. One failure is thrown as it is;
+    /// several make an AggregateException: the update's first, then each part's reload in the order they
+    /// were added, then each part's notices in the same order.
     void Update(string expectedFolder, Action update);
 
     /// Every part's skipped files, in the order the parts were added.
@@ -138,7 +155,9 @@ public interface ISyncedRepository
 public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
 {
     /// Loads every part with the folder, or empties them for null, then raises their notices.
-    /// Throws the part's exception, or AggregateException when several fail.
+    /// Throws, before loading: ArgumentException for a blank folder; InvalidOperationException under the lock.
+    /// Throws the part's exception, or AggregateException when several fail. When the reads succeed,
+    /// every part raises its notices; failed notices are thrown the same way, in the order parts were added.
     public void Select(string? folder);
 }
 ```
@@ -253,3 +272,6 @@ The options below were considered and rejected, grouped by the decision they bel
 - How the file system interface reads and writes:
   - **Streams instead of whole files**: the fake gets harder to write, and a caller could leave a file half written.
   - **The [System.IO.Abstractions](https://github.com/TestableIO/System.IO.Abstractions) package**: a new dependency with a far larger surface than the seven calls Tasks needs.
+- What a selection leaves when one part fails to read:
+  - **Switch anyway, and empty the failed part**: the selected folder would change while the desktop puts the old saved path back, so Configure would show one folder and the next start load another.
+  - **Undo by loading the old folder again**: it reads twice, and a failed undo leaves parts on different folders.

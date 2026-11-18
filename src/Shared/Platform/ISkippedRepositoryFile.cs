@@ -1,4 +1,4 @@
-namespace Memoria.ToDo.Shared.Tasks;
+namespace Memoria.ToDo.Shared.Platform;
 
 /// <summary>An immutable diagnostic for a repository file that could not be loaded.</summary>
 public interface ISkippedRepositoryFile

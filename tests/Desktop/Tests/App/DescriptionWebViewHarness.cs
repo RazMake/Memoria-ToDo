@@ -59,7 +59,7 @@ internal sealed class DescriptionWebViewHarness : IDisposable
         Directory.CreateDirectory(EditImagesFolder);
 
         var files = new WindowsFileSystem();
-        var rules = TaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device")).Synchronization.Files;
+        var rules = TestTaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device")).Synchronization.Files;
         WebView = new WpfDescriptionWebView(CloneFolder, EditImagesFolder, BrowserDataFolder, files, rules, dragPause ?? new DispatcherDragPause(), measure ?? new DevToolsImageMeasure());
         Port = WebView;
         Control = (WebView2CompositionControl)Port.Element;

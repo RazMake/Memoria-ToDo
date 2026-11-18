@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Platform;
+
 namespace Memoria.ToDo.Shared.Tasks;
 
 internal sealed partial class TaskService
@@ -18,22 +20,13 @@ internal sealed partial class TaskService
                     throw new ArgumentException($"The tag '{tag}' is there twice.", nameof(tags));
             }
 
-            lock (owner.gate)
-                return owner.tagColors.Value.Sort(tags);
+            return owner.repository.Locked(_ => owner.tagColors.Value.Sort(tags));
         }
 
         public event EventHandler? Changed
         {
-            add
-            {
-                lock (owner.gate)
-                    owner.tagOrderChanged += value;
-            }
-            remove
-            {
-                lock (owner.gate)
-                    owner.tagOrderChanged -= value;
-            }
+            add => owner.tagOrderChanged += value;
+            remove => owner.tagOrderChanged -= value;
         }
 
         public void Move(string tag, string? previousTag, string? nextTag)
@@ -43,18 +36,21 @@ internal sealed partial class TaskService
                 RequireNeighbor(previousTag, tag, nameof(previousTag));
             if (nextTag is not null)
                 RequireNeighbor(nextTag, tag, nameof(nextTag));
-            lock (owner.gate)
+            var written = false;
+            owner.repository.LockedChange(clone =>
             {
-                var root = owner.clone ?? throw new NoRepositoryFolderException();
+                var root = clone ?? throw new NoRepositoryFolderException();
                 var tags = owner.tagColors.Require();
                 var changed = TagMove.Apply(tags, owner.set.Tags.InUse.Select(use => use.Tag), tag, previousTag, nextTag, owner.Now());
                 if (changed is null)
                     return;
                 owner.tagColorsFolder.Write(root, changed);
                 owner.tagColors = new FileLoad<TagColorSet>(changed, true, null);
-            }
+                written = true;
+            });
 
-            owner.Announce(Notice.TagOrder | Notice.LocalSaved);
+            if (written)
+                owner.Announce(Notice.TagOrder | Notice.LocalSaved);
         }
 
         private static void RequireTag(string tag, string paramName)

@@ -45,7 +45,7 @@ Memoria.ToDo.Shared.Sync.ISyncStatus.Details.get -> string?
 Memoria.ToDo.Shared.Sync.ISyncStatus.Failure.get -> Memoria.ToDo.Shared.Sync.SyncFailure?
 Memoria.ToDo.Shared.Sync.ISyncStatus.HasPendingChanges.get -> bool
 Memoria.ToDo.Shared.Sync.ISyncStatus.LastSuccessfulSync.get -> System.DateTimeOffset?
-Memoria.ToDo.Shared.Sync.ISyncStatus.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Tasks.ISkippedRepositoryFile!>!
+Memoria.ToDo.Shared.Sync.ISyncStatus.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!>!
 Memoria.ToDo.Shared.Sync.ISyncStatus.State.get -> Memoria.ToDo.Shared.Sync.SyncState
 Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm
 Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm.Sha256 = 0 -> Memoria.ToDo.Shared.Sync.RsaSignatureAlgorithm
@@ -66,4 +66,4 @@ Memoria.ToDo.Shared.Sync.SyncState.Error = 3 -> Memoria.ToDo.Shared.Sync.SyncSta
 Memoria.ToDo.Shared.Sync.SyncState.Idle = 0 -> Memoria.ToDo.Shared.Sync.SyncState
 Memoria.ToDo.Shared.Sync.SyncState.Offline = 2 -> Memoria.ToDo.Shared.Sync.SyncState
 Memoria.ToDo.Shared.Sync.SyncState.Working = 1 -> Memoria.ToDo.Shared.Sync.SyncState
-static Memoria.ToDo.Shared.Sync.SyncService.Create(Memoria.ToDo.Shared.Tasks.ITaskSynchronization! tasks, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Sync.IDeviceKeyStore! keys, Memoria.ToDo.Shared.Sync.IRepositorySelection! repositories, System.TimeProvider! time, string! deviceFolder, string! defaultDeviceName, System.TimeSpan? periodicInterval) -> Memoria.ToDo.Shared.Sync.ISyncService!
+static Memoria.ToDo.Shared.Sync.SyncService.Create(Memoria.ToDo.Shared.Platform.ISyncedRepository! repository, Memoria.ToDo.Shared.Tasks.ITaskSynchronization! tasks, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Sync.IDeviceKeyStore! keys, Memoria.ToDo.Shared.Sync.IRepositorySelection! repositories, System.TimeProvider! time, string! deviceFolder, string! defaultDeviceName, System.TimeSpan? periodicInterval) -> Memoria.ToDo.Shared.Sync.ISyncService!

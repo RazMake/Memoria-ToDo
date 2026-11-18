@@ -1,11 +1,10 @@
+using Memoria.ToDo.Shared.Platform;
+
 namespace Memoria.ToDo.Shared.Tasks;
 
 /// <summary>Every task, and the operations on them. Safe to call from any thread; runs one call at a time.</summary>
 public interface ITasks
 {
-    /// <summary>Reads the clone's tasks, then raises <see cref="Changed"/>. Null means no folder is set: the list is empty.</summary>
-    void UseRepositoryFolder(string? folder);
-
     /// <summary>Every task, open and resolved, in rank order; tasks with the same rank in ID order.</summary>
     IReadOnlyList<TaskItem> All { get; }
 

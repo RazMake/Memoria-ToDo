@@ -26,7 +26,7 @@ public class PageImagesTests
 
     public PageImagesTests()
     {
-        var store = TaskStore.Create(_files, new FakeImageEncoder(), new FakeTimeProvider(), Path.GetFullPath("device"));
+        var store = TestTaskStore.Create(_files, new FakeImageEncoder(), new FakeTimeProvider(), Path.GetFullPath("device"));
         _rules = store.Synchronization.Files;
     }
 
