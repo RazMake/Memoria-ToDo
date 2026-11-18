@@ -35,7 +35,7 @@ Proposed, each a decision to confirm:
 - The keyboard reaches both buttons with Tab, in the order they show.
 - Both buttons belong to the Add window, not to the editors the Task list reuses, so the [public interface](#public-interface) doesn't change.
 - **The Description editor shows a Save button too, at its bottom right under its message line**, for Task View's [edit](task-list.md#edit-description-turns-the-right-side-into-the-editor). The user decided this. It raises the editor's `SaveRequested`, as the Save shortcut does, so the public interface doesn't change. Proposed: one internal part of the Task editor makes Save for both, with the same look and tooltip, so the button keeps one home. This is a decision to confirm.
-- **While a new version is available or updating, Add shows [Updates' status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) along its bottom edge**, below Save, and grows taller by the bar's height, as it grows with what it holds. Otherwise the bar is hidden. A click on the bar's update text starts the update, which closes Add and keeps its draft.
+- **While a new version is available or updating, Add shows [Updates' status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) along its bottom edge**, below Save, and grows taller by the bar's height, as it grows with what it holds. Otherwise the bar is hidden. A click on the bar's update text opens [What is new](updates.md#what-is-new-shows-each-newer-releases-notes) over Add. An update closes Add and keeps its draft.
 
 ### Keys save, close, and move between fields
 

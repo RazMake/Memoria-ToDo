@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Shared\Contacts\Memoria.ToDo.Shared.Contacts.csproj" />
     <ProjectReference Include="..\..\..\src\Shared\Editing\Memoria.ToDo.Shared.Editing.csproj" />
     <ProjectReference Include="..\..\..\src\Shared\Platform\Memoria.ToDo.Shared.Platform.csproj" />
     <ProjectReference Include="..\..\..\src\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />

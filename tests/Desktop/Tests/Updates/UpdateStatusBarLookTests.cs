@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Testing;
@@ -78,6 +79,62 @@ public class UpdateStatusBarLookTests
         Assert.Equal(Colors.Green, ((SolidColorBrush)bar.Background).Color);
     }
 
+    [WpfTheory]
+    [InlineData(UpdateStage.Available)]
+    [InlineData(UpdateStage.Updating)]
+    public void Leaves_5_pixels_between_its_start_element_and_the_update_text(UpdateStage stage)
+    {
+        var start = new Border { Height = 10 };
+
+        var (bar, _) = Measured(start, stage);
+
+        var (_, startRight) = Edges(bar, start);
+        var (textLeft, _) = Edges(bar, UpdateTextOf(bar));
+        Assert.Equal(5, textLeft - startRight, 0.01);
+    }
+
+    [WpfTheory]
+    [InlineData(UpdateStage.Available)]
+    [InlineData(UpdateStage.Updating)]
+    public void Keeps_the_update_text_at_its_right_end_with_the_gap_on_its_left(UpdateStage stage)
+    {
+        var (bar, _) = Measured(new Border { Height = 10 }, stage);
+
+        var (_, textRight) = Edges(bar, UpdateTextOf(bar));
+        var contentRight = bar.ActualWidth - bar.Padding.Right - bar.BorderThickness.Right;
+        Assert.Equal(contentRight, textRight, 0.01);
+    }
+
+    // The text block that shows "Update available: ..." or "Updating to ...", found by what it shows.
+    private static TextBlock UpdateTextOf(DependencyObject bar) =>
+        Assert.IsType<TextBlock>(FindUpdateText(bar));
+
+    private static TextBlock? FindUpdateText(DependencyObject parent)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is TextBlock block && string.Concat(block.Inlines.OfType<Run>().Select(run => run.Text)).StartsWith("Updat", StringComparison.Ordinal))
+            {
+                return block;
+            }
+
+            if (FindUpdateText(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    // The left and right edges of the element, in the bar's own coordinates.
+    private static (double Left, double Right) Edges(UpdateStatusBar bar, UIElement element)
+    {
+        var bounds = element.TransformToAncestor(bar).TransformBounds(new Rect(element.RenderSize));
+        return (bounds.Left, bounds.Right);
+    }
+
     private static (UpdateStatusBar Bar, Grid Container) Measured(UIElement? start, UpdateStage stage)
     {
         var status = new FakeUpdateStatus();
@@ -86,6 +143,7 @@ public class UpdateStatusBarLookTests
         container.Children.Add(bar);
         status.Publish(new UpdateState(stage, "2.1.0", stage is UpdateStage.NoUpdate ? null : "2.2.0", null));
         container.Measure(new Size(500, double.PositiveInfinity));
+        container.Arrange(new Rect(0, 0, 500, container.DesiredSize.Height));
         return (bar, container);
     }
 }

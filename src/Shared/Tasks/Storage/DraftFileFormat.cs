@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Platform;
+
 namespace Memoria.ToDo.Shared.Tasks;
 
 /// <summary>The JSON of the kept draft: <c>version</c>, <c>id</c>, <c>title</c>, <c>description</c>, and <c>tags</c>.</summary>
@@ -15,7 +17,7 @@ internal static class DraftFileFormat
     /// <summary>Throws <see cref="InvalidDataException"/> when the file isn't a draft this app can read.</summary>
     public static TaskDraft Read(byte[] bytes)
     {
-        using var document = JsonFields.Parse(bytes);
+        using var document = JsonFile.Parse(bytes);
         var root = document.RootElement;
         JsonFields.RequireSupportedVersion(root);
         var id = JsonFields.String(root, "id");

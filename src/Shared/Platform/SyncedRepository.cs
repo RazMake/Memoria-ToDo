@@ -1,5 +1,3 @@
-using System.Runtime.ExceptionServices;
-
 namespace Memoria.ToDo.Shared.Platform;
 
 /// <summary>
@@ -98,30 +96,19 @@ public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
         {
             selected = true;
             var applies = new List<Action>(parts.Count);
-            List<Exception>? failures = null;
+            var failures = new FailureList();
             foreach (var part in parts)
-            {
-                try
-                {
-                    applies.Add(part.Load(folder));
-                }
-                catch (Exception e)
-                {
-                    (failures ??= []).Add(e);
-                }
-            }
+                failures.Attempt(() => applies.Add(part.Load(folder)));
 
-            if (failures is not null)
-                Throw(failures);
+            failures.ThrowIfAny();
             foreach (var apply in applies)
                 apply();
             this.folder = folder;
         }
 
-        var noticeFailures = new List<Exception>();
+        var noticeFailures = new FailureList();
         RaiseLoaded(parts, noticeFailures);
-        if (noticeFailures.Count > 0)
-            Throw(noticeFailures);
+        noticeFailures.ThrowIfAny();
     }
 
     /// <inheritdoc />
@@ -131,67 +118,37 @@ public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
         ArgumentNullException.ThrowIfNull(update);
         RequireOutsideLock(nameof(Update));
 
-        var failures = new List<Exception>();
+        var failures = new FailureList();
         var reloaded = new List<IRepositoryPart>(parts.Count);
         lock (gate)
         {
             if (folder != expectedFolder)
                 throw new InvalidOperationException("The selected repository folder isn't the expected one.");
-            try
-            {
-                update();
-            }
-            catch (Exception e)
-            {
-                failures.Add(e);
-            }
-
+            failures.Attempt(update);
             foreach (var part in parts)
             {
-                try
+                failures.Attempt(() =>
                 {
                     part.Load(expectedFolder)();
                     reloaded.Add(part);
-                }
-                catch (Exception e)
-                {
-                    failures.Add(e);
-                }
+                });
             }
         }
 
         RaiseLoaded(reloaded, failures);
-        if (failures.Count > 0)
-            Throw(failures);
+        failures.ThrowIfAny();
     }
 
-    /// <summary>Raises every part's notices, even when one throws, adding each failure in order.</summary>
-    private static void RaiseLoaded(List<IRepositoryPart> loaded, List<Exception> failures)
+    /// <summary>Raises every part's notices, even when one throws, keeping each failure in order.</summary>
+    private static void RaiseLoaded(List<IRepositoryPart> loaded, FailureList failures)
     {
         foreach (var part in loaded)
-        {
-            try
-            {
-                part.Loaded();
-            }
-            catch (Exception e)
-            {
-                failures.Add(e);
-            }
-        }
+            failures.Attempt(part.Loaded);
     }
 
     private void RequireOutsideLock(string operation)
     {
         if (gate.IsHeldByCurrentThread)
             throw new InvalidOperationException($"{operation} can't run under the repository's lock.");
-    }
-
-    /// <summary>Throws the one failure as it is, or several together in order.</summary>
-    private static void Throw(List<Exception> failures)
-    {
-        if (failures.Count == 1)
-            ExceptionDispatchInfo.Capture(failures[0]).Throw();
-        throw new AggregateException("More than one step failed.", failures);
     }
 }

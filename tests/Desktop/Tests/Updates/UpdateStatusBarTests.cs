@@ -10,7 +10,7 @@ namespace Memoria.ToDo.Desktop.Updates.Tests;
 
 /// <summary>
 /// The status bar of Add and Task View on screen, in its common scenarios: hidden or shown by the state, the update
-/// text's look, and starting the update. The bar's hand pointer comes with it being a button, as for every button of the app,
+/// text's look, and opening What is new from it, never starting the update. The bar's hand pointer comes with it being a button, as for every button of the app,
 /// which the platform's own tests check.
 /// </summary>
 [UX]
@@ -69,18 +69,19 @@ public class UpdateStatusBarTests
     }
 
     [WpfFact]
-    public void A_click_on_the_available_update_starts_it()
+    public void A_click_on_the_available_update_opens_What_is_new_over_the_bars_window_and_does_not_start_it()
     {
         using var screen = new StatusBarScreen();
         screen.Publish(UpdateStage.Available, "2.2.0");
 
         OpenWindows.Click(screen.UpdateButton);
 
-        Assert.Equal(1, screen.Status.UpdateNowCount);
+        Assert.Same(screen.Window, Assert.Single(screen.Status.WhatIsNewOwners));
+        Assert.Equal(0, screen.Status.UpdateNowCount);
     }
 
     [WpfFact]
-    public void Enter_on_the_focused_available_update_starts_it()
+    public void Enter_on_the_focused_available_update_opens_What_is_new_and_does_not_start_it()
     {
         using var screen = new StatusBarScreen();
         screen.Publish(UpdateStage.Available, "2.2.0");
@@ -88,11 +89,12 @@ public class UpdateStatusBarTests
 
         SimulatedKey.Raise(screen.UpdateButton, Key.Enter, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
 
-        Assert.Equal(1, screen.Status.UpdateNowCount);
+        Assert.Same(screen.Window, Assert.Single(screen.Status.WhatIsNewOwners));
+        Assert.Equal(0, screen.Status.UpdateNowCount);
     }
 
     [WpfFact]
-    public void Space_on_the_focused_available_update_starts_it()
+    public void Space_on_the_focused_available_update_opens_What_is_new_and_does_not_start_it()
     {
         using var screen = new StatusBarScreen();
         screen.Publish(UpdateStage.Available, "2.2.0");
@@ -100,7 +102,8 @@ public class UpdateStatusBarTests
 
         SimulatedKey.Chord(screen.UpdateButton, Key.Space);
 
-        Assert.Equal(1, screen.Status.UpdateNowCount);
+        Assert.Same(screen.Window, Assert.Single(screen.Status.WhatIsNewOwners));
+        Assert.Equal(0, screen.Status.UpdateNowCount);
     }
 
     [WpfFact]

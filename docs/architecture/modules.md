@@ -20,7 +20,7 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 
 ### The platform serves every module and knows none
 
-- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
+- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), the [JSON style and file rules](#stores-share-one-json-style-and-one-set-of-file-rules) every store follows, and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
 - **Every module takes the time from .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, which gives the time and timers, and the composition root passes the system's. The shared library has no clock interface of its own.
 - **Every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files.
 - **Code shared by two modules moves to the platform**, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) requires. Code shared only inside one module stays in that module.
@@ -162,9 +162,106 @@ public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
 }
 ```
 
+### Steps that must all run throw their failures together
+
+The synced repository raises every part's notices even when one throws, and [Contacts](contacts.md#failure-modes) raises Changed and reports a local save even when one of them throws. Both then throw by one rule, so the user decided it lives in the platform, in one small type both use:
+
+- **Each step is attempted**, even when an earlier one failed.
+- **One failure is thrown as it is**, keeping its stack trace, so a caller catching its type still catches it.
+- **Several make an `AggregateException`**, in the order they happened.
+
+The user decided this declaration:
+
+```csharp
+namespace Memoria.ToDo.Shared.Platform;
+
+/// Collects the failures of steps that must all run, then throws them together.
+public sealed class FailureList
+{
+    /// Runs the step, and keeps its exception instead of throwing it.
+    public void Attempt(Action step);
+
+    /// Keeps a failure caught elsewhere. Throws ArgumentNullException for null.
+    public void Add(Exception failure);
+
+    /// Does nothing when no failure was kept. Throws the one failure as it is, keeping its stack trace,
+    /// or an AggregateException with every failure, in the order they were kept.
+    public void ThrowIfAny();
+}
+```
+
+### Stores share one JSON style and one set of file rules
+
+Tasks and [Contacts](contacts.md#contacts-is-a-shared-module-of-its-own) write their files the same way and skip the same bad files, so those rules live in the shared platform, and each store uses them. The user decided to move them out of Tasks, with Tasks moved onto them and no change in its behavior:
+
+- **One JSON style.** Every file Tasks and Contacts write in the clone uses two-space indents, `\n` line breaks, characters outside ASCII as they are, UTF-8 with no byte-order mark, and no line break at the end. So one change shows as a few changed lines in git. The user decided the rule covers only the stores' files: other files on the device, such as Sync's [known-hosts file](sync.md#device-metadata-has-one-owner-and-never-travels-in-task-commits) and the [Windows key file](sync.md#the-windows-key-file-is-encrypted-and-only-the-users-account-unlocks-it), keep their own format. The user decided Tasks' [draft](tasks.md#a-draft-waits-on-this-device-until-its-saved), a store file kept on the device, uses the style too. Bytes that aren't valid JSON make a file unreadable.
+- **One version rule.** A versioned file's `version` is a whole number from 1. A newer app reads every older version. A version newer than the app reads makes the file unreadable, and it needs a newer app. A missing version, or any other value, makes it unreadable.
+- **One skip rule.** A store skips a file that's there but can't be read: its parse fails, or reading it fails with an I/O or access error. It leaves the file unchanged and lists it in its skipped files, with the failure's message and whether it needs a newer app. A missing file isn't skipped; each store decides what a missing file means.
+- **One relative-path rule.** A path relative to the clone uses `/`, is never rooted, and has no `.` or `..` part. Each store's file rules reject any other path with `ArgumentException`, before looking at any bytes.
+
+Two implementation choices follow from the first bullet. .NET's built-in relaxed JSON encoder writes emoji and other characters beyond the Basic Multilingual Plane as `\u` escapes, so the platform uses its own small encoder to keep them as they are, which needs `AllowUnsafeBlocks` in the platform project. And parsing checks that the bytes are valid UTF-8 first, because .NET's parser accepts some invalid bytes inside strings. Decisions to confirm.
+
+Proposed, a decision to confirm: **parsing also rejects text that doesn't decode**, with `InvalidDataException`, as it rejects bytes that aren't JSON. A string value or a property name, at any depth, whose escapes make invalid text, such as a lone surrogate `"\uD800"`, makes the file unreadable; an escaped surrogate pair, such as `"\uD83D\uDE00"`, is valid. .NET's parser accepts such a file, and reading the string later throws `InvalidOperationException`, which the skip rule above doesn't cover, so one bad file would stop a whole load. Every store reads through `JsonFile.Parse`, so this one check makes Tasks and Contacts skip and report such a file, and their merges reject such a side as unreadable.
+
+The user confirmed these declarations, and the platform implements them:
+
+```csharp
+namespace Memoria.ToDo.Shared.Platform;
+
+/// The JSON style of every store file the apps write, and the rules for reading one.
+public static class JsonFile
+{
+    /// The bytes of the one JSON value write writes: two-space indents, "\n" line breaks, characters outside
+    /// ASCII as they are, UTF-8 with no byte-order mark, and no line break at the end.
+    /// Throws InvalidOperationException when write writes no value, or leaves it unfinished.
+    public static byte[] Write(Action<Utf8JsonWriter> write);
+
+    /// The parsed JSON value, of any kind. Throws InvalidDataException when bytes aren't valid JSON,
+    /// or a string value or property name in it doesn't decode to valid text.
+    public static JsonDocument Parse(byte[] bytes);
+
+    /// The object's "version": a whole number from 1 to newest. Throws InvalidDataException when file isn't
+    /// an object, or its version is missing, not a whole number, or below 1; and when the version is above
+    /// newest, which SkippedFile.Of then reports as needing a newer app.
+    public static int RequireVersion(JsonElement file, int newest);
+}
+
+/// What reading one file found. Failure is set when the file is there but can't be read.
+public sealed record FileLoad<T>(T Value, bool Present, InvalidDataException? Failure)
+{
+    /// Reads and parses the file, and never throws for a bad file. A missing file gives absent, not Present.
+    /// A failure SkippedFile.Skips gives absent, Present, and the Failure: parse's InvalidDataException as it is,
+    /// or an InvalidDataException with the same message around any other. Other exceptions pass through.
+    public static FileLoad<T> Read(IFileSystem files, string path, Func<byte[], T> parse, T absent);
+
+    /// The value. Throws InvalidDataException around Failure when the file can't be read.
+    public T Require();
+}
+
+/// How a store skips a file it can't read: it leaves the file unchanged and reports it.
+public static class SkippedFile
+{
+    /// Whether a failure to read or parse a file that's there means the store skips the file:
+    /// InvalidDataException, IOException, or UnauthorizedAccessException.
+    public static bool Skips(Exception failure);
+
+    /// The report for the skipped file at relativePath: the failure's message as the reason, and RequiresUpdate
+    /// true when the failure is JsonFile.RequireVersion finding a version above newest.
+    public static ISkippedRepositoryFile Of(string relativePath, Exception failure);
+}
+
+/// A path relative to the clone, as Git names it.
+public static class RepositoryPath
+{
+    /// The path's parts, split at '/'. Throws ArgumentNullException for null, and ArgumentException when the
+    /// path is rooted, such as "/a", "\a", "C:/a", or anything this system counts as rooted, or has a "." or ".." part.
+    public static IReadOnlyList<string> Split(string relativePath);
+}
+```
+
 ### A contact address has one home
 
-A mention's link address names a contact by ID, as `contact:<id>`. [Contacts](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) makes and reads it, and [Rendering](rendering.md#a-mention-shows-on-a-colored-background) recognizes it, so its format lives in the shared platform. Proposed, a decision to confirm. This is not implemented:
+A mention's link address names a contact by ID, as `contact:<id>`. [Contacts](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) makes and reads it, and [Rendering](rendering.md#a-mention-shows-on-a-colored-background) recognizes it, so its format lives in the shared platform. The user confirmed this declaration, and the platform implements it:
 
 ```csharp
 namespace Memoria.ToDo.Shared.Platform;
@@ -275,3 +372,6 @@ The options below were considered and rejected, grouped by the decision they bel
 - What a selection leaves when one part fails to read:
   - **Switch anyway, and empty the failed part**: the selected folder would change while the desktop puts the old saved path back, so Configure would show one folder and the next start load another.
   - **Undo by loading the old folder again**: it reads twice, and a failed undo leaves parts on different folders.
+- Where Contacts gets Tasks' JSON style and file rules:
+  - **Move only the JSON writer settings, and let Contacts write its own skip and path checks**: a few dozen lines that could drift from Tasks'.
+  - **Move nothing, and let Contacts copy the settings**: a style change would need two edits, which the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) forbids.

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
@@ -19,7 +20,7 @@ internal static class SettingsFileFormat
     /// <summary>Throws <see cref="InvalidDataException"/> when the file isn't settings this app can read.</summary>
     public static SharedSettings Read(byte[] bytes)
     {
-        using var document = JsonFields.Parse(bytes);
+        using var document = JsonFile.Parse(bytes);
         var root = document.RootElement;
         JsonFields.RequireSupportedVersion(root);
         var days = ReadSetting(root, "deletionDelayDays", JsonFields.Int32);

@@ -217,7 +217,7 @@ public class TaskListStatusBarTests
     }
 
     [WpfFact]
-    public void Clicking_the_update_text_starts_the_update()
+    public void Clicking_the_update_text_opens_What_is_new_over_Task_View_and_does_not_start_the_update()
     {
         var services = new ListServices();
         services.Updates.State = new UpdateState(UpdateStage.Available, "2.1.0", "2.2.0", null);
@@ -225,7 +225,8 @@ public class TaskListStatusBarTests
 
         OpenWindows.Click((Button)screen.UpdateTextButton);
 
-        Assert.Equal(1, services.Updates.UpdateNowCount);
+        Assert.Same(screen.Window, Assert.Single(services.Updates.WhatIsNewOwners));
+        Assert.Equal(0, services.Updates.UpdateNowCount);
     }
 
     [WpfFact]

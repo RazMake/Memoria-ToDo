@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
@@ -26,9 +27,9 @@ internal static class TagColorsFileFormat
     /// <summary>Throws <see cref="InvalidDataException"/> when the file isn't tags this app can read.</summary>
     public static TagColorSet Read(byte[] bytes)
     {
-        using var document = JsonFields.Parse(bytes);
+        using var document = JsonFile.Parse(bytes);
         var root = document.RootElement;
-        var version = JsonFields.RequireSupportedVersion(root, CurrentVersion);
+        var version = JsonFile.RequireVersion(root, CurrentVersion);
         return TagColorSet.Of(JsonFields.Objects(root, "tags").Select(entry => version == 1 ? ReadVersion1(entry) : ReadEntry(entry)).ToList());
     }
 

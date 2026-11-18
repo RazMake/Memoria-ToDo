@@ -1,0 +1,122 @@
+#nullable enable
+Memoria.ToDo.Shared.Contacts.Contact
+Memoria.ToDo.Shared.Contacts.Contact.<Clone>$() -> Memoria.ToDo.Shared.Contacts.Contact!
+Memoria.ToDo.Shared.Contacts.Contact.Alias.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.Alias.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.CareerPathKey.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.CareerPathKey.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.Contact(string! Id, string! FullName, string? Alias = null, string? FirstName = null, string? Title = null, string? PronounsKey = null, string? CareerPathKey = null, string? LevelId = null, string? WorkingType = null, string? Location = null, string? ReportsTo = null, System.TimeOnly? DayStartTime = null, System.DateOnly? LevelStartDate = null, System.DateOnly? TeamMemberSince = null, System.DateOnly? ExitDate = null) -> void
+Memoria.ToDo.Shared.Contacts.Contact.DayStartTime.get -> System.TimeOnly?
+Memoria.ToDo.Shared.Contacts.Contact.DayStartTime.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.Deconstruct(out string! Id, out string! FullName, out string? Alias, out string? FirstName, out string? Title, out string? PronounsKey, out string? CareerPathKey, out string? LevelId, out string? WorkingType, out string? Location, out string? ReportsTo, out System.TimeOnly? DayStartTime, out System.DateOnly? LevelStartDate, out System.DateOnly? TeamMemberSince, out System.DateOnly? ExitDate) -> void
+Memoria.ToDo.Shared.Contacts.Contact.Equals(Memoria.ToDo.Shared.Contacts.Contact? other) -> bool
+Memoria.ToDo.Shared.Contacts.Contact.ExitDate.get -> System.DateOnly?
+Memoria.ToDo.Shared.Contacts.Contact.ExitDate.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.FirstName.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.FirstName.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.FullName.get -> string!
+Memoria.ToDo.Shared.Contacts.Contact.FullName.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.Id.get -> string!
+Memoria.ToDo.Shared.Contacts.Contact.Id.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.LevelId.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.LevelId.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.LevelStartDate.get -> System.DateOnly?
+Memoria.ToDo.Shared.Contacts.Contact.LevelStartDate.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.Location.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.Location.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.PronounsKey.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.PronounsKey.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.ReportsTo.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.ReportsTo.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.TeamMemberSince.get -> System.DateOnly?
+Memoria.ToDo.Shared.Contacts.Contact.TeamMemberSince.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.Title.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.Title.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.WorkingType.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.WorkingType.init -> void
+Memoria.ToDo.Shared.Contacts.ContactGroup
+Memoria.ToDo.Shared.Contacts.ContactGroup.<Clone>$() -> Memoria.ToDo.Shared.Contacts.ContactGroup!
+Memoria.ToDo.Shared.Contacts.ContactGroup.ContactGroup(string! Name, string! Heading, int Position, bool IsTeam, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.Contact!>! Members) -> void
+Memoria.ToDo.Shared.Contacts.ContactGroup.Deconstruct(out string! Name, out string! Heading, out int Position, out bool IsTeam, out System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.Contact!>! Members) -> void
+Memoria.ToDo.Shared.Contacts.ContactGroup.Equals(Memoria.ToDo.Shared.Contacts.ContactGroup? other) -> bool
+Memoria.ToDo.Shared.Contacts.ContactGroup.Heading.get -> string!
+Memoria.ToDo.Shared.Contacts.ContactGroup.Heading.init -> void
+Memoria.ToDo.Shared.Contacts.ContactGroup.IsTeam.get -> bool
+Memoria.ToDo.Shared.Contacts.ContactGroup.IsTeam.init -> void
+Memoria.ToDo.Shared.Contacts.ContactGroup.Members.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.Contact!>!
+Memoria.ToDo.Shared.Contacts.ContactGroup.Members.init -> void
+Memoria.ToDo.Shared.Contacts.ContactGroup.Name.get -> string!
+Memoria.ToDo.Shared.Contacts.ContactGroup.Name.init -> void
+Memoria.ToDo.Shared.Contacts.ContactGroup.Position.get -> int
+Memoria.ToDo.Shared.Contacts.ContactGroup.Position.init -> void
+Memoria.ToDo.Shared.Contacts.ContactStore
+Memoria.ToDo.Shared.Contacts.DataType
+Memoria.ToDo.Shared.Contacts.DataType.<Clone>$() -> Memoria.ToDo.Shared.Contacts.DataType!
+Memoria.ToDo.Shared.Contacts.DataType.DataType(string! KeyField, string! RelativePath, bool Loaded, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.DataTypeEntry!>! Entries) -> void
+Memoria.ToDo.Shared.Contacts.DataType.Deconstruct(out string! KeyField, out string! RelativePath, out bool Loaded, out System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.DataTypeEntry!>! Entries) -> void
+Memoria.ToDo.Shared.Contacts.DataType.Entries.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.DataTypeEntry!>!
+Memoria.ToDo.Shared.Contacts.DataType.Entries.init -> void
+Memoria.ToDo.Shared.Contacts.DataType.Equals(Memoria.ToDo.Shared.Contacts.DataType? other) -> bool
+Memoria.ToDo.Shared.Contacts.DataType.KeyField.get -> string!
+Memoria.ToDo.Shared.Contacts.DataType.KeyField.init -> void
+Memoria.ToDo.Shared.Contacts.DataType.Loaded.get -> bool
+Memoria.ToDo.Shared.Contacts.DataType.Loaded.init -> void
+Memoria.ToDo.Shared.Contacts.DataType.RelativePath.get -> string!
+Memoria.ToDo.Shared.Contacts.DataType.RelativePath.init -> void
+Memoria.ToDo.Shared.Contacts.DataTypeEntry
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.<Clone>$() -> Memoria.ToDo.Shared.Contacts.DataTypeEntry!
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.DataTypeEntry(string! Id, string! Shown, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Text) -> void
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.Deconstruct(out string! Id, out string! Shown, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Text) -> void
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.Equals(Memoria.ToDo.Shared.Contacts.DataTypeEntry? other) -> bool
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.Id.get -> string!
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.Id.init -> void
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.Shown.get -> string!
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.Shown.init -> void
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.Text.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Memoria.ToDo.Shared.Contacts.DataTypeEntry.Text.init -> void
+Memoria.ToDo.Shared.Contacts.IContactFileRules
+Memoria.ToDo.Shared.Contacts.IContactFileRules.Holds(string! relativePath) -> bool
+Memoria.ToDo.Shared.Contacts.IContactFileRules.Merge(string! relativePath, byte[]? basis, byte[]? local, byte[]? remote) -> byte[]?
+Memoria.ToDo.Shared.Contacts.IContacts
+Memoria.ToDo.Shared.Contacts.IContacts.Changed -> System.EventHandler?
+Memoria.ToDo.Shared.Contacts.IContacts.DataTypes.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.DataType!>!
+Memoria.ToDo.Shared.Contacts.IContacts.Delete(string! groupName, string! id) -> void
+Memoria.ToDo.Shared.Contacts.IContacts.DirectReportsOf(Memoria.ToDo.Shared.Contacts.Contact! contact) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.Contact!>!
+Memoria.ToDo.Shared.Contacts.IContacts.Find(string! name) -> Memoria.ToDo.Shared.Contacts.Contact?
+Memoria.ToDo.Shared.Contacts.IContacts.Groups.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.ContactGroup!>!
+Memoria.ToDo.Shared.Contacts.IContacts.HasContactFiles.get -> bool
+Memoria.ToDo.Shared.Contacts.IContacts.ManagerOf(Memoria.ToDo.Shared.Contacts.Contact! contact) -> Memoria.ToDo.Shared.Contacts.Contact?
+Memoria.ToDo.Shared.Contacts.IContacts.Me.get -> Memoria.ToDo.Shared.Contacts.Contact?
+Memoria.ToDo.Shared.Contacts.IContacts.MentionOf(Memoria.ToDo.Shared.Contacts.Contact! contact, string! template) -> string!
+Memoria.ToDo.Shared.Contacts.IContacts.MentionTemplates.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Contacts.IContacts.MoveGroup(string! groupName, string? previousGroup, string? nextGroup) -> void
+Memoria.ToDo.Shared.Contacts.IContacts.Save(string! groupName, Memoria.ToDo.Shared.Contacts.Contact! contact) -> void
+Memoria.ToDo.Shared.Contacts.IContacts.Search(string! text) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.Contact!>!
+Memoria.ToDo.Shared.Contacts.IContacts.SharedNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Contacts.IContacts.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!>!
+Memoria.ToDo.Shared.Contacts.IContacts.TextOf(Memoria.ToDo.Shared.Contacts.Contact! contact, string! template) -> string!
+Memoria.ToDo.Shared.Contacts.IContacts.TextOf(string! address, string! template) -> string?
+Memoria.ToDo.Shared.Contacts.IContactStore
+Memoria.ToDo.Shared.Contacts.IContactStore.Contacts.get -> Memoria.ToDo.Shared.Contacts.IContacts!
+Memoria.ToDo.Shared.Contacts.IContactStore.Files.get -> Memoria.ToDo.Shared.Contacts.IContactFileRules!
+override Memoria.ToDo.Shared.Contacts.Contact.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Contacts.Contact.GetHashCode() -> int
+override Memoria.ToDo.Shared.Contacts.Contact.ToString() -> string!
+override Memoria.ToDo.Shared.Contacts.ContactGroup.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Contacts.ContactGroup.GetHashCode() -> int
+override Memoria.ToDo.Shared.Contacts.ContactGroup.ToString() -> string!
+override Memoria.ToDo.Shared.Contacts.DataType.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Contacts.DataType.GetHashCode() -> int
+override Memoria.ToDo.Shared.Contacts.DataType.ToString() -> string!
+override Memoria.ToDo.Shared.Contacts.DataTypeEntry.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Contacts.DataTypeEntry.GetHashCode() -> int
+override Memoria.ToDo.Shared.Contacts.DataTypeEntry.ToString() -> string!
+static Memoria.ToDo.Shared.Contacts.Contact.operator !=(Memoria.ToDo.Shared.Contacts.Contact? left, Memoria.ToDo.Shared.Contacts.Contact? right) -> bool
+static Memoria.ToDo.Shared.Contacts.Contact.operator ==(Memoria.ToDo.Shared.Contacts.Contact? left, Memoria.ToDo.Shared.Contacts.Contact? right) -> bool
+static Memoria.ToDo.Shared.Contacts.ContactGroup.operator !=(Memoria.ToDo.Shared.Contacts.ContactGroup? left, Memoria.ToDo.Shared.Contacts.ContactGroup? right) -> bool
+static Memoria.ToDo.Shared.Contacts.ContactGroup.operator ==(Memoria.ToDo.Shared.Contacts.ContactGroup? left, Memoria.ToDo.Shared.Contacts.ContactGroup? right) -> bool
+static Memoria.ToDo.Shared.Contacts.ContactStore.Create(Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Platform.IRepositoryAccess! repository) -> Memoria.ToDo.Shared.Contacts.IContactStore!
+static Memoria.ToDo.Shared.Contacts.DataType.operator !=(Memoria.ToDo.Shared.Contacts.DataType? left, Memoria.ToDo.Shared.Contacts.DataType? right) -> bool
+static Memoria.ToDo.Shared.Contacts.DataType.operator ==(Memoria.ToDo.Shared.Contacts.DataType? left, Memoria.ToDo.Shared.Contacts.DataType? right) -> bool
+static Memoria.ToDo.Shared.Contacts.DataTypeEntry.operator !=(Memoria.ToDo.Shared.Contacts.DataTypeEntry? left, Memoria.ToDo.Shared.Contacts.DataTypeEntry? right) -> bool
+static Memoria.ToDo.Shared.Contacts.DataTypeEntry.operator ==(Memoria.ToDo.Shared.Contacts.DataTypeEntry? left, Memoria.ToDo.Shared.Contacts.DataTypeEntry? right) -> bool

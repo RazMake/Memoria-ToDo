@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Platform;
+
 namespace Memoria.ToDo.Shared.Tasks;
 
 /// <summary>Tasks' repository layout and merge rules, for Sync. Merging reads only the bytes it's given.</summary>
@@ -15,7 +17,7 @@ internal sealed class RepositoryFileRules : IRepositoryFileRules
 
     public RepositoryFileKind Classify(string relativePath)
     {
-        var parts = Split(relativePath);
+        var parts = RepositoryPath.Split(relativePath);
         return parts switch
         {
             [RepositoryLayout.SettingsFileName] => RepositoryFileKind.Settings,
@@ -26,7 +28,7 @@ internal sealed class RepositoryFileRules : IRepositoryFileRules
         };
     }
 
-    public string? TaskIdInPath(string relativePath) => Split(relativePath) switch
+    public string? TaskIdInPath(string relativePath) => RepositoryPath.Split(relativePath) switch
     {
         [RepositoryLayout.TasksFolderName, var file] => TaskIdOfFile(file),
         [RepositoryLayout.ImagesFolderName, var id, _] when TaskId.IsValid(id) => id,
@@ -43,15 +45,4 @@ internal sealed class RepositoryFileRules : IRepositoryFileRules
         file.EndsWith(".json", StringComparison.Ordinal) && TaskId.IsValid(file.AsSpan(0, file.Length - ".json".Length))
             ? file[..^".json".Length]
             : null;
-
-    private static string[] Split(string relativePath)
-    {
-        ArgumentNullException.ThrowIfNull(relativePath);
-        if (relativePath.StartsWith('/') || relativePath.StartsWith('\\') || Path.IsPathRooted(relativePath) || relativePath.Length > 1 && relativePath[1] == ':')
-            throw new ArgumentException("Must be relative to the repository root.", nameof(relativePath));
-        var parts = relativePath.Split('/');
-        if (parts.Any(part => part is "." or ".."))
-            throw new ArgumentException("Must not contain '.' or '..' segments.", nameof(relativePath));
-        return parts;
-    }
 }

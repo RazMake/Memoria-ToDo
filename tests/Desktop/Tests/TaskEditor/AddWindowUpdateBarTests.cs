@@ -62,13 +62,14 @@ public class AddWindowUpdateBarTests
     }
 
     [WpfFact]
-    public void Clicking_the_update_text_starts_the_update()
+    public void Clicking_the_update_text_opens_What_is_new_over_Add_and_does_not_start_the_update()
     {
         using var screen = Open(UpdateStage.Available, "2.2.0");
 
         OpenWindows.Click(screen.UpdateTextButton);
 
-        Assert.Equal(1, screen.Services.Updates.UpdateNowCount);
+        Assert.Same(screen.Window, Assert.Single(screen.Services.Updates.WhatIsNewOwners));
+        Assert.Equal(0, screen.Services.Updates.UpdateNowCount);
     }
 
     [WpfFact]

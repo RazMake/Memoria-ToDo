@@ -47,11 +47,11 @@ Each task file is a JSON object with the nine fields in the table. Every time is
 | `version` | The file format's version, starting at 1 |
 
 - Times are written to the millisecond, so two edits rarely carry the same time.
-- A newer app reads every older `version`. An app that finds a newer `version` skips the file and leaves it unchanged.
+- A newer app reads every older `version`. An app that finds a newer `version` skips the file and leaves it unchanged, by the platform's [version and skip rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules).
 
 Proposed, each a decision to confirm:
 
-- Tasks writes each file as UTF-8 JSON with two-space indents, its fields in the table's order, and `\n` line breaks, so one change shows as a few changed lines in git.
+- Tasks writes each file in the platform's [JSON style](modules.md#stores-share-one-json-style-and-one-set-of-file-rules), its fields in the table's order, so one change shows as a few changed lines in git.
 - A title is one line: Tasks trims spaces at both ends, and rejects an empty title or one with a line break. A description keeps the user's text, with each line break stored as `\n`, so both apps write the same file.
 - A new task's `created` and `updated` are the same time, and its `resolved` is `null`.
 
@@ -207,7 +207,7 @@ is kept with it in `AggregateException`. This is local coordination, not a trans
 Tasks reports a local save to the repository after durable local repository changes, including settings, tag colors, and automatic deletion. It reports none for repository
 selection, imported updates, sync's settings initialization, drafts, and images still waiting outside the clone. The existing task `Changed` notice
 continues to refresh screens; settings and tag colors each have their own notice. A reload never starts another sync by pretending to be
-a local save. Skipped-file snapshots name corrupt, unreadable, and newer-version files without deleting them.
+a local save. Skipped-file snapshots name corrupt, unreadable, and newer-version files without deleting them, by the platform's [skip rule](modules.md#stores-share-one-json-style-and-one-set-of-file-rules).
 
 Decisions to confirm: a reload always raises the settings-change notice, even when values are unchanged;
 `EnsureSettings` raises no `LocalSaved` notice because initialization is already part of a sync pass. Proposed: a reload
@@ -531,10 +531,12 @@ public static ITaskStore Create(IFileSystem files, IImageEncoder images, TimePro
     IRepositoryAccess repository);
 ```
 
+With [Contacts](contacts.md), the user decided that Tasks' JSON style, its version check, its rule for which read failures skip a file, and its relative-path check move into the platform's [shared file rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules). Tasks' task, settings, tags, and draft files use them, with no change in behavior and no change to Tasks' public interface.
+
 Row 11 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) adds the folder where an open edit's [images wait](#images-are-at-most-1-mb-and-live-beside-their-task), for the desktop's composition root, which gives it to the web view: [`ITaskStore.EditImagesFolder`](../../src/Shared/Tasks/ITaskStore.cs). It's laid out like the clone, so the link an image gets names the image under it. Proposed: its shape. This is a decision to confirm.
 That folder is under the device folder, so `TaskStore.Create` throws `ArgumentException` when the device folder isn't fully qualified, before any side effect: a relative path would follow the working directory. This is a decision to confirm.`IRepositoryFileRules` is the only public home of the managed directory/file names and their classification.
-Its implementation reuses `RepositoryLayout` and the existing codecs. A Git-relative path uses `/`, is never rooted,
-and contains no `.` or `..` segment. Task, settings, and tag-color merges do no I/O and reject unreadable inputs rather than
+Its implementation reuses `RepositoryLayout` and the existing codecs. A Git-relative path follows the platform's
+[relative-path rule](modules.md#stores-share-one-json-style-and-one-set-of-file-rules). Task, settings, and tag-color merges do no I/O and reject unreadable inputs rather than
 returning a success-shaped fallback. Sync catches that failure per file, reports it, and leaves its bytes intact,
 except for the user-approved [bounded Sync discard policy](sync.md#each-sync-commits-fetches-merges-and-pushes-one-branch).
 

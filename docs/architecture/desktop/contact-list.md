@@ -29,13 +29,16 @@ Proposed, each a decision to confirm: a group with no match hides; matches keep 
 
 ### The details show every field and edit in place
 
+The user decided that the form shows [team fields](../contacts.md#team-groups-show-more-fields) only for a contact in a team group, as Contacts' `ContactGroup.IsTeam` says. Contacts' field table lists which fields those are.
+
 Proposed, each a decision to confirm:
 
 - **The details show every known field, named in plain words**, such as "Full name" and "Reports to", and leave out missing ones while not editing. The heading is the full name, with the group's heading under it.
+- **The details hide team fields outside team groups too, while not editing**, so the view and the form agree. A save keeps the hidden fields' values unchanged, since Contacts allows them in every group.
 - **"Reports to" shows the manager's full name**, from Contacts, or the name as written when it finds nobody. **"Direct reports" lists the contacts who report to this one.** A click on either selects that contact.
 - **A key field shows its entry**: the entry's name, or its ID when it has none, as [Contacts](../contacts.md#key-fields-choose-from-the-users-data-type-files) decides.
-- **F2, a double click, or the Edit button turns the details into a form**, with every field. Save, on the platform's [Save keys](README.md#the-save-shortcut-saves-in-any-window-that-edits) or the Save button, saves through Contacts and leaves the form. Esc leaves without saving, asking Save, Discard, or Cancel when there are changes.
-- **A date field is a date picker**, and the time field accepts `H:mm`, checked as it's typed.
+- **F2, a double click, or the Edit button turns the details into a form**, with every field the group shows. Save, on the platform's [Save keys](README.md#the-save-shortcut-saves-in-any-window-that-edits) or the Save button, saves through Contacts and leaves the form. Esc leaves without saving, asking Save, Discard, or Cancel when there are changes.
+- **A date field is a date picker**, and the time field accepts the forms [Contacts reads](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts), checked as it's typed.
 - **A key field is a drop-down list of its data type's entries**, as the user decided, each shown as its name, or its ID when it has none. No typing in it is allowed. A stored key the file doesn't list shows first, as written, marked "Not in the list", and stays until the user picks another.
 - **When the key field's data type file is missing or can't be read**, the field shows its stored key, read-only, and says under it which file is wrong. Saving keeps the key.
 - **The ID can be typed only when adding.** It's read-only for an existing contact.

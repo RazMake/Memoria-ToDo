@@ -8,14 +8,17 @@ namespace Memoria.ToDo.Desktop.Updates;
 /// <summary>
 /// The status bar Add and Task View show along their bottom edge. <c>start</c>, when given, takes all the width the update
 /// text leaves, and the bar always shows; without it, the bar shows only while a version is available or updating.
-/// The update text sits at the bar's right end.
+/// The update text sits at the bar's right end, with a 5 pixel gap on its left. While an update is available the text is a
+/// button that opens What is new over the window holding the bar.
 /// </summary>
 public sealed class UpdateStatusBar : Border
 {
+    private const double UpdateTextGap = 5;
+
     private readonly IUpdateStatus _updates;
     private readonly UIElement? _start;
     private readonly DockPanel _panel = new();
-    private UIElement? _updateText;
+    private FrameworkElement? _updateText;
 
     public UpdateStatusBar(IUpdateStatus updates, UIElement? start)
     {
@@ -65,6 +68,7 @@ public sealed class UpdateStatusBar : Border
         };
         if (_updateText is not null)
         {
+            _updateText.Margin = new Thickness(UpdateTextGap, 0, 0, 0);
             DockPanel.SetDock(_updateText, Dock.Right);
             KeyboardNavigation.SetTabIndex(_updateText, 1);
             _panel.Children.Insert(0, _updateText);
@@ -82,7 +86,7 @@ public sealed class UpdateStatusBar : Border
             BorderThickness = new Thickness(0),
             Padding = new Thickness(0),
         };
-        button.Click += (_, _) => _updates.UpdateNow();
+        button.Click += (_, _) => _updates.ShowWhatIsNew(Window.GetWindow(this));
         return button;
     }
 

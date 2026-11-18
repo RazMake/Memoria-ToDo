@@ -47,10 +47,10 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         var (tasks, skippedTasks) = folder.Read(root);
         var loadedSettings = settingsFolder.Read(root);
         if (loadedSettings.Failure is not null)
-            skippedTasks.Add(SkippedRepositoryFile.Of(RepositoryLayout.SettingsFileName, loadedSettings.Failure));
+            skippedTasks.Add(SkippedFile.Of(RepositoryLayout.SettingsFileName, loadedSettings.Failure));
         var loadedColors = tagColorsFolder.Read(root);
         if (loadedColors.Failure is not null)
-            skippedTasks.Add(SkippedRepositoryFile.Of(RepositoryLayout.TagColorsFileName, loadedColors.Failure));
+            skippedTasks.Add(SkippedFile.Of(RepositoryLayout.TagColorsFileName, loadedColors.Failure));
         return new Loaded(new TaskSet(tasks), loadedSettings, loadedColors, skippedTasks);
     }
 

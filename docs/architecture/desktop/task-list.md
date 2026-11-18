@@ -342,7 +342,7 @@ Proposed, each a decision to confirm:
 
 - F5 also starts a sync.
 - When a sync started from Task View fails, Task View shows the error next to the button. Other failures show only as [Shell](shell.md#sync-stays-quiet-unless-something-is-wrong) decides.
-- **The Sync button and its error sit at the start of [Updates' status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar)**, which runs along Task View's bottom edge and always shows, so the bar Add shows is the same one. The bar's end shows a new version while one is available or updating; a click on it starts the update, which closes Task View as its close button does, asking first about a changed edit. [Below](#a-status-bar-holds-the-sync-button-and-the-version) says what the bar holds and in what order.
+- **The Sync button and its error sit at the start of [Updates' status bar](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar)**, which runs along Task View's bottom edge and always shows, so the bar Add shows is the same one. The bar's end shows a new version while one is available or updating; a click on "Update available" opens [What is new](updates.md#what-is-new-shows-each-newer-releases-notes) over Task View. An update closes Task View as its close button does, asking first about a changed edit. [Below](#a-status-bar-holds-the-sync-button-and-the-version) says what the bar holds and in what order.
 
 ### A status bar holds the Sync button and the version
 

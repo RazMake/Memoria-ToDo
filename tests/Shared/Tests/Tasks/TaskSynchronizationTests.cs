@@ -63,6 +63,25 @@ public sealed class TaskSynchronizationTests
     }
 
     [Fact]
+    public void Skips_a_task_file_holding_a_lone_surrogate_escape_lists_the_other_tasks_and_keeps_its_bytes()
+    {
+        var bad = TasksFixture.Id(2);
+        f.Seed(id, "Readable");
+        f.Seed(bad, "Bad");
+        f.WriteText(f.TaskFile(bad), f.ReadText(f.TaskFile(bad)).Replace("\"Bad\"", @"""Bad\uD800"""));
+        var badBytes = f.Files.ReadFile(f.TaskFile(bad));
+
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        Assert.Equal(["Readable"], f.Titles);
+        var skipped = Assert.Single(f.Repository.SkippedFiles);
+        Assert.Equal($"tasks/{bad}.json", skipped.RelativePath);
+        Assert.False(skipped.RequiresUpdate);
+        Assert.False(string.IsNullOrWhiteSpace(skipped.Reason));
+        Assert.Equal(badBytes, f.Files.ReadFile(f.TaskFile(bad)));
+    }
+
+    [Fact]
     public void Skips_a_newer_task_file_by_name_asks_for_an_update_and_keeps_its_bytes()
     {
         var newer = TasksFixture.Id(3);

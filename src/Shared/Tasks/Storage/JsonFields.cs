@@ -1,41 +1,23 @@
-using System.Buffers;
 using System.Globalization;
-using System.Text.Encodings.Web;
 using System.Text.Json;
+using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
-/// <summary>Marks an <see cref="InvalidDataException"/> as caused by a <c>version</c> newer than this app reads, so only a newer app can read the file.</summary>
-internal sealed class NewerVersionException() : Exception("The file needs a newer version of the app.");
-
-/// <summary>Reading and writing the JSON of task, draft, and settings files, so all keep one style and one set of rules.</summary>
+/// <summary>Tasks' fields in the JSON of task, draft, and settings files, on the platform's <see cref="JsonFile"/> style and rules.</summary>
 internal static class JsonFields
 {
     public const int CurrentVersion = 1;
 
     private const string TimeFormat = "yyyy-MM-dd'T'HH:mm:ss.fff'Z'";
 
-    private static readonly JsonWriterOptions WriterOptions = new()
+    /// <summary>The bytes of one JSON object, as <paramref name="fields"/> writes it.</summary>
+    public static byte[] Write(Action<Utf8JsonWriter> fields) => JsonFile.Write(writer =>
     {
-        Indented = true,
-        IndentSize = 2,
-        NewLine = "\n",
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
-
-    /// <summary>The bytes of one JSON object, as <paramref name="fields"/> writes it: UTF-8 with no byte-order mark.</summary>
-    public static byte[] Write(Action<Utf8JsonWriter> fields)
-    {
-        var buffer = new ArrayBufferWriter<byte>();
-        using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
-        {
-            writer.WriteStartObject();
-            fields(writer);
-            writer.WriteEndObject();
-        }
-
-        return buffer.WrittenSpan.ToArray();
-    }
+        writer.WriteStartObject();
+        fields(writer);
+        writer.WriteEndObject();
+    });
 
     public static void WriteTime(Utf8JsonWriter writer, string name, DateTimeOffset time) =>
         writer.WriteString(name, time.UtcDateTime.ToString(TimeFormat, CultureInfo.InvariantCulture));
@@ -48,40 +30,8 @@ internal static class JsonFields
         writer.WriteEndArray();
     }
 
-    /// <summary>Parses a JSON object. Throws <see cref="InvalidDataException"/> for anything else.</summary>
-    public static JsonDocument Parse(byte[] bytes)
-    {
-        JsonDocument document;
-        try
-        {
-            document = JsonDocument.Parse(bytes);
-        }
-        catch (JsonException e)
-        {
-            throw new InvalidDataException("Not valid JSON.", e);
-        }
-
-        if (document.RootElement.ValueKind != JsonValueKind.Object)
-        {
-            document.Dispose();
-            throw new InvalidDataException("Not a JSON object.");
-        }
-
-        return document;
-    }
-
-    /// <summary>Throws <see cref="InvalidDataException"/> unless the file's <c>version</c> is one this app reads.</summary>
-    public static void RequireSupportedVersion(JsonElement obj) => RequireSupportedVersion(obj, CurrentVersion);
-
-    /// <summary>The file's <c>version</c>, which is at least 1 and at most <paramref name="newest"/>. Throws <see cref="InvalidDataException"/> otherwise.</summary>
-    public static int RequireSupportedVersion(JsonElement obj, int newest)
-    {
-        if (!Field(obj, "version", JsonValueKind.Number).TryGetInt32(out var version) || version < 1)
-            throw new InvalidDataException("Unsupported version.");
-        if (version > newest)
-            throw new InvalidDataException("The file needs a newer version of the app.", new NewerVersionException());
-        return version;
-    }
+    /// <summary>The file's <c>version</c>, which is at least 1 and at most <see cref="CurrentVersion"/>. Throws <see cref="InvalidDataException"/> otherwise.</summary>
+    public static void RequireSupportedVersion(JsonElement obj) => JsonFile.RequireVersion(obj, CurrentVersion);
 
     /// <summary>The object, or null when the field is <c>null</c>. The field must be there.</summary>
     public static JsonElement? OptionalObject(JsonElement obj, string name) =>

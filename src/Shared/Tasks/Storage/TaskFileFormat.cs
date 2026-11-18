@@ -1,3 +1,5 @@
+using Memoria.ToDo.Shared.Platform;
+
 namespace Memoria.ToDo.Shared.Tasks;
 
 /// <summary>The JSON of a task file: nine fields in a fixed order.</summary>
@@ -22,7 +24,7 @@ internal static class TaskFileFormat
     /// <summary>Throws <see cref="InvalidDataException"/> when the file isn't a task this app can read.</summary>
     public static TaskItem Read(byte[] bytes)
     {
-        using var document = JsonFields.Parse(bytes);
+        using var document = JsonFile.Parse(bytes);
         var root = document.RootElement;
         JsonFields.RequireSupportedVersion(root);
         var id = JsonFields.String(root, "id");

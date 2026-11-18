@@ -4,6 +4,11 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 <!-- How to write entries, and when: docs/contributing/changelog.md -->
 
+## Unreleased
+
+- A task file with damaged text, such as a broken character escape, no longer stops all your tasks from loading. That file is skipped and listed in the sync status, like other files the app can't read, and the rest of your tasks load.
+- In the status bar at the bottom of Add and Task View, clicking "Update available" now opens What is new instead of starting the update. To update, use Update Now in Configure. A small gap now separates "Update available" from the version.
+
 ## 1.1.1
 
 - The app no longer shows a "Cannot access a disposed object" error when the tray icon's sync status changes more than once, such as when sync goes offline or shows a warning and then recovers.

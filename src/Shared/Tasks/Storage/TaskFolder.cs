@@ -22,9 +22,9 @@ internal sealed class TaskFolder(IFileSystem files)
                     throw new InvalidDataException("The file's name isn't its task's ID.");
                 tasks.Add(task);
             }
-            catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
+            catch (Exception e) when (SkippedFile.Skips(e))
             {
-                skipped.Add(SkippedRepositoryFile.Of(relative, e));
+                skipped.Add(SkippedFile.Of(relative, e));
             }
         }
 

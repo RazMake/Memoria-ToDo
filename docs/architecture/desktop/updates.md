@@ -39,11 +39,11 @@ Updates checks once when the app starts, then each night at 3:00 by the PC's loc
 
 Add and Task View show the same status bar along their bottom edge. Updates owns it, so the two windows share one component. Task View puts its [Sync button](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button) at the bar's start; Add has no Sync button. The bar's start takes the width the update text leaves, so Task View's [version](task-list.md#a-status-bar-holds-the-sync-button-and-the-version) can sit at its right, just before the update text.
 
-- **While a version is available, the bar's end says "Update available: 2.2.0"**, with "Update available" in bold and the whole text in the theme's caution color, a yellow in the dark theme ([Fluent theme colors](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/Resources/Theme/Dark.xaml)). The text is a button: a click, or Enter or Space after Tab reaches it, starts the [update](#an-update-downloads-the-version-then-restarts-the-app-into-it). It shows the hand pointer, as [every button in the app](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does.
+- **While a version is available, the bar's end says "Update available: 2.2.0"**, with "Update available" in bold and the whole text in the theme's caution color, a yellow in the dark theme ([Fluent theme colors](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/Resources/Theme/Dark.xaml)). The text is a button: a click, or Enter or Space after Tab reaches it, opens [What is new](#what-is-new-shows-each-newer-releases-notes) over the bar's window, the user decided. It doesn't start the update; Update Now and the night run do, as [below](#an-update-downloads-the-version-then-restarts-the-app-into-it) says. It shows the hand pointer, as [every button in the app](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does.
+- **A small gap separates the update text from what comes before it**, so it never touches Task View's version. The user decided the gap is 5 device-independent pixels. Proposed: the bar puts the gap on the update text's own left side, so Add and Task View get it from the one component, and Task View's version keeps its margins. This is a decision to confirm.
 - **While updating, it says "Updating to 2.2.0"**, with the version in bold, in the theme's secondary text color, so it reads as muted, and it's no longer a button.
 - **Otherwise the update text is gone.** Proposed: Add's bar then hides, so Add looks as it does today; Task View's bar stays for its Sync button. This is a decision to confirm.
 - **The bar follows the state as it changes**, while the window is open.
-- **The click works whether or not Auto update is on.** With Auto update on, a version found during the day waits for the night run, and the click starts it sooner.
 
 The user asked for a shorter bar in a color of its own. Proposed, each a decision to confirm:
 
@@ -55,9 +55,9 @@ Proposed: the bar runs along the windows' bottom edge, as a status bar does, so 
 
 ### An update downloads the version, then restarts the app into it
 
-Update Now on the [Update card](configure.md#the-update-card-leads-the-application-section), a click on the status bar, and the [night run](#auto-update-updates-each-night-once-no-window-is-open) all start the same update. It does nothing unless a version is available. In order, it:
+Update Now on the [Update card](configure.md#the-update-card-leads-the-application-section) and the [night run](#auto-update-updates-each-night-once-no-window-is-open) start the same update. It does nothing unless a version is available. In order, it:
 
-1. turns the state to Updating, so the status bar, the card, and every other start of an update show it;
+1. turns the state to Updating, so the status bar and the card show it;
 2. downloads the version, in the background, while the app keeps working;
 3. asks Task View to close, as its close button does, so it [asks first](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) about a changed edit. When you choose Cancel, or Save doesn't save, Task View stays open, the state returns to Available, and nothing else happens. Add and Configure close with the app in the next step, and Add keeps its [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device), as on Exit;
 4. ends the app through its normal exit, as Exit in the tray menu does, so Shell stops sync and the shortcuts as it always does;
@@ -83,12 +83,12 @@ Proposed, each a decision to confirm:
   - **A window opened during the night run's download holds the restart** until every window is closed again; the state stays Updating meanwhile.
   - **Turning Auto update off cancels a night run that's still waiting** for windows to close; one already downloading goes on, as an update you started would.
   - **A night run that's waiting doesn't stop the nightly checks**, so a newer version found meanwhile replaces the one it waits to install.
-- **Turning Auto update on doesn't start an update.** A version already available waits for the night run, or for a click on the status bar.
+- **Turning Auto update on doesn't start an update.** A version already available waits for the night run. While Auto update is on, the card hides Update Now, so turn it off to update sooner.
 - **A failed night update tries again the next night.**
 
 ### What is new shows each newer release's notes
 
-What is new on the update card opens a dialog with the notes of every release after the running version, up to the new one, newest first. Each release's notes sit under a heading with its version.
+What is new on the update card, and the status bar's "Update available" text, open a dialog with the notes of every release after the running version, up to the new one, newest first. Each release's notes sit under a heading with its version.
 
 The user decided that **the notes come from the [changelog](../../contributing/changelog.md)**, `CHANGELOG.md` at the repository's root, written for people who use the app. Each release's notes are its version's section there. The release job packs that section into the release's Velopack files with `vpk pack --releaseNotes` ([release notes](https://docs.velopack.io/integrating/release-notes)), and refuses to publish without it, as [Version tags](../version-tags.md#a-version-is-tagged-only-when-the-changelog-has-its-notes) says.
 
@@ -97,8 +97,8 @@ Proposed, each a decision to confirm:
 - **The notes come with the check**, so the dialog opens at once, with no network wait. Updates reads each newer release's notes from the same Velopack files the check reads ([VelopackAsset](https://docs.velopack.io/reference/cs/Velopack/VelopackAsset)), with no second request to GitHub. Velopack 1.2.0's GitHub source reads only the latest 10 releases. Proposed, a decision to confirm: when those don't reach the running version, the dialog shows them and ends with a link to this repository's GitHub Releases page for older notes, rather than making more requests to GitHub.
 - **The dialog shows the notes as a formatted page, through the [Formatted view](formatted-view.md#public-interface)**, as Task View shows a description. Web links open in the default browser, and when the web view fails, the dialog shows the Markdown source with a message saying why, as the Formatted view does.
 - **A release without notes, such as one published by hand, says "No notes for this version."** under its heading, rather than leaving a gap.
-- **The dialog is modal, owned by Configure's window**, centered on it, following the theme, and titled "What is new". A Close button, Esc, and the [Close window shortcut](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) close it.
-- **The button shows while a version is available or updating.** Otherwise there's nothing new to show.
+- **The dialog is modal, owned by the window it opens from**, Configure, Add, or Task View, the user decided, and centered on it, following the theme, and titled "What is new". A Close button, Esc, and the [Close window shortcut](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) close it.
+- **The card's button shows while a version is available or updating.** Otherwise there's nothing new to show. The status bar opens it only while a version is available, since "Updating to" isn't a button.
 
 ### A copy run from a build folder shows its version and doesn't update
 
@@ -226,7 +226,7 @@ The time source is .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotne
 ## Failure modes
 
 - **A check fails**, such as when the PC is offline: nothing changes and nothing shows, and the next check tries again.
-- **A download fails**: the state returns to Available, the update card says "The update to 2.2.0 failed:" followed by the reason, and the status bar offers the update again. The night run tries again the next night.
+- **A download fails**: the state returns to Available, the update card says "The update to 2.2.0 failed:" followed by the reason, and the status bar shows "Update available" again. The night run tries again the next night.
 - **You cancel Task View's prompt, or Save doesn't save**: the state returns to Available with no message, since you chose it.
 - **Velopack's updater can't start**: the app still ends, as Exit does, and the error shows as any failed stop does, through the [platform](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it). You start the app again, and its next check finds the version again.
 - **The app takes longer than 60 seconds to end after the updater starts**: the updater gives up, so the app stays closed on its old version until you start it again. Velopack doesn't confirm a failure to the app. This is an accepted risk; the updater starts after the slow steps.
@@ -242,6 +242,8 @@ The time source is .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotne
 - What happens to a version a check finds:
   - **Download it in the background and apply it at the next start, as before**: the app would update with Auto update off.
   - **Download it in the background, and only apply it when you agree**: Update Now would be faster, but every PC would download versions it may never install.
+- What the status bar's "Update available" text does:
+  - **A click starts the update**: you chose What is new, so you read what changed first and update from Configure.
 - How an update ends the app:
   - **Velopack's ApplyUpdatesAndRestart**: it ends the process at once, so sync would stop without its cleanup.
   - **Apply at the next exit or start, without a restart**: "Updating to" would show until then.
