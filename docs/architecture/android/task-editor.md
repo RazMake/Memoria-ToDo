@@ -73,6 +73,15 @@ Proposed: Back discards the change, and Task View shows an Undo bar, as Esc does
 
 As on the [desktop](../desktop/task-editor.md#the-editor-styles-markdown-in-place-with-no-preview), the fields show Markdown source styled in place, from [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html). Add has no preview and no web view, so it never waits for one. A saved new task goes to the top of the order.
 
+### Typing an at sign mentions a contact
+
+The user decided that the phone gets the full "@" list and the mention chips, as the [desktop](../desktop/task-editor.md#typing-an-at-sign-mentions-a-contact) has them: the same search, the same rows, the same templates, chips that show each contact's [live text](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows), and a chip that a deletion removes whole and the cursor can't enter. Only what a touch screen changes differs. Proposed, each a decision to confirm:
+
+- **The list opens as a dropdown under the field being typed in**, and a tap chooses a contact. It closes as the desktop's does, and on Back.
+- **A button at the list's top shows the current template, and a tap on it moves to the next one**, since a phone keyboard has no Tab key.
+- **A chip is drawn in place of the mention's Markdown**, on Rendering's mention background, with an Android [ReplacementSpan](https://developer.android.com/reference/android/text/style/ReplacementSpan). The field moves the cursor out of a chip to its nearer side, and widens a deletion that touches a chip to the whole mention, so the keyboard's delete key removes it whole.
+- **The toolbar gets no "@" button**, since every phone keyboard has the key.
+
 ## Public interface
 
 Shell and the Task list use these parts:
@@ -80,6 +89,8 @@ Shell and the Task list use these parts:
 - **Show Add**: opens Add, with the draft if there is one. Shell calls it from the app shortcut and the widget, and the Task list from its floating button.
 - **Edit a task**: opens this screen with one task, and reports whether the user saved or left. The Task list calls it from Edit.
 - **The tag chips**: the tags its caller gives, as chips in that order, reporting the chosen tag. Add gives the five most-used tags; the Task list gives its [tags in the tags' order](task-list.md#tags-and-search-narrow-the-list), to filter.
+
+The composition root gives the Task editor [Contacts](../contacts.md#public-interface), for the "@" list and the chips, as the desktop's does.
 
 ## Failure modes
 
@@ -91,4 +102,5 @@ Shell and the Task list use these parts:
 The options below were considered and rejected.
 
 - **An expanding bottom sheet**, and **full screen with "/" only, and no toolbar**: offered, and not chosen.
+- **Mentions only shown on the phone, with no "@" list until a later design**: the user chose the full list and the chips on the phone too.
 - **Following one tag per task only when the Android app is built**, with the Deferred tag questions: fewer edits now, but this page would describe several checked chips that Tasks rejects.

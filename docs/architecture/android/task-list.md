@@ -44,6 +44,10 @@ Deferred: the desktop shows tags as [colored badges](../desktop/task-list.md#tag
 
 Resolved tasks are hidden, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides. Proposed: "N resolved" at the bottom of the list shows them, as on the [desktop](../desktop/task-list.md#resolved-tasks-wait-behind-a-count-at-the-bottom), and the resolve swipe reopens a resolved task. This is a decision to confirm.
 
+### Mentions show each contact's current details
+
+The user decided that the phone shows mentions as the desktop does, so a mention in a title or a description shows the contact's current details, as the [desktop's Task list](../desktop/task-list.md#mentions-show-each-contacts-current-details) says, on Rendering's mention background, and a tap on it does nothing. The composition root gives the Task list [Contacts](../contacts.md#public-interface) for it.
+
 ### Pulling the list down starts a sync
 
 Opening the app starts a sync, as [Shell](shell.md#sync-runs-while-the-app-is-open-and-every-few-hours-in-the-background) decides, and pulling the list down starts one at once, like the [desktop's Sync button](../desktop/task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button). Android's standard control for this gesture, [SwipeRefreshLayout](https://developer.android.com/develop/ui/views/touch-and-input/swipe/add-swipe-interface), handles it. Its package, [Xamarin.AndroidX.SwipeRefreshLayout](https://www.nuget.org/packages/Xamarin.AndroidX.SwipeRefreshLayout/1.2.0.3) 1.2.0.3, is a new dependency, listed with the [other libraries](README.md#the-app-runs-on-android-80-and-later-with-androidx-and-material).

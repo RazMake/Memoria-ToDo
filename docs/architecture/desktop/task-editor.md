@@ -106,6 +106,26 @@ Proposed, each a decision to confirm:
 
 The reference to another task opens a list, as above. It lists open tasks only, and typing filters them with [Tasks' search](../tasks.md#tags-and-search-ignore-case). The link's text is the chosen task's title with its Markdown kept, and only brackets and backslashes escaped; the list itself shows the title as a reader sees it, without its Markdown, which [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) mark.
 
+### Typing an at sign mentions a contact
+
+The user decided that the "@" list shows each contact through a [mention template](../contacts.md#mention-templates-come-from-a-synced-file), that Tab moves to the next template, and that a mention in the editor shows as one chip with its [live text](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows), which Backspace and Delete remove whole and the cursor can't enter. Typing "@" where [Editing's mention list](../editing.md#typing-an-at-sign-opens-the-mention-list) opens, in the Title or the Description, shows contacts found by [Contacts' search](../contacts.md#search-matches-every-typed-word-in-any-field) with the text typed after the "@". Proposed, each a decision to confirm:
+
+- **The list opens under its field**, under the Title when typing there, like the snippet list under the Description. It works as the color, snippet, and task lists do: Down moves through the contacts, Enter chooses, Esc closes, a click chooses, and opening it closes any other list.
+- **It shows up to seven contacts.** With nothing typed yet, the search matches everyone, so it shows the first seven by full name.
+- **Each row shows the contact's text in the current template, and the contact's title in the help style after it**, so two people with one name stay apart.
+- **The list's last line shows the current template, such as `{fullName} ({careerPath.short})`, and "Tab: next template"**, in the help style.
+- **Tab, while the list is open, moves to the next template**, in the file's order, back to the first after the last, and the rows show their new text at once. Each opening starts at the first template. With one template, Tab does nothing, and never leaves the field while the list is open.
+- **Choosing a contact inserts the mention** Contacts makes from the contact and the current template, through Editing, as one undo step.
+- **With no contacts, or no repository, no list shows**, and the "@" stays as typed.
+
+The chips work the same in the Title and the Description:
+
+- **A mention shows as one chip**: its live text on Rendering's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), with none of its link's Markdown showing. When Contacts has no live text, the chip shows the stored text. The chips show the new text when contacts change, without changing the task's Markdown.
+- **The cursor steps over a chip as over one character**, and a click on a chip puts the cursor before or after it, whichever side is nearer. A selection takes a chip whole or not at all.
+- **Backspace after a chip and Delete before it remove the whole mention**, as one undo step.
+- **Saving keeps each mention's Markdown as it is**, stored text included, so the editor changes no mention the user didn't touch.
+- **Copying a chip copies its Markdown**, so pasting it makes the same mention again.
+
 ### Closing without saving keeps a draft on this device
 
 Closing Add without saving, with Esc or by clicking elsewhere, keeps its text as a draft. The next Add opens with the draft, and the Clear button clears it. Drafts stay on this device and never sync. Add never asks before it closes, since the draft keeps the text; Task View [asks](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) only before it drops a changed edit, which has no draft.
@@ -226,6 +246,7 @@ Proposed, each a decision to confirm:
 - Colored text shows in its palette color for the current [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), such as `:red[urgent]` in red.
 - Markdown's own characters, such as `**` around bold text, show dimmed.
 - Headings, links, code, and italic text take Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) for the current theme: every heading in its color and at its size, a link underlined in the link color, code in its font and color on the faded background, and italic text in the italic color.
+- A mention shows as one [chip](#typing-an-at-sign-mentions-a-contact), with its live text on Rendering's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), in the normal text color; its link's Markdown doesn't show. The chips come from [Rendering's mention list](../rendering.md#public-interface), so the editor finds no links itself.
 - Styling never delays typing: typed text shows at once, and its styling follows.
 
 ### A new task goes to the top
@@ -286,6 +307,8 @@ public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyLis
     ITheme theme, TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
     CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys);
 ```
+
+With the [mention list and chips](#typing-an-at-sign-mentions-a-contact), the user decided that the Task editor uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own). Proposed, a decision to confirm: Contacts' [`IContacts contacts`](../contacts.md#public-interface) joins `AddWindow.Create` right after `tagColors`, and the Title and Description editors' constructors right after `tasks`, so the "@" list searches them and the chips show live text. No other member changes. This is not implemented.
 
 ```csharp
 /// The Add window, as Shell uses it.
@@ -426,6 +449,11 @@ Row 14 of the [delivery backlog](README.md#delivery-backlog) changes the tag con
 ## Ruled out
 
 The options below were considered and rejected, grouped by decision.
+
+- How a mention shows in the editor:
+  - **Its Markdown, styled in place, with the brackets and address dimmed**: the user chose one chip that the cursor can't enter.
+  - **Shift+Tab for the previous template too**: the templates are few, and Shift+Tab already means moving back a field.
+  - **Refreshing each mention's stored text on Save**: every save would change mentions the user never touched, and the merge would then see edits on both sides.
 
 - The Add window:
   - **A full editor window**: Add stays compact, for a quick task.

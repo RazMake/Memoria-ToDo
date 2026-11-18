@@ -20,7 +20,7 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 
 ### The platform serves every module and knows none
 
-- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), and each app's platform holds its startup. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
+- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
 - **Every module takes the time from .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, which gives the time and timers, and the composition root passes the system's. The shared library has no clock interface of its own.
 - **Every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files.
 - **Code shared by two modules moves to the platform**, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) requires. Code shared only inside one module stays in that module.
@@ -74,6 +74,92 @@ public interface IFileSystem
 }
 ```
 
+### The synced repository gives every store one clone, one lock, and one reload
+
+Tasks and [Contacts](contacts.md#contacts-is-a-shared-module-of-its-own) both keep files in the same clone, and Sync updates both. So the shared platform, not Tasks, owns what they share: the selected folder, the lock that runs one change at a time, the reload after a sync, the list of skipped files, and the notice that a local change needs a sync. Each store is a part of the repository; neither knows the other, and Sync knows the repository, not how each store loads.
+
+- **Selecting a folder loads every part, in the order they were added**, under the lock, then raises each part's notices after releasing it. With no folder, each part is empty. A part that fails to load doesn't stop the others; the selection then fails with every failure.
+- **A store runs each read and write under the lock**, and after a write that Sync should carry, reports a local save, outside the lock.
+- **Sync's update keeps today's rules**: it checks the folder is still the selected one before running, runs the update under the lock, reloads every part even when the update fails, raises no local-save notice, and raises the parts' notices after releasing the lock. A failed update and a failed reload are kept together.
+- **The skipped files are every part's**, in the order the parts were added, so Sync's status lists Tasks' and Contacts' problems alike.
+- **The composition root creates one repository**, gives it to each store and to Sync, and selects the folder through it.
+
+Proposed, each a decision to confirm: these declarations, and that `ISkippedRepositoryFile` and `NoRepositoryFolderException` move from Tasks into the platform unchanged. This is not implemented:
+
+```csharp
+namespace Memoria.ToDo.Shared.Platform;
+
+/// One store's files in the clone, as the repository loads them.
+public interface IRepositoryPart
+{
+    /// Reads the folder's files, or empties the part for null. Runs under the lock; raises no notice.
+    void Load(string? folder);
+
+    /// Raises the part's change notices. Runs after the lock is released.
+    void Loaded();
+
+    /// The files the latest Load skipped.
+    IReadOnlyList<ISkippedRepositoryFile> SkippedFiles { get; }
+}
+
+/// What a store uses.
+public interface IRepositoryAccess
+{
+    /// The selected folder, or null.
+    string? Folder { get; }
+
+    /// Adds a part. Throws InvalidOperationException after the first Select.
+    void Add(IRepositoryPart part);
+
+    /// Runs the call under the lock with the selected folder, which may be null. Reentrant on one thread.
+    T Locked<T>(Func<string?, T> call);
+    void Locked(Action<string?> call);
+
+    /// Raises LocalSaved. Call it outside the lock, after a change Sync should carry.
+    void ReportLocalSave();
+}
+
+/// What Sync uses.
+public interface ISyncedRepository
+{
+    string? Folder { get; }
+
+    /// Throws InvalidOperationException, before update runs, when expectedFolder isn't selected.
+    /// Reloads every part under the lock, also when update fails; AggregateException keeps both failures.
+    void Update(string expectedFolder, Action update);
+
+    /// Every part's skipped files, in the order the parts were added.
+    IReadOnlyList<ISkippedRepositoryFile> SkippedFiles { get; }
+
+    /// Raised after a store's local change, outside the lock.
+    event EventHandler? LocalSaved;
+}
+
+public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
+{
+    /// Loads every part with the folder, or empties them for null, then raises their notices.
+    /// Throws the part's exception, or AggregateException when several fail.
+    public void Select(string? folder);
+}
+```
+
+### A contact address has one home
+
+A mention's link address names a contact by ID, as `contact:<id>`. [Contacts](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) makes and reads it, and [Rendering](rendering.md#a-mention-shows-on-a-colored-background) recognizes it, so its format lives in the shared platform. Proposed, a decision to confirm. This is not implemented:
+
+```csharp
+namespace Memoria.ToDo.Shared.Platform;
+
+public static class ContactAddress
+{
+    /// "contact:" followed by the ID. Throws ArgumentException for an empty ID.
+    public static string Of(string id);
+
+    /// The ID in a contact address, or null when the address isn't one.
+    public static string? IdOf(string address);
+}
+```
+
 ### Modules depend only on what the map allows
 
 - **A module uses the platform and the modules the [map](#module-map) lists for it**, only through their public interfaces. A module in one app never uses a module in the other app.
@@ -94,23 +180,25 @@ Who decides a change depends on what it touches:
 
 The three tables below list each part's modules, their design files, and the modules each may use. Adding, removing, or changing a row is an architecture change. An [architecture test](technology-stack.md#architecture-tests-check-the-module-map) reads the "May use" columns, so a change to the tables' format needs a change to that test. Each module's design file comes from its row in the [design backlog](README.md#design-backlog).
 
-The shared library has four modules:
+The shared library has five modules:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
 | Tasks | Task files and their format, the in-memory list, every task operation, tags and search, task links, how two versions of a task merge, images and their shrinking, this device's draft of a new task, [shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs), and [each tag's color](tasks.md#each-tags-color-is-kept-in-one-synced-file) and [place in the tags' order](tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips) | [Tasks](tasks.md) | None |
-| Sync | Commit, fetch, merge, and push in the background through its own git code on LibGit2Sharp and SSH.NET, and the device's repository settings, SSH key, and known host keys | [Sync through git](sync.md) | Tasks |
-| Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's rules | [Editing](editing.md) | None |
-| Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, the text look of headings, links, code, and italic text, and which links may open in the browser | [Rendering](rendering.md) | None |
+| Contacts | Contact files, their data types and mention templates, relations, search, saving, the group order, how two versions merge, and mentions' stored form and live text | [Contacts](contacts.md) | None |
+| Sync | Commit, fetch, merge, and push in the background through its own git code on LibGit2Sharp and SSH.NET, and the device's repository settings, SSH key, and known host keys | [Sync through git](sync.md) | Tasks, Contacts |
+| Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's and mention list's rules | [Editing](editing.md) | None |
+| Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, the text look of headings, links, mentions, code, and italic text, and which links may open in the browser | [Rendering](rendering.md) | None |
 
-The desktop app has six modules of its own:
+The desktop app has seven modules of its own:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Shell | The tray icon and its menu, the three global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Configure, Sync, Updates |
-| Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses | [Task editor](desktop/task-editor.md) | Tasks, Editing, Rendering, Updates |
-| Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Rendering, Task editor, Formatted view, Sync, Updates |
-| Configure | The three global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates |
+| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates |
+| Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates |
+| Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates |
+| Contact list | The Contacts window: contacts grouped by file, in groups the user orders by dragging, beside the selected contact's details, with search, editing, adding, and deleting | [Contact list](desktop/contact-list.md) | Contacts |
+| Configure | The four global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 | Updates | Checking for a new version, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
 
@@ -119,22 +207,25 @@ Proposed, each a decision to confirm:
 - Shell may use Sync, so the tray shows sync status without going through Configure.
 - The Task list may use Sync, for its Sync button and the sync when Task View opens.
 
+The user decided that [Contacts](contacts.md) is a shared module of its own, that the desktop has a Contacts window with a fourth global shortcut, and that the Android Task editor and Task list mention contacts too. Proposed, a decision to confirm: the desktop module keeps the name Contact list, beside the shared Contacts, as the Task list sits beside Tasks; it uses only Contacts, since its split panes, search band, and drag come from the desktop platform.
+
 The Android app has four modules with the same names as the desktop app's first four, separate from them:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
 | Shell | Where the app icon, the app shortcut, and the home-screen widget lead; sync when the app opens and in the background; updates; and the theme | [Shell](android/shell.md) | Task editor, Task list, Configure, Sync |
-| Task editor | The full-screen Add screen with its toolbar and tag chips, which also edits a task from Task View | [Task editor](android/task-editor.md) | Tasks, Editing, Rendering |
-| Task list | Task View: open tasks in rank order, expanded in place, with swipes, reordering, the tag filter with its chips in the tags' order, search, resolved tasks, the floating Add button, and the top tasks the widget shows | [Task list](android/task-list.md) | Tasks, Rendering, Task editor, Sync |
+| Task editor | The full-screen Add screen with its toolbar and tag chips, the "@" list and mention chips, which also edits a task from Task View | [Task editor](android/task-editor.md) | Tasks, Contacts, Editing, Rendering |
+| Task list | Task View: open tasks in rank order, expanded in place, with swipes, reordering, the tag filter with its chips in the tags' order, search, resolved tasks, mentions with their contacts' current details, the floating Add button, and the top tasks the widget shows | [Task list](android/task-list.md) | Tasks, Contacts, Rendering, Task editor, Sync |
 | Configure | The phone's key and repository, the shared deletion delay, the swipe direction, and Sync's status | [Configure](android/configure.md) | Tasks, Sync |
 
 Proposed, each a decision to confirm:
 
 - On Android, Shell may use Sync, for the sync when the app opens and the background sync.
 - On Android, the Task list may use Sync, for its sync status line.
+
 ## Public interface
 
-None. This page sets rules and the module map, not a module; each module's design file states its own public interface.
+None. This page sets rules and the module map, not a module; each module's design file states its own public interface. The shared platform's declarations are [above](#the-platform-serves-every-module-and-knows-none).
 
 ## Failure modes
 

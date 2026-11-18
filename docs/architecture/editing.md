@@ -77,6 +77,18 @@ Editing decides which snippets match the typed text; each app draws the list. Pr
 - A snippet matches when any word of its name starts with the typed text, ignoring case.
 - When nothing matches, the list closes and the typed text stays.
 
+### Typing an at sign opens the mention list
+
+Typing "@" at the start of a line or after a space opens a list of contacts to [mention](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template), in the Title and in the Description. It follows the snippet picker's rules: the text typed after the "@" filters the list, Enter inserts the chosen contact in place of the "@" and that text, and Esc closes the list. So an email address such as `a@b.com` opens nothing.
+
+Editing decides where the list opens, what text it searches with, and where the mention goes; [Contacts' search](contacts.md#search-matches-every-typed-word-in-any-field) decides which contacts match, [Contacts](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) makes the mention's Markdown, and each app draws the list. Proposed, each a decision to confirm:
+
+- **The typed text may hold spaces**, so "@Aayushi Mo" still filters, since full names have them. The list closes when nothing matches, keeping the typed text, as the snippet picker's does; also on a line break, or when the cursor moves before the "@".
+- **The insertion is the mention's whole Markdown, as Contacts gives it, with the cursor right after it**, so Editing knows no mention format.
+- **One list is open at a time.** While the snippet list is open, an "@" is filter text for it, and the other way around.
+
+The "@" and "/" share one rule for where a list opens, so the two pickers can't drift apart.
+
 ## Public interface
 
 Each app's Task editor uses these parts:
@@ -176,6 +188,26 @@ public static class SnippetPicker
 
     /// Inserts the snippet in place of the "/" and the text typed after it. Throws as Matching does.
     public static TextAndSelection Insert(TextAndSelection field, int slashIndex, ISnippet snippet, SnippetInput input);
+}
+```
+
+Proposed, with the [mention list](#typing-an-at-sign-opens-the-mention-list), a decision to confirm. Each app's Task editor also uses the mention picker, beside the snippet picker, and it's a pure function too:
+
+```csharp
+namespace Memoria.ToDo.Shared.Editing;
+
+public static class MentionPicker
+{
+    /// True when the character at atIndex is an "@" at a line start or after a space.
+    public static bool OpensAt(string text, int atIndex);
+
+    /// The text typed between the "@" and the cursor, which the app searches contacts with.
+    /// Throws ArgumentOutOfRangeException when atIndex isn't an "@" before the cursor.
+    public static string QueryOf(TextAndSelection field, int atIndex);
+
+    /// Replaces the "@" and the text typed after it with the mention's Markdown, unchanged, and puts the cursor
+    /// after it. Throws as QueryOf does, and ArgumentException for an empty mention.
+    public static TextAndSelection Insert(TextAndSelection field, int atIndex, string mention);
 }
 ```
 

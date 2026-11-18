@@ -20,6 +20,7 @@ The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-pre
 Proposed, each a decision to confirm:
 
 - Code in a title shows as the text look's code does: in its font and color, on its faded background.
+- A [mention](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) in a title shows its text on the text look's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), in the normal text color, and isn't a link: clicking it reports nothing and selects the row as a click on the title does. In a description, Rendering's page already shows it so. The text is whatever the Markdown it's given holds: the screen that shows it [swaps in the contact's current details](task-list.md#mentions-show-each-contacts-current-details) first, so the Formatted view needs no contacts. No public part changes.
 - A shown title and description stop following the theme while they're off screen, so a closed Task View holds no subscription. They follow it through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), which the Task editor and Configure use too.
 
 ### A title's name is the text it shows

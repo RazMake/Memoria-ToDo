@@ -13,7 +13,7 @@ Each module is a project of its own, separate from the desktop module of the sam
 | [Task list](task-list.md) | Task View: the list in rank order, expanding in place, swipes, reordering, the tag filter, search, resolved tasks, and the floating Add button |
 | [Configure](configure.md) | The settings screen: the phone's key, the shared deletion delay, the swipe direction, and sync setup and status |
 
-The shared modules serve the phone as they serve the desktop: [Editing](../editing.md) holds the formatting and snippet commands, [Rendering](../rendering.md) turns Markdown into HTML and styled text, [Tasks](../tasks.md) holds the task files, and [Sync through git](../sync.md) keeps devices the same. Where an Android screen works like its desktop counterpart, its design file links the [desktop design](../desktop/README.md) instead of repeating it.
+The shared modules serve the phone as they serve the desktop: [Editing](../editing.md) holds the formatting and snippet commands, [Rendering](../rendering.md) turns Markdown into HTML and styled text, [Tasks](../tasks.md) holds the task files, [Contacts](../contacts.md) holds the contacts that tasks mention, and [Sync through git](../sync.md) keeps devices the same. The phone has no Contacts screen for now. Where an Android screen works like its desktop counterpart, its design file links the [desktop design](../desktop/README.md) instead of repeating it.
 
 ## A proof on a phone comes before any other Android work
 
@@ -68,6 +68,7 @@ The Android design relies on the [technology stack](../technology-stack.md), a l
 | The release step that publishes the APK to GitHub Releases, reusing the desktop's | Shell | [Technology stack](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) |
 | The build of libgit2 with the NDK for each ABI, and where it lives | Sync, on Android | [Technology stack](../technology-stack.md#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), which resolves the [risk](../overview.md#risks-the-later-rows-must-resolve) |
 | Where the key that signs each APK is kept. Android's update model needs every update signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)). | Shell | [Technology stack](../technology-stack.md#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline) |
+| How a task's [mention of a contact](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) shows, and the phone's "@" list. The user decided the phone gets the full "@" list and the chips, as the desktop does. | Task list, Task editor | [Task editor](task-editor.md#typing-an-at-sign-mentions-a-contact) and [Task list](task-list.md#mentions-show-each-contacts-current-details) |
 
 Everything else the Android screens need from Tasks and Sync is in the [desktop app's table](../desktop/README.md#later-designs-answer-what-these-files-leave-open), already answered.
 

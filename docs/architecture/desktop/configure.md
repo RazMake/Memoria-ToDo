@@ -2,7 +2,7 @@
 
 Status: Drafting
 
-Configure is the desktop app's settings window. It changes the three global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
+Configure is the desktop app's settings window. It changes the four global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
 
 ## Behavior
 
@@ -12,7 +12,7 @@ The table lists every setting in Configure, the module that owns it, where it's 
 
 | Setting | Owner | Kept | Default |
 | --- | --- | --- | --- |
-| Global shortcuts for Add new task, Task View, and Configure | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device | As [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
+| Global shortcuts for Add new task, Task View, Configure, and Contacts | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device | As [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
 | The Close window shortcut, which closes the app's windows, as [below](#esc-and-the-close-window-shortcut-close-the-window) | Tasks stores the value; Configure checks it | In the repository's `settings.json`, shared by every device, like the global shortcuts | **Shift+Esc** |
 | The Save shortcut, which saves the task being edited in Add and Task View, as [below](#the-save-shortcut-saves-an-edit-in-any-window) | Tasks stores the value; Configure checks it | In the repository's `settings.json`, shared by every device, like the Close window shortcut | **Ctrl+Enter** |
 | Start with Windows | Configure | In the current user's `Run` registry key, on this device, as [below](#start-with-windows-is-the-run-key-itself) | On |
@@ -29,6 +29,8 @@ Configure reads and changes the deletion delay through Tasks, so a change on one
 **Configure checks each value as it's entered, and applies or saves nothing invalid.** Each setting shows its own problems under it, such as a taken shortcut or a failed write.
 
 Proposed: the deletion delay shows in days. This is a decision to confirm.
+
+The user asked for a fourth global shortcut, [Contacts](contact-list.md#a-global-shortcut-and-the-tray-menu-open-contacts), default **Win+Alt+O**, changed here like the others. It's one more global shortcut in the table's first row, kept in `settings.json` as [Tasks' `contactsShortcut`](../tasks.md#one-versioned-file-holds-the-three-shared-settings), checked by the same rules, and Connect the shortcuts takes its action, as [below](#public-interface). Proposed, a decision to confirm: its row in the Shortcuts card comes after Task View's, with the description "Opens Contacts from any app." The row always shows; [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) holds the keys in Windows only while the clone has contact files, so Configure doesn't know about Contacts.
 
 ### The window shows its settings in labeled sections
 
@@ -93,15 +95,15 @@ The user decided that the key that saves an edit, Ctrl+Enter at first, can be ch
 
 ### A new shortcut is checked at once
 
-The user clicks a shortcut's field and presses the new keys. The field shows them, and Configure checks them at once; Esc leaves the shortcut as it was. Configure accepts a global shortcut, Add new task's, Task View's, or Configure's, only if it follows all three rules:
+The user clicks a shortcut's field and presses the new keys. The field shows them, and Configure checks them at once; Esc leaves the shortcut as it was. Configure accepts a global shortcut, Add new task's, Task View's, Configure's, or Contacts', only if it follows all three rules:
 
 - **Two or more of Ctrl, Alt, Shift, and Win, plus one other key.** A shortcut with one modifier key can take a common key from every app: Ctrl+C would stop copying everywhere.
 - **Never F12**, since Windows keeps it for debuggers ([RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey)).
 - **Different from the other shortcuts**, Close window's and Save's included. Two functions can't share keys: Windows would refuse whichever global shortcut registered second, and the message would wrongly blame another app; a global shortcut takes its keys before any window sees them, so Close window would never work. A pick equal to the row's own shortcut changes nothing: Configure doesn't register it again, and the row's message stays as it was.
 
-**Close window has rules of its own**, since it never registers with Windows and works only inside the app's windows: two or more modifier keys plus any other key, F12 included, or one modifier key plus Esc or a function key, such as Shift+Esc; and different from the other four shortcuts. Configure checks it the moment it's picked, saves it as it saves the others, and hands it to the app's windows at once. Invalid stored text is handled as for the global shortcuts [below](#shared-settings-refresh-even-while-configure-is-closed): the previous valid keys, or the default, stay in use. Configure can't know which keys the other windows use, so Close window wins over them; this is an accepted risk.
+**Close window has rules of its own**, since it never registers with Windows and works only inside the app's windows: two or more modifier keys plus any other key, F12 included, or one modifier key plus Esc or a function key, such as Shift+Esc; and different from the other five shortcuts. Configure checks it the moment it's picked, saves it as it saves the others, and hands it to the app's windows at once. Invalid stored text is handled as for the global shortcuts [below](#shared-settings-refresh-even-while-configure-is-closed): the previous valid keys, or the default, stay in use. Configure can't know which keys the other windows use, so Close window wins over them; this is an accepted risk.
 
-**Save has rules of its own too**, since it never registers with Windows either: one or more modifier keys plus any other key, but never Shift alone with a key that types a character, such as Shift+A, which would stop typing a capital A; and different from the other four shortcuts. The user decided these rules. Configure checks it, saves it, and hands it to the app's windows as it does Close window. Save wins over any other use of its keys in an editor, as Close window does; this is an accepted risk. The one exception is Ctrl+F in Task View, which the user decided always [moves to the search box](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete), even when it's the Save shortcut.
+**Save has rules of its own too**, since it never registers with Windows either: one or more modifier keys plus any other key, but never Shift alone with a key that types a character, such as Shift+A, which would stop typing a capital A; and different from the other five shortcuts. The user decided these rules. Configure checks it, saves it, and hands it to the app's windows as it does Close window. Save wins over any other use of its keys in an editor, as Close window does; this is an accepted risk. The one exception is Ctrl+F in Task View, which the user decided always [moves to the search box](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete), even when it's the Save shortcut.
 
 As the app starts, Configure registers each row's stored shortcut through its [shortcut action](#public-interface), or the row's default when none is stored or the stored text is [invalid](#shared-settings-refresh-even-while-configure-is-closed), then each valid shortcut the user picks on that row. If Windows or another app holds a shortcut, Configure [says why](#configure-explains-every-shortcut-it-cant-use) and lets the user pick another, and the previous shortcut stays active, as [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides.
 
@@ -117,7 +119,7 @@ Proposed, each a decision to confirm:
 
 ### While a shortcut field has focus, the app's shortcuts are released
 
-While any shortcut field has the keyboard focus, Configure unregisters all three global shortcuts, so their keys reach the field instead of opening a window. The user can press a shortcut's own keys again, or another shortcut's keys and get the [message](#configure-explains-every-shortcut-it-cant-use) that it's in use. The Close window and Save shortcuts are the exception: they have nothing to release, and pressing Close window's current keys in any field closes the window, as [above](#esc-and-the-close-window-shortcut-close-the-window) says. The user picks new keys for it by pressing different ones.
+While any shortcut field has the keyboard focus, Configure unregisters all four global shortcuts, so their keys reach the field instead of opening a window. The user can press a shortcut's own keys again, or another shortcut's keys and get the [message](#configure-explains-every-shortcut-it-cant-use) that it's in use. The Close window and Save shortcuts are the exception: they have nothing to release, and pressing Close window's current keys in any field closes the window, as [above](#esc-and-the-close-window-shortcut-close-the-window) says. The user picks new keys for it by pressing different ones.
 - **When no shortcut field has the focus, Configure registers each row's shortcut again.** That happens when the user tabs or clicks away, another app takes the focus, or the window closes, also in the middle of a pick. Moving from one field to another keeps them all released.
 - **A valid pick registers at once**, which checks that it's free, then is released again until the focus leaves the fields.
 - **A shortcut that can't register again**, such as when another app took it meanwhile, leaves its row with no shortcut, and the row's message says why.
@@ -226,7 +228,7 @@ cancels and observes that window's waits, not the shared sync. These subscriptio
 ### Shared settings refresh even while Configure is closed
 
 Configure receives [`ISharedTaskSettings`](../../../src/Shared/Tasks/ISharedTaskSettings.cs), not another settings
-store. It loads the three global shortcut texts when Shell connects their actions, and the Close window and Save texts when it's
+store. It loads the four global shortcut texts when Shell connects their actions, and the Close window and Save texts when it's
 created, and keeps watching imported changes while
 the window is closed, so every shortcut updates without opening Configure. Null uses the existing defaults.
 The shortcut text form, such as `Win+Alt+N` or `Ctrl+Enter`, is written by the platform's [`ShortcutText`](README.md#the-save-shortcut-saves-in-any-window-that-edits); one internal parser reverses it, and also reads "Return" as "Enter".
@@ -267,6 +269,13 @@ The composition root and Shell use these parts:
   /// Returns true only when all three initial shortcuts registered.
   /// Throws ArgumentNullException when any action is null.
   bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure);
+  ```
+
+  The user decided that the Contacts shortcut is changed here like the others, so Contacts' action is a fourth argument, after Configure's, and the result is true only when all four registered. This is not implemented:
+
+  ```csharp
+  bool ConnectShortcuts(
+      IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure, IShortcutAction contacts);
   ```
 - **A shortcut action**: an interface Configure publishes and Shell implements, one for each shortcut, as [Shell](shell.md#public-interface) says. It has two parts:
   - Register takes a shortcut and registers it in place of the action's previous one. It returns false, keeping the previous one, when Windows or another app holds the shortcut, and true at once when the shortcut is already the action's.

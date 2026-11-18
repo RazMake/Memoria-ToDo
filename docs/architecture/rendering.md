@@ -159,6 +159,16 @@ Proposed, each a decision to confirm:
 - The spans cover the whole text, with plain text in spans of no style.
 - Markdown's own characters, such as `**`, a link's `[` and `](address)`, an autolink's `<` and `>` (its text carries the address), a `\` before an escaped character, and a color's `:red[` and `]`, come in spans marked as markers. So the editor can dim them, and a title or a task reference can leave them out to show the text as a reader sees it.
 
+### A mention shows on a colored background
+
+The user decided that a mention shows on one soft accent background in each theme, and that its text is rebuilt from the contact's current details each time it shows, as [Contacts](contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows) decides. Rendering finds the mentions and draws them; it never reads contacts. Proposed, each a decision to confirm:
+
+- **A link whose address is a [contact address](modules.md#a-contact-address-has-one-home) is a mention.** Its text's spans carry a Mention style, beside the link's address, and its `[` and `](contact:… "…")` stay markers. Rendering asks the shared platform's `ContactAddress`, so it knows no contact format of its own.
+- **A mention shows in the normal text color, on the text look's mention background**, one soft color per theme, like code's background. Its text keeps any bold or italic it has. The color itself belongs in code, checked by a unit test to keep normal text at least 4.5:1 on it, as [WCAG 2.2](https://www.w3.org/TR/WCAG22/#contrast-minimum) asks.
+- **The description page shows a mention as `<span class="mention">` with no link**, styled by the page's one style block, so there's nothing to click and the [browser check](#only-web-links-open-in-the-browser) never sees its address.
+- **Rendering lists each mention's whole extent, address, template, and stored text**, so the editors can draw each one as a single chip.
+- **Rendering swaps each mention's text for a live one** that its caller supplies, escaping every Markdown character in it so it shows as written. A mention the caller has no text for keeps its stored text. The screens that show tasks pass the result to the page or the title, so the page and the spans need no contacts.
+
 ## Public interface
 
 Both apps use these parts:
@@ -321,6 +331,36 @@ public static class DescriptionPage
 }
 ```
 
+Proposed, with the [mention look](#a-mention-shows-on-a-colored-background), a decision to confirm. The span style gains a flag, the text look a color, and a new part finds mentions and swaps their text; nothing else changes. This is not implemented:
+
+```csharp
+namespace Memoria.ToDo.Shared.Rendering;
+
+[Flags]
+public enum SpanStyle { None = 0, Bold = 1, Italic = 2, Strikethrough = 4, Code = 8, Marker = 16, Mention = 32 }
+
+public sealed class TextLook
+{
+    // The members above stay as they are.
+
+    /// The opaque color behind a mention's text, #rrggbb.
+    public string MentionBackground { get; }
+}
+
+/// One mention: its whole extent in the Markdown, from "[" to ")", and what the link holds.
+public sealed record Mention(int Start, int Length, string Address, string Template, string StoredText);
+
+public static class Mentions
+{
+    /// Every mention, in order. A title is read as inline Markdown only, as its spans are.
+    public static IReadOnlyList<Mention> In(string markdown, bool title);
+
+    /// The Markdown with each mention's text replaced by textOf's answer, escaped to show as written;
+    /// a null answer keeps the stored text. Everything else is unchanged.
+    public static string WithTexts(string markdown, bool title, Func<Mention, string?> textOf);
+}
+```
+
 ## Failure modes
 
 - **There's no invalid Markdown**: any text renders, and what Markdown can't read shows as text.
@@ -361,3 +401,7 @@ The options below were considered and rejected, grouped by decision.
 - How a page gets its resize corners:
   - **Every page, always**: the user chose to resize images only while editing.
   - **A flag on `Of`**: every caller, the Android app's included, would pass a value it doesn't care about, and the public API files would show a removed and an added `Of`.
+- How a mention shows:
+  - **No background, only the link's look**: the user chose one soft accent background per theme.
+  - **Rendering reads contacts itself**: Rendering would depend on Contacts, and the Formatted view would need them too. The screens swap the text first instead.
+  - **The live text passed into the page and the spans as a new argument**: every caller of `Of` and the spans would change, for what one swap before them does.

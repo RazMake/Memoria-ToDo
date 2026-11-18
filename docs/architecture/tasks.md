@@ -19,11 +19,11 @@ The table lists what Tasks keeps in the task repository:
 | `settings.json` | The deletion delay and the desktop app's shortcut texts, whose validation belongs to [Configure](desktop/configure.md#each-setting-has-one-owner) |
 | `tags.json` | The color the user picked for each tag, and its place in the tags' order, as [below](#each-tags-color-is-kept-in-one-synced-file) |
 
-Deleting a task removes its file and its image folder.
+Deleting a task removes its file and its image folder. The clone also holds the user's contacts under `autocomplete/`, which [Contacts](contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts) owns; Tasks never reads them.
 
 ### Tasks works on the clone the app gives it
 
-Each app gives Tasks the folder of this device's clone when it starts, and again whenever the user picks another; on the desktop, that's [Configure's repository folder](desktop/configure.md#the-sync-settings-section-sets-the-devices-clone). Tasks then reads that folder's tasks and announces the change. With no folder, the list is empty, and adding a task fails before any file is written, so the screen that asked can point the user to Configure and keep the text.
+Each app selects this device's clone when it starts, and again whenever the user picks another, through the shared platform's [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), which Tasks joins as one of its parts; on the desktop, that's [Configure's repository folder](desktop/configure.md#the-sync-settings-section-sets-the-devices-clone). Tasks then reads that folder's tasks and announces the change. With no folder, the list is empty, and adding a task fails before any file is written, so the screen that asked can point the user to Configure and keep the text.
 
 Proposed, each a decision to confirm:
 
@@ -181,22 +181,35 @@ string? ConfigureShortcut { get; }
 void SetConfigureShortcut(string? shortcut);
 ```
 
-### Sync shares Tasks' local update lock, never a network wait
+The user decided Contacts has a fourth global shortcut, which Configure changes like the others. So a seventh setting, `contactsShortcut`, after `configureShortcut`, holds the desktop's global shortcut that opens [Contacts](desktop/contact-list.md#a-global-shortcut-and-the-tray-menu-open-contacts), with the version still 1. Proposed, a decision to confirm: it's kept, merged, read when missing, and written exactly as `configureShortcut` is, and its public parts follow the same pattern. This is not implemented:
 
-Sync obtains [its capability](../../src/Shared/Tasks/Synchronization/ITaskSynchronization.cs) from the same store as
-the task operations. `UpdateRepository` checks that the expected clone is still selected before calling its synchronous
-callback under Tasks' existing lock. A changed selection fails before the callback runs. Commit and merge application
+```csharp
+/// <summary>Shortcut text Windows interprets; null means Windows' existing default.</summary>
+string? ContactsShortcut { get; }
+
+/// <summary>
+/// Saves text without interpreting it, or null to use Windows' default, and its UTC change time.
+/// Throws NoRepositoryFolderException when no repository is selected. An unchanged value writes nothing.
+/// </summary>
+void SetContactsShortcut(string? shortcut);
+```
+
+### Sync shares the repository's lock, never a network wait
+
+Sync updates the clone through the shared platform's [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), whose lock Tasks also takes for every read and write, and Contacts too. The repository checks that the expected clone is still selected before calling Sync's synchronous
+callback under the lock. A changed selection fails before the callback runs. Commit and merge application
 use this operation; fetch, push, and every other network wait stay outside it. Sync rechecks and commits intervening
 local edits before applying a fetched merge.
 
-The operation reloads tasks, settings, tag colors, and skipped-file diagnostics while still holding the lock, including after a
-failed callback. It then releases the lock before raising notices. A callback failure propagates; a reload failure too
+The repository reloads every part while still holding the lock, including after a failed callback; Tasks' part reloads tasks, settings, tag colors, and skipped-file diagnostics. It then releases the lock before raising notices. A callback failure propagates; a reload failure too
 is kept with it in `AggregateException`. This is local coordination, not a transaction that undoes a failed Git update.
 
-`LocalSaved` reports durable local repository changes, including settings, tag colors, and automatic deletion. It excludes repository
+Tasks reports a local save to the repository after durable local repository changes, including settings, tag colors, and automatic deletion. It reports none for repository
 selection, imported updates, sync's settings initialization, drafts, and images still waiting outside the clone. The existing task `Changed` notice
 continues to refresh screens; settings and tag colors each have their own notice. A reload never starts another sync by pretending to be
 a local save. Skipped-file snapshots name corrupt, unreadable, and newer-version files without deleting them.
+
+Proposed, a decision to confirm: this lock and reload move from Tasks to the platform without changing their rules, since Contacts is their second user, as [Contacts](contacts.md#contacts-is-a-shared-module-of-its-own) decides.
 
 Decisions to confirm: a reload always raises the settings-change notice, even when values are unchanged;
 `EnsureSettings` raises no `LocalSaved` notice because initialization is already part of a sync pass. Proposed: a reload
@@ -509,6 +522,19 @@ this section describes the design, not a claim that final validation or delivery
 The [factory contract](../../src/Shared/Tasks/TaskStore.cs) exposes these capabilities through `ITaskStore`.
 Existing callers can still use the result as `ITasks`; Configure receives only `Settings`, and
 Sync receives only `Synchronization`. No caller casts a concrete implementation or creates another store.
+
+Proposed, with the [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), each a decision to confirm. This is not implemented:
+
+- `TaskStore.Create` takes the repository's store side, `IRepositoryAccess repository`, as its new last argument, and adds the store as one of its parts.
+- `ITasks.UseRepositoryFolder` goes: the composition root selects through the repository instead.
+- `ITaskSynchronization` keeps `Files`, `EnsureSettings`, and `DeleteExpiredTasks`. `RepositoryFolder`, `SkippedFiles`, `LocalSaved`, and `UpdateRepository` move to the repository's Sync side, `ISyncedRepository`, with the same rules.
+- `ISkippedRepositoryFile` and `NoRepositoryFolderException` move to `Memoria.ToDo.Shared.Platform` unchanged.
+- No task behavior changes; tests change only how they select a folder.
+
+```csharp
+public static ITaskStore Create(IFileSystem files, IImageEncoder images, TimeProvider time, string deviceFolder,
+    IRepositoryAccess repository);
+```
 
 Row 11 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) adds the folder where an open edit's [images wait](#images-are-at-most-1-mb-and-live-beside-their-task), for the desktop's composition root, which gives it to the web view: [`ITaskStore.EditImagesFolder`](../../src/Shared/Tasks/ITaskStore.cs). It's laid out like the clone, so the link an image gets names the image under it. Proposed: its shape. This is a decision to confirm.
 That folder is under the device folder, so `TaskStore.Create` throws `ArgumentException` when the device folder isn't fully qualified, before any side effect: a relative path would follow the working directory. This is a decision to confirm.`IRepositoryFileRules` is the only public home of the managed directory/file names and their classification.

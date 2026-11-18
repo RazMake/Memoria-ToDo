@@ -2,26 +2,36 @@
 
 Status: Decided
 
-Shell is the desktop app's tray icon and everything around it: the three global shortcuts, one running instance, what each start shows, starting and stopping [Updates](updates.md), and sync status. It opens the [Task editor](task-editor.md), the [Task list](task-list.md), and [Configure](configure.md); the [desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists what it needs from later designs.
+Shell is the desktop app's tray icon and everything around it: the four global shortcuts, one running instance, what each start shows, starting and stopping [Updates](updates.md), and sync status. It opens the [Task editor](task-editor.md), the [Task list](task-list.md), the [Contact list](contact-list.md), and [Configure](configure.md); the [desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists what it needs from later designs.
 
 ## Behavior
 
 ### Three global shortcuts and the tray menu open the app's three functions
 
-Three global shortcuts work from any app. The user changes each one in [Configure](configure.md#each-setting-has-one-owner), and each is the same on every device:
+Four global shortcuts work from any app. The user changes each one in [Configure](configure.md#each-setting-has-one-owner), and each is the same on every device:
 
 | Shortcut | Opens | Default |
 | --- | --- | --- |
 | Add new task | Add | **Win+Alt+N** |
 | Task View | Task View | **Win+Alt+V** |
 | Configure | Configure | **Win+Alt+C**, the user's choice |
+| Contacts | [Contacts](contact-list.md) | **Win+Alt+O**, the user's choice |
 
 The user asked for the Configure shortcut, and decided that it reaches Shell as a third [shortcut action](configure.md#public-interface) and [switches](#a-shortcut-switches-between-add-and-task-view) like the other two.
 
-The tray icon's menu offers Add new task, Task View, Configure, and Exit, for when the mouse is closer than the keyboard.
+The user also asked for a Contacts shortcut, changed in Configure like the others, and a Contacts tray item, which opens the [Contact list's](contact-list.md#a-global-shortcut-and-the-tray-menu-open-contacts) window. The Contacts shortcut reaches Shell as a fourth shortcut action and switches as the table below says. Win+Alt+O wasn't probed with RegisterHotKey; a PC where it's taken follows the taken-shortcut rule below.
+
+The tray icon's menu offers Add new task, Task View, Contacts, Configure, and Exit, for when the mouse is closer than the keyboard. Proposed, a decision to confirm: Contacts sits after Task View, beside the other window that lists things.
+
+The user decided that **the Contacts tray item and shortcut show only when the clone [has contact files](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts)**, in `autocomplete/contacts/`. Shell reads this from the [Contacts window port's](contact-list.md#public-interface) `IsAvailable` and follows its `AvailableChanged`, so a clone or a sync that adds or removes the files updates the menu at once. Proposed, each a decision to confirm:
+
+- **The tray item is hidden, not disabled**, while there are no contact files.
+- **Shell's Contacts shortcut action keeps the shortcut Configure gave it, and holds it in Windows only while contacts are available.** Register and Unregister keep their meaning to Configure; while unavailable, Register checks nothing with Windows, stores the shortcut, and returns true, and the keys reach the focused app. When contacts become available, Shell registers the stored shortcut; when Windows or another app holds it, Shell opens Configure, as a failed start-time registration does. When contacts become unavailable, Shell releases it. So Configure stays unaware of Contacts.
+- **Configure's Contacts row always shows**, so the user can pick the keys before adding contact files.
+- **An open Contacts window stays open when the files go away**; it shows what's left, and closes as usual.
 
 - **The defaults are the user's choice.** A RegisterHotKey probe on the user's PC found Win+Alt+T taken by Windows and Win+Alt+N free; Win+Alt+V and Win+Alt+C weren't probed. Microsoft's list gives Win+C to Copilot but lists no Win+Alt+C ([keyboard shortcuts in Windows](https://support.microsoft.com/en-au/accessibility/windows/keyboard-shortcuts-in-windows)). The defaults avoid Ctrl+Alt, which equals AltGr on many keyboard layouts ([WM_SYSKEYUP](https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-syskeyup)). The OneNote desktop app uses Win+Alt+N for Quick Notes ([OneNote shortcuts](https://shortcut-tools.com/en/shortcuts/onenote/)); on a PC that runs it, Add new task has no shortcut until the user picks another, and Configure says why.
-- **A shortcut never opens a window beside another.** It [switches between Add and Task View](#a-shortcut-switches-between-add-and-task-view) instead, and does nothing while Configure is open. Each window port says whether its window is open, and Shell checks all three before showing one.
+- **A shortcut never opens a window beside another.** It [switches between Add and Task View](#a-shortcut-switches-between-add-and-task-view) instead, and does nothing while Configure is open. Each window port says whether its window is open, and Shell checks all four before showing one.
 - **A left click on the tray icon opens Task View, and a right click opens the menu.** The user's choice: checking the tasks is what a click on the icon is for, and Add keeps its global shortcut.
 - **The tray icon uses [H.NotifyIcon.Wpf](https://www.nuget.org/packages/H.NotifyIcon.Wpf/2.4.1) 2.4.1.** Its menu is a Windows Presentation Foundation (WPF) menu, so it follows the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
 - **Shell runs each shortcut's action, and Configure picks the keys.** Shell gives Configure one [shortcut action](configure.md#public-interface) for each shortcut, which registers keys through Shell's [global shortcut port](#public-interface) and opens its window when pressed. The composition root implements the port with the Windows [RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey) function, with no shortcut library. [Configure](configure.md#a-new-shortcut-is-checked-at-once) checks each shortcut before Shell sees it.
@@ -41,14 +51,15 @@ sign-in, so setup or its error is visible.
 
 The user decided that pressing the other window's shortcut closes the open window and opens the other one, and pressing the open window's own shortcut brings it to the front, even from behind other windows. The table lists what each shortcut does, by the window that's open:
 
-| Open window | Add new task shortcut | Task View shortcut | Configure shortcut |
-| --- | --- | --- | --- |
-| None | Opens Add | Opens Task View | Opens Configure |
-| Add | Brings Add to the front | Closes Add, keeping its [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Esc does, then opens Task View | Closes Add, keeping its draft, then opens Configure |
-| Task View | Closes Task View, asking first about a changed edit, then opens Add once it's closed | Brings Task View to the front, empties its search, and puts the cursor there | Closes Task View, asking first about a changed edit, then opens Configure once it's closed |
-| Configure | Nothing | Nothing | Brings Configure to the front |
+| Open window | Add new task shortcut | Task View shortcut | Configure shortcut | Contacts shortcut |
+| --- | --- | --- | --- | --- |
+| None | Opens Add | Opens Task View | Opens Configure | Opens Contacts |
+| Add | Brings Add to the front | Closes Add, keeping its [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Esc does, then opens Task View | Closes Add, keeping its draft, then opens Configure | Closes Add, keeping its draft, then opens Contacts |
+| Task View | Closes Task View, asking first about a changed edit, then opens Add once it's closed | Brings Task View to the front, empties its search, and puts the cursor there | Closes Task View, asking first about a changed edit, then opens Configure once it's closed | Closes Task View, asking first about a changed edit, then opens Contacts once it's closed |
+| Contacts | Closes Contacts, asking first about a changed edit, then opens Add once it's closed | Closes Contacts the same way, then opens Task View | Closes Contacts the same way, then opens Configure | Brings Contacts to the front, empties its search, and puts the cursor there |
+| Configure | Nothing | Nothing | Brings Configure to the front | Nothing |
 
-The user decided the Configure shortcut's column.
+The user decided the Configure shortcut's column, and that Contacts is changed and switched like the other shortcuts. Proposed, a decision to confirm: the Contacts row and column mirror Task View's, as the [Contact list](contact-list.md#a-global-shortcut-and-the-tray-menu-open-contacts) says.
 
 Closing Task View this way works as its close button does: a pending Undo finishes, as the [Task list](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) says. The user decided that an [edit](task-list.md#edit-description-turns-the-right-side-into-the-editor) with changes asks first, offering Save, Discard, or Cancel, as the [Task list](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) says. Shell closes each window through its port's close part. It opens Add only when Task View's close part says the window closed, so Cancel, or a save that fails, leaves Task View open and Add closed. Add's close part hides it with its draft, then Shell opens Task View.
 
@@ -160,13 +171,14 @@ No module uses Shell. Only the composition root does, through one part:
 
 - **[Create the tray app](../../../src/Desktop/Shell/TrayApp.cs)** retains its existing arguments and adds the shared Sync service last. It returns the platform's async-stop lifetime; no duplicate instance starts Sync. Proposed: its updates port argument becomes Updates' lifetime, `IUpdateLifetime updates`, in the same place, and its `TimeProvider time` argument goes, since only the update checks used it. This is a decision to confirm.
   - **Starting** first asks the one-instance port to claim the sign-in session. If another instance runs, Starting ends the app and does nothing else. Otherwise it adds the tray icon with its menu, connects Configure's shortcuts, starts [Updates](updates.md#a-check-runs-at-start-and-each-night-at-3-am) with Shell's app exit, and resolves its windows through the [startup rules](#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) after local initialization. Each menu item calls its window's Show part, and Exit ends the app. A left click calls Show Task View, the global shortcuts follow the [switching rule](#a-shortcut-switches-between-add-and-task-view), and each later start calls Show Task View.
-  - **Connecting the shortcuts** hands Configure three [shortcut actions](configure.md#public-interface): Add new task's opens Add, and Task View's opens Task View, each as the [switching rule](#a-shortcut-switches-between-add-and-task-view) says; Configure's opens Configure, as the switching rule says too. Each action has at most one shortcut registered, through the global shortcut port, and none touches another's.
+  - **Connecting the shortcuts** hands Configure four [shortcut actions](configure.md#public-interface): Add new task's opens Add, Task View's opens Task View, Configure's opens Configure, and Contacts' opens Contacts, each as the [switching rule](#a-shortcut-switches-between-add-and-task-view) says. Each action has at most one shortcut registered, through the global shortcut port, and none touches another's.
     - **Register** registers a new shortcut; when Windows takes it, the action releases its previous one. The shortcut already registered stays, and Register returns true without registering it again.
     - **Unregister** releases the action's shortcut, so its keys reach the focused window, and does nothing when there's none. A later Register registers again.
     - Any failure of the port other than a taken shortcut passes on to Configure.
   - **Stopping** follows the [owned asynchronous cleanup](#shutdown-joins-owned-work-without-blocking-the-dispatcher), so a later instance cannot claim the session while this one still owns native sync work.
   - Proposed: Stopping works even if Starting failed or never ran, and when it's repeated. When the icon can't be added, Starting fails before it connects the shortcuts and starts Updates. This is a decision to confirm.
   - Proposed: **Shell gives Updates the [app exit](updates.md#public-interface) it needs to restart the app.** Any window open is true while Add, Task View, or Configure is open. Close windows calls [Close Task View](task-list.md#public-interface), which asks about a changed edit, and returns its result; Add and Configure close with the app at End, and Add keeps its draft then, as it does on Exit. End ends the app as Exit in the tray menu does. This is a decision to confirm.
+  - **Create the tray app takes the [Contacts window](contact-list.md#public-interface), `IContactsWindow contacts`, after the Task View window**, as the user's Contacts shortcut and tray item need. Its menu item and its shortcut action call its Show part as the switching rule says, and Configure's shortcut connection gets a fourth action for it. Proposed, a decision to confirm: any window open is also true while Contacts is open, and Close windows closes Contacts too, through its close part, which asks about a changed edit; it returns false when either Task View or Contacts stays open.
   - Proposed: when a new shortcut registers but releasing the action's previous one fails, the action releases the new one again, keeps the previous one, and passes the failure on to Configure. When releasing a shortcut fails, Stopping still releases the other, removes the tray icon, and gives up the claim, then passes the failures on. This is a decision to confirm.
   - If releasing the new one again fails too, both stay registered until the app ends, the previous one stays active, and Configure gets both failures.
 

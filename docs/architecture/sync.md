@@ -91,7 +91,7 @@ Also proposed, each a decision to confirm:
 - Commit messages name the device and list each changed managed path with its action: Add, Update, or Delete.
   The task title above is an example, not a requirement to look titles up. Paths also describe settings and image
   changes, and use Git's existing change information without parsing Tasks' files or adding a public interface.
-- Files outside `tasks/`, `images/`, `settings.json`, and `tags.json`, such as a README, are left as the remote has them.
+- Files outside `tasks/`, `images/`, `settings.json`, `tags.json`, and the [contact files](#sync-manages-contact-files-through-contacts-rules), such as a README, are left as the remote has them.
 - A task file from the remote that can't be read is skipped, never deleted, and named in the sync status.
 - After 3 rejected pushes in a row, the sync fails with an error and retries later. Only pushes within one sync
   count, whatever reason the remote gives for rejecting them. The write-access check below isn't a push.
@@ -106,6 +106,16 @@ Also proposed, each a decision to confirm:
 These choices can lose the only copy of that content. Sync does not add a preservation/recovery mechanism for
 these cases. This permission does not cover arbitrary failures, private keys or other device-only data.
 Unreadable remote task files still follow the skip-and-report rule above; Tasks' input validation is unchanged.
+
+### Sync manages contact files through Contacts' rules
+
+Sync commits and merges the files [Contacts](contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts) owns, its group files, data type files, and templates file, as it does task files. A path is managed when Tasks' file rules classify it, or Contacts' file rules hold it. Contacts' merge decides the merged bytes; Sync knows no contact format. Other files under `autocomplete/` stay as the remote has them.
+
+Proposed, each a decision to confirm:
+
+- **A contact file that can't be read on one side follows the task files' skip-and-report rule**: Sync names it in the status and leaves its bytes intact.
+- **The user's permission to apply a remote deletion over a malformed local task file doesn't cover contact files**: such a file is kept and reported, since contacts are the user's hand-kept data.
+- **Commit messages list contact paths like any other managed path.**
 
 <a id="configure-sets-up-a-device-by-cloning-the-repository"></a>
 
@@ -214,7 +224,7 @@ Repeated starts do not initialize again. This startup order is decided, not perm
 `Start` returns without waiting for initialization or network work. A manual pass or setup operation can still run
 before `Start`, as Android background work needs; its I/O also belongs to the owned worker. Status and setup getters
 read immutable cached snapshots. Notices may arrive on any thread; UI consumers dispatch them. No notice runs under
-Tasks' lock.
+the repository's lock.
 
 Cancelling a manual sync caller stops only its wait. The service still owns and observes the shared pass.
 Cancelling a setup call requests cancellation of that operation, whose completion the service also retains.
@@ -332,13 +342,12 @@ to App's secure-store adapter, not to this module's device metadata.
 ## Public interface
 
 The declarations are in `src/Shared/Sync/`. Git repositories, transport clients, worker internals, and native
-library types are not public. The [module map](modules.md#module-map) already permits Sync to use Tasks; no map
-or platform change is needed.
+library types are not public. The user decided that Contacts is a shared module of its own, so the [module map](modules.md#module-map) lets Sync use Tasks and Contacts, and Sync updates the clone through the shared platform's [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload).
 
 | Contract | Caller and purpose |
 | --- | --- |
 | [`ISyncService`](../../src/Shared/Sync/ISyncService.cs) | Shell, Task list, and Configure: lifecycle, manual sync, status, and setup |
-| [`ISyncStatus`](../../src/Shared/Sync/Status/ISyncStatus.cs) | Immutable status and failure kind, successful-sync time, pending changes, and Tasks' skipped-file reports |
+| [`ISyncStatus`](../../src/Shared/Sync/Status/ISyncStatus.cs) | Immutable status and failure kind, successful-sync time, pending changes, and the repository's skipped-file reports, Tasks' and Contacts' alike |
 | [`ISyncSetup`](../../src/Shared/Sync/Setup/ISyncSetup.cs) | Configure: device name, key generation and deletion, clone or existing-clone selection, explicit custom-host trust, and the typed-address check |
 | [`ISyncSetupState`](../../src/Shared/Sync/Setup/ISyncSetupState.cs) | Immutable setup state, including the selected clone, public key, and host's add-key page |
 | [`ISshHostKey`](../../src/Shared/Sync/Setup/ISshHostKey.cs) | The endpoint and fingerprint actually observed, including whether acceptance is allowed |
@@ -375,6 +384,22 @@ ISyncService SyncService.Create(
     TimeSpan? periodicInterval)
 ```
 
+Proposed, with [Contacts](contacts.md#public-interface) and the synced repository, a decision to confirm: `Create` takes the repository's Sync side first, then Tasks' and Contacts' file capabilities. The repository gives the selected folder, the lock, the reload, the skipped files, and the local-save notice that `ITaskSynchronization` gave before. This is not implemented:
+
+```csharp
+ISyncService SyncService.Create(
+    ISyncedRepository repository,
+    ITaskSynchronization tasks,
+    IContactFileRules contacts,
+    IFileSystem files,
+    IDeviceKeyStore keys,
+    IRepositorySelection repositories,
+    TimeProvider time,
+    string deviceFolder,
+    string defaultDeviceName,
+    TimeSpan? periodicInterval)
+```
+
 App supplies and wires all arguments. Creation validates arguments and creates the service, with no I/O or worker
 started. The interval is positive or null: App supplies 30 minutes on desktop and null on Android. There is no public
 Git adapter, host-pin override, worker setting, or test-only construction switch. Setup rejects unsupported SSH
@@ -402,8 +427,9 @@ non-default branch, or unfinished Git operation is reported before changing task
 than silently switching branches or discarding work. This safety refusal is a decision to confirm.
 
 The approved supporting [Tasks contracts](tasks.md#step-5-publishes-small-capabilities-without-growing-task-operations)
+and the platform's [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload)
 give Sync its exclusive local updates, canonical managed paths, pure merge rules, skipped-file reports, and a
-local-save notice distinct from imported changes. Only local commit and merge application hold Tasks' lock.
+local-save notice distinct from imported changes. Only local commit and merge application hold the repository's lock.
 Fetch, push, setup connections, and every asynchronous network wait run outside it.
 
 Setup keeps the clone the user already configured; selecting a folder is not an alternative to Git synchronization.
@@ -430,7 +456,7 @@ The shared fake assembly can implement that port and the public device adapters,
 Sync picks each managed file's merge through one internal registration, from the file's kind to the matching merge
 in Tasks' [file rules](../../src/Shared/Tasks/Synchronization/IRepositoryFileRules.cs), so a new kind of synced file
 adds one entry rather than a branch in a `switch`. A kind with no entry, such as an image, keeps the side that
-changed, and the remote's copy when both did.
+changed, and the remote's copy when both did. Proposed, a decision to confirm: one entry sends every path Contacts' rules hold to Contacts' merge.
 
 The Sync tester starts with unit scenarios for address rejection, immutable status, scheduling/coalescing,
 caller cancellation, stop/dispose ownership, trust changes, and key-handle lifetime. Use completion signals,

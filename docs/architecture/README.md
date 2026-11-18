@@ -1,6 +1,6 @@
 # Architecture
 
-This chapter holds Memoria-ToDo's design: what each part does, how parts depend on each other, and the decisions still to confirm. The [purpose and scope](purpose.md), [how the apps fit together](overview.md), the [module rules and map](modules.md), the [Android app](android/README.md), the [desktop app](desktop/README.md), the [Editing](editing.md), [Rendering](rendering.md), [Tasks](tasks.md), and [Sync through git](sync.md) modules, [version tags](version-tags.md), and [how each AI tool finds a skill](agent-skills.md) are decided. The [technology stack](technology-stack.md) is drafting again, with open questions on stopping desktop screen tests that hang. The desktop app and the shared modules it uses have code, for the built steps of the desktop [delivery backlog](desktop/README.md#delivery-backlog); the Android app has none yet.
+This chapter holds Memoria-ToDo's design: what each part does, how parts depend on each other, and the decisions still to confirm. The [purpose and scope](purpose.md), [how the apps fit together](overview.md), the [module rules and map](modules.md), the [Android app](android/README.md), the [desktop app](desktop/README.md), the [Editing](editing.md), [Rendering](rendering.md), [Tasks](tasks.md), [Contacts](contacts.md), and [Sync through git](sync.md) modules, [version tags](version-tags.md), and [how each AI tool finds a skill](agent-skills.md) are decided. The [technology stack](technology-stack.md) is drafting again, with open questions on stopping desktop screen tests that hang. The desktop app and the shared modules it uses have code, for the built steps of the desktop [delivery backlog](desktop/README.md#delivery-backlog); the Android app has none yet.
 
 | If you want to | Read |
 | --- | --- |
@@ -30,7 +30,7 @@ Proposed: the technology stack row's place and scope. This is a decision to conf
 | 2 | High-level architecture: the apps, the shared parts, and how they connect | [How the apps fit together](overview.md) | Decided |
 | 3 | How each module marks its public interface, so a reviewer finds it fast | [Modules](modules.md) | Decided |
 | 4 | The first modules and the [module map](modules.md#module-map) | [Modules](modules.md) | Decided |
-| 5 | Desktop app: its own Shell, Task editor, Task list, Formatted view, Configure, and Updates modules. Designed together with Editing and Rendering. | [Desktop app](desktop/README.md), folder `desktop/` | Drafting |
+| 5 | Desktop app: its own Shell, Task editor, Task list, Contact list, Formatted view, Configure, and Updates modules. Designed together with Editing and Rendering. | [Desktop app](desktop/README.md), folder `desktop/` | Drafting |
 | 6 | Editing: the formatting, snippet, and list commands. Designed together with the desktop app. | [Editing](editing.md) | Decided |
 | 7 | Rendering: Markdown to HTML, which Markdig extensions, and how images and links render. Designed together with the desktop app. | [Rendering](rendering.md) | Decided |
 | 8 | Tasks: the task file format, task IDs, rank, merge rules, automatic deletion, and images. Designed together with sync. | [Tasks](tasks.md) | Decided |
@@ -40,3 +40,4 @@ Proposed: the technology stack row's place and scope. This is a decision to conf
 | 12 | Version tags: the script and skill that make the next version tag and push it, or clear one; how the release job checks a tag; and how their tests run. Designed together with Agent skills. | [Version tags](version-tags.md) | Decided |
 | 13 | Agent skills: how each AI tool finds a skill, the pointer `generate.mjs` writes for Claude Code, and the rules a skill must meet. Designed together with Version tags. | [Agent skills](agent-skills.md) | Decided |
 | 14 | Guided release: one command and VS Code task that use the version tag rules, follow GitHub Actions, download the installer, and guide manual preparation and checks. | [Release a version](releasing.md) | Decided |
+| 15 | Contacts: a shared module for the contact files, how contacts relate, how they sync and are searched, the data types key fields choose from, and how a task mentions one through a template. Designed together with the desktop [Contact list](desktop/contact-list.md). | [Contacts](contacts.md) | Decided |

@@ -22,6 +22,7 @@ The user decided that titles and descriptions show formatted, as a reader sees t
 - **Titles show as native Windows Presentation Foundation (WPF) text**, so they need no web view.
 - **The selected task's description shows in the one web view**, which the Task list makes when Task View opens and releases when it closes. It stays on the right side, so selecting another task only gives it another page.
 - **Links**: a web link opens in the default browser, as the [Formatted view](formatted-view.md#web-links-open-in-the-default-browser-and-other-links-are-reported) does. A link to another task selects that task, which the Task list tells by asking [Tasks](../tasks.md#a-time-ordered-id-names-each-task-its-file-and-links-to-it). Every other link does nothing, as [Rendering](../rendering.md#only-web-links-open-in-the-browser) decides.
+- **Mentions**: a [mention of a contact](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) shows the contact's [current details](#mentions-show-each-contacts-current-details) on [Rendering's mention background](../rendering.md#a-mention-shows-on-a-colored-background), in titles and descriptions alike, through the Formatted view; clicking it does nothing.
 
 The user decided:
 
@@ -42,6 +43,14 @@ Proposed, each a decision to confirm:
 - A link to a deleted task shows "This task no longer exists." in the message line. A link to a resolved task shows the resolved tasks and selects it. A link to a hidden task clears the search if the search hides it, and [reveals its row](#a-click-on-a-groups-tag-collapses-or-expands-it) if every group it's in is collapsed, then selects it. The left side scrolls to the task's first row.
 - When the browser can't open a web link, Task View shows the error in its message line, the same line where a failed move, resolve, or delete says why.
 - The [Close window shortcut](configure.md#esc-and-the-close-window-shortcut-close-the-window), Shift+Esc at first, closes Task View from any control, even while a task is being edited, exactly as its close button does.
+
+### Mentions show each contact's current details
+
+The user decided that a mention's text is rebuilt from the contact's current fields each time it shows, as [Contacts](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows) says. Proposed, each a decision to confirm:
+
+- **Task View swaps each mention's text before it shows a title or a description**, through [Rendering's mentions](../rendering.md#public-interface), with Contacts' live text for the mention's address and template. A mention Contacts has no text for keeps its stored text. The Formatted view then shows the result, and needs no contacts.
+- **When contacts change, such as after a sync or a save in the Contacts window, Task View shows the rows and the selected description again** with the new text. An open edit keeps its text; its chips show the new text, as the [Task editor](task-editor.md#typing-an-at-sign-mentions-a-contact) says.
+- **Search matches the task as saved**, so a mention matches by its stored text, not its live text, as [Contacts](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) says.
 
 ### A click on a group's tag collapses or expands it
 
@@ -294,7 +303,7 @@ Proposed, each a decision to confirm:
 
 ### The search bar spans the window in its own shade
 
-The user asked for a shorter search bar that stretches across the whole window, in a color slightly different from the window's, and decided the search bar is the whole band below. Proposed, each a decision to confirm:
+The user asked for a shorter search bar that stretches across the whole window, in a color slightly different from the window's, and decided the search bar is the whole band below. It's the platform's [search band](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), which the Contacts window shares, and the split between the sides is the platform's split panes. Proposed, each a decision to confirm:
 
 - **The search bar is the band at Task View's top that holds the "Search:" label and the search box.** It runs from the window's left edge to its right edge.
 - **Its background is the same theme resource as the [status bar's](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar)**, so the two bars match and follow the theme.
@@ -432,6 +441,8 @@ public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOr
     IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser,
     ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys);
 ```
+
+The user decided that Task View uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), for [live mention text](#mentions-show-each-contacts-current-details) and the editors' "@" list. Proposed, a decision to confirm: Contacts' `IContacts contacts` joins `Create` right after `tagOrder`, and Task View passes it to the Title and Description editors, as the [Task editor](task-editor.md#public-interface) takes them. The user also decided that Task View's split bar and search band come from the [desktop platform](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), shared with the Contacts window, with no change in behavior; its drag parts move there too. This is not implemented.
 
 ## Failure modes
 

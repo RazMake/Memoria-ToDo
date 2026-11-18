@@ -1,21 +1,22 @@
 # How the desktop app is built
 
-The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, and Configure. This page lists its six modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
+The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, and Configure. This page lists its seven modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
 
-## Six modules make up the desktop app
+## Seven modules make up the desktop app
 
 Each module is a project of its own, and the [module map](../modules.md#module-map) says which modules each may use. The table lists them in the order a user meets them:
 
 | Module | What its design file decides |
 | --- | --- |
-| [Shell](shell.md) | The tray icon and its menu, the three global shortcuts, one running instance, what each start shows, the installer, and how sync status shows |
+| [Shell](shell.md) | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, the installer, and how sync status shows |
 | [Task editor](task-editor.md) | The Add window: its fields, keys, draft, and tags. Task View edits a task's title or description with the same fields. |
 | [Task list](task-list.md) | Task View: tasks grouped by tag, in groups that collapse, beside the selected task's description, editing a description or title in place, search, resolving, deleting, and the Sync button and the version in the status bar |
+| [Contact list](contact-list.md) | The Contacts window: contacts grouped by file beside the selected contact's details, with search, editing in place, adding, deleting, and reordering groups |
 | [Formatted view](formatted-view.md) | A task's title and description as a reader sees them, with no Markdown characters, the web view the description shows in, and which links open in the default browser |
-| [Configure](configure.md) | The settings window: the three global shortcuts, the Close window and Save shortcuts, starting with Windows, the shared deletion delay, and sync status details |
+| [Configure](configure.md) | The settings window: the four global shortcuts, the Close window and Save shortcuts, starting with Windows, the shared deletion delay, and sync status details |
 | [Updates](updates.md) | When the app checks for a new version, the status bar Add and Task View share, What is new, Auto update, and how an update restarts the app |
 
-Two shared modules serve the desktop app: [Editing](../editing.md) holds the formatting and snippet commands, and [Rendering](../rendering.md) turns Markdown into HTML and styled text. [How the apps fit together](../overview.md) picks the main libraries, such as AvalonEdit for the editor and WebView2 for rendered descriptions.
+Three shared modules serve the desktop app's screens: [Editing](../editing.md) holds the formatting and snippet commands, [Rendering](../rendering.md) turns Markdown into HTML and styled text, and [Contacts](../contacts.md) holds the contacts and each mention's text. [How the apps fit together](../overview.md) picks the main libraries, such as AvalonEdit for the editor and WebView2 for rendered descriptions.
 
 Proposed: each window module names its own window, [Configure](configure.md#the-window-shows-its-settings-in-labeled-sections) names the global shortcuts, and Shell names its [tray menu items](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions). The tray items match the shortcuts' names, Add new task, Task View, and Configure, by choice, not by a rule, so either can change alone; the windows keep their own titles. This is a decision to confirm.
 
@@ -157,6 +158,14 @@ Only App chooses the filesystem, secure-key, repository-selection, and setup-act
 typed settings to Configure and the same Sync instance to Configure, Task list, and Shell. No factory gets a dummy
 service, optional test switch, or old overload unused by production. For colored tags, it passes the store's
 [tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own) to the Task editor and the Task list.
+
+Proposed, with [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), a decision to confirm: App creates one
+[synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) first,
+and gives it to the Tasks store, to a new Contacts store, and to Sync, with the Contacts store's file rules. It passes
+the Contacts store's `IContacts` to the [Contact list](contact-list.md#public-interface), the
+[Task editor](task-editor.md#public-interface), and the [Task list](task-list.md#public-interface), and the Contacts
+window to Shell. The selection adapter selects through the synced repository instead of Tasks, so both stores load
+the same folder at once.
 
 The selection adapter reuses `repository-folder.txt`, loads Tasks, and never clones, invokes Git, or
 stores a second path. Failed adoption restores the previous saved path and Tasks selection; rollback failures
@@ -395,9 +404,82 @@ Proposed, each a decision to confirm:
 - **It checks keys as Close window keys does**, through one key check both share, so the rule that a shortcut is real keys has one home. Configure alone decides the keys' default and rules.
 - **The modules use the class itself, not an interface**, as for Close window keys: it has one implementation and does no I/O, so tests use the real one. Its tests are unit tests.
 
+## Split panes, search band, and drag parts serve every window that needs them
+
+The user decided that Task View's split bar and search band move into the platform, so Task View and Contacts share one of each, and Task View works exactly as before. Proposed, each a decision to confirm:
+
+- **The group drag's parts move with them**, since Contacts' [group drag](contact-list.md#dragging-a-groups-heading-reorders-the-groups) is their second use: the distance a press must move before a drag starts, the drop line, scrolling near a list's edges during a drag, and the mouse behind them. The edge band and distance check they use stay inside the platform.
+- **Each part keeps the look and numbers it has in Task View**: a 6-pixel bar that takes no focus, and the "Search:" label with its box in the status bar's shade. Each window passes its own column shares and minimum widths.
+- **They're platform classes, not interfaces**, as the Close window keys are: each has one implementation, and a window's UX tests use the real ones. The mouse sits behind a small interface, so tests drive a drag with a fake pointer.
+
+Proposed, a decision to confirm. These are not implemented; they move from Task View's internal classes:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// Two sides beside each other, and a bar between them the user drags to move the split. The bar takes no focus.
+public sealed class SplitPanes : Grid
+{
+    /// The sides share the width in the ratio leftShare to rightShare, each at least its minimum width.
+    public SplitPanes(UIElement left, double leftShare, double leftMinWidth, UIElement right, double rightShare, double rightMinWidth);
+}
+
+/// The "Search:" label and its box, edge to edge in the status bar's shade.
+public sealed class SearchBand : Border
+{
+    /// The box's text. Setting it changes the box without raising TextChanged.
+    public string Text { get; set; }
+
+    /// Raised when the user changes the text.
+    public event EventHandler? TextChanged;
+
+    /// Raised on Down (false) or Up (true) in the box with no modifier key, to select the top or bottom row.
+    public event EventHandler<bool>? EdgeRowRequested;
+
+    /// Moves focus to the box and selects its text.
+    public void FocusText();
+}
+
+/// Tells a press from a drag: a drag starts once the pointer moves the given distance with the button held.
+public sealed class PressDrag(double horizontalDistance, double verticalDistance)
+{
+    public void Press(Point at);
+
+    /// True once, when this move starts a drag.
+    public bool Move(Point now, bool leftButtonDown);
+    public void Leave();
+
+    /// True when the release ends a press that never became a drag, so it counts as a click.
+    public bool Release();
+}
+
+/// The line that shows where a dragged item lands.
+public sealed class DropLine : Adorner
+{
+    public DropLine(UIElement adorned);
+    public void Show(double x, double y, double width);
+    public void Hide();
+}
+
+/// Scrolls the viewer while a drag holds the pointer near its top or bottom edge, and reports the pointer after each step.
+public static class AutoScroll
+{
+    public static void Attach(ScrollViewer viewer, TimeProvider time, Action<Point> scrolled);
+}
+
+/// The mouse, as a drag sees it.
+public interface IDragPointer
+{
+    Point PositionIn(UIElement element);
+    void StartDrag(DependencyObject source, IDataObject data);
+}
+
+public sealed class MousePointer : IDragPointer;
+```
+
 ## Later designs answer what these files leave open
 
-The platform's shared [question dialog](../../../src/Desktop/Platform/QuestionDialog.cs) asks modal questions for Task View and Configure. It follows the theme, centers on its owner, and shows ordered answer buttons. Enter picks the default answer; Esc and closing pick Cancel. Its text wraps at 420 device-independent pixels, proposed for confirmation.
+The platform's shared [question dialog](../../../src/Desktop/Platform/QuestionDialog.cs) asks modal questions for Task View, Contacts, and Configure. It follows the theme, centers on its owner, and shows ordered answer buttons. Enter picks the default answer; Esc and closing pick Cancel. Its text wraps at 420 device-independent pixels, proposed for confirmation.
 
 The desktop design relies on rules that belong to the shared Tasks and Sync modules and to the technology stack, a later row of the [design backlog](../README.md#design-backlog). The table lists each, the desktop modules that need it, and the design that answers it:
 
@@ -409,6 +491,7 @@ The desktop design relies on rules that belong to the shared Tasks and Sync modu
 | The order of the tag groups, and a group's new place after a move | Task list | [Tasks](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips) |
 | How search matches tasks | Task list | [Tasks](../tasks.md#tags-and-search-ignore-case) |
 | The link format of a reference to another task | Task editor, Task list | [Tasks](../tasks.md#a-time-ordered-id-names-each-task-its-file-and-links-to-it) |
+| The contacts, their relations, search, and saving, and the stored format of a mention | Contact list, Task editor, Task list | [Contacts](../contacts.md) |
 | Where an image is saved, its path in the Markdown, its shrinking to 1 MB, and where an unsaved task's images wait | Task editor, Task list | [Tasks](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task) |
 | Where a new task's draft waits, and when it's deleted | Task editor | [Tasks](../tasks.md#a-draft-waits-on-this-device-until-its-saved) |
 | The allowed range of the deletion delay | Configure | [Tasks](../tasks.md#resolved-tasks-are-deleted-after-a-delay-every-device-shares) |
@@ -441,6 +524,7 @@ The table lists each step, what it builds, and its status:
 | 12 | Configure's Application section and its shortcut | Configure's [Application section](configure.md#the-window-shows-its-settings-in-labeled-sections), with the [Update card](configure.md#the-update-card-leads-the-application-section) and the Shortcuts card; the [Configure shortcut](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) in Configure and Shell; and Tasks' [Configure shortcut setting](../tasks.md#one-versioned-file-holds-the-three-shared-settings). | Implemented |
 | 13 | Group order and the drop line | Task View's [group drag, drop line, and scrolling during a drag](task-list.md#drag-and-drop-moves-tasks-and-groups-and-a-line-shows-where-they-land), with its groups in [the tags' order](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description); Tasks' [tag order](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips) in `tags.json` version 2, with its [capability](../tasks.md#tag-order-is-a-capability-of-its-own) and merge. Sync carries `tags.json` as before, with no change. The Android app's [tag chips](../android/task-list.md#tags-and-search-narrow-the-list) follow the order when the Android app is built. | Not scheduled |
 | 14 | One tag per task | Tasks' [one-tag rule](../tasks.md#a-task-has-at-most-one-tag) in `Add`, saving an edit, the merge, and kept drafts; the Task editor's [tag pill](task-editor.md#a-task-has-one-tag-shown-as-one-pill) and its [menu](task-editor.md#a-click-on-the-pill-opens-the-tag-menu), with the `TagEditor` interface the user decided; and the Task list's [tag changes without Edit](task-list.md#tags-show-as-colored-badges-and-change-without-edit), a [tag that joins an open edit's one save](task-list.md#a-tag-chosen-during-an-edit-saves-with-the-edit), and one group per task. | Next |
+| 15 | Contacts | Built in slices, in this order, each reviewed on its own: (a) the platform's [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), with Tasks, Sync, and App moved onto it and no change users notice; (b) the shared [Contacts](../contacts.md) module; (c) Sync [carrying contact files](../sync.md#sync-manages-contact-files-through-contacts-rules); (d) the platform's [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), with Task View moved onto them unchanged; (e) the [Contact list](contact-list.md), with Shell's and Configure's [Contacts shortcut](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) and tray item; (f) Rendering's [mentions](../rendering.md#a-mention-shows-on-a-colored-background) and Editing's [mention list](../editing.md#typing-an-at-sign-opens-the-mention-list); (g) the [Task editor's "@" list and chips](task-editor.md#typing-an-at-sign-mentions-a-contact), then Task View's [live mention text](task-list.md#mentions-show-each-contacts-current-details). The Android app's mentions come when the Android app is built. | Not scheduled |
 
 The remaining work follows this order:
 
