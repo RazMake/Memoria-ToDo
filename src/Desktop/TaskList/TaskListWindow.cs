@@ -44,6 +44,7 @@ internal sealed class TaskListWindow : Window
     private readonly EditCleanup _cleanup;
     private readonly TagChanges _tagChanges;
     private readonly SaveKeys _saveKeys;
+    private readonly IDragPointer _pointer;
     private readonly ListSelection _selection = new();
     private readonly ListEditing _editing;
     private readonly CloseDecision _decision;
@@ -61,9 +62,10 @@ internal sealed class TaskListWindow : Window
 
     public TaskListWindow(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
-        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, string? message, Action<string> carry)
+        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer, string? message, Action<string> carry)
     {
         _sync = sync;
+        _pointer = pointer;
         _tagOrder = tagOrder;
         _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync));
         _saveKeys = saveKeys;
@@ -106,7 +108,7 @@ internal sealed class TaskListWindow : Window
         _cleanup = new EditCleanup(tasks, _pending, Report);
         _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report);
         _editing = new ListEditing(tasks, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit);
-        _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow);
+        _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow, pointer);
         _groupActions = new GroupActions(tagOrder, Report);
         _header.ShowMessage(message);
         _filter.Changed += (_, _) => Refresh();
@@ -195,26 +197,7 @@ internal sealed class TaskListWindow : Window
         };
         KeyboardNavigation.SetIsTabStop(left, false);
         AutoScroll.Attach(left, _time, pointer => _rows.ContinueDrag(left.TranslatePoint(pointer, _rows)));
-        var splitter = new GridSplitter
-        {
-            Width = 6,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            ResizeDirection = GridResizeDirection.Columns,
-            ResizeBehavior = GridResizeBehavior.PreviousAndNext,
-            Focusable = false,
-            IsTabStop = false,
-        };
-        splitter.SetResourceReference(BackgroundProperty, "CardStrokeColorDefaultBrush");
-        var sides = new Grid();
-        sides.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(68, GridUnitType.Star), MinWidth = 300 });
-        sides.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        sides.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32, GridUnitType.Star), MinWidth = 340 });
-        Grid.SetColumn(splitter, 1);
-        Grid.SetColumn(_details, 2);
-        sides.Children.Add(left);
-        sides.Children.Add(splitter);
-        sides.Children.Add(_details);
+        var sides = new SplitPanes(left, 68, 300, _details, 32, 340);
 
         // A grid, not a dock panel: Tab follows the order the children are added, and the status bar's Sync button comes last,
         // after the list, while the bar still sits at the bottom.
@@ -363,7 +346,7 @@ internal sealed class TaskListWindow : Window
 
     private TaskRow CreateRow(TaskItem task)
     {
-        var row = new TaskRow(task, _theme, _browser, MousePointer.Instance);
+        var row = new TaskRow(task, _theme, _browser, _pointer);
         row.SelectRequested += (_, _) => SelectTask(row.Task.Id);
         row.EditRequested += (_, _) => BeginEditOf(row.Task, row);
         row.EditTitleRequested += (_, _) => BeginTitleEditOf(row.Task, row);

@@ -81,7 +81,7 @@ public static class ContactsWindow
 {
     /// Creates the Contacts window. It opens only on IContactsWindow.Show.
     public static IContactsWindow Create(IContacts contacts, ITheme theme, TimeProvider time,
-        CloseWindowKeys closeWindowKeys, SaveKeys saveKeys);
+        CloseWindowKeys closeWindowKeys, SaveKeys saveKeys, IDragPointer pointer);
 }
 
 /// The Contacts window, as Shell uses it.

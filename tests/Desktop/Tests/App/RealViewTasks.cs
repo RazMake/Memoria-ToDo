@@ -44,7 +44,7 @@ internal sealed class RealViewTasks : IDisposable
         View = ViewTasksWindow.Create(
             Tasks, new FakeTagColors(), store.TagOrder, Palette.Colors, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(),
             files, () => MakeWebView(clone), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
-            new FakeUpdateStatus(), new Platform.SaveKeys());
+            new FakeUpdateStatus(), new Platform.SaveKeys(), new Platform.MousePointer());
     }
 
     public ITasks Tasks { get; }

@@ -1,4 +1,4 @@
-namespace Memoria.ToDo.Desktop.TaskList;
+namespace Memoria.ToDo.Desktop.Platform;
 
 /// <summary>When a press that moves has gone far enough to be a drag.</summary>
 internal static class DragDistance

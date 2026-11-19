@@ -1,14 +1,16 @@
 using System.Windows;
 
-namespace Memoria.ToDo.Desktop.TaskList;
+namespace Memoria.ToDo.Desktop.Platform;
 
 /// <summary>
 /// The press-to-drag gesture a task row and a group heading share: a press, then a move with the left button still held that
-/// reaches the drag distance, starts one drag. A release before that is a click. A press the element never hears the end of,
+/// reaches Windows' drag distance, starts one drag. A release before that is a click. A press the element never hears the end of,
 /// because the pointer left it first, is forgotten.
 /// </summary>
-internal sealed class PressDrag(double horizontalDistance, double verticalDistance)
+public sealed class PressDrag
 {
+    private readonly double _horizontalDistance = SystemParameters.MinimumHorizontalDragDistance;
+    private readonly double _verticalDistance = SystemParameters.MinimumVerticalDragDistance;
     private Point? _pressedAt;
     private bool _dragged;
 
@@ -23,7 +25,7 @@ internal sealed class PressDrag(double horizontalDistance, double verticalDistan
     public bool Move(Point now, bool leftButtonDown)
     {
         if (!leftButtonDown || _pressedAt is not { } from
-            || !DragDistance.Passed(now.X - from.X, now.Y - from.Y, horizontalDistance, verticalDistance))
+            || !DragDistance.Passed(now.X - from.X, now.Y - from.Y, _horizontalDistance, _verticalDistance))
         {
             return false;
         }

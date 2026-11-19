@@ -23,7 +23,7 @@ internal sealed class GroupHeading : Border
     private readonly Run _close = new();
     private readonly string? _tag;
     private readonly IDragPointer _pointer;
-    private readonly PressDrag _press = new(SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance);
+    private readonly PressDrag _press = new();
 
     public GroupHeading(string? tag, ITagColors tagColors, ITheme theme, IDragPointer pointer)
     {

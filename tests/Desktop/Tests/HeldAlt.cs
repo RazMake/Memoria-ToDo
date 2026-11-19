@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows.Input;
 
-namespace Memoria.ToDo.Desktop.TaskList.Tests;
+namespace Memoria.ToDo.Desktop;
 
 /// <summary>
 /// Makes the calling thread's keyboard state say Alt is held while an action runs, so a key event raised in the action meets

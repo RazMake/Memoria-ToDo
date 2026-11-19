@@ -76,7 +76,8 @@ internal static class Program
                 sync,
                 closeWindowKeys,
                 updates,
-                saveKeys);
+                saveKeys,
+                new MousePointer());
             return TrayApp.Create(
                 new TrayIcon(),
                 add,

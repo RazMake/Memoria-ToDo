@@ -17,7 +17,7 @@ public class ViewTasksWindowCreateTests
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
             _services.Tasks, null!, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
-            _services.Browser, _services.Sync, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys));
+            _services.Browser,             _services.Sync, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys, _services.Pointer));
 
         Assert.Equal("tagColors", failure.ParamName);
     }
@@ -28,7 +28,7 @@ public class ViewTasksWindowCreateTests
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
             _services.Tasks, _services.TagColors, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
-            _services.Browser, _services.Sync, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys));
+            _services.Browser,             _services.Sync, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys, _services.Pointer));
 
         Assert.Equal("tagOrder", failure.ParamName);
     }
@@ -39,7 +39,7 @@ public class ViewTasksWindowCreateTests
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
             _services.Tasks, _services.TagColors, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
-            _services.Browser, _services.Sync, _services.CloseWindowKeys, null!, _services.SaveKeys));
+            _services.Browser, _services.Sync, _services.CloseWindowKeys, null!, _services.SaveKeys, _services.Pointer));
 
         Assert.Equal("updates", failure.ParamName);
     }
@@ -50,7 +50,7 @@ public class ViewTasksWindowCreateTests
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
             _services.Tasks, _services.TagColors, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
-            _services.Browser, _services.Sync, null!, _services.Updates, _services.SaveKeys));
+            _services.Browser, _services.Sync, null!, _services.Updates, _services.SaveKeys, _services.Pointer));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
     }
@@ -61,8 +61,19 @@ public class ViewTasksWindowCreateTests
         var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
             _services.Tasks, _services.TagColors, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
-            _services.Browser, _services.Sync, _services.CloseWindowKeys, _services.Updates, null!));
+            _services.Browser, _services.Sync, _services.CloseWindowKeys, _services.Updates, null!, _services.Pointer));
 
         Assert.Equal("saveKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void Create_rejects_a_missing_drag_pointer_by_name()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => ViewTasksWindow.Create(
+            _services.Tasks, _services.TagColors, _services.TagOrder, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            new FakeImageFileChooser(), _services.Files, () => new FakeDescriptionWebView(),
+            _services.Browser, _services.Sync, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys, null!));
+
+        Assert.Equal("pointer", failure.ParamName);
     }
 }

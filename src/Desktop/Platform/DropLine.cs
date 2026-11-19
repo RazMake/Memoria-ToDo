@@ -5,14 +5,14 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-namespace Memoria.ToDo.Desktop.TaskList;
+namespace Memoria.ToDo.Desktop.Platform;
 
 /// <summary>
-/// The line that shows where a dragged task or group lands: thin, in the theme's accent color, with a small circle at its
-/// start. It is drawn in the adorner layer above the list, so it takes no room and nothing moves while it shows. The line itself
+/// The line that shows where a dragged item lands: thin, in the theme's accent color, with a small circle at its
+/// start. It is drawn in the adorner layer above the adorned element, so it takes no room and nothing moves while it shows. The line itself
 /// has the automation id "DropLine".
 /// </summary>
-internal sealed class DropLine : Adorner
+public sealed class DropLine : Adorner
 {
     private const double Thickness = 2;
     private const double Dot = 6;
@@ -23,7 +23,7 @@ internal sealed class DropLine : Adorner
     private double _width;
     private bool _shown;
 
-    public DropLine(UIElement adorned) : base(adorned)
+    public DropLine(UIElement adorned) : base(adorned ?? throw new ArgumentNullException(nameof(adorned)))
     {
         IsHitTestVisible = false;
         var line = new Rectangle { Height = Thickness, VerticalAlignment = VerticalAlignment.Center };
@@ -40,7 +40,7 @@ internal sealed class DropLine : Adorner
 
     protected override Visual GetVisualChild(int index) => index == 0 ? _mark : throw new ArgumentOutOfRangeException(nameof(index));
 
-    /// <summary>Shows the line with its middle at <paramref name="y"/>, from <paramref name="x"/>, <paramref name="width"/> wide, in the list's coordinates.</summary>
+    /// <summary>Shows the line with its middle at <paramref name="y"/>, from <paramref name="x"/>, <paramref name="width"/> wide, in the adorned element's coordinates.</summary>
     public void Show(double x, double y, double width)
     {
         _x = x;

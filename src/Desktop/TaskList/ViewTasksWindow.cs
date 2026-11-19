@@ -20,7 +20,7 @@ public static class ViewTasksWindow
     public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
         Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys,
-        IUpdateStatus updates, SaveKeys saveKeys)
+        IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer)
     {
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(tagColors);
@@ -37,7 +37,8 @@ public static class ViewTasksWindow
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(saveKeys);
-        return new Opener(tasks, tagColors, tagOrder, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates, saveKeys);
+        ArgumentNullException.ThrowIfNull(pointer);
+        return new Opener(tasks, tagColors, tagOrder, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates, saveKeys, pointer);
     }
 
     // Holds a failure from a delete finished while the window closed, so the next window shows it, and the sync
@@ -52,7 +53,7 @@ public static class ViewTasksWindow
         public Opener(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
             IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
             Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys,
-            IUpdateStatus updates, SaveKeys saveKeys)
+            IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer)
         {
             _window = new SingleWindow(() =>
             {
@@ -62,7 +63,7 @@ public static class ViewTasksWindow
                 try
                 {
                     var window = new TaskListWindow(tasks, tagColors, tagOrder, palette, theme, time, clipboard, imageFiles, files, webView,
-                        browser, listSync, updates, saveKeys, message, failure => _carried = failure);
+                        browser, listSync, updates, saveKeys, pointer, message, failure => _carried = failure);
                     _carried = null;
                     closeWindowKeys.Attach(window);
                     _current = window;

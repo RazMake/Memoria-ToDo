@@ -58,3 +58,33 @@ static Memoria.ToDo.Desktop.Platform.EventKey.Of(System.Windows.Input.KeyEventAr
 Memoria.ToDo.Desktop.Platform.ThemeFollower
 Memoria.ToDo.Desktop.Platform.ThemeFollower.Dispose() -> void
 Memoria.ToDo.Desktop.Platform.ThemeFollower.ThemeFollower(System.Windows.FrameworkElement! element, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.Action! themeChanged) -> void
+Memoria.ToDo.Desktop.Platform.SplitPanes
+Memoria.ToDo.Desktop.Platform.SplitPanes.SplitPanes(System.Windows.UIElement! left, double leftShare, double leftMinWidth, System.Windows.UIElement! right, double rightShare, double rightMinWidth) -> void
+Memoria.ToDo.Desktop.Platform.SearchBand
+Memoria.ToDo.Desktop.Platform.SearchBand.SearchBand() -> void
+Memoria.ToDo.Desktop.Platform.SearchBand.Text.get -> string!
+Memoria.ToDo.Desktop.Platform.SearchBand.Text.set -> void
+Memoria.ToDo.Desktop.Platform.SearchBand.TextChanged -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.SearchBand.EdgeRowRequested -> System.EventHandler<bool>?
+Memoria.ToDo.Desktop.Platform.SearchBand.FocusText() -> void
+Memoria.ToDo.Desktop.Platform.PressDrag
+Memoria.ToDo.Desktop.Platform.PressDrag.PressDrag() -> void
+Memoria.ToDo.Desktop.Platform.PressDrag.Press(System.Windows.Point at) -> void
+Memoria.ToDo.Desktop.Platform.PressDrag.Move(System.Windows.Point now, bool leftButtonDown) -> bool
+Memoria.ToDo.Desktop.Platform.PressDrag.Leave() -> void
+Memoria.ToDo.Desktop.Platform.PressDrag.Release() -> bool
+Memoria.ToDo.Desktop.Platform.DropLine
+Memoria.ToDo.Desktop.Platform.DropLine.DropLine(System.Windows.UIElement! adorned) -> void
+Memoria.ToDo.Desktop.Platform.DropLine.Show(double x, double y, double width) -> void
+Memoria.ToDo.Desktop.Platform.DropLine.Hide() -> void
+Memoria.ToDo.Desktop.Platform.AutoScroll
+static Memoria.ToDo.Desktop.Platform.AutoScroll.Attach(System.Windows.Controls.ScrollViewer! viewer, System.TimeProvider! time, System.Action<System.Windows.Point>! scrolled) -> void
+Memoria.ToDo.Desktop.Platform.IDragPointer
+Memoria.ToDo.Desktop.Platform.IDragPointer.IsLeftButtonDown.get -> bool
+Memoria.ToDo.Desktop.Platform.IDragPointer.PositionIn(System.Windows.UIElement! element) -> System.Windows.Point
+Memoria.ToDo.Desktop.Platform.IDragPointer.StartDrag(System.Windows.DependencyObject! source, System.Windows.IDataObject! data) -> void
+Memoria.ToDo.Desktop.Platform.MousePointer
+Memoria.ToDo.Desktop.Platform.MousePointer.MousePointer() -> void
+Memoria.ToDo.Desktop.Platform.MousePointer.IsLeftButtonDown.get -> bool
+Memoria.ToDo.Desktop.Platform.MousePointer.PositionIn(System.Windows.UIElement! element) -> System.Windows.Point
+Memoria.ToDo.Desktop.Platform.MousePointer.StartDrag(System.Windows.DependencyObject! source, System.Windows.IDataObject! data) -> void

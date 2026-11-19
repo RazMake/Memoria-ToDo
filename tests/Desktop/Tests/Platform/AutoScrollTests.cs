@@ -6,7 +6,7 @@ using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
-namespace Memoria.ToDo.Desktop.TaskList.Tests;
+namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>
 /// The list scrolls while the pointer of a drag is in its top or bottom edge band, on the supplied clock, so these tests move

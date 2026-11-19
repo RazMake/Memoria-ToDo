@@ -1,9 +1,9 @@
 using System.Windows;
 
-namespace Memoria.ToDo.Desktop.TaskList;
+namespace Memoria.ToDo.Desktop.Platform;
 
-/// <summary>The mouse as a <see cref="GroupHeading"/> or a <see cref="TaskRow"/> uses it: the left button, the pointer's place, and starting a drag.</summary>
-internal interface IDragPointer
+/// <summary>The mouse as a drag sees it. The composition root passes <see cref="MousePointer"/>; tests pass a fake.</summary>
+public interface IDragPointer
 {
     /// <summary>Whether the left button is down now.</summary>
     bool IsLeftButtonDown { get; }

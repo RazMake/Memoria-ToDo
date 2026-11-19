@@ -439,10 +439,10 @@ Row 13 of the [delivery backlog](README.md#delivery-backlog) adds Tasks' [tag or
 public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder,
     IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
     IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser,
-    ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys);
+    ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer);
 ```
 
-The user decided that Task View uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), for [live mention text](#mentions-show-each-contacts-current-details) and the editors' "@" list. Proposed, a decision to confirm: Contacts' `IContacts contacts` joins `Create` right after `tagOrder`, and Task View passes it to the Title and Description editors, as the [Task editor](task-editor.md#public-interface) takes them. The user also decided that Task View's split bar and search band come from the [desktop platform](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), shared with the Contacts window, with no change in behavior; its drag parts move there too. This is not implemented.
+The user decided that Task View uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), for [live mention text](#mentions-show-each-contacts-current-details) and the editors' "@" list. Proposed, a decision to confirm: Contacts' `IContacts contacts` joins `Create` right after `tagOrder`, and Task View passes it to the Title and Description editors, as the [Task editor](task-editor.md#public-interface) takes them. The user also decided that Task View's split bar and search band come from the [desktop platform](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), shared with the Contacts window, with no change in behavior; its drag parts moved there too, and the composition root passes the mouse as `Create`'s last argument, `IDragPointer pointer`, shown above. Contacts' argument is not implemented.
 
 ## Failure modes
 

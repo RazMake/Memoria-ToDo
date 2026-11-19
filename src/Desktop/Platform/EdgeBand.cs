@@ -1,4 +1,4 @@
-namespace Memoria.ToDo.Desktop.TaskList;
+namespace Memoria.ToDo.Desktop.Platform;
 
 /// <summary>When a list scrolls during a drag, and how fast: while the pointer is in a band along its top or bottom edge.</summary>
 internal static class EdgeBand

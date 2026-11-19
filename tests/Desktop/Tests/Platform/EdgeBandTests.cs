@@ -1,7 +1,7 @@
 using Memoria.ToDo.Testing;
 using Xunit;
 
-namespace Memoria.ToDo.Desktop.TaskList.Tests;
+namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>When a list scrolls during a drag, and how fast: in a band along its top or bottom edge, faster toward the edge.</summary>
 [Unit]

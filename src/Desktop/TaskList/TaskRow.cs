@@ -31,7 +31,7 @@ internal sealed class TaskRow : Border
     };
     private readonly FormattedTitle _title;
     private readonly FirstLineAlignment _alignment;
-    private readonly PressDrag _press = new(SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance);
+    private readonly PressDrag _press = new();
     private readonly IDragPointer _pointer;
     private bool _updating;
     private bool _selected;

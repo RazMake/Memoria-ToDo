@@ -35,7 +35,7 @@ public class TaskWindowsWiringTests : IDisposable
     private (IAddWindow Add, IViewTasksWindow ViewTasks) Wire() => TaskWindows.Create(
         _tasks, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(), _files,
         () => new FakeDescriptionWebView(), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
-        new FakeUpdateStatus(), new Platform.SaveKeys());
+        new FakeUpdateStatus(), new Platform.SaveKeys(), new Platform.MousePointer());
 
     public void Dispose() => _windows.Dispose();
 

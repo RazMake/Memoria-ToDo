@@ -240,7 +240,7 @@ Proposed, each a decision to confirm:
 
 Add, Task View, and Configure open the same way, so the rule has one home: the platform, since [code shared by two modules moves to the platform](../modules.md#the-platform-serves-every-module-and-knows-none). Proposed, each a decision to confirm:
 
-- **A third part of the platform's public interface, Show on the pointer's screen, opens a module's window.** The [Task editor](task-editor.md#public-interface) calls it with its Add window. The [Task list](task-list.md#public-interface) and [Configure](configure.md#public-interface) reach it through the [fourth part](#a-closed-window-is-made-again-on-the-next-show). These two, the [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it), and the [keyboard parts](#window-modules-read-keys-through-the-platform) are the only platform parts the window modules use:
+- **A third part of the platform's public interface, Show on the pointer's screen, opens a module's window.** The [Task editor](task-editor.md#public-interface) calls it with its Add window. The [Task list](task-list.md#public-interface) and [Configure](configure.md#public-interface) reach it through the [fourth part](#a-closed-window-is-made-again-on-the-next-show). These two, the [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it), the [keyboard parts](#window-modules-read-keys-through-the-platform), the [question dialog](#later-designs-answer-what-these-files-leave-open), and the [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them) are the platform parts the window modules use:
 
   ```csharp
   namespace Memoria.ToDo.Desktop.Platform;
@@ -410,71 +410,114 @@ The user decided that Task View's split bar and search band move into the platfo
 
 - **The group drag's parts move with them**, since Contacts' [group drag](contact-list.md#dragging-a-groups-heading-reorders-the-groups) is their second use: the distance a press must move before a drag starts, the drop line, scrolling near a list's edges during a drag, and the mouse behind them. The edge band and distance check they use stay inside the platform.
 - **Each part keeps the look and numbers it has in Task View**: a 6-pixel bar that takes no focus, and the "Search:" label with its box in the status bar's shade. Each window passes its own column shares and minimum widths.
-- **They're platform classes, not interfaces**, as the Close window keys are: each has one implementation, and a window's UX tests use the real ones. The mouse sits behind a small interface, so tests drive a drag with a fake pointer.
+- **They're platform classes, not interfaces**, as the Close window keys are: each has one implementation, and a window's UX tests use the real ones. The mouse sits behind a small interface, so tests drive a drag with a fake pointer. Its one fake moves to the desktop's [fakes project](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test).
+- **The composition root gives each window module the mouse**, the user's choice, since only it chooses the implementation of an interface the platform publishes ([AGENTS.md](../../../AGENTS.md#code-design)). It makes one `MousePointer` and passes it to each window module's `Create`. Proposed, a decision to confirm: the Task list's `Create` takes `IDragPointer pointer` as its new last argument, after `saveKeys`, and so will the Contact list's. Two options were ruled out: one shared `MousePointer.Instance` that modules use directly, which breaks the wiring rule; and a mouse inside each module, which the Contact list would copy.
+- **Setting the search band's text raises TextChanged**, the user's choice, as WPF's text box does, so each window has one path: Contacts empties its search by setting the text, and its handler filters again. Task View's handler writes the text back to its filter, which ignores an unchanged text. Raising it only for the user's changes was ruled out: a window that sets the text would need a second path, and the band a flag to tell the two apart.
+- **Press drag reads Windows' drag distances itself**, the user's choice, so task rows, group headings, and Contacts' headings can't differ, and the rule has one home. Its tests use the test machine's distances. Having each caller pass the distances, as Task View did, was ruled out: the rule would sit in every caller.
+- **Task View's message line and Undo bar stay in the Task list**, under the band, since only Task View has them today. Whether Contacts' message line at the top shares the Task list's look is decided when the [Contact list](contact-list.md) is built.
+- **Each part checks its arguments before it builds anything**, as the platform's other parts do: a null argument throws `ArgumentNullException`, and split panes reject a share that isn't a positive number, or a minimum width that's negative or not a number, with `ArgumentOutOfRangeException`.
+- **Their tests move with them.** Tests of the moved parts move to the platform's tests; the Task list keeps the tests of its own rows, headings, and window, which show it works as before.
 
-Proposed, a decision to confirm. These are not implemented; they move from Task View's internal classes:
+Proposed, a decision to confirm, with the user's three choices above. They moved from Task View's internal classes, and [`src/Desktop/Platform`](../../../src/Desktop/Platform/SplitPanes.cs) implements them:
 
 ```csharp
 namespace Memoria.ToDo.Desktop.Platform;
 
-/// Two sides beside each other, and a bar between them the user drags to move the split. The bar takes no focus.
-public sealed class SplitPanes : Grid
+/// Two sides beside each other, and a bar between them the user drags to move the split.
+/// The bar takes no focus and is no keyboard stop.
+public sealed class SplitPanes : System.Windows.Controls.Grid
 {
     /// The sides share the width in the ratio leftShare to rightShare, each at least its minimum width.
-    public SplitPanes(UIElement left, double leftShare, double leftMinWidth, UIElement right, double rightShare, double rightMinWidth);
+    /// Throws ArgumentNullException for a null side, and ArgumentOutOfRangeException for a share that isn't
+    /// a positive finite number, or a minimum width that's negative or not finite.
+    public SplitPanes(System.Windows.UIElement left, double leftShare, double leftMinWidth,
+        System.Windows.UIElement right, double rightShare, double rightMinWidth);
 }
 
-/// The "Search:" label and its box, edge to edge in the status bar's shade.
-public sealed class SearchBand : Border
+/// The "Search:" label and its box, named "Search" for screen readers, edge to edge in the status bar's shade.
+public sealed class SearchBand : System.Windows.Controls.Border
 {
-    /// The box's text. Setting it changes the box without raising TextChanged.
+    public SearchBand();
+
+    /// The box's text. Throws ArgumentNullException when set to null.
     public string Text { get; set; }
 
-    /// Raised when the user changes the text.
-    public event EventHandler? TextChanged;
+    /// Raised whenever the box's text changes, by the user or through Text.
+    public event System.EventHandler? TextChanged;
 
-    /// Raised on Down (false) or Up (true) in the box with no modifier key, to select the top or bottom row.
-    public event EventHandler<bool>? EdgeRowRequested;
+    /// Raised on Down (false) or Up (true) in the box with no modifier key held, to select the top or bottom row.
+    /// The key goes no further.
+    public event System.EventHandler<bool>? EdgeRowRequested;
 
     /// Moves focus to the box and selects its text.
     public void FocusText();
 }
 
-/// Tells a press from a drag: a drag starts once the pointer moves the given distance with the button held.
-public sealed class PressDrag(double horizontalDistance, double verticalDistance)
+/// Tells a press from a drag: a drag starts once the pointer moves Windows' drag distance from the press,
+/// across or down, with the left button held. A release before that is a click.
+public sealed class PressDrag
 {
-    public void Press(Point at);
+    /// Reads Windows' drag distances, SystemParameters.MinimumHorizontalDragDistance and MinimumVerticalDragDistance.
+    public PressDrag();
 
-    /// True once, when this move starts a drag.
-    public bool Move(Point now, bool leftButtonDown);
+    /// Starts a gesture at the pointer's place.
+    public void Press(System.Windows.Point at);
+
+    /// True once per press, when a move with the left button held reaches the drag distance.
+    public bool Move(System.Windows.Point now, bool leftButtonDown);
+
+    /// Forgets the press, as the pointer left the element and its release goes unheard.
     public void Leave();
 
-    /// True when the release ends a press that never became a drag, so it counts as a click.
+    /// Ends the gesture: true when no drag started, so it counts as a click.
     public bool Release();
 }
 
-/// The line that shows where a dragged item lands.
-public sealed class DropLine : Adorner
+/// The line that shows where a dragged item lands: thin, in the theme's accent color, with a small circle at its start,
+/// drawn above the adorned element so it takes no room. The line's automation ID is "DropLine".
+public sealed class DropLine : System.Windows.Documents.Adorner
 {
-    public DropLine(UIElement adorned);
+    /// Throws ArgumentNullException for null.
+    public DropLine(System.Windows.UIElement adorned);
+
+    /// Shows the line with its middle at y, from x, width wide, in the adorned element's coordinates.
     public void Show(double x, double y, double width);
+
+    /// Takes the line away.
     public void Hide();
 }
 
-/// Scrolls the viewer while a drag holds the pointer near its top or bottom edge, and reports the pointer after each step.
+/// Scrolls a viewer while a drag holds the pointer near its top or bottom edge. It stops when the pointer leaves
+/// the edge, the viewer reaches its end, the drop lands, or the drag leaves or is canceled.
 public static class AutoScroll
 {
-    public static void Attach(ScrollViewer viewer, TimeProvider time, Action<Point> scrolled);
+    /// Works for as long as the viewer lives. time paces the steps; scrolled gets the pointer's place in the viewer
+    /// after each step. Throws ArgumentNullException for a null argument.
+    public static void Attach(System.Windows.Controls.ScrollViewer viewer, System.TimeProvider time,
+        System.Action<System.Windows.Point> scrolled);
 }
 
-/// The mouse, as a drag sees it.
+/// The mouse, as a drag sees it. The composition root passes MousePointer; tests pass a fake.
 public interface IDragPointer
 {
-    Point PositionIn(UIElement element);
-    void StartDrag(DependencyObject source, IDataObject data);
+    /// Whether the left button is down now.
+    bool IsLeftButtonDown { get; }
+
+    /// The pointer's place in element's own coordinates.
+    System.Windows.Point PositionIn(System.Windows.UIElement element);
+
+    /// Runs a move drag of data from source, and returns when the drag ends.
+    void StartDrag(System.Windows.DependencyObject source, System.Windows.IDataObject data);
 }
 
-public sealed class MousePointer : IDragPointer;
+/// The PC's mouse. Not confirmed by a test: no test can move the real mouse.
+public sealed class MousePointer : IDragPointer
+{
+    public MousePointer();
+    public bool IsLeftButtonDown { get; }
+    public System.Windows.Point PositionIn(System.Windows.UIElement element);
+    public void StartDrag(System.Windows.DependencyObject source, System.Windows.IDataObject data);
+}
 ```
 
 ## Later designs answer what these files leave open
@@ -529,7 +572,7 @@ The table lists each step, what it builds, and its status:
 
 The remaining work follows this order:
 
-1. Contacts (step 15), slice by slice from (a), continuing with slice (c). The user started it ahead of the rest.
+1. Contacts (step 15), slice by slice from (a). Slices (a) to (d) are built; the work continues with slice (e). The user started it ahead of the rest.
 2. One tag per task (step 14). The user decided it's built ahead of step 11.
 3. Task View refinements (step 11), which you asked for ahead of the rest.
 4. Install and updates (step 6).

@@ -2,7 +2,7 @@ using System.Windows;
 using Memoria.ToDo.Testing;
 using Xunit;
 
-namespace Memoria.ToDo.Desktop.TaskList.Tests;
+namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>
 /// The press-to-drag gesture a task row and a group heading share: a press, then a move with the left button still held that
@@ -12,19 +12,19 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 [Unit]
 public class PressDragTests
 {
-    private const double Horizontal = 4;
-    private const double Vertical = 6;
+    private static readonly double Horizontal = SystemParameters.MinimumHorizontalDragDistance;
+    private static readonly double Vertical = SystemParameters.MinimumVerticalDragDistance;
 
-    private readonly PressDrag _gesture = new(Horizontal, Vertical);
+    private readonly PressDrag _gesture = new();
 
     private static Point At(double x, double y = 5) => new(x, y);
 
     [Fact]
     public void Moving_to_the_drag_distance_with_the_button_held_starts_a_drag()
     {
-        _gesture.Press(At(10));
+        _gesture.Press(At(0));
 
-        Assert.True(_gesture.Move(At(10 + Horizontal), leftButtonDown: true));
+        Assert.True(_gesture.Move(At(Horizontal), leftButtonDown: true));
     }
 
     [Fact]
@@ -36,12 +36,14 @@ public class PressDragTests
     }
 
     [Fact]
-    public void A_drag_is_measured_from_the_press_in_each_direction_with_its_own_distance()
+    public void A_move_down_is_measured_from_the_press_against_the_vertical_drag_distance()
     {
-        _gesture.Press(At(10, 10));
+        // The test machine's two distances may be equal, so this can't tell them apart; DragDistanceTests does, with fixed numbers.
+        // The +1 keeps floating-point error in a fractional distance from deciding the result.
+        _gesture.Press(At(0, 10));
 
-        Assert.False(_gesture.Move(At(10, 10 + Vertical - 1), leftButtonDown: true));
-        Assert.True(_gesture.Move(At(10, 10 + Vertical), leftButtonDown: true));
+        Assert.False(_gesture.Move(At(0, 10 + Vertical - 1), leftButtonDown: true));
+        Assert.True(_gesture.Move(At(0, 10 + Vertical + 1), leftButtonDown: true));
     }
 
     [Fact]

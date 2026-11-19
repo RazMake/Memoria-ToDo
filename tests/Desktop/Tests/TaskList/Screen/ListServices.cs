@@ -29,6 +29,9 @@ internal sealed class ListServices : ListTasks
     /// <summary>The Save keys Edit Description and Edit Title save on, set to Ctrl+Enter as the app starts with.</summary>
     public SaveKeys SaveKeys { get; } = CtrlEnter();
 
+    /// <summary>The mouse Task View drags with: the real one, as Task View used before it was passed in.</summary>
+    public IDragPointer Pointer { get; } = new MousePointer();
+
     private static SaveKeys CtrlEnter()
     {
         var keys = new SaveKeys();
@@ -48,5 +51,5 @@ internal sealed class ListServices : ListTasks
             webViews.Add(view);
             return view;
         },
-        Browser, Sync, CloseWindowKeys, Updates, SaveKeys);
+        Browser, Sync, CloseWindowKeys, Updates, SaveKeys, Pointer);
 }

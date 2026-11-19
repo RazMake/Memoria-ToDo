@@ -1,7 +1,7 @@
 using Memoria.ToDo.Testing;
 using Xunit;
 
-namespace Memoria.ToDo.Desktop.TaskList.Tests;
+namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>When a press that moves has gone far enough to be a drag: a row's drag and a group heading's drag share this rule.</summary>
 [Unit]
