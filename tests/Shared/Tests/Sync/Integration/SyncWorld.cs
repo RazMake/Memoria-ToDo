@@ -2,6 +2,7 @@ using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using Memoria.ToDo.Desktop.App;
 using LibGit2Sharp;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
@@ -164,10 +165,11 @@ internal sealed class Device : IAsyncDisposable
         Keys = FakeDeviceKeyStore.Signing();
         Repository = new SyncedRepository();
         Store = TestTaskStore.Create(Files, new FakeImageEncoder(), Time, DeviceFolder, Repository);
-        Sync = SyncService.Create(Repository, Store.Synchronization, Files, syncKeys ?? Keys, new StoreSelection(Repository), syncClock ?? Time, DeviceFolder, name, periodicInterval: null);
+        Contacts = ContactStore.Create(Files, Repository);
+        Sync = SyncService.Create(Repository, Store.Synchronization, Contacts.Files, Files, syncKeys ?? Keys, new StoreSelection(Repository), syncClock ?? Time, DeviceFolder, name, periodicInterval: null);
     }
 
-    /// <summary>The synced repository the device's Tasks store and Sync share.</summary>
+    /// <summary>The synced repository the device's Tasks store, Contacts store, and Sync share.</summary>
     public SyncedRepository Repository { get; }
 
     public WindowsFileSystem Files { get; } = new();
@@ -181,6 +183,8 @@ internal sealed class Device : IAsyncDisposable
     public FakeDeviceKeyStore Keys { get; }
 
     public ITaskStore Store { get; }
+
+    public IContactStore Contacts { get; }
 
     public ISyncService Sync { get; }
 

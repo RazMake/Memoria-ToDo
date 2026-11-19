@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -16,6 +17,7 @@ public static class SyncService
     public static ISyncService Create(
         ISyncedRepository repository,
         ITaskSynchronization tasks,
+        IContactFileRules contacts,
         IFileSystem files,
         IDeviceKeyStore keys,
         IRepositorySelection repositories,
@@ -25,12 +27,13 @@ public static class SyncService
         TimeSpan? periodicInterval)
     {
         var worker = new OwnedWorker();
-        return Create(repository, tasks, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, new NativeGitOperations(repository, tasks, time, worker), worker);
+        return Create(repository, tasks, contacts, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, new NativeGitOperations(repository, tasks, contacts, time, worker), worker);
     }
 
     internal static ISyncService Create(
         ISyncedRepository repository,
         ITaskSynchronization tasks,
+        IContactFileRules contacts,
         IFileSystem files,
         IDeviceKeyStore keys,
         IRepositorySelection repositories,
@@ -39,11 +42,12 @@ public static class SyncService
         string defaultDeviceName,
         TimeSpan? periodicInterval,
         IGitOperations git) =>
-        Create(repository, tasks, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, git, new OwnedWorker());
+        Create(repository, tasks, contacts, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, git, new OwnedWorker());
 
     private static ISyncService Create(
         ISyncedRepository repository,
         ITaskSynchronization tasks,
+        IContactFileRules contacts,
         IFileSystem files,
         IDeviceKeyStore keys,
         IRepositorySelection repositories,
@@ -56,6 +60,7 @@ public static class SyncService
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(tasks);
+        ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(keys);
         ArgumentNullException.ThrowIfNull(repositories);

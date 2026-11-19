@@ -1,10 +1,9 @@
 using LibGit2Sharp;
-using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>Commits the managed files that changed locally. Unmanaged files are never staged, and never committed.</summary>
-internal sealed class ManagedCommit(Repository repo, IRepositoryFileRules rules, TimeProvider time, string deviceName)
+internal sealed class ManagedCommit(Repository repo, ManagedFiles managed, TimeProvider time, string deviceName)
 {
     private const FileStatus StagedMask =
         FileStatus.NewInIndex | FileStatus.ModifiedInIndex | FileStatus.DeletedFromIndex | FileStatus.RenamedInIndex | FileStatus.TypeChangeInIndex;
@@ -53,7 +52,7 @@ internal sealed class ManagedCommit(Repository repo, IRepositoryFileRules rules,
         return true;
     }
 
-    private bool IsManaged(string path) => rules.Classify(path) != RepositoryFileKind.Unmanaged;
+    private bool IsManaged(string path) => managed.IsManaged(path);
 
     private IEnumerable<StatusEntry> ChangedEntries() =>
         repo.RetrieveStatus(new StatusOptions { IncludeUntracked = true, RecurseUntrackedDirs = true })

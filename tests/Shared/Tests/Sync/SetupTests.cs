@@ -105,7 +105,7 @@ public sealed class SetupTests
         var clone = Path.GetFullPath("physical-clone");
         var deviceLink = Path.GetFullPath("device-link");
         f.Files.AddAlias(deviceLink, Path.Combine(clone, "inner"));
-        await using var sync = SyncService.Create(f.Repository, f.Tasks, f.Files, f.Keys, f.Selection, f.Time, deviceLink, SyncFixture.DefaultDeviceName, null, f.Git);
+        await using var sync = SyncService.Create(f.Repository, f.Tasks, f.Contacts, f.Files, f.Keys, f.Selection, f.Time, deviceLink, SyncFixture.DefaultDeviceName, null, f.Git);
 
         await Assert.ThrowsAnyAsync<ArgumentException>(() => sync.Setup.CloneAsync(SyncFixture.ScpAddress, clone, CancellationToken.None));
         await Assert.ThrowsAnyAsync<ArgumentException>(() => sync.Setup.UseExistingAsync(SyncFixture.ScpAddress, clone, CancellationToken.None));

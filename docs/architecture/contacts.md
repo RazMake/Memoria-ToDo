@@ -199,6 +199,8 @@ Sync commits and merges the contact files, the data type files, and the template
 
 The user also decided that when one side deletes the templates file and the other edits it, the edit wins, so a merge never drops templates the user wrote.
 
+The user decided that a merged group or data type file is always written in this app's layout, as task files are, even when only one side changed it. So a hand-written file another device pushed is reformatted when it merges.
+
 Proposed, each a decision to confirm:
 
 - `position`, `me.json`'s `details`, and unknown fields merge the same way, field by field.
@@ -216,7 +218,7 @@ Contacts decides data, never look or layout. The [Contact list](desktop/contact-
 
 ## Public interface
 
-The project is `Memoria.ToDo.Shared.Contacts`. It uses the shared platform's [`IFileSystem`](modules.md#the-file-system-interface-reads-and-writes-whole-files), [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), [JSON style and file rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules), [`ContactAddress`](modules.md#a-contact-address-has-one-home), and [`MarkdownLabel`](../../src/Shared/Platform/MarkdownLabel.cs). The user confirmed these declarations, with `IsTeam` added for [team groups](#team-groups-show-more-fields), and Contacts implements them in [`src/Shared/Contacts/`](../../src/Shared/Contacts/IContacts.cs). Each app's composition root doesn't create the store yet, and Sync doesn't use `IContactFileRules` yet; both come with [Sync carrying contact files](desktop/README.md#delivery-backlog), the next slice of step 15:
+The project is `Memoria.ToDo.Shared.Contacts`. It uses the shared platform's [`IFileSystem`](modules.md#the-file-system-interface-reads-and-writes-whole-files), [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), [JSON style and file rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules), [`ContactAddress`](modules.md#a-contact-address-has-one-home), and [`MarkdownLabel`](../../src/Shared/Platform/MarkdownLabel.cs). The user confirmed these declarations, with `IsTeam` added for [team groups](#team-groups-show-more-fields), and Contacts implements them in [`src/Shared/Contacts/`](../../src/Shared/Contacts/IContacts.cs). The desktop composition root creates the store right after Tasks' store, before the first Select, and hands its `Files` to [Sync](sync.md#sync-manages-contact-files-through-contacts-rules), from slice (c) of [step 15](desktop/README.md#delivery-backlog). The Android composition root does the same when the Android app is built:
 
 ```csharp
 namespace Memoria.ToDo.Shared.Contacts;
@@ -371,6 +373,7 @@ public interface IContactFileRules
 - **Contact files with no `version`, so none ever needs a newer app, or with an optional one**: the user chose a required version, as task files have, so a newer format is skipped unchanged rather than misread. Data type files stay plain arrays, since the user writes them by hand and no format change is planned.
 - **Reading only `H:mm` for `dayStartTime`, or writing `H:mm`**: a hand-written `09:30` would be skipped, and the two forms would mix. The user chose to read both and write `HH:mm`.
 - **Letting a templates file deletion beat an edit**, as "the changed side wins" alone would: a merge would drop templates the user wrote.
+- **Keeping a one-side change's bytes unchanged in a group or data type file merge**, in Contacts or in Sync for every file kind: the user chose to write every merged file in this app's layout, as task files are.
 
 ## Open questions
 

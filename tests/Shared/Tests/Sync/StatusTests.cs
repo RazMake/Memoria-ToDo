@@ -487,6 +487,60 @@ public sealed class StatusTests
     }
 
     [Fact]
+    public async Task Lists_the_skipped_contact_files_after_the_skipped_task_files()
+    {
+        var contactsPart = new FakeRepositoryPart("contacts");
+        f.Repository.Add(contactsPart);
+        f.Ready();
+        f.Tasks.SkippedFiles = [new FakeSkippedFile("tasks/a.json", "Unreadable task.")];
+        contactsPart.SkippedFiles = [new FakeSkippedFile("autocomplete/contacts/team.json", "Unreadable contacts.")];
+        await using var sync = f.Create();
+
+        await sync.SyncNowAsync(CancellationToken.None);
+
+        Assert.Equal(SyncFailure.InvalidFile, sync.Status.Failure);
+        Assert.Equal(["tasks/a.json", "autocomplete/contacts/team.json"], sync.Status.SkippedFiles.Select(file => file.RelativePath));
+    }
+
+    [Fact]
+    public async Task Reports_a_contact_file_once_with_the_merges_reason_when_both_the_git_pass_and_the_contacts_reload_skipped_it()
+    {
+        var contactsPart = new FakeRepositoryPart("contacts");
+        f.Repository.Add(contactsPart);
+        f.Ready();
+        const string path = "autocomplete/contacts/team.json";
+        f.Git.DefaultResult = new GitPassResult(false) { Skipped = [new FakeSkippedFile(path, "Both sides changed it unreadably.")] };
+        contactsPart.SkippedFiles = [new FakeSkippedFile(path, "Unreadable.")];
+        await using var sync = f.Create();
+
+        await sync.SyncNowAsync(CancellationToken.None);
+
+        Assert.Equal(SyncFailure.InvalidFile, sync.Status.Failure);
+        var skipped = Assert.Single(sync.Status.SkippedFiles);
+        Assert.Equal(path, skipped.RelativePath);
+        Assert.Equal("Both sides changed it unreadably.", skipped.Reason);
+    }
+
+    [Fact]
+    public async Task Lists_the_skipped_task_files_before_a_contact_file_the_merge_skipped_and_the_contacts_reload_skipped_again()
+    {
+        var contactsPart = new FakeRepositoryPart("contacts");
+        f.Repository.Add(contactsPart);
+        f.Ready();
+        const string contact = "autocomplete/contacts/team.json";
+        f.Git.DefaultResult = new GitPassResult(false) { Skipped = [new FakeSkippedFile(contact, "Both sides changed it unreadably.")] };
+        f.Tasks.SkippedFiles = [new FakeSkippedFile("tasks/a.json", "Unreadable task.")];
+        contactsPart.SkippedFiles = [new FakeSkippedFile(contact, "Unreadable.")];
+        await using var sync = f.Create();
+
+        await sync.SyncNowAsync(CancellationToken.None);
+
+        Assert.Equal(SyncFailure.InvalidFile, sync.Status.Failure);
+        Assert.Equal(["tasks/a.json", contact], sync.Status.SkippedFiles.Select(file => file.RelativePath));
+        Assert.Equal("Both sides changed it unreadably.", sync.Status.SkippedFiles[1].Reason);
+    }
+
+    [Fact]
     public async Task Never_shows_a_clean_finished_status_while_a_pass_that_skipped_files_is_being_reported()
     {
         f.Ready();

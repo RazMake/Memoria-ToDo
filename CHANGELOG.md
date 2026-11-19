@@ -6,6 +6,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- Sync now carries your contact files between devices. When two devices change the same contact, both changes are kept field by field. A contact file the app can't read is left as it is and listed in the sync status.
 - A task file with damaged text, such as a broken character escape, no longer stops all your tasks from loading. That file is skipped and listed in the sync status, like other files the app can't read, and the rest of your tasks load.
 - In the status bar at the bottom of Add and Task View, clicking "Update available" now opens What is new instead of starting the update. To update, use Update Now in Configure. A small gap now separates "Update available" from the version.
 

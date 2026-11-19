@@ -348,7 +348,7 @@ internal sealed class SyncEngine : ISyncService
             throw new PassFailedException(ex, pending);
         }
 
-        var skipped = MergedSkippedFile.Combine(result.Skipped, repository.SkippedFiles);
+        var skipped = MergedSkippedFile.Combine(merge: result.Skipped, reload: repository.SkippedFiles);
         if (skipped.Count > 0)
         {
             return (s => s.Succeeded(now, result.HasPendingChanges)

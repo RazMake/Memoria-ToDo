@@ -13,6 +13,9 @@ internal sealed class SyncFixture
 
     public FakeTaskSynchronization Tasks { get; }
 
+    /// <summary>Contacts' file rules; they hold no path until a test calls <see cref="FakeContactFileRules.Hold"/>.</summary>
+    public FakeContactFileRules Contacts { get; } = new();
+
     /// <summary>The synced repository Sync works on, with <see cref="Part"/> as its one part.</summary>
     public SyncedRepository Repository { get; } = new();
 
@@ -44,7 +47,7 @@ internal sealed class SyncFixture
     }
 
     public ISyncService Create(TimeSpan? periodicInterval = null) =>
-        SyncService.Create(Repository, Tasks, Files, Keys, Selection, Time, DeviceFolder, DefaultDeviceName, periodicInterval, Git);
+        SyncService.Create(Repository, Tasks, Contacts, Files, Keys, Selection, Time, DeviceFolder, DefaultDeviceName, periodicInterval, Git);
 
     /// <summary>A device with a key and a selected, previously set up clone, which can sync.</summary>
     public SyncFixture Ready()

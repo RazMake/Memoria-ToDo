@@ -1,15 +1,17 @@
 using LibGit2Sharp;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>
-/// Joins the local branch with the fetched remote tip. Each file is merged by the Tasks rules for its kind; files
+/// Joins the local branch with the fetched remote tip. Each file is merged by the Tasks or Contacts rules for its kind; files
 /// Sync doesn't manage stay as the remote has them.
 /// </summary>
-internal sealed class DomainMerge(Repository repo, IRepositoryFileRules rules, TimeProvider time, string deviceName)
+internal sealed class DomainMerge(Repository repo, IRepositoryFileRules rules, IContactFileRules contacts, TimeProvider time, string deviceName)
 {
+    private readonly ManagedFiles managed = new(rules, contacts);
     private readonly Dictionary<string, ISkippedRepositoryFile> skipped = new(StringComparer.Ordinal);
 
     /// <summary>The files whose local copy was kept because they couldn't be merged, one per path.</summary>
@@ -34,7 +36,7 @@ internal sealed class DomainMerge(Repository repo, IRepositoryFileRules rules, T
         foreach (var path in localFiles.Keys.Concat(remoteFiles.Keys).Concat(baseFiles.Keys))
         {
             if (localFiles.GetValueOrDefault(path)?.Id != remoteFiles.GetValueOrDefault(path)?.Id
-                && rules.Classify(path) != RepositoryFileKind.Unmanaged)
+                && managed.IsManaged(path))
             {
                 divergent.Add(path);
             }
@@ -45,6 +47,7 @@ internal sealed class DomainMerge(Repository repo, IRepositoryFileRules rules, T
             divergent,
             path => new FileVersions(Bytes(baseFiles.GetValueOrDefault(path)), Bytes(localFiles.GetValueOrDefault(path)), Bytes(remoteFiles.GetValueOrDefault(path))),
             rules,
+            contacts,
             (path, action) =>
             {
                 if (action is Write write)
@@ -83,7 +86,7 @@ internal sealed class DomainMerge(Repository repo, IRepositoryFileRules rules, T
         foreach (var entry in repo.RetrieveStatus(options))
         {
             if ((entry.State & FileStatus.Unaltered) != 0
-                || rules.Classify(entry.FilePath) != RepositoryFileKind.Unmanaged)
+                || managed.IsManaged(entry.FilePath))
             {
                 continue;
             }

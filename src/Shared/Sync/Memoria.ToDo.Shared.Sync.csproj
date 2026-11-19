@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\Contacts\Memoria.ToDo.Shared.Contacts.csproj" />
     <ProjectReference Include="..\Platform\Memoria.ToDo.Shared.Platform.csproj" />
     <ProjectReference Include="..\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
     <PackageReference Include="LibGit2Sharp" />

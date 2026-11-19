@@ -5,6 +5,7 @@ using Memoria.ToDo.Desktop.Shell;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
 using Memoria.ToDo.Desktop.Updates;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Sync;
@@ -38,6 +39,7 @@ internal static class Program
             var files = new WindowsFileSystem();
             var repository = new SyncedRepository();
             var tasks = TaskStore.Create(files, new WpfImageEncoder(), TimeProvider.System, DraftFolder(), repository);
+            var contacts = ContactStore.Create(files, repository);
             var theme = new WindowsTheme(new WindowsThemeSetting());
             var clipboard = new WpfClipboard();
             var imageFiles = new WpfImageFileChooser();
@@ -54,6 +56,7 @@ internal static class Program
             var sync = SyncService.Create(
                 repository,
                 tasks.Synchronization,
+                contacts.Files,
                 files,
                 new WindowsDeviceKeyStore(files, new WindowsUserProtection(), deviceFolder),
                 repositories,

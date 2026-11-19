@@ -116,6 +116,8 @@ Proposed, each a decision to confirm:
 - **A contact file that can't be read on one side follows the task files' skip-and-report rule**: Sync names it in the status and leaves its bytes intact.
 - **The user's permission to apply a remote deletion over a malformed local task file doesn't cover contact files**: such a file is kept and reported, since contacts are the user's hand-kept data.
 - **Commit messages list contact paths like any other managed path.**
+- **Uncommitted contact files count as pending changes** when a sync fails, as tasks, images, and settings do.
+- **The composition root adds Tasks' store to the repository before Contacts' store**, so the status lists skipped task files before skipped contact files.
 
 <a id="configure-sets-up-a-device-by-cloning-the-repository"></a>
 
@@ -373,13 +375,14 @@ and trust context; never reuse the proof's mutable global "current key" or host-
 The implementation adds this one concrete construction entry point; the contracts checkpoint adds no throwing
 factory stub or unusable partial method. It takes the
 [synced repository's](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) Sync side
-first, then Tasks' file capabilities. The repository gives the selected folder, the lock, the reload, the skipped
+first, then Tasks' file capabilities, then Contacts' file rules, as the user decided. The repository gives the selected folder, the lock, the reload, the skipped
 files, and the local-save notice:
 
 ```csharp
 ISyncService SyncService.Create(
     ISyncedRepository repository,
     ITaskSynchronization tasks,
+    IContactFileRules contacts,
     IFileSystem files,
     IDeviceKeyStore keys,
     IRepositorySelection repositories,
@@ -388,8 +391,6 @@ ISyncService SyncService.Create(
     string defaultDeviceName,
     TimeSpan? periodicInterval)
 ```
-
-Proposed, with [Contacts](contacts.md#public-interface), a decision to confirm: `Create` takes Contacts' file capability, `IContactFileRules contacts`, right after `tasks`. This is not implemented.
 
 App supplies and wires all arguments. Creation validates arguments and creates the service, with no I/O or worker
 started. The interval is positive or null: App supplies 30 minutes on desktop and null on Android. There is no public
@@ -512,7 +513,7 @@ are decided; the list after the table says which.
 | The host key changed | Error | No sync can succeed until the [host key](#the-app-checks-each-host-key-against-its-own-list) is updated; retries follow the [existing backoff](#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) |
 | The repository isn't found | Error | Configure shows the address it tried |
 | The push is rejected 3 times in a row | Error | Sync retries later |
-| A task file can't be read, or has a newer `version` | Error; the rest of the sync completes | The status names the file, as [Tasks](tasks.md#failure-modes) says |
+| A task or contact file can't be read, or has a newer `version` | Error; the rest of the sync completes | The status names the file, as [Tasks](tasks.md#failure-modes) and [Contacts](contacts.md#failure-modes) say |
 | The clone can't be written, such as on a full disk | Error | The error's details; sync retries |
 | The clone's folder belongs to an account libgit2's ownership check doesn't accept | Error | The details say the current user doesn't own the folder. Clone again in Configure, or make the current user the folder's owner |
 | A failure Sync doesn't recognize, such as a dependency disposed while the service isn't stopping | Error | The error's details; sync retries with the [existing backoff](#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) |
@@ -615,6 +616,10 @@ The options below were considered and rejected, grouped by decision. The git and
   - **Stop sync and preserve the local bytes and index**: the user chose to allow the remote result instead,
     accepting possible loss rather than blocking the pass for manual repair.
   - **Implement index preservation or quarantine/recovery now**: the user chose not to add that scope.
+- How `Create` receives Contacts' file rules:
+  - **The whole Contacts store**: Sync would see the contact list it never uses.
+  - **Each store registering its file rules with the synced repository**: a platform change and a new shared
+    interface, and Tasks' task-then-image order doesn't fit a general registry.
 - Single-letter SCP host addresses:
   - **Reject the bare form and require an explicit username**: the user chose to keep accepting it and save the
     equivalent explicit-username spelling instead.

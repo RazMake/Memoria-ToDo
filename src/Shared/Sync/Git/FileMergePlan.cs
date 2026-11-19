@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -29,7 +30,7 @@ internal static class FileMergePlan
     /// </summary>
     /// <param name="paths">Every path that exists on any side, each once.</param>
     /// <param name="read">Reads one path's contents on each side. Called only for a path that needs deciding.</param>
-    public static IReadOnlyList<ISkippedRepositoryFile> Decide(IEnumerable<string> paths, Func<string, FileVersions> read, IRepositoryFileRules rules, Action<string, PathAction> apply)
+    public static IReadOnlyList<ISkippedRepositoryFile> Decide(IEnumerable<string> paths, Func<string, FileVersions> read, IRepositoryFileRules rules, IContactFileRules contacts, Action<string, PathAction> apply)
     {
         var skipped = new List<ISkippedRepositoryFile>();
 
@@ -46,7 +47,7 @@ internal static class FileMergePlan
                 continue;
             }
 
-            if (kind == RepositoryFileKind.Unmanaged)
+            if (kind == RepositoryFileKind.Unmanaged && !contacts.Holds(path))
             {
                 continue;
             }
@@ -57,7 +58,7 @@ internal static class FileMergePlan
                 continue;
             }
 
-            var merged = Merge(path, kind, versions, rules, skipped);
+            var merged = Merge(path, kind, versions, rules, contacts, skipped);
             if (merged is not null && versions.Base is not null && (versions.Local is null) != (versions.Remote is null) && kind == RepositoryFileKind.Task)
             {
                 survivorIsLocal[rules.TaskIdInPath(path)!] = versions.Local is not null;
@@ -76,7 +77,7 @@ internal static class FileMergePlan
                     continue;
                 }
 
-                var merged = Merge(path, RepositoryFileKind.Image, versions, rules, skipped);
+                var merged = Merge(path, RepositoryFileKind.Image, versions, rules, contacts, skipped);
                 if (merged is null
                     && rules.TaskIdInPath(path) is { } owner
                     && survivorIsLocal.TryGetValue(owner, out var localSurvives))
@@ -106,12 +107,12 @@ internal static class FileMergePlan
         }
     }
 
-    private static byte[]? Merge(string path, RepositoryFileKind kind, FileVersions versions, IRepositoryFileRules rules, List<ISkippedRepositoryFile> skipped)
+    private static byte[]? Merge(string path, RepositoryFileKind kind, FileVersions versions, IRepositoryFileRules rules, IContactFileRules contacts, List<ISkippedRepositoryFile> skipped)
     {
         var (b, l, r) = (versions.Base, versions.Local, versions.Remote);
         try
         {
-            return FileMerges.Merge(kind, rules, path, versions);
+            return FileMerges.Merge(kind, rules, contacts, path, versions);
         }
         catch (InvalidDataException)
         {
@@ -121,9 +122,17 @@ internal static class FileMergePlan
                 return l;
             }
 
-            if (SameContent(b, l) || l is null)
+            // The remote deleting an unreadable local copy is taken for tasks only; a contact file stays and is reported.
+            var contactDeletedRemotely = kind == RepositoryFileKind.Unmanaged && r is null && l is not null;
+            if ((SameContent(b, l) && !contactDeletedRemotely) || l is null)
             {
                 return r;
+            }
+
+            if (contactDeletedRemotely && SameContent(b, l))
+            {
+                skipped.Add(new SkippedMergeFile(path, "The remote deleted the file and this device's copy can't be read, so this device's copy was kept."));
+                return l;
             }
 
             // Both sides changed it. The one accepted loss: a malformed local task yields to the remote deleting it.
