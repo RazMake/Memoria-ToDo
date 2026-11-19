@@ -1,10 +1,10 @@
 using System.Text;
 using System.Text.Json;
 
-namespace Memoria.ToDo.Shared.Contacts.Tests;
+namespace Memoria.ToDo.Shared.Fakes;
 
 /// <summary>Contact files as literal JSON, written and read here so no test depends on how Contacts writes them.</summary>
-internal static class ContactFiles
+public static class ContactFiles
 {
     public static string Quote(string text) => JsonSerializer.Serialize(text);
 

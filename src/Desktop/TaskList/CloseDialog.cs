@@ -7,13 +7,13 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// The modal "Unsaved changes" prompt, owned by and centered on Task View. It takes the application's theme as every
 /// window does. Save is the default button; Esc and the close button answer Cancel.
 /// </summary>
-internal sealed class CloseDialog(Window owner) : IClosePrompt
+internal sealed class CloseDialog(Window owner) : ILeavePrompt
 {
-    public CloseAnswer Ask()
+    public LeaveAnswer Ask()
     {
         return QuestionDialog.Ask(
             owner, "Unsaved changes", "Save your changes to this task?",
-            [("Save", CloseAnswer.Save), ("Discard", CloseAnswer.Discard), ("Cancel", CloseAnswer.Cancel)],
-            CloseAnswer.Save, CloseAnswer.Cancel);
+            [("Save", LeaveAnswer.Save), ("Discard", LeaveAnswer.Discard), ("Cancel", LeaveAnswer.Cancel)],
+            LeaveAnswer.Save, LeaveAnswer.Cancel);
     }
 }

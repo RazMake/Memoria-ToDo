@@ -120,3 +120,19 @@ static Memoria.ToDo.Shared.Contacts.DataType.operator !=(Memoria.ToDo.Shared.Con
 static Memoria.ToDo.Shared.Contacts.DataType.operator ==(Memoria.ToDo.Shared.Contacts.DataType? left, Memoria.ToDo.Shared.Contacts.DataType? right) -> bool
 static Memoria.ToDo.Shared.Contacts.DataTypeEntry.operator !=(Memoria.ToDo.Shared.Contacts.DataTypeEntry? left, Memoria.ToDo.Shared.Contacts.DataTypeEntry? right) -> bool
 static Memoria.ToDo.Shared.Contacts.DataTypeEntry.operator ==(Memoria.ToDo.Shared.Contacts.DataTypeEntry? left, Memoria.ToDo.Shared.Contacts.DataTypeEntry? right) -> bool
+Memoria.ToDo.Shared.Contacts.ContactField
+Memoria.ToDo.Shared.Contacts.ContactField.IsTeamField.get -> bool
+Memoria.ToDo.Shared.Contacts.ContactField.Kind.get -> Memoria.ToDo.Shared.Contacts.ContactFieldKind
+Memoria.ToDo.Shared.Contacts.ContactField.Name.get -> string!
+Memoria.ToDo.Shared.Contacts.ContactField.TextOf(Memoria.ToDo.Shared.Contacts.Contact! contact) -> string?
+Memoria.ToDo.Shared.Contacts.ContactField.With(Memoria.ToDo.Shared.Contacts.Contact! contact, string? text) -> Memoria.ToDo.Shared.Contacts.Contact!
+Memoria.ToDo.Shared.Contacts.ContactFieldKind
+Memoria.ToDo.Shared.Contacts.ContactFieldKind.Date = 3 -> Memoria.ToDo.Shared.Contacts.ContactFieldKind
+Memoria.ToDo.Shared.Contacts.ContactFieldKind.Key = 1 -> Memoria.ToDo.Shared.Contacts.ContactFieldKind
+Memoria.ToDo.Shared.Contacts.ContactFieldKind.Text = 0 -> Memoria.ToDo.Shared.Contacts.ContactFieldKind
+Memoria.ToDo.Shared.Contacts.ContactFieldKind.Time = 2 -> Memoria.ToDo.Shared.Contacts.ContactFieldKind
+Memoria.ToDo.Shared.Contacts.ContactFields
+static Memoria.ToDo.Shared.Contacts.ContactFields.All.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.ContactField!>!
+Memoria.ToDo.Shared.Contacts.ContactTime
+static Memoria.ToDo.Shared.Contacts.ContactTime.TextOf(System.TimeOnly time) -> string!
+static Memoria.ToDo.Shared.Contacts.ContactTime.TryRead(string? text, out System.TimeOnly time) -> bool

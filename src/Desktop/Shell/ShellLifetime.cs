@@ -1,5 +1,6 @@
 using System.Runtime.ExceptionServices;
 using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
@@ -14,11 +15,14 @@ internal sealed class ShellLifetime(
     ITrayIcon trayIcon,
     Action showAdd,
     Action showViewTasks,
+    Action showContacts,
+    IContactsWindow contacts,
     IConfigureWindow configure,
     IOneInstance oneInstance,
     ActiveShortcut addShortcut,
     ActiveShortcut manageShortcut,
     ActiveShortcut configureShortcut,
+    ContactsShortcutAction contactsShortcut,
     StartupNavigation startup,
     IUpdateLifetime updates,
     Func<Action, IAppExit> createExit,
@@ -28,33 +32,48 @@ internal sealed class ShellLifetime(
     private readonly object stopGate = new();
     private Task? stopping;
     private bool claimed;
+    private EventHandler? followAvailability;
 
     /// <inheritdoc />
     public void Start(Action endApp)
     {
         var addByUser = startup.ByUser(showAdd);
         var viewTasksByUser = startup.ByUser(showViewTasks);
+        var contactsByUser = startup.ByUser(showContacts);
+        var configureByUser = startup.ByUser(configure.Show);
         if (!oneInstance.Claim(viewTasksByUser))
         {
             endApp();
             return;
         }
 
+        // The Contacts item shows only while contacts are available, so the menu is built again when that changes.
+        IReadOnlyList<TrayMenuItem> Menu()
+        {
+            List<TrayMenuItem> items = [new("Add new task", addByUser), new("Task View", viewTasksByUser)];
+            if (contacts.IsAvailable)
+            {
+                items.Add(new("Contacts", contactsByUser));
+            }
+
+            items.Add(new("Configure", configureByUser));
+            items.Add(new("Exit", endApp));
+            return items;
+        }
+
         claimed = true;
-        trayIcon.Show(
-            AppName.Value,
-            [
-                new("Add new task", addByUser),
-                new("Task View", viewTasksByUser),
-                new("Configure", startup.ByUser(configure.Show)),
-                new("Exit", endApp),
-            ],
-            viewTasksByUser);
+        trayIcon.Show(AppName.Value, Menu(), viewTasksByUser);
         syncTray.Attach();
-        bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut, configureShortcut);
+        bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut, configureShortcut, contactsShortcut);
 
         updates.Start(createExit(endApp));
         startup.Begin(!shortcutsReady);
+        followAvailability = (_, _) =>
+        {
+            trayIcon.UpdateMenu(Menu());
+            contactsShortcut.AvailabilityChanged();
+        };
+        contacts.AvailableChanged += followAvailability;
         sync.Start();
     }
 
@@ -76,9 +95,11 @@ internal sealed class ShellLifetime(
         Attempt(startup.Cancel, failures);
         Attempt(syncTray.Detach, failures);
         Attempt(configure.Dispose, failures);
+        Attempt(StopFollowingAvailability, failures);
         Attempt(addShortcut.Unregister, failures);
         Attempt(manageShortcut.Unregister, failures);
         Attempt(configureShortcut.Unregister, failures);
+        Attempt(contactsShortcut.Unregister, failures);
         Attempt(trayIcon.Remove, failures);
 
         if (claimed)
@@ -100,6 +121,14 @@ internal sealed class ShellLifetime(
         if (failures.Count > 1)
         {
             throw new AggregateException(failures);
+        }
+    }
+
+    private void StopFollowingAvailability()
+    {
+        if (followAvailability is not null)
+        {
+            contacts.AvailableChanged -= followAvailability;
         }
     }
 

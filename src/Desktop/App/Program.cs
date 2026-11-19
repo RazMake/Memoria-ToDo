@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Shell;
@@ -64,6 +65,7 @@ internal static class Program
                 deviceFolder,
                 Environment.MachineName,
                 TimeSpan.FromMinutes(30));
+            var pointer = new MousePointer();
             var (add, viewTasks) = TaskWindows.Create(
                 tasks,
                 theme,
@@ -77,11 +79,12 @@ internal static class Program
                 closeWindowKeys,
                 updates,
                 saveKeys,
-                new MousePointer());
+                pointer);
             return TrayApp.Create(
                 new TrayIcon(),
                 add,
                 viewTasks,
+                ContactsWindow.Create(contacts.Contacts, theme, TimeProvider.System, closeWindowKeys, saveKeys, pointer),
                 ConfigureWindow.Create(
                     StartWithWindows(),
                     tasks.Settings,

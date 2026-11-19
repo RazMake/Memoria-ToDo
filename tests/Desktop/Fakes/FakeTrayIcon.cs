@@ -23,6 +23,9 @@ public sealed class FakeTrayIcon : ITrayIcon
     /// <summary>How many times the icon was added.</summary>
     public int ShowCount { get; private set; }
 
+    /// <summary>How many times <see cref="UpdateMenu"/> was called, whether or not the icon was shown.</summary>
+    public int MenuUpdateCount { get; private set; }
+
     /// <summary>When set, <see cref="Show"/> throws it and the icon isn't added.</summary>
     public Exception? ShowFailure { get; set; }
 
@@ -66,6 +69,16 @@ public sealed class FakeTrayIcon : ITrayIcon
         this.leftClick = leftClick;
         IsShown = true;
         ShowCount++;
+    }
+
+    /// <inheritdoc />
+    public void UpdateMenu(IReadOnlyList<TrayMenuItem> menu)
+    {
+        MenuUpdateCount++;
+        if (IsShown)
+        {
+            this.menu = menu;
+        }
     }
 
     /// <inheritdoc />

@@ -28,24 +28,25 @@ internal sealed partial class ConfigureScreen : IDisposable
     /// <param name="addNewTask">The Add new task action; a new fake that accepts every shortcut when null.</param>
     /// <param name="manageTasks">The Task View action; a new fake that accepts every shortcut when null.</param>
     /// <param name="configure">The Configure action; a new fake that accepts every shortcut when null.</param>
+    /// <param name="contacts">The Contacts action; a new fake that accepts every shortcut when null.</param>
     public ConfigureScreen(
         FakeStartWithWindows? startWithWindows = null,
         FakeShortcutAction? addNewTask = null,
         FakeShortcutAction? manageTasks = null,
         FakeSyncService? sync = null,
         Action<ISharedTaskSettings>? initialSettings = null,
-        FakeShortcutAction? configure = null)
+        FakeShortcutAction? configure = null,
+        FakeShortcutAction? contacts = null)
     {
         services = new ConfigureServices(startWithWindows, sync);
         AddNewTask = addNewTask ?? new FakeShortcutAction();
         ManageTasks = manageTasks ?? new FakeShortcutAction();
         ConfigureAction = configure ?? new FakeShortcutAction();
+        ContactsAction = contacts ?? new FakeShortcutAction();
         initialSettings?.Invoke(Store.Settings);
         this.configure = services.Create();
-        Connected = this.configure.ConnectShortcuts(AddNewTask, ManageTasks, ConfigureAction);
-        AddNewTask.ClearCalls();
-        ManageTasks.ClearCalls();
-        ConfigureAction.ClearCalls();
+        Connected = this.configure.ConnectShortcuts(AddNewTask, ManageTasks, ConfigureAction, ContactsAction);
+        ClearActionCalls();
     }
 
     /// <summary>The theme the window follows; starts light.</summary>
@@ -95,6 +96,9 @@ internal sealed partial class ConfigureScreen : IDisposable
     /// <summary>The Configure action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction ConfigureAction { get; }
 
+    /// <summary>The Contacts action. Its calls are those since the connection, which registered the default.</summary>
+    public FakeShortcutAction ContactsAction { get; }
+
     /// <summary>What connecting the shortcuts answered.</summary>
     public bool Connected { get; }
 
@@ -114,20 +118,23 @@ internal sealed partial class ConfigureScreen : IDisposable
         return button.ContextMenu;
     }
 
-    /// <summary>The Add new task row's shortcut box, the first of the five.</summary>
+    /// <summary>The Add new task row's shortcut box, the first of the six.</summary>
     public TextBox AddField => ShortcutFields[0];
 
-    /// <summary>The Task View row's shortcut box, the second of the five.</summary>
+    /// <summary>The Task View row's shortcut box, the second of the six.</summary>
     public TextBox ManageField => ShortcutFields[1];
 
-    /// <summary>The Configure row's shortcut box, the third of the five.</summary>
-    public TextBox ConfigureField => ShortcutFields[2];
+    /// <summary>The Contacts row's shortcut box, the third of the six: its row comes after Task View's.</summary>
+    public TextBox ContactsField => ShortcutFields[2];
 
-    /// <summary>The Close window row's shortcut box, the fourth of the five.</summary>
-    public TextBox CloseField => ShortcutFields[3];
+    /// <summary>The Configure row's shortcut box, the fourth of the six.</summary>
+    public TextBox ConfigureField => ShortcutFields[3];
 
-    /// <summary>The Save row's shortcut box, the fifth of the five.</summary>
-    public TextBox SaveField => ShortcutFields[4];
+    /// <summary>The Close window row's shortcut box, the fifth of the six.</summary>
+    public TextBox CloseField => ShortcutFields[4];
+
+    /// <summary>The Save row's shortcut box, the sixth of the six.</summary>
+    public TextBox SaveField => ShortcutFields[5];
 
     /// <summary>The Close window keys the window was given.</summary>
     public CloseWindowKeys CloseWindowKeys => services.CloseWindowKeys;
@@ -146,6 +153,9 @@ internal sealed partial class ConfigureScreen : IDisposable
 
     /// <summary>The message under the Configure row's box; empty when none.</summary>
     public string ConfigureMessage => MessageUnder(ConfigureField);
+
+    /// <summary>The message under the Contacts row's box; empty when none.</summary>
+    public string ContactsMessage => MessageUnder(ContactsField);
 
     /// <summary>The message under the Close window row's box; empty when none.</summary>
     public string CloseMessage => MessageUnder(CloseField);
@@ -169,10 +179,27 @@ internal sealed partial class ConfigureScreen : IDisposable
         }
     }
 
-    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(5)];
+    private IReadOnlyList<TextBox> ShortcutFields => [.. OpenWindows.Descendants(Window).OfType<TextBox>().Take(6)];
 
-    /// <summary>Opens the window, as the tray's Configure item does.</summary>
-    public void Open() => configure.Show();
+    /// <summary>
+    /// Opens the window, as the tray's Configure item does, then forgets the calls the actions got until now, the
+    /// registrations that showing makes included, so a test sees what it does next. <see cref="Show"/> keeps them.
+    /// </summary>
+    public void Open()
+    {
+        configure.Show();
+        ClearActionCalls();
+    }
+
+    /// <summary>Shows the window as the tray's Configure item does, and keeps the calls the actions got, so a test sees what showing registers.</summary>
+    public void Show() => configure.Show();
+    private void ClearActionCalls()
+    {
+        AddNewTask.ClearCalls();
+        ManageTasks.ClearCalls();
+        ConfigureAction.ClearCalls();
+        ContactsAction.ClearCalls();
+    }
 
     /// <summary>Closes the window, as its close button does.</summary>
     public void CloseWindow() => Window.Close();

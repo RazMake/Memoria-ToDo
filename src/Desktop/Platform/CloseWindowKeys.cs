@@ -1,5 +1,7 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 
 namespace Memoria.ToDo.Desktop.Platform;
 
@@ -11,6 +13,9 @@ public sealed class CloseWindowKeys
 {
     private ModifierKeys _modifiers;
     private Key _key = Key.None;
+
+    [DllImport("user32.dll")]
+    private static extern nint SendMessage(nint window, int message, nint wParam, nint lParam);
 
     /// <summary>No keys yet: no key closes a window until <see cref="Set"/> is called.</summary>
     public CloseWindowKeys()
@@ -30,8 +35,8 @@ public sealed class CloseWindowKeys
 
     /// <summary>
     /// From now on, pressing the current keys while window, or any control in it, has the focus calls
-    /// window.Close() before any control sees the keys, and the keys go no further.
-    /// Throws <see cref="ArgumentNullException"/> when window is null.
+    /// sends window the user's close command, as its close button does, before any control sees the keys,
+    /// and the keys go no further. Throws <see cref="ArgumentNullException"/> when window is null.
     /// </summary>
     public void Attach(Window window)
     {
@@ -47,7 +52,7 @@ public sealed class CloseWindowKeys
             else if (key == _key && held.Modifiers == _modifiers)
             {
                 e.Handled = true;
-                window.Close();
+                SendMessage(new WindowInteropHelper(window).Handle, CloseMessages.WmSysCommand, CloseMessages.ScClose, 0);
             }
         };
         window.PreviewKeyUp += (_, e) => held.Released(EventKey.Of(e));

@@ -34,11 +34,11 @@ public interface IConfigureWindow : IDisposable
     bool IsOpen { get; }
 
     /// <summary>
-    /// Connects the three shortcut settings. Configure applies each stored shortcut, or its default, then each
-    /// valid pick on that row, on the UI thread. Returns true only when all three initial shortcuts registered; an action that
+    /// Connects the four shortcut settings. Configure applies each stored shortcut, or its default, then each
+    /// valid pick on that row, on the UI thread. Returns true only when all initial shortcuts registered; an action that
     /// returns false or throws counts as not registered. Dispose detaches service notices and closes Configure;
     /// Shell owns unregistering the actions and disposing Sync.
     /// </summary>
     /// <exception cref="ArgumentNullException">Any action is null.</exception>
-    bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure);
+    bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure, IShortcutAction contacts);
 }

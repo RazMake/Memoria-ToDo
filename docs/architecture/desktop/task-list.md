@@ -1,6 +1,6 @@
 # Task list: how the desktop app shows and finds tasks
 
-Status: Drafting
+Status: Decided
 
 The Task list is the desktop app's Task View window. Its left side lists the tasks grouped by tag, where a click on a title selects the task, its checkbox checks it off, drag and drop reorders a group's tasks and the groups themselves, with a line showing where they land, and a click on a group's tag collapses or expands it; its right side shows the selected task's formatted description and tags, and turns into the Description editor on Edit Description, with a Preview tab where images resize. Edit Title edits a title in its row. A status bar at the bottom holds the Sync button, the app's version, and any new version from [Updates](updates.md).
 
@@ -309,7 +309,7 @@ The user asked for a shorter search bar that stretches across the whole window, 
 - **Its background is the same theme resource as the [status bar's](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar)**, so the two bars match and follow the theme.
 - **The user decided the search box is 180 pixels wide**, whatever the window's width.
 - **The band is one row of controls tall**, with small padding.
-- **The message line and the Undo bar stay under the band**, outside it. The Undo bar keeps its own card look.
+- **The message line and the Undo bar stay under the band**, outside it. The Undo bar keeps its own card look. The message line is the platform's [message line](README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them), which Contacts shares.
 - Proposed, a decision to confirm: the band's height is the search box's plus at most 12 pixels of padding.
 
 ### Resolved tasks wait behind a count at the bottom
@@ -572,3 +572,7 @@ The options below were considered and rejected, grouped by decision.
   - **"Tag changed" for both a choice and a clear**: the bar wouldn't say the tag is gone.
 
 Who shows formatted Markdown, and who opens links, is decided in the [Formatted view](formatted-view.md#ruled-out).
+
+## Open questions
+
+None.

@@ -9,14 +9,16 @@ using Memoria.ToDo.Desktop.Fakes;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// Drives the prompt that asks what to do with a changed edit when Task View closes, the way a user does. The prompt is
-/// modal, so a call that closes the window doesn't return until the prompt is answered: <see cref="Run{T}"/> queues the
-/// answer first, to run once the prompt shows, then makes the call. The prompt is found as the showing window with its
+/// Drives the prompt that asks what to do with a changed edit or form when a window closes, the way a user does. The prompt is
+/// modal, so a call that closes the window doesn't return until the prompt is answered: <see cref="Run{T}"/> arms the answer
+/// first, to run once the prompt's Loaded event says it showed, then makes the call. The prompt is found as the showing owned window with its
 /// title, "Unsaved changes" unless given another, and its buttons by their text. Shared test setup.
-/// </summary>
+/// /// </summary>
 internal sealed class ClosePrompt(string title = ClosePrompt.Title)
 {
     public const string Title = "Unsaved changes";
+
+    private static readonly TimeSpan Limit = TimeSpan.FromSeconds(10);
 
     private readonly OpenWindows windows = new();
     private int shown;
@@ -41,18 +43,10 @@ internal sealed class ClosePrompt(string title = ClosePrompt.Title)
     {
         var finished = false;
         Exception? failure = null;
-        void AnswerWhenShown()
+        void AnswerWhenShown(Window prompt)
         {
             if (finished)
             {
-                return;
-            }
-
-            var prompt = windows.Visible().SingleOrDefault(w => w.Title == title);
-            if (prompt is null)
-            {
-                // Not showing yet. A call that shows no prompt returns, and then this stops; one that shows it is waited for.
-                Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, AnswerWhenShown);
                 return;
             }
 
@@ -71,7 +65,29 @@ internal sealed class ClosePrompt(string title = ClosePrompt.Title)
             }
         }
 
-        Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, AnswerWhenShown);
+        // The prompt's Loaded event says it showed; a call that shows no prompt returns, and the answer never runs. The bound only
+        // bounds a failure: a call still blocked when it passes is waiting on a prompt that never showed or was never answered.
+        var bound = new DispatcherTimer(DispatcherPriority.Normal) { Interval = Limit };
+        bound.Tick += (_, _) =>
+        {
+            bound.Stop();
+            failure ??= new TimeoutException($"The prompt \"{title}\" didn't show and get answered within {Limit}.");
+            foreach (var window in windows.Visible().Where(w => w.Owner is not null))
+            {
+                window.Close();
+            }
+        };
+        var answered = false;
+        WhenLoaded = prompt =>
+        {
+            // The prompt is owned; a window with the same title and no owner, such as Contacts' own, is not it.
+            if (!answered && prompt.Title == title && prompt.Owner is not null)
+            {
+                answered = true;
+                prompt.Dispatcher.BeginInvoke(DispatcherPriority.Background, () => AnswerWhenShown(prompt));
+            }
+        };
+        bound.Start();
         try
         {
             return close();
@@ -79,12 +95,27 @@ internal sealed class ClosePrompt(string title = ClosePrompt.Title)
         finally
         {
             finished = true;
+            bound.Stop();
+            WhenLoaded = null;
             if (failure is not null)
             {
                 System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
             }
         }
     }
+
+    // The test's UI thread runs one prompt at a time; this is what its showing window tells.
+    [ThreadStatic]
+    private static Action<Window>? WhenLoaded;
+
+    static ClosePrompt() =>
+        EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler((sender, _) =>
+        {
+            if (sender is Window window)
+            {
+                WhenLoaded?.Invoke(window);
+            }
+        }));
 
     /// <summary>Answers by clicking the prompt's button with the text.</summary>
     public static Action<Window> Click(string text) => prompt => OpenWindows.Click(prompt, text);

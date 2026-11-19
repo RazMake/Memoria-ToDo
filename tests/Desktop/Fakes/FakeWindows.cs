@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
 
@@ -79,6 +80,65 @@ public sealed class FakeViewTasksWindow(List<string>? shownLog = null) : IViewTa
 }
 
 /// <summary>
+/// The shared fake of <see cref="IContactsWindow"/>: counts Show and Close calls, and logs "Contacts" and
+/// "Close Contacts" like <see cref="FakeAddWindow"/>. Close answers <see cref="CloseAnswer"/>. A test sets
+/// <see cref="IsAvailable"/> to raise <see cref="AvailableChanged"/>, as the real window does.
+/// </summary>
+public sealed class FakeContactsWindow(List<string>? shownLog = null) : IContactsWindow
+{
+    private bool isAvailable = true;
+
+    /// <summary>How many times Show was called.</summary>
+    public int ShowCount { get; private set; }
+
+    /// <summary>How many times Close was called.</summary>
+    public int CloseCount { get; private set; }
+
+    /// <summary>What Close answers; true, as when the window closed, when not set. A true answer sets IsOpen to false.</summary>
+    public bool CloseAnswer { get; set; } = true;
+
+    /// <summary>What IsOpen answers; false when not set.</summary>
+    public bool IsOpen { get; set; }
+
+    /// <summary>What IsAvailable answers; true when not set. A change raises <see cref="AvailableChanged"/>.</summary>
+    public bool IsAvailable
+    {
+        get => isAvailable;
+        set
+        {
+            if (isAvailable != value)
+            {
+                isAvailable = value;
+                AvailableChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public event EventHandler? AvailableChanged;
+
+    /// <inheritdoc />
+    public bool Close()
+    {
+        CloseCount++;
+        shownLog?.Add("Close Contacts");
+        if (CloseAnswer)
+        {
+            IsOpen = false;
+        }
+
+        return CloseAnswer;
+    }
+
+    /// <inheritdoc />
+    public void Show()
+    {
+        ShowCount++;
+        shownLog?.Add("Contacts");
+    }
+}
+
+/// <summary>
 /// The shared fake of <see cref="IConfigureWindow"/>: counts Show calls (and logs "Configure" like
 /// <see cref="FakeAddWindow"/>), keeps the three shortcut actions Shell connects, and answers
 /// <see cref="ConnectAnswer"/>. Unlike Configure, it registers nothing at once: a test calls the kept actions as
@@ -89,6 +149,7 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     private IShortcutAction? addNewTask;
     private IShortcutAction? manageTasks;
     private IShortcutAction? configure;
+    private IShortcutAction? contacts;
 
     /// <summary>How many times Show was called.</summary>
     public int ShowCount { get; private set; }
@@ -120,6 +181,10 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     /// <exception cref="InvalidOperationException">Shell hasn't connected the shortcuts.</exception>
     public IShortcutAction ConfigureAction => configure ?? throw NotConnected();
 
+    /// <summary>The Contacts action Shell connected.</summary>
+    /// <exception cref="InvalidOperationException">Shell hasn't connected the shortcuts.</exception>
+    public IShortcutAction ContactsAction => contacts ?? throw NotConnected();
+
     /// <inheritdoc />
     public void Show()
     {
@@ -129,12 +194,13 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     }
 
     /// <inheritdoc />
-    public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure)
+    public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure, IShortcutAction contacts)
     {
         ConnectCount++;
         this.addNewTask = addNewTask;
         this.manageTasks = manageTasks;
         this.configure = configure;
+        this.contacts = contacts;
         return ConnectAnswer;
     }
 

@@ -40,6 +40,24 @@ internal sealed class StartupNavigation(
         setup.Changed += OnChanged;
     }
 
+    /// <summary>
+    /// A shortcut failed to register after the start: it joins the pending automatic choice, so Configure opens last,
+    /// or, when the choice already ran or was dropped, Configure opens at once.
+    /// </summary>
+    public void ShortcutFailed()
+    {
+        lock (gate)
+        {
+            if (!cancelled)
+            {
+                shortcutFailed = true;
+                return;
+            }
+        }
+
+        showConfigure();
+    }
+
     /// <summary>Drops the pending automatic window, for good.</summary>
     public void Cancel()
     {

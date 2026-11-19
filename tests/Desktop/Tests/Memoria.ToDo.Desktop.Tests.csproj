@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Desktop\App\Memoria.ToDo.Desktop.App.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Shell\Memoria.ToDo.Desktop.Shell.csproj" />

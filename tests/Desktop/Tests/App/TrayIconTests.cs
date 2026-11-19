@@ -71,6 +71,72 @@ public class TrayIconTests
     }
 
     [WpfFact]
+    public async Task The_menu_can_be_replaced_again_and_again_with_other_items_or_none()
+    {
+        ITrayIcon icon = new TrayIcon();
+        var dispatcher = Dispatcher.CurrentDispatcher;
+        var failures = new List<Exception>();
+
+        void OnUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            failures.Add(e.Exception);
+            e.Handled = true;
+        }
+
+        dispatcher.UnhandledException += OnUnhandled;
+        icon.Show("Memoria", Menu, () => { });
+        try
+        {
+            icon.UpdateMenu([new TrayMenuItem("Add", () => { }), new TrayMenuItem("Contacts", () => { }), new TrayMenuItem("Exit", () => { })]);
+            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+            icon.UpdateMenu([new TrayMenuItem("Exit", () => { })]);
+            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+            icon.UpdateMenu([]);
+            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+        }
+        finally
+        {
+            icon.Remove();
+            dispatcher.UnhandledException -= OnUnhandled;
+        }
+
+        Assert.Empty(failures);
+    }
+
+    [WpfFact]
+    public async Task Updating_the_menu_before_the_icon_is_shown_or_after_it_is_removed_is_ignored()
+    {
+        ITrayIcon icon = new TrayIcon();
+        try
+        {
+            icon.UpdateMenu(Menu);
+            icon.Show("Memoria", Menu, () => { });
+            icon.Remove();
+            icon.UpdateMenu(Menu);
+            await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+        }
+        finally
+        {
+            icon.Remove();
+        }
+    }
+
+    [WpfFact]
+    public void Updating_the_menu_refuses_a_missing_list()
+    {
+        ITrayIcon icon = new TrayIcon();
+        icon.Show("Memoria", Menu, () => { });
+        try
+        {
+            Assert.Throws<ArgumentNullException>(() => icon.UpdateMenu(null!));
+        }
+        finally
+        {
+            icon.Remove();
+        }
+    }
+
+    [WpfFact]
     public void Shows_removes_and_shows_the_icon_again_and_removing_twice_or_before_showing_does_nothing()
     {
         var icon = new TrayIcon();

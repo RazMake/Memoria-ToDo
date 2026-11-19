@@ -21,6 +21,8 @@ internal sealed partial class TaskService
 
         public string? ConfigureShortcut => Read(settings => settings.ConfigureShortcut.Value);
 
+        public string? ContactsShortcut => Read(settings => settings.ContactsShortcut.Value);
+
         public event EventHandler? Changed
         {
             add => owner.settingsChanged += value;
@@ -60,6 +62,11 @@ internal sealed partial class TaskService
             owner.ChangeSettings(settings => settings.ConfigureShortcut.Value == shortcut
                 ? settings
                 : settings with { ConfigureShortcut = new Setting<string?>(shortcut, owner.Now()) });
+
+        public void SetContactsShortcut(string? shortcut) =>
+            owner.ChangeSettings(settings => settings.ContactsShortcut.Value == shortcut
+                ? settings
+                : settings with { ContactsShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
         private T Read<T>(Func<SharedSettings, T> read) => owner.repository.Locked(_ => read(owner.settings.Require()));
     }

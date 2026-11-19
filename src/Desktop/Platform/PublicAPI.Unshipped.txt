@@ -51,6 +51,8 @@ Memoria.ToDo.Desktop.Platform.SaveKeys.Set(System.Windows.Input.ModifierKeys mod
 Memoria.ToDo.Desktop.Platform.SaveKeys.Text.get -> string!
 Memoria.ToDo.Desktop.Platform.ShortcutText
 static Memoria.ToDo.Desktop.Platform.ShortcutText.Of(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> string!
+Memoria.ToDo.Desktop.Platform.CloseCommandHook
+static Memoria.ToDo.Desktop.Platform.CloseCommandHook.Attach(System.Windows.Window! window, System.Action! userClose) -> void
 Memoria.ToDo.Desktop.Platform.EscCloses
 static Memoria.ToDo.Desktop.Platform.EscCloses.Attach(System.Windows.Window! window) -> void
 Memoria.ToDo.Desktop.Platform.EventKey
@@ -88,3 +90,23 @@ Memoria.ToDo.Desktop.Platform.MousePointer.MousePointer() -> void
 Memoria.ToDo.Desktop.Platform.MousePointer.IsLeftButtonDown.get -> bool
 Memoria.ToDo.Desktop.Platform.MousePointer.PositionIn(System.Windows.UIElement! element) -> System.Windows.Point
 Memoria.ToDo.Desktop.Platform.MousePointer.StartDrag(System.Windows.DependencyObject! source, System.Windows.IDataObject! data) -> void
+Memoria.ToDo.Desktop.Platform.MessageLine
+Memoria.ToDo.Desktop.Platform.MessageLine.MessageLine() -> void
+Memoria.ToDo.Desktop.Platform.MessageLine.Show(string? text) -> void
+Memoria.ToDo.Desktop.Platform.StoreFailures
+static Memoria.ToDo.Desktop.Platform.StoreFailures.MessageOf(System.Exception! failure) -> string?
+static Memoria.ToDo.Desktop.Platform.StoreFailures.Run(System.Action! call, System.Func<System.Exception!, string?>! messageOf, System.Action<string!>! report) -> bool
+Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.LeaveAnswer.Cancel = 2 -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.LeaveAnswer.Discard = 1 -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.LeaveAnswer.Save = 0 -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.ILeavePrompt
+Memoria.ToDo.Desktop.Platform.ILeavePrompt.Ask() -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.ILeavingEdit
+Memoria.ToDo.Desktop.Platform.ILeavingEdit.Discard() -> void
+Memoria.ToDo.Desktop.Platform.ILeavingEdit.HasChanges.get -> bool
+Memoria.ToDo.Desktop.Platform.ILeavingEdit.ReturnToEditor() -> void
+Memoria.ToDo.Desktop.Platform.ILeavingEdit.Save() -> bool
+Memoria.ToDo.Desktop.Platform.LeaveDecision
+Memoria.ToDo.Desktop.Platform.LeaveDecision.LeaveDecision(Memoria.ToDo.Desktop.Platform.ILeavePrompt! prompt) -> void
+Memoria.ToDo.Desktop.Platform.LeaveDecision.MayLeave(Memoria.ToDo.Desktop.Platform.ILeavingEdit? edit) -> bool

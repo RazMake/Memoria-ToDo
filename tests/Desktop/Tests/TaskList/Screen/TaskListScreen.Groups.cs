@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using Memoria.ToDo.Desktop.Fakes;
+using static Memoria.ToDo.Desktop.VisualTree;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 

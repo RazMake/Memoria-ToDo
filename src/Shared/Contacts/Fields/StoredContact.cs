@@ -19,7 +19,16 @@ internal sealed record StoredContact(Contact Contact, ObjectFields Fields)
             if (element.ValueKind != JsonValueKind.String)
                 throw new InvalidDataException($"'{field.Name}' must be text.");
             if (element.GetString() is { Length: > 0 } text)
-                contact = field.Set(contact, text);
+            {
+                try
+                {
+                    contact = field.With(contact, text);
+                }
+                catch (FormatException e)
+                {
+                    throw new InvalidDataException(e.Message, e);
+                }
+            }
         }
 
         if (ContactRules.Problem(contact) is { } problem)
@@ -35,7 +44,7 @@ internal sealed record StoredContact(Contact Contact, ObjectFields Fields)
     public StoredContact With(Contact edited) => FromFields(ObjectFields.Of(KnownFields(edited).Concat(UnknownFields(Fields))));
 
     private static IEnumerable<KeyValuePair<string, JsonElement>> KnownFields(Contact contact) =>
-        ContactFields.All.Select(field => (field.Name, Value: field.Get(contact)))
+        ContactFields.All.Select(field => (field.Name, Value: field.TextOf(contact)))
             .Where(field => !string.IsNullOrEmpty(field.Value))
             .Select(field => KeyValuePair.Create(field.Name, JsonValues.Text(field.Value!)));
 

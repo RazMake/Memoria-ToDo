@@ -16,7 +16,7 @@ internal sealed record LiteralSegment(string Value) : TemplateSegment
 internal sealed record FieldSegment(ContactField Field) : TemplateSegment
 {
     public override string? Text(Contact contact, IReadOnlyList<DataType> dataTypes) =>
-        Field.Get(contact) is { Length: > 0 } value ? value : null;
+        Field.TextOf(contact) is { Length: > 0 } value ? value : null;
 }
 
 /// <summary>A property of the entry a key field names, such as <c>{careerPath.short}</c>.</summary>

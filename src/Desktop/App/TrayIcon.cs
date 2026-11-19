@@ -86,6 +86,19 @@ internal sealed class TrayIcon : ITrayIcon
         shown?.Dispose();
     }
 
+    public void UpdateMenu(IReadOnlyList<TrayMenuItem> menu)
+    {
+        ArgumentNullException.ThrowIfNull(menu);
+        var shown = _shown;
+        shown?.Icon.Dispatcher.BeginInvoke(() =>
+        {
+            if (ReferenceEquals(_shown, shown))
+            {
+                shown.Icon.ContextMenu = BuildMenu(menu);
+            }
+        });
+    }
+
     /// <summary>The created icon with the images it shows. Used on the UI thread, except for the dispatcher read.</summary>
     private sealed class Shown : IDisposable
     {

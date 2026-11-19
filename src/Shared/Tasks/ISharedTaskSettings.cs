@@ -25,6 +25,9 @@ public interface ISharedTaskSettings
     /// <summary>Shortcut text Windows interprets; null means Windows' existing default.</summary>
     string? ConfigureShortcut { get; }
 
+    /// <summary>Shortcut text Windows interprets; null means Windows' existing default.</summary>
+    string? ContactsShortcut { get; }
+
     /// <summary>
     /// Raised on the calling thread, outside the store's lock, after settings change locally,
     /// on repository selection, or through reload. No-op setters raise nothing.
@@ -66,4 +69,10 @@ public interface ISharedTaskSettings
     /// Throws NoRepositoryFolderException when no repository is selected. An unchanged value writes nothing.
     /// </summary>
     void SetConfigureShortcut(string? shortcut);
+
+    /// <summary>
+    /// Saves text without interpreting it, or null to use Windows' default, and its UTC change time.
+    /// Throws NoRepositoryFolderException when no repository is selected. An unchanged value writes nothing.
+    /// </summary>
+    void SetContactsShortcut(string? shortcut);
 }

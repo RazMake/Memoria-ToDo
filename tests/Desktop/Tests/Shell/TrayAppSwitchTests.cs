@@ -58,15 +58,15 @@ public class TrayAppSwitchTests
     [Theory]
     [InlineData(ShortcutKind.AddNewTask)]
     [InlineData(ShortcutKind.ManageTasks)]
+    [InlineData(ShortcutKind.Contacts)]
     public void A_windows_own_shortcut_while_it_is_open_brings_it_forward_and_closes_nothing(ShortcutKind kind)
     {
         var app = Started(kind);
-        app.Add.IsOpen = kind == ShortcutKind.AddNewTask;
-        app.ViewTasks.IsOpen = kind == ShortcutKind.ManageTasks;
+        app.SetOpen(kind, true);
 
         app.GlobalShortcut.Press(TestShortcut.A);
 
-        Assert.Equal([kind == ShortcutKind.AddNewTask ? "Add" : "Task View"], app.Shown);
+        Assert.Equal([ShellHarness.WindowOf(kind)], app.Shown);
     }
 
     [Theory]
@@ -86,18 +86,20 @@ public class TrayAppSwitchTests
     [Theory]
     [InlineData(ShortcutKind.AddNewTask)]
     [InlineData(ShortcutKind.ManageTasks)]
+    [InlineData(ShortcutKind.Contacts)]
     public void A_shortcut_with_nothing_open_shows_only_its_window_and_closes_none(ShortcutKind kind)
     {
         var app = Started(kind);
 
         app.GlobalShortcut.Press(TestShortcut.A);
 
-        Assert.Equal([kind == ShortcutKind.AddNewTask ? "Add" : "Task View"], app.Shown);
+        Assert.Equal([ShellHarness.WindowOf(kind)], app.Shown);
     }
 
     [Theory]
     [InlineData(ShortcutKind.AddNewTask)]
     [InlineData(ShortcutKind.ManageTasks)]
+    [InlineData(ShortcutKind.Contacts)]
     public async Task A_shortcut_on_an_unconfigured_device_opens_Configure_and_closes_no_window(ShortcutKind kind)
     {
         var app = new ShellHarness(startedAtSignIn: false);
@@ -134,6 +136,49 @@ public class TrayAppSwitchTests
         app.TrayIcon.LeftClick();
 
         Assert.Equal(["Task View"], app.Shown);
+    }
+
+    [Theory]
+    [InlineData(ShortcutKind.AddNewTask)]
+    [InlineData(ShortcutKind.ManageTasks)]
+    [InlineData(ShortcutKind.Configure)]
+    public void A_shortcut_with_Contacts_open_closes_Contacts_then_shows_its_window(ShortcutKind kind)
+    {
+        var app = Started(kind);
+        app.Contacts.IsOpen = true;
+
+        app.GlobalShortcut.Press(TestShortcut.A);
+
+        Assert.Equal(["Close Contacts", ShellHarness.WindowOf(kind)], app.Shown);
+    }
+
+    [Theory]
+    [InlineData(ShortcutKind.AddNewTask)]
+    [InlineData(ShortcutKind.ManageTasks)]
+    [InlineData(ShortcutKind.Configure)]
+    public void A_shortcut_with_Contacts_open_does_not_show_its_window_when_Contacts_stays_open(ShortcutKind kind)
+    {
+        var app = Started(kind);
+        app.Contacts.IsOpen = true;
+        app.Contacts.CloseAnswer = false;
+
+        app.GlobalShortcut.Press(TestShortcut.A);
+
+        Assert.Equal(["Close Contacts"], app.Shown);
+    }
+
+    [Theory]
+    [InlineData(ShortcutKind.AddNewTask)]
+    [InlineData(ShortcutKind.ManageTasks)]
+    public void The_tray_menu_keeps_Contacts_open_when_it_shows_another_window(ShortcutKind kind)
+    {
+        var app = new ShellHarness();
+        app.Start();
+        app.Contacts.IsOpen = true;
+
+        app.TrayIcon.ChooseMenuItem(kind == ShortcutKind.AddNewTask ? "Add new task" : "Task View");
+
+        Assert.Equal([ShellHarness.WindowOf(kind)], app.Shown);
     }
 
     [Fact]

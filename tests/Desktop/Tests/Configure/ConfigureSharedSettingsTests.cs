@@ -51,6 +51,41 @@ public class ConfigureSharedSettingsTests
     }
 
     [WpfFact]
+    public void Stored_Contacts_text_is_applied_when_shortcut_actions_connect()
+    {
+        using var screen = new ConfigureScreen(
+            initialSettings: settings => settings.SetContactsShortcut("Ctrl+Alt+K"));
+        screen.Open();
+
+        Assert.Equal("Ctrl+Alt+K", screen.ContactsField.Text);
+        Assert.Equal(TestShortcut.Of(ModifierKeys.Control | ModifierKeys.Alt, Key.K), screen.ContactsAction.Registered);
+    }
+
+    [WpfFact]
+    public void Invalid_stored_Contacts_text_keeps_the_default_says_why_and_is_not_repaired()
+    {
+        using var screen = new ConfigureScreen(
+            initialSettings: settings => settings.SetContactsShortcut("not a Windows shortcut"));
+        screen.Open();
+
+        Assert.Equal("Win+Alt+O", screen.ContactsField.Text);
+        Assert.Contains("not a Windows shortcut", screen.ContactsMessage);
+        Assert.Equal("not a Windows shortcut", screen.Store.Settings.ContactsShortcut);
+    }
+
+    [WpfFact]
+    public void A_valid_Contacts_pick_is_saved_in_shared_settings()
+    {
+        using var screen = new ConfigureScreen();
+        screen.Open();
+
+        screen.Chord(screen.ContactsField, Key.LeftCtrl, Key.LeftShift, Key.K);
+        screen.FocusStartWithWindowsBox();
+
+        Assert.Equal("Ctrl+Shift+K", screen.Store.Settings.ContactsShortcut);
+    }
+
+    [WpfFact]
     public void A_valid_Configure_pick_is_saved_in_shared_settings()
     {
         using var screen = new ConfigureScreen();

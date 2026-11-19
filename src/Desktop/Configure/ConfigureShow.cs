@@ -15,7 +15,9 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly UiNotices _notices = new();
     private readonly ShortcutSetting _addNewTask;
     private readonly ShortcutSetting _manageTasks;
+    private readonly ShortcutSetting _contacts;
     private readonly ShortcutSetting _configure;
+    private readonly ShortcutSetting[] _globals;
     private readonly CloseWindowSetting _closeWindow;
     private readonly SaveSetting _save;
     private readonly CloseWindowKeys _closeWindowKeys;
@@ -47,8 +49,11 @@ internal sealed class ConfigureShow : IConfigureWindow
             () => settings.AddNewTaskShortcut, settings.SetAddNewTaskShortcut);
         _manageTasks = new("Task View", Shortcut.ManageTasksDefault,
             () => settings.ManageTasksShortcut, settings.SetManageTasksShortcut);
+        _contacts = new("Contacts", Shortcut.ContactsDefault,
+            () => settings.ContactsShortcut, settings.SetContactsShortcut);
         _configure = new("Configure", Shortcut.ConfigureDefault,
             () => settings.ConfigureShortcut, settings.SetConfigureShortcut);
+        _globals = [_addNewTask, _manageTasks, _contacts, _configure];
         _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions));
         settings.Changed += OnSettingsChanged;
     }
@@ -56,6 +61,12 @@ internal sealed class ConfigureShow : IConfigureWindow
     public void Show()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        foreach (var setting in _globals)
+        {
+            setting.RegisterAgain();
+        }
+
+        _refreshOpen?.Invoke();
         _window.Show();
     }
 
@@ -74,22 +85,30 @@ internal sealed class ConfigureShow : IConfigureWindow
 
     public bool IsOpen => _window.IsOpen;
 
-    public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure)
+    public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure, IShortcutAction contacts)
     {
         ArgumentNullException.ThrowIfNull(addNewTask);
         ArgumentNullException.ThrowIfNull(manageTasks);
         ArgumentNullException.ThrowIfNull(configure);
-        var addConnected = _addNewTask.Connect(addNewTask);
-        var manageConnected = _manageTasks.Connect(manageTasks);
-        var configureConnected = _configure.Connect(configure);
-        return addConnected && manageConnected && configureConnected;
+        ArgumentNullException.ThrowIfNull(contacts);
+        (ShortcutSetting Setting, IShortcutAction Action)[] connections =
+            [(_addNewTask, addNewTask), (_manageTasks, manageTasks), (_contacts, contacts), (_configure, configure)];
+        var allConnected = true;
+        foreach (var (setting, action) in connections)
+        {
+            allConnected &= setting.Connect(action);
+        }
+
+        return allConnected;
     }
 
     private void OnSettingsChanged(object? sender, EventArgs e) => _notices.Post(() =>
     {
-        _addNewTask.SettingsChanged();
-        _manageTasks.SettingsChanged();
-        _configure.SettingsChanged();
+        foreach (var setting in _globals)
+        {
+            setting.SettingsChanged();
+        }
+
         _closeWindow.SettingsChanged();
         _save.SettingsChanged();
         _refreshOpen?.Invoke();
@@ -97,7 +116,7 @@ internal sealed class ConfigureShow : IConfigureWindow
 
     private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)
     {
-        var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _configure, _closeWindow, _save);
+        var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _contacts, _configure, _closeWindow, _save);
         var application = new ApplicationSection(new UpdateCard(_updates), shortcuts, _theme);
         var delay = new DeletionDelayRow(_settings);
         var ui = new SyncUi(sync, setupActions, _notices.Post);

@@ -19,6 +19,9 @@ public interface ITrayIcon
     /// </summary>
     void NotifySyncError(string message, Action clicked);
 
+    /// <summary>Replaces the shown icon's menu, on the UI thread. Ignored before <see cref="Show"/> and after <see cref="Remove"/>.</summary>
+    void UpdateMenu(IReadOnlyList<TrayMenuItem> menu);
+
     /// <summary>
     /// Removes the icon. Every queued, in-flight, and later <see cref="UpdateStatus"/> and
     /// <see cref="NotifySyncError"/> call is then ignored and never recreates the icon.

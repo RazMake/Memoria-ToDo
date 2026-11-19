@@ -1,6 +1,6 @@
 # Formatted view: how the desktop app shows a task as a reader sees it
 
-Status: Drafting
+Status: Decided
 
 The Formatted view is the desktop module that shows a task's title and description formatted, with no Markdown characters, and opens their web links in the default browser. Task View uses it now, also for the Preview of a description it edits, [Updates](updates.md#what-is-new-shows-each-newer-releases-notes) uses it for What is new, and Add's preview will use it later.
 
@@ -242,3 +242,7 @@ The options below were considered and rejected, grouped by decision.
   - **A second virtual host mapping for the waiting images, at an address of its own**: the page would have to name that address for each waiting image, but Rendering can't tell which images wait. Tasks, the Task list, and Rendering's page would all change, and a link would change address at Save.
   - **The virtual host mapping for the clone, plus a WebResourceRequested handler for the waiting images on the same host**: WebView2 never raises the event for a mapped host.
   - **Serving every file in both folders, as the mapping did**: no page loads anything but images, so serving task files and settings only widens what a page could read.
+
+## Open questions
+
+None.

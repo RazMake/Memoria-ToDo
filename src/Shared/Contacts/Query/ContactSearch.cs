@@ -7,7 +7,7 @@ internal sealed class ContactSearch
 
     public ContactSearch(IEnumerable<Contact> sorted) =>
         entries = [.. sorted.Select(contact => (contact,
-            ContactFields.All.Select(field => field.Get(contact)).OfType<string>().Where(value => value.Length > 0).ToArray()))];
+            ContactFields.All.Select(field => field.TextOf(contact)).OfType<string>().Where(value => value.Length > 0).ToArray()))];
 
     /// <summary>The contacts with every word of the text in some field, ignoring case; everyone for blank text.</summary>
     public IReadOnlyList<Contact> Find(string text)

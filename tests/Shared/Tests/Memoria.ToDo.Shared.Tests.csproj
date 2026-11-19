@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="Memoria.ToDo.Shared.Fakes" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\..\..\src\Desktop\App\WindowsFileSystem.cs" Link="Sync\Integration\WindowsFileSystem.cs" />
     <Compile Include="..\..\..\src\Desktop\App\WindowsDirectoryIdentity.cs" Link="Sync\Integration\WindowsDirectoryIdentity.cs" />
   </ItemGroup>

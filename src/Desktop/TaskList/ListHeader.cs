@@ -12,7 +12,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 internal sealed class ListHeader : StackPanel
 {
     private readonly SearchBand _search = new();
-    private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed, Margin = new Thickness(8, 8, 8, 0) };
+    private readonly MessageLine _message = new() { Margin = new Thickness(8, 8, 8, 0) };
     private readonly TextBlock _undoLabel = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
     private readonly Border _undoBar = new() { Visibility = Visibility.Collapsed, Padding = new Thickness(8), Margin = new Thickness(8, 8, 8, 0) };
     private readonly ListFilter _filter;
@@ -21,7 +21,6 @@ internal sealed class ListHeader : StackPanel
     {
         ArgumentNullException.ThrowIfNull(filter);
         _filter = filter;
-        _message.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
         _undoBar.SetResourceReference(Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
         _search.TextChanged += (_, _) => _filter.SearchText = _search.Text;
         _search.EdgeRowRequested += (_, last) => EdgeRowRequested?.Invoke(this, last);
@@ -48,11 +47,7 @@ internal sealed class ListHeader : StackPanel
     public void FocusSearch() => _search.FocusText();
 
     /// <summary>Shows the message, or hides the line when it is null or empty.</summary>
-    public void ShowMessage(string? message)
-    {
-        _message.Text = message ?? "";
-        _message.Visibility = string.IsNullOrEmpty(message) ? Visibility.Collapsed : Visibility.Visible;
-    }
+    public void ShowMessage(string? message) => _message.Show(message);
 
     /// <summary>Shows the Undo bar with what it undoes, or hides it when <paramref name="label"/> is null.</summary>
     public void ShowUndo(string? label)

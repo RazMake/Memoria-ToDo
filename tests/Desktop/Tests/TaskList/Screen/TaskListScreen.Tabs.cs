@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.TaskEditor.Tests;
+using static Memoria.ToDo.Desktop.VisualTree;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 

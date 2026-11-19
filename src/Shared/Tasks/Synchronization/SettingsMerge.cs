@@ -19,7 +19,8 @@ internal static class SettingsMerge
             Newer(local.ManageTasksShortcut, remote.ManageTasksShortcut),
             Newer(local.CloseWindowShortcut, remote.CloseWindowShortcut),
             Newer(local.SaveShortcut, remote.SaveShortcut),
-            Newer(local.ConfigureShortcut, remote.ConfigureShortcut)));
+            Newer(local.ConfigureShortcut, remote.ConfigureShortcut),
+            Newer(local.ContactsShortcut, remote.ContactsShortcut)));
     }
 
     private static Setting<T> Newer<T>(Setting<T> local, Setting<T> remote) => local.Updated > remote.Updated ? local : remote;

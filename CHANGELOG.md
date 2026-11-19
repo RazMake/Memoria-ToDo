@@ -6,9 +6,11 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- Contacts window, opened with Win+Alt+O (you can change this shortcut in Configure) or from the new Contacts item in the tray menu. Both appear only when your repository has contact files. The window lists your contacts by group, searches as you type, and shows a contact's details. You can edit a contact, add one to a group, delete one, and drag a group's heading to reorder the groups. A line above the list tells you about contact files the app skipped.
 - Sync now carries your contact files between devices. When two devices change the same contact, both changes are kept field by field. A contact file the app can't read is left as it is and listed in the sync status.
 - A task file with damaged text, such as a broken character escape, no longer stops all your tasks from loading. That file is skipped and listed in the sync status, like other files the app can't read, and the rest of your tasks load.
 - In the status bar at the bottom of Add and Task View, clicking "Update available" now opens What is new instead of starting the update. To update, use Update Now in Configure. A small gap now separates "Update available" from the version.
+- Fixed: in Task View, the window that lists your tasks, the Close window shortcut now asks before dropping an edit you changed, as the close button does.
 
 ## 1.1.1
 

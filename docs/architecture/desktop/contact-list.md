@@ -16,16 +16,21 @@ The user decided the window shows the list on the left and the details on the ri
 
 Proposed, each a decision to confirm:
 
-- Nothing is selected when the window opens, and the right side says to pick a contact.
+- Nothing is selected when the window opens, and the right side says "Pick a contact to see the details."
 - The window opens at Task View's size and remembers nothing between openings.
 - An empty group still shows its heading, so the user can add to it.
 - The list shows the new contacts at once when they change, such as after a sync, and keeps the selection when the contact is still there.
+- **The window's title is "Contacts".** Its size is Task View's, 1100 by 720 with a minimum width of 680, as the window's own numbers, since the two windows' sizes change for different reasons.
+- **The list takes 40 parts of the width and the details 60**, at least 260 and 340 pixels wide, since a contact's form has more fields than a task's details.
+- **The top of the window holds, in order: the search band, the [message line](#messages-and-problems-show-at-the-top), and the problems line.** They span the window above both sides, as Task View's header does. The window has no status bar.
+- **Selecting moves with the keyboard too**: Down and Up in the search box select the first or last contact shown, through the search band's edge-row event, and Down and Up in the list move the selection.
+- **When the clone has no contact files, or no clone is selected**, the list says "There are no contact files in this repository.", and Add, Delete, Edit, and the drag are off. `IContacts.HasContactFiles` tells the two cases apart from a clone whose groups are all skipped, which still shows its problems line.
 
 ### Search filters the list
 
 A search band at the window's top, the platform's [search band](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), filters the list as the user types, through [Contacts' search](../contacts.md#search-matches-every-typed-word-in-any-field), the same search the "@" list uses. The user decided it matches every typed word in any field, ignoring case.
 
-Proposed, each a decision to confirm: a group with no match hides; matches keep their groups and order; with no match at all, the list says so.
+Proposed, each a decision to confirm: a group with no match hides; matches keep their groups and order; with no match at all, the list says "No contact matches the search." An empty search shows every group, empty ones included. The selection stays when the selected contact still matches, and clears when it doesn't. Two files can hold contacts with the same ID, which Contacts reports as a [shared name](../contacts.md#a-name-two-contacts-share-points-to-nobody), so the list shows each matching contact in its own group, and hides one that doesn't match even when it shares an ID with one that does.
 
 ### The details show every field and edit in place
 
@@ -43,6 +48,20 @@ Proposed, each a decision to confirm:
 - **When the key field's data type file is missing or can't be read**, the field shows its stored key, read-only, and says under it which file is wrong. Saving keeps the key.
 - **The ID can be typed only when adding.** It's read-only for an existing contact.
 - **A save Contacts rejects keeps the form**, with the reason under the field it names, or at the top.
+- **The form checks only what its own fields can tell**: the ID and full name aren't empty, the time reads, and, when adding, no loaded contact holds the ID, as Contacts compares names. The user decided this last check, since Contacts' Save replaces a contact of the same group with that ID; under the ID it says "Another contact has this ID." Each problem shows under its field, and Save does nothing until they're fixed. The time's message is "Write the time as HH:mm, such as 09:30." Every other rule is Contacts': its rejection shows on the message line at the top, as Contacts words it, since its failures don't name a field.
+- **The time field reads and shows the time through Contacts' `ContactTime`**, the user's choice, so the forms the field accepts are the forms Contacts reads, with one home. `ContactTime` sits in [Contacts' public interface](../contacts.md#public-interface).
+- **A date shows in the details in the user's short date format**, as the date picker shows it, since a date's look on screen isn't the file's format.
+- **An empty field saves as missing**, as Contacts treats empty values.
+- **While a form is open, selecting another contact or Add asks first** when the form has changes, with Save, Discard, and Cancel, as Esc does; with no changes the form just leaves. F2 and Delete do nothing while a form is open, since the form is already open and Delete is offered only without one. The drag is off, as [below](#dragging-a-groups-heading-reorders-the-groups) says.
+- **After a save, the form leaves, and the saved contact is selected**, also a new one.
+
+Proposed for building, each a decision to confirm:
+
+- **The fields come from [Contacts' `ContactFields`](../contacts.md#public-interface)**, the user's choice: their order, kinds, and which are team fields. The window keeps only their labels.
+- **The fields' names** are ID, Alias, Full name, First name, Title, Location, Level, Working type, Pronouns, Career path, Reports to, Direct reports, Day start time, Level start date, Team member since, and Exit date. The details and the form show them in the order of [Contacts' field table](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts), with Direct reports after Reports to; the form leaves out Direct reports, which isn't a stored field.
+- **An empty ID says "Write an ID."** and an empty full name "Write the full name.", under the field.
+- **A stored key marked "Not in the list" stays in the drop-down while the form is open**, also after the user picks another, so the user can pick it back. A key the user picked that a reload of its file no longer lists shows the same way, marked "Not in the list", so the drop-down always shows the form's value; Contacts then rejects the save, and the message line says why.
+- **Clicking "Reports to" or a direct report that the search hides empties the search first**, so the selected contact shows in the list. With a changed form open, it asks first, and empties the search only once the form leaves; Cancel keeps both.
 
 ### Add and Delete change the contacts
 
@@ -53,6 +72,8 @@ Proposed, each a decision to confirm:
 - **Add is a button on each group's heading**, and on the right-click menu of the group's contacts. It opens an empty form for that group, with the cursor in the ID.
 - **Delete is on a contact's right-click menu and the Delete key** on the selected contact, when no form is open. It asks first with the platform's [question dialog](README.md#later-designs-answer-what-these-files-leave-open): "Delete {full name}?", with Delete and Cancel, Cancel the default.
 - **After a delete, nothing is selected.** Others who reported to the contact show the name as written, and mentions of it show their stored text, as [Contacts](../contacts.md#saving-adding-and-deleting-change-one-group-file) decides.
+- **The user's own group shows no Add button, and its contact has no Delete**, on the menu or the Delete key, so the window never asks Contacts for what it rejects.
+- **A failed delete keeps the contact**, selected, and the message line says why.
 
 ### Dragging a group's heading reorders the groups
 
@@ -62,17 +83,37 @@ Proposed, each a decision to confirm: the drag works as Task View's [group drag]
 
 ### A global shortcut and the tray menu open Contacts
 
-The user decided Contacts has a fourth global shortcut, **Win+Alt+O** by default, which the user changes in [Configure](configure.md#each-setting-has-one-owner) like the others. The tray menu has a Contacts item. Both show only while the clone has contact files, as [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides, which also decides how the shortcut switches between windows.
+The user decided Contacts has a fourth global shortcut, **Win+Alt+O** by default, which the user changes in [Configure](configure.md#each-setting-has-one-owner) like the others. The tray menu has a Contacts item. Both show only while the clone has contact files, as [Shell](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) decides, which also decides how the shortcut switches between windows.
 
 Proposed, each a decision to confirm: the shortcut, with Contacts open, brings it to the front, empties its search, and puts the cursor there, as Task View's does. Closing the window with a changed form asks Save, Discard, or Cancel first.
 
-### Problems show above the list
+Proposed for building, each a decision to confirm:
 
-Proposed, a decision to confirm: when Contacts reports skipped files or shared names, a line above the list says how many, and clicking it lists each file with its reason and each shared name. Sync's status also lists the skipped files.
+- **A new window opens with an empty search and the cursor in it.** Show on an open window empties the search by setting the band's text, so the list filters again through the one path, and puts the cursor there; a form that's open stays open, with its typed values.
+- **Close works as the close button does**: with a changed form it asks Save, Discard, or Cancel, and returns false when the user cancels, the save fails, or the question already shows. When Windows ends the session or the app exits, the window closes without asking, as [Task View](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) does: only the user's own close command asks.
+- **Esc with no form open closes the window**, through the platform's Esc rule, as Task View does.
+- **`IsAvailable` follows `IContacts.HasContactFiles`.** The window reads it when asked, and raises `AvailableChanged` on the UI thread only when the answer differs from the last one it reported, starting from the answer at creation. It follows `IContacts.Changed` from creation, also while the window is closed, and moves each notice to the UI thread, since Contacts raises it on the thread of the call or of the repository's reload.
+
+### Messages and problems show at the top
+
+The user left open whether Contacts' message line at the top shares the Task list's look. Proposed, a decision to confirm: **it does, through the platform's [message line](README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them)**, which Task View moves onto with no change users notice. A window's failure looks the same in both.
+
+- **The message line shows why the last action failed**: a save, delete, or move that Contacts rejected, or that a file error stopped. The next action that succeeds, or the next one the user starts, clears it.
+- **Known failures get the platform's message**: no clone, a file error, and a rejection Contacts words. Contacts' `InvalidOperationException` for a group file skipped since the window showed it gets "This group's file was skipped. See the problems line." Any other failure isn't caught, so the app's unhandled-error path shows it.
+
+Proposed, a decision to confirm: when Contacts reports skipped files or shared names, a line above the list says how many, such as "2 contact files skipped, 1 name shared by more than one contact", and clicking it lists each file with its reason and each shared name. Sync's status also lists the skipped files.
+
+Proposed for building, each a decision to confirm:
+
+- **Clicking the problems line opens or closes the list under it**, in the window, with no dialog. Each skipped file shows its path relative to the clone and its reason, and each shared name shows as "Shared by more than one contact: {name}". A file that needs a newer app says so, as its reason does.
+- **The line hides when there's nothing to report**, and follows each change.
+- **It's written in the help style**, not the error color, since a skipped file isn't the last action's failure.
+- **It names only the kinds there are, singular for one**: "1 contact file skipped", "2 names shared by more than one contact", or both joined by a comma.
+- **When every group file is skipped**, the list says "No contact file could be read. See the problems line."
 
 ## Public interface
 
-The Contact list may use only [Contacts](../contacts.md#public-interface), and the desktop platform. Shell shows and closes the window; the composition root creates it. Proposed, each a decision to confirm: these declarations. This is not implemented:
+The Contact list may use only [Contacts](../contacts.md#public-interface), and the desktop platform. Shell shows and closes the window; the composition root creates it. Proposed, each a decision to confirm: these declarations, built in step 15's slice (e) as the project `Memoria.ToDo.Desktop.ContactList` in [`src/Desktop/ContactList`](../../../src/Desktop/ContactList/ContactsWindow.cs), its tests in the desktop tests project under `ContactList`:
 
 ```csharp
 namespace Memoria.ToDo.Desktop.ContactList;
@@ -109,11 +150,14 @@ public interface IContactsWindow
 
 The window uses the platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), [Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows), and Save keys, as Task View does. `TimeProvider` drives the drag's edge scrolling.
 
+Proposed, each a decision to confirm: `Create` throws `ArgumentNullException` for a null argument, before it makes anything, and makes no window until Show. `IsAvailable` and `AvailableChanged` work from creation, with the window never opened. The Contacts window's [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test), for Shell's tests, lives in the desktop fakes project beside Task View's.
+
 ## Failure modes
 
-- **No clone is selected**: the list is empty and says to choose the repository folder in Configure; Add, Delete, and the drag are off.
+- **No clone is selected, or the clone has no contact files**: the list is empty and says there are no contact files; Add, Delete, Edit, and the drag are off. Shell offers the window only while there are contact files, so this shows only in a window left open.
 - **A save, delete, or move fails**: nothing changes on screen but a message saying why, under the form or at the top; the form keeps the typed values.
 - **A sync changes the contact being edited**: the form keeps the user's values, and Save writes them over the synced ones. If the sync deleted it, Save adds it back. This is an accepted risk; the user sees the contact again and can delete it.
+- **The user selects another repository in Configure while a form is open**, which the tray menu allows: Save writes the form into the newly selected clone. The user accepted this risk, as for Task View's edits: it's rare, and the user sees the result.
 - **A contact file is skipped**: its contacts don't show, and the problems line says so.
 
 ## Ruled out
@@ -125,6 +169,10 @@ The window uses the platform's [single window](README.md#a-closed-window-is-made
 - **An Undo bar after Delete**: the question first is simpler, and a delete is rare.
 - **A fixed Contacts shortcut**: the user chose to change it in Configure like the others.
 - **A split bar and search band of the window's own**: they'd copy Task View's; the user chose to move them into the platform.
+- **A message line of the window's own, in the error color**: it would copy Task View's look, which would then change in two places.
+- **The window's own rule for reading a time**: the forms would live in two places, which the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) forbids.
+- **A time picker of hour and minute lists**: a slower pick, and the field would differ from how the file reads.
+- **A dialog that lists the problems**: the inline list needs no new platform part, and stays beside the list while the user fixes the files.
 
 ## Open questions
 

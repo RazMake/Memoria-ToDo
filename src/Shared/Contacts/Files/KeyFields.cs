@@ -8,7 +8,7 @@ internal sealed record KeyField(string Field, string FileName)
 
     public string RelativePath => $"{ContactLayout.DataTypesFolderName}/{FileName}";
 
-    public string? KeyOf(Contact contact) => ContactFields.Named(Field)!.Get(contact);
+    public string? KeyOf(Contact contact) => ContactFields.Named(Field)!.TextOf(contact);
 }
 
 /// <summary>The key fields, in the order the form shows them, each with its data type file.</summary>

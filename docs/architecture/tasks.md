@@ -181,7 +181,7 @@ string? ConfigureShortcut { get; }
 void SetConfigureShortcut(string? shortcut);
 ```
 
-The user decided Contacts has a fourth global shortcut, which Configure changes like the others. So a seventh setting, `contactsShortcut`, after `configureShortcut`, holds the desktop's global shortcut that opens [Contacts](desktop/contact-list.md#a-global-shortcut-and-the-tray-menu-open-contacts), with the version still 1. Proposed, a decision to confirm: it's kept, merged, read when missing, and written exactly as `configureShortcut` is, and its public parts follow the same pattern. This is not implemented:
+The user decided Contacts has a fourth global shortcut, which Configure changes like the others. So a seventh setting, `contactsShortcut`, after `configureShortcut`, holds the desktop's global shortcut that opens [Contacts](desktop/contact-list.md#a-global-shortcut-and-the-tray-menu-open-contacts), with the version still 1. Proposed, a decision to confirm: it's kept, merged, read when missing, and written exactly as `configureShortcut` is, and its public parts follow the same pattern, after `SetConfigureShortcut`. The desktop's step 15 built it in slice (e), with the Contacts shortcut, in [`ISharedTaskSettings.cs`](../../src/Shared/Tasks/ISharedTaskSettings.cs):
 
 ```csharp
 /// <summary>Shortcut text Windows interprets; null means Windows' existing default.</summary>

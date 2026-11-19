@@ -34,7 +34,7 @@ These modules use it:
 - **Every `.json` file directly in `autocomplete/contacts/` is a group**, named by its file name without `.json`. Files in its subfolders, such as `dataTypes/`, aren't groups. `me.json` is the user's own group, named "me", with one contact.
 - **The user decided a group's name is its file name exactly, case included.** On a file system that tells case apart, `team.json` and `Team.json` load as two groups, though their headings may look alike. Every call that names a group, such as Save, Delete, and MoveGroup, finds only the group with exactly that name. Only the [team check](#team-groups-show-more-fields) and the check for the user's own group ignore case. The user decided `Me.json` is the user's own group too, named "Me". Proposed, a decision to confirm: when more than one file is the user's own group, such as `me.json` and `Me.json`, each is skipped and reported as another file that differs only in case, so the user has no own contact until one is renamed.
 - **Group files and the templates file hold a required `version`, starting at 1**, the user's choice, as task files do. A newer app reads every older version. A file with a newer version is skipped, left unchanged, and reported as needing a newer app. A file with no version, or one that isn't a whole number from 1 up, is skipped. The platform's [version rule](modules.md#stores-share-one-json-style-and-one-set-of-file-rules) checks it. Data type files stay plain JSON arrays, with no version.
-- **The clone has contacts when at least one group file exists**, the user's choice: the desktop app [offers Contacts](desktop/shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) only then. Proposed, a decision to confirm: a group file that's skipped still counts, so the window can say why it's skipped; data type and templates files alone don't count. Contacts checks again whenever it loads, and raises Changed when the answer changes.
+- **The clone has contacts when at least one group file exists**, the user's choice: the desktop app [offers Contacts](desktop/shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) only then. Proposed, a decision to confirm: a group file that's skipped still counts, so the window can say why it's skipped; data type and templates files alone don't count. Contacts checks again whenever it loads, and raises Changed when the answer changes.
 - **A contact is a JSON object of text fields.** The table lists the known fields, in the order the app writes them. The For column marks the [team fields](#team-groups-show-more-fields), which the Contact list shows only in team groups:
 
   | Field | Holds | Required | For |
@@ -69,6 +69,7 @@ The user decided there are two kinds of contacts: team contacts, and everyone el
 - **A group is a team group by its file name**: `team.json` and `ex-team.json`, the groups `team` and `ex-team`. Every other group, `me` included, isn't.
 - **Team fields are allowed everywhere**, the user's choice. Contacts loads, keeps, saves, searches, and merges them in any group alike. Only the [Contact list's details](desktop/contact-list.md#the-details-show-every-field-and-edit-in-place) show them for team groups alone.
 - **Contacts tells screens a group's kind**, through `ContactGroup.IsTeam`, so the team groups' names have one home.
+- **Contacts tells screens the fields too**, through its public `ContactFields`, the user's choice: each field's name, its kind, whether it's a team field, and its value as the file writes it. So the field table has one home, and a screen keeps only its own labels.
 
 The user decided the team check ignores case, so `Team.json` and `EX-TEAM.json` are team groups too, though group names otherwise [compare exactly](#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts).
 
@@ -244,6 +245,48 @@ public sealed record Contact(
     string? PronounsKey = null, string? CareerPathKey = null, string? LevelId = null, string? WorkingType = null,
     string? Location = null, string? ReportsTo = null, TimeOnly? DayStartTime = null,
     DateOnly? LevelStartDate = null, DateOnly? TeamMemberSince = null, DateOnly? ExitDate = null);
+
+/// A contact's time of day as text, the way Contacts reads, writes, and searches dayStartTime.
+/// The user decided it's public, so the Contact list's time field reads the same forms (slice (e) of step 15).
+public static class ContactTime
+{
+    /// The time written HH:mm, such as "09:30".
+    public static string TextOf(TimeOnly time);
+
+    /// Reads H:mm or HH:mm, from 0:00 to 23:59. False for anything else, null and empty included.
+    public static bool TryRead(string? text, out TimeOnly time);
+}
+
+/// How a field's value is written: plain text, a data type entry's id, a time HH:mm, or a date yyyy-MM-dd.
+public enum ContactFieldKind { Text, Key, Time, Date }
+
+/// One known contact field. The user decided it's public, so the Contact list reads the field table
+/// from here instead of keeping its own copy (slice (e) of step 15).
+public sealed class ContactField
+{
+    /// The field's name in the file, such as "reportsTo".
+    public string Name { get; }
+
+    public ContactFieldKind Kind { get; }
+
+    /// Whether the field table marks it Team, so the Contact list shows it only in team groups.
+    public bool IsTeamField { get; }
+
+    /// The value as the file writes it, or null when the field is missing.
+    public string? TextOf(Contact contact);
+
+    /// The contact with this field set from text written as the file writes it. Null or empty makes
+    /// the field missing; the ID and full name become empty, which Save rejects.
+    /// Throws FormatException for a time or date written in another form.
+    public Contact With(Contact contact, string? text);
+}
+
+/// The known contact fields.
+public static class ContactFields
+{
+    /// Every known field, in the field table's order.
+    public static IReadOnlyList<ContactField> All { get; }
+}
 
 /// One group file. The user's own group is named "me". IsTeam is true for the team and ex-team groups.
 public sealed record ContactGroup(string Name, string Heading, int Position, bool IsTeam, IReadOnlyList<Contact> Members);

@@ -28,6 +28,7 @@ public sealed class TaskLockedChangeTests
         Change("SetCloseWindowShortcut", s => s.Settings.SetCloseWindowShortcut("Ctrl+K")),
         Change("SetSaveShortcut", s => s.Settings.SetSaveShortcut("Ctrl+K")),
         Change("SetConfigureShortcut", s => s.Settings.SetConfigureShortcut("Ctrl+K")),
+        Change("SetContactsShortcut", s => s.Settings.SetContactsShortcut("Ctrl+K")),
         Change("SetColor", s => s.TagColors.SetColor("work", "red")),
         Change("TagOrder.Move", s => s.TagOrder.Move("work", null, "home")),
         Change("DeleteExpiredTasks", s => s.Synchronization.DeleteExpiredTasks()),
@@ -81,7 +82,7 @@ public sealed class TaskLockedChangeTests
         {
             f.Store.Settings.DeletionDelayDays, f.Store.Settings.AddNewTaskShortcut, f.Store.Settings.ManageTasksShortcut,
             f.Store.Settings.CloseWindowShortcut, f.Store.Settings.SaveShortcut, f.Store.Settings.ConfigureShortcut,
-            f.Store.TagColors.ColorOf("work"), string.Join(',', f.Store.TagOrder.Sort(["work", "home"])),
+                        f.Store.Settings.ContactsShortcut,            f.Store.TagColors.ColorOf("work"), string.Join(',', f.Store.TagOrder.Sort(["work", "home"])),
         };
         var root = Path.GetDirectoryName(f.Clone)!;
         var files = f.Files.AllFilesUnder(root).Order(StringComparer.Ordinal)

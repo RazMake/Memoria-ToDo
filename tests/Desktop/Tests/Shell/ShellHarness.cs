@@ -6,12 +6,13 @@ using Memoria.ToDo.Shared.Fakes;
 
 namespace Memoria.ToDo.Desktop.Shell.Tests;
 
-/// <summary>The three global shortcuts: the one that opens Add, the one that opens Task View, and the one that opens Configure.</summary>
+/// <summary>The four global shortcuts: the ones that open Add, Task View, Configure, and Contacts.</summary>
 public enum ShortcutKind
 {
     AddNewTask,
     ManageTasks,
     Configure,
+    Contacts,
 }
 
 /// <summary>A tray app built on the shared fakes, the setup every Shell test shares.</summary>
@@ -22,7 +23,8 @@ internal sealed class ShellHarness
     {
         ShortcutKind.AddNewTask => Configure.AddNewTask,
         ShortcutKind.ManageTasks => Configure.ManageTasks,
-        _ => Configure.ConfigureAction,
+        ShortcutKind.Configure => Configure.ConfigureAction,
+        _ => Configure.ContactsAction,
     };
 
     /// <summary>How many times the window the shortcut opens was shown.</summary>
@@ -30,16 +32,47 @@ internal sealed class ShellHarness
     {
         ShortcutKind.AddNewTask => Add.ShowCount,
         ShortcutKind.ManageTasks => ViewTasks.ShowCount,
-        _ => Configure.ShowCount,
+        ShortcutKind.Configure => Configure.ShowCount,
+        _ => Contacts.ShowCount,
     };
 
-    /// <summary>How many times the window the other shortcut opens was shown (Add and Task View only).</summary>
+    /// <summary>How many times the windows of the other task, Task View, and Contacts shortcuts were shown (Configure's never counts).</summary>
     public int ShownByOtherThan(ShortcutKind kind) =>
-        ShownBy(kind == ShortcutKind.AddNewTask ? ShortcutKind.ManageTasks : ShortcutKind.AddNewTask);
+        Add.ShowCount + ViewTasks.ShowCount + Contacts.ShowCount - ShownBy(kind);
+
+    /// <summary>What the window the shortcut opens writes in <see cref="Shown"/> when it's shown.</summary>
+    public static string WindowOf(ShortcutKind kind) => kind switch
+    {
+        ShortcutKind.AddNewTask => "Add",
+        ShortcutKind.ManageTasks => "Task View",
+        ShortcutKind.Configure => "Configure",
+        _ => "Contacts",
+    };
+
+    /// <summary>Makes the window the shortcut opens open or closed, as its port answers.</summary>
+    public void SetOpen(ShortcutKind kind, bool open)
+    {
+        switch (kind)
+        {
+            case ShortcutKind.AddNewTask:
+                Add.IsOpen = open;
+                break;
+            case ShortcutKind.ManageTasks:
+                ViewTasks.IsOpen = open;
+                break;
+            case ShortcutKind.Configure:
+                Configure.IsOpen = open;
+                break;
+            default:
+                Contacts.IsOpen = open;
+                break;
+        }
+    }
 
     public FakeTrayIcon TrayIcon { get; } = new();
     public FakeAddWindow Add { get; }
     public FakeViewTasksWindow ViewTasks { get; }
+    public FakeContactsWindow Contacts { get; }
     public FakeConfigureWindow Configure { get; }
     public FakeUpdateLifetime Updates { get; } = new();
     public FakeGlobalShortcut GlobalShortcut { get; } = new();
@@ -48,7 +81,7 @@ internal sealed class ShellHarness
     public int EndAppCalls { get; private set; }
     public IAppLifetime Lifetime { get; }
 
-    /// <summary>The window calls, in order: "Add", "Task View", and "Configure" for a Show, "Close Add" and "Close Task View" for a Close.</summary>
+    /// <summary>The window calls, in order: "Add", "Task View", "Contacts", and "Configure" for a Show, "Close Add", "Close Task View", and "Close Contacts" for a Close.</summary>
     public List<string> Shown { get; } = [];
 
     /// <summary>The UI thread Shell was given: a fake the test drives, unless the test passed a real one.</summary>
@@ -62,9 +95,10 @@ internal sealed class ShellHarness
     {
         Add = new FakeAddWindow(Shown);
         ViewTasks = new FakeViewTasksWindow(Shown);
+        Contacts = new FakeContactsWindow(Shown);
         Configure = new FakeConfigureWindow(Shown);
         Lifetime = TrayApp.Create(
-            TrayIcon, Add, ViewTasks, Configure, Updates, GlobalShortcut, OneInstance, startedAtSignIn, Sync,
+            TrayIcon, Add, ViewTasks, Contacts, Configure, Updates, GlobalShortcut, OneInstance, startedAtSignIn, Sync,
             realUiThread ?? (() => UiThread));
     }
 

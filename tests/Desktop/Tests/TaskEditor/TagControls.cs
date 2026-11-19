@@ -5,6 +5,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Shared.Rendering;
+using static Memoria.ToDo.Desktop.VisualTree;
 
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
@@ -273,23 +274,6 @@ internal static class TagControls
         if (element is UIElement ui)
         {
             ui.UpdateLayout();
-        }
-    }
-
-    // Everything below the element in the visual tree, in the order it shows, plus the element's logical descendants that have no visual yet.
-    private static IEnumerable<DependencyObject> Visuals(DependencyObject parent)
-    {
-        if (parent is Visual or System.Windows.Media.Media3D.Visual3D)
-        {
-            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                yield return child;
-                foreach (var inner in Visuals(child))
-                {
-                    yield return inner;
-                }
-            }
         }
     }
 

@@ -21,6 +21,9 @@ public static class TestShortcut
     /// <summary>Win+Alt+C, the shortcut Configure starts with.</summary>
     public static Shortcut ConfigureDefault { get; } = Of(ModifierKeys.Windows | ModifierKeys.Alt, Key.C);
 
+    /// <summary>Win+Alt+O, the shortcut Contacts starts with.</summary>
+    public static Shortcut ContactsDefault { get; } = Of(ModifierKeys.Windows | ModifierKeys.Alt, Key.O);
+
     /// <summary>Makes a shortcut.</summary>
     /// <exception cref="ArgumentException">The keys don't follow the rules.</exception>
     public static Shortcut Of(ModifierKeys modifiers, Key key) =>

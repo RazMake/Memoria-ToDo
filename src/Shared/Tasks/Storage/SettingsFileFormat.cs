@@ -3,7 +3,7 @@ using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
-/// <summary>The JSON of <c>settings.json</c>: a version and six settings, each a value and the time it changed.</summary>
+/// <summary>The JSON of <c>settings.json</c>: a version and seven settings, each a value and the time it changed.</summary>
 internal static class SettingsFileFormat
 {
     public static byte[] Write(SharedSettings settings) => JsonFields.Write(writer =>
@@ -15,6 +15,7 @@ internal static class SettingsFileFormat
         WriteSetting(writer, "closeWindowShortcut", settings.CloseWindowShortcut, WriteText);
         WriteSetting(writer, "saveShortcut", settings.SaveShortcut, WriteText);
         WriteSetting(writer, "configureShortcut", settings.ConfigureShortcut, WriteText);
+        WriteSetting(writer, "contactsShortcut", settings.ContactsShortcut, WriteText);
     });
 
     /// <summary>Throws <see cref="InvalidDataException"/> when the file isn't settings this app can read.</summary>
@@ -31,7 +32,8 @@ internal static class SettingsFileFormat
             ReadSetting(root, "manageTasksShortcut", JsonFields.OptionalString),
             ReadLaterShortcut(root, "closeWindowShortcut", SharedSettings.Defaults.CloseWindowShortcut),
             ReadLaterShortcut(root, "saveShortcut", SharedSettings.Defaults.SaveShortcut),
-            ReadLaterShortcut(root, "configureShortcut", SharedSettings.Defaults.ConfigureShortcut));
+            ReadLaterShortcut(root, "configureShortcut", SharedSettings.Defaults.ConfigureShortcut),
+            ReadLaterShortcut(root, "contactsShortcut", SharedSettings.Defaults.ContactsShortcut));
     }
 
     /// <summary>A shortcut added after the first version: a file without it gets <paramref name="missing"/>.</summary>

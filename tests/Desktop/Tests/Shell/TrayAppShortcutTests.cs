@@ -21,6 +21,7 @@ public class TrayAppShortcutTests
     [Theory]
     [InlineData(ShortcutKind.AddNewTask)]
     [InlineData(ShortcutKind.ManageTasks)]
+    [InlineData(ShortcutKind.Contacts)]
     public void A_registered_shortcut_shows_only_its_own_window_when_pressed(ShortcutKind kind)
     {
         var app = Started();
@@ -36,6 +37,7 @@ public class TrayAppShortcutTests
     [Theory]
     [InlineData(ShortcutKind.AddNewTask)]
     [InlineData(ShortcutKind.ManageTasks)]
+    [InlineData(ShortcutKind.Contacts)]
     public void A_press_while_Configure_is_open_shows_and_closes_no_window(ShortcutKind kind)
     {
         var app = Started();
@@ -63,6 +65,24 @@ public class TrayAppShortcutTests
     }
 
     [Fact]
+    public void Replacing_the_Contacts_shortcut_leaves_the_other_three_registered_and_opening_their_windows()
+    {
+        var app = Started();
+        app.Configure.AddNewTask.Register(TestShortcut.AddNewTaskDefault);
+        app.Configure.ManageTasks.Register(TestShortcut.ManageTasksDefault);
+        app.Configure.ConfigureAction.Register(TestShortcut.ConfigureDefault);
+        app.Configure.ContactsAction.Register(TestShortcut.A);
+
+        app.Configure.ContactsAction.Register(TestShortcut.ContactsDefault);
+
+        Assert.Equal(4, app.GlobalShortcut.Registered.Count);
+        Assert.Contains(TestShortcut.ContactsDefault, app.GlobalShortcut.Registered);
+        Assert.DoesNotContain(TestShortcut.A, app.GlobalShortcut.Registered);
+        app.GlobalShortcut.Press(TestShortcut.ContactsDefault);
+        Assert.Equal(["Contacts"], app.Shown);
+    }
+
+    [Fact]
     public void Releasing_one_action_leaves_the_other_actions_shortcut_registered()
     {
         var app = Started();
@@ -72,5 +92,14 @@ public class TrayAppShortcutTests
         app.Configure.AddNewTask.Unregister();
 
         Assert.Equal([TestShortcut.B], app.GlobalShortcut.Registered);
+    }
+
+    [Fact]
+    public void A_taken_Contacts_shortcut_is_refused_like_any_other()
+    {
+        var app = Started();
+        app.GlobalShortcut.HoldByAnotherApp(TestShortcut.A);
+
+        Assert.False(app.Configure.ContactsAction.Register(TestShortcut.A));
     }
 }

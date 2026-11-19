@@ -363,6 +363,27 @@ public class TaskListClosePromptTests
     }
 
     [WpfFact]
+    public void The_Close_window_keys_ask_the_same_prompt_as_the_close_button_and_Cancel_keeps_Task_View_open_with_the_edit()
+    {
+        var services = new ListServices();
+        services.CloseWindowKeys.Set(ModifierKeys.Shift, Key.F9);
+        using var screen = ChangedEdit(services);
+
+        _prompt.Run(() =>
+        {
+            screen.Press(Key.LeftShift, Key.F9);
+            return 0;
+        }, ClosePrompt.Click("Cancel"));
+
+        Assert.Equal(1, _prompt.Shown);
+        Assert.Contains("Save your changes to this task?", _prompt.Texts);
+        Assert.True(screen.View.IsOpen);
+        Assert.True(screen.IsEditingAny);
+        Assert.Equal("Buy oat milk", screen.EditorTitleText("Buy milk"));
+        Assert.Equal("Buy milk", services.Tasks.All.Single().Title);
+    }
+
+    [WpfFact]
     public void A_plain_WM_CLOSE_with_a_changed_edit_closes_without_asking_and_discards_the_edit_and_its_images()
     {
         var services = new ListServices();

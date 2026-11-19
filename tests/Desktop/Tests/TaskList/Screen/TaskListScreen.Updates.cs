@@ -8,6 +8,7 @@ using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Sync;
+using static Memoria.ToDo.Desktop.VisualTree;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 

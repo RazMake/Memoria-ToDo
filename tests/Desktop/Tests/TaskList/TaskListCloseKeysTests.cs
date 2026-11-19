@@ -8,7 +8,7 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
 /// The platform's Close window keys in Task View, on the common path: pressed from any control, they close the window
-/// as its close button does, so an open edit is cleaned up the same way. The keys here are Shift+F9, which no list key
+/// as its close button does, so a changed edit asks first (the prompt is answered by <see cref="ClosePrompt"/>). The keys here are Shift+F9, which no list key
 /// uses. How the keys are matched is tested with the platform's CloseWindowKeys.
 /// </summary>
 [UX]
@@ -43,7 +43,7 @@ public class TaskListCloseKeysTests
     }
 
     [WpfFact]
-    public void The_keys_close_the_window_while_a_task_is_being_edited_and_delete_the_images_the_edit_pasted()
+    public void The_keys_ask_about_a_changed_edit_as_the_close_button_does_and_Discard_closes_and_deletes_the_images_the_edit_pasted()
     {
         var services = new ListServices();
         services.Add("Buy milk");
@@ -57,8 +57,14 @@ public class TaskListCloseKeysTests
         Assert.NotEmpty(images);
         screen.TypeDescription("Oat milk");
 
-        screen.Press(Key.LeftShift, Key.F9);
+        var prompt = new ClosePrompt();
+        prompt.Run(() =>
+        {
+            screen.Press(Key.LeftShift, Key.F9);
+            return 0;
+        }, ClosePrompt.Click("Discard"));
 
+        Assert.Equal(1, prompt.Shown);
         Assert.False(screen.View.IsOpen);
         Assert.All(images, image => Assert.False(services.Files.FileExists(image)));
         Assert.Equal("Buy milk", services.Tasks.All.Single().Title);

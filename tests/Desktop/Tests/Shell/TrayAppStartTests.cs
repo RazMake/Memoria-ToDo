@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
@@ -47,14 +48,24 @@ public class TrayAppStartTests
     }
 
     [Fact]
-    public void Start_offers_Add_new_task_Task_View_Configure_and_Exit_in_that_order_under_the_apps_name()
+    public void Start_offers_Add_new_task_Task_View_Contacts_Configure_and_Exit_in_that_order_under_the_apps_name()
     {
         var app = new ShellHarness();
 
         app.Start();
 
         Assert.Equal("Memoria-ToDo", app.TrayIcon.ToolTip);
-        Assert.Equal(["Add new task", "Task View", "Configure", "Exit"], app.TrayIcon.MenuTexts);
+        Assert.Equal(["Add new task", "Task View", "Contacts", "Configure", "Exit"], app.TrayIcon.MenuTexts);
+    }
+
+    [Fact]
+    public void Create_rejects_a_missing_Contacts_window()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
+            new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), null!, new FakeConfigureWindow(),
+            new FakeUpdateLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true, new FakeSyncService()));
+
+        Assert.Equal("contacts", failure.ParamName);
     }
 
     [Fact]

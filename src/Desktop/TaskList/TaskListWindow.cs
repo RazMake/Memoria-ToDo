@@ -47,7 +47,7 @@ internal sealed class TaskListWindow : Window
     private readonly IDragPointer _pointer;
     private readonly ListSelection _selection = new();
     private readonly ListEditing _editing;
-    private readonly CloseDecision _decision;
+    private readonly LeaveDecision _decision;
     private readonly HeldModifierKeys _held = new();
     private readonly Dictionary<RowAction, Action<TaskItem, TaskRow?>> _rowActions;
     private ListSnapshot _snapshot = new([], [], false);
@@ -70,7 +70,7 @@ internal sealed class TaskListWindow : Window
         _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync));
         _saveKeys = saveKeys;
         _tagColors = tagColors;
-        _decision = new CloseDecision(new CloseDialog(this));
+        _decision = new LeaveDecision(new CloseDialog(this));
         _tasks = tasks;
         _theme = theme;
         _time = time;
@@ -140,7 +140,7 @@ internal sealed class TaskListWindow : Window
     /// </summary>
     public bool TryClose()
     {
-        var mayClose = _decision.MayClose(ClosingEdit());
+        var mayClose = _decision.MayLeave(ClosingEdit());
 
         // The application ending can close the window while the prompt shows; it is closed then, whatever the answer.
         if (_closed)
@@ -594,9 +594,9 @@ internal sealed class TaskListWindow : Window
     }
 
     // The edit as closing sees it, or null when none is open.
-    private IClosingEdit? ClosingEdit() => _editing.Current is { } edit ? new EditToClose(this, edit) : null;
+    private ILeavingEdit? ClosingEdit() => _editing.Current is { } edit ? new EditToClose(this, edit) : null;
 
-    private sealed class EditToClose(TaskListWindow window, IFieldEdit edit) : IClosingEdit
+    private sealed class EditToClose(TaskListWindow window, IFieldEdit edit) : ILeavingEdit
     {
         public bool HasChanges => edit.HasChanges;
 

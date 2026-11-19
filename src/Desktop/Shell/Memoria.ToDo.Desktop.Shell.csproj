@@ -14,6 +14,7 @@
     <ProjectReference Include="..\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
     <ProjectReference Include="..\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
     <ProjectReference Include="..\TaskList\Memoria.ToDo.Desktop.TaskList.csproj" />
+    <ProjectReference Include="..\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
     <ProjectReference Include="..\..\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />

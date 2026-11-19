@@ -178,6 +178,19 @@ public class CloseWindowKeysTests
     }
 
     [WpfFact]
+    public void The_keys_send_the_window_the_users_close_command_like_its_close_button()
+    {
+        using var shown = new ShownWindow();
+        var keys = new CloseWindowKeys();
+        keys.Attach(shown.Window);
+        keys.Set(ModifierKeys.Control, Key.W);
+
+        SimulatedKey.Chord(shown.Box, Key.LeftCtrl, Key.W);
+
+        Assert.True(shown.GotUsersCloseCommand);
+    }
+
+    [WpfFact]
     public void A_window_not_attached_is_not_closed()
     {
         using var attached = new ShownWindow();
@@ -203,6 +216,20 @@ public class CloseWindowKeysTests
             Box.KeyDown += (_, e) => KeysTheBoxSaw.Add(e.Key);
             Window.Show();
             Box.Focus();
+            System.Windows.Interop.HwndSource.FromHwnd(new System.Windows.Interop.WindowInteropHelper(Window).Handle).AddHook(Watch);
+        }
+
+        public bool GotUsersCloseCommand { get; private set; }
+
+        // WM_SYSCOMMAND with SC_CLOSE (the low four bits of wParam are flags): what the close button sends.
+        private nint Watch(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
+        {
+            if (message == 0x0112 && (wParam & 0xFFF0) == 0xF060)
+            {
+                GotUsersCloseCommand = true;
+            }
+
+            return 0;
         }
 
         public Window Window { get; }

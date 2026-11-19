@@ -28,6 +28,9 @@ public sealed record Shortcut
     /// <summary>Win+Alt+C, the shortcut Configure starts with.</summary>
     internal static Shortcut ConfigureDefault { get; } = new(ModifierKeys.Windows | ModifierKeys.Alt, Key.C);
 
+    /// <summary>Win+Alt+O, the shortcut Contacts starts with.</summary>
+    internal static Shortcut ContactsDefault { get; } = new(ModifierKeys.Windows | ModifierKeys.Alt, Key.O);
+
     /// <summary>Shift+Esc, the shortcut Close window starts with.</summary>
     internal static Shortcut CloseWindowDefault { get; } = new(ModifierKeys.Shift, Key.Escape);
 

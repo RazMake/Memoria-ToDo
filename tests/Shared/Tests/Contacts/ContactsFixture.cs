@@ -14,12 +14,12 @@ namespace Memoria.ToDo.Shared.Contacts.Tests;
 /// </summary>
 internal sealed class ContactsFixture
 {
-    public const string Folder = "autocomplete/contacts";
-    public const string TeamFile = Folder + "/team.json";
-    public const string MeFile = Folder + "/me.json";
-    public const string PronounsFile = Folder + "/dataTypes/pronouns.json";
-    public const string CareerPathsFile = Folder + "/dataTypes/careerPaths.json";
-    public const string TemplatesFile = Folder + "/dataTypes/mentionTemplates.json";
+    public const string Folder = TestContactStore.Folder;
+    public const string TeamFile = TestContactStore.TeamFile;
+    public const string MeFile = TestContactStore.MeFile;
+    public const string PronounsFile = TestContactStore.PronounsFile;
+    public const string CareerPathsFile = TestContactStore.CareerPathsFile;
+    public const string TemplatesFile = TestContactStore.TemplatesFile;
 
     private static readonly string Root = Path.Combine(Path.GetTempPath(), "memoria-contacts-tests");
 
@@ -31,7 +31,7 @@ internal sealed class ContactsFixture
     public ContactsFixture()
     {
         Files = new RecordingFileSystem(Disk);
-        Store = ContactStore.Create(Files, Repository);
+        Store = TestContactStore.Create(Files, Repository);
         Contacts.Changed += (_, _) =>
         {
             var outside = rig.AnotherThreadCanLock();
@@ -76,37 +76,24 @@ internal sealed class ContactsFixture
         get { lock (notices) { return [.. changedOutsideLock]; } }
     }
 
-    public string PathOf(string relative) => Path.Combine(Clone, relative.Replace('/', Path.DirectorySeparatorChar));
+    public string PathOf(string relative) => TestContactStore.PathOf(Clone, relative);
 
     /// <summary>Selects the clone, so Contacts reads the files seeded so far.</summary>
-    public void Load() => Repository.Select(Clone);
+    public void Load() => Contacts.UseRepositoryFolder(Clone);
 
     public bool Exists(string relative) => Disk.FileExists(PathOf(relative));
 
-    public void Seed(string relative, string text) => SeedBytes(relative, Encoding.UTF8.GetBytes(text));
+    public void Seed(string relative, string text) => Disk.Seed(Clone, relative, text);
 
-    public void SeedBytes(string relative, byte[] bytes) => Disk.WriteFile(PathOf(relative), bytes);
+    public void SeedBytes(string relative, byte[] bytes) => Disk.SeedBytes(Clone, relative, bytes);
 
     /// <summary>Seeds <c>autocomplete/contacts/&lt;name&gt;.json</c> as a group with the members, given as JSON objects.</summary>
-    public string SeedGroup(string name, int position, params string[] members)
-    {
-        var relative = $"{Folder}/{name}.json";
-        Seed(relative, ContactFiles.Group(position, members));
-        return relative;
-    }
+    public string SeedGroup(string name, int position, params string[] members) => Disk.SeedGroup(Clone, name, position, members);
 
-    public void SeedMe(int position, string details) => Seed(MeFile, ContactFiles.Me(position, details));
+    public void SeedMe(int position, string details) => Disk.SeedMe(Clone, position, details);
 
     /// <summary>Pronouns "he" and "she" and career paths "em" (Engineering Manager) and "se", with invented properties.</summary>
-    public void SeedDataTypes()
-    {
-        Seed(PronounsFile, ContactFiles.ArrayOf(
-            ContactFiles.Object(("id", "he"), ("subject", "he"), ("object", "him")),
-            ContactFiles.Object(("id", "she"), ("subject", "she"), ("object", "her"))));
-        Seed(CareerPathsFile, ContactFiles.ArrayOf(
-            ContactFiles.Object(("id", "em"), ("name", "Engineering Manager"), ("short", "EM")),
-            ContactFiles.Object(("id", "se"), ("name", "Software Engineer"), ("short", "SE"))));
-    }
+    public void SeedDataTypes() => Disk.SeedDataTypes(Clone);
 
     public byte[] Bytes(string relative) => Disk.ReadFile(PathOf(relative));
 

@@ -123,6 +123,23 @@ internal sealed class ShortcutSetting(
     public void Restore()
     {
         _released = false;
+        RegisterActive();
+    }
+
+    /// <summary>
+    /// Registers the shortcut again through its action, as when Configure is shown, unless a field has released it.
+    /// An action that still holds the shortcut answers true at once, so nothing changes then.
+    /// </summary>
+    public void RegisterAgain()
+    {
+        if (!_released)
+        {
+            RegisterActive();
+        }
+    }
+
+    private void RegisterActive()
+    {
         if (Active is not { } shortcut)
         {
             return;

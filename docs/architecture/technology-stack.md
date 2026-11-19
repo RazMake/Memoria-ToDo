@@ -1,6 +1,6 @@
 # How the code is built, tested, and released
 
-Status: Drafting
+Status: Decided
 
 The technology stack is the set of tools that lay out, build, test, and release both apps from this repository. Each choice has its own section under [Behavior](#behavior).
 
@@ -224,9 +224,9 @@ A UX test builds one screen inside the test process, with fake services, and nev
 
 Desktop screen tests need a Windows desktop that's unlocked, connected, and taking input: their windows must get activation, keyboard focus, and the pointer, and some send real key presses. Without one, each test waits out its own bounds, up to a minute each, one test after another, so the run looks hung.
 
-Proposed, each a decision to confirm. This is not implemented, and [Open questions](#open-questions) holds two choices it depends on:
+The user decided that the check runs before each screen test, so it also catches a desktop that locks during the run, as happened when one test hung after the session had been idle 26 minutes. The user also decided that a usable desktop means the three Windows checks in the table below, which are fast and open no window. The rest is proposed, each a decision to confirm. This is not implemented:
 
-- **A desktop check runs before each test in the [screen collection](#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator), and only there.** Unit tests, and integration tests outside that collection, still run without a desktop. The check opens no window; it asks Windows three things, in this order:
+- **A desktop check runs before each test in the [screen collection](#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator), and only there.** An xUnit.net hook on the test assembly runs it, and does nothing for other tests, so unit tests, and integration tests outside that collection, still run without a desktop. It costs a few Windows calls per test. Not confirmed: that such a hook can read a test's collection in xUnit.net v3; if it can't, the hook reads a marker the screen collection's classes carry. The check opens no window; it asks Windows three things, in this order:
 
   | Check | Fails when | What it asks Windows |
   | --- | --- | --- |
@@ -271,7 +271,7 @@ Confirmed by a run on 2026-11-16: after these steps, the session showed as the a
 
 A wait that never ends stops the whole run, since screen tests run one at a time. So a test gives each wait a bound: the longest it waits before the test fails. A bound only bounds a failure; a passing test never waits it out, as [Synchronize, never sleep](../../AGENTS.md#test-design) asks.
 
-Proposed, each a decision to confirm. This is not implemented, and [Open questions](#open-questions) holds one choice it depends on. A wait that's missed anyway is stopped by the [hang dump](#a-hang-dump-stops-a-test-application-that-hangs-despite-its-bounds). The table lists what a test can wait on, and the bound each wait uses:
+The user decided that every wait that can block gets a bound: each wait in screen tests, integration tests, and their helpers, and each unit-test wait on a fake's signal or on another thread. Unit tests that await app code running on their own thread over fakes stay as they are, since that code can't wait on anything that doesn't finish. The rest is proposed, each a decision to confirm. This is not implemented. A wait that's missed anyway is stopped by the [hang dump](#a-hang-dump-stops-a-test-application-that-hangs-despite-its-bounds). The table lists what a test can wait on, and the bound each wait uses:
 
 | What the test waits on | Its bound |
 | --- | --- |
@@ -569,6 +569,12 @@ The options below were considered and rejected, grouped by the decision they bel
   - **No backstop**: a wait the bounds missed would still hang the run.
   - **xUnit.net's per-test `Timeout`**: every test would need it, and it fails the test but leaves the stuck code running; its analyzer rule [xUnit1069](https://xunit.net/xunit.analyzers/rules/xUnit1069) asks each test to pass its cancellation token on. Its `longRunningTestSeconds` only reports a slow test.
   - **Each run's command adds the hang dump options itself**: one value in many commands, and a command that forgot them would wait forever again.
+- When the in-test desktop check runs, and what it checks:
+  - **Once, before the first screen test, from a fixture of the screen collection**: simplest, but a desktop that locks during the run goes back to slow failures.
+  - **A fixture of the whole test assembly**: it would fail unit tests on a PC without a desktop.
+  - **The three checks, plus a test window that must take focus within a short bound**: closer to what the tests need, but slower, it can steal focus from you, and it isn't confirmed to detect a minimized Remote Desktop window either.
+- Which waits in a test get a bound:
+  - **Every await in every test**: it also covers a unit test's code that hangs by mistake, but takes hundreds of edits, mostly in Sync's unit tests, for waits that can't block.
 - Which tools run a UX test of one screen:
   - **WPF tests that start their own STA thread and dispatcher, instead of Xunit.StaFact**: we'd write and maintain that thread code, to save one dependency.
 - How Android modules build for their tests:
@@ -628,13 +634,4 @@ The options below were considered and rejected, grouped by the decision they bel
 
 ## Open questions
 
-1. **When does the desktop check run?**
-   - **Before each screen test (recommended)**: an xUnit hook on the test assembly runs it before each test in the screen collection, and does nothing for other tests. It costs a few Windows calls per test, and it also catches a desktop that locks during the run, as happened when one test hung after the session had been idle 26 minutes. Not confirmed: that such a hook can read a test's collection in xUnit v3; if it can't, the hook reads a marker the screen collection's classes carry.
-   - **Once, before the first screen test**: a fixture of the screen collection runs it, and when it fails, xUnit fails every test in the collection with its message. Simplest, and it's the request's wording, but a desktop that locks mid-run goes back to slow failures.
-   - Not an option: a fixture of the whole test assembly, since it would fail unit tests on a PC without a desktop.
-2. **What does a usable desktop mean?**
-   - **The three Windows checks in [the table](#screen-tests-fail-at-once-when-windows-cant-give-them-the-desktop) (recommended)**: fast, and opens no window. A minimized Remote Desktop window goes undetected, and Failure modes says what to do.
-   - **The three checks, plus a test window that must take focus within a short bound**: closer to what the tests need, but slower, it can steal focus from you, and it isn't confirmed to detect a minimized window either.
-3. **Which waits get an explicit bound?**
-   - **Every wait in screen tests, integration tests, and their helpers, plus unit-test waits on a fake's signal or on another thread (recommended)**: covers every wait that can block, about 70 edits. Unit tests that await app code running on their own thread over fakes stay as they are, since that code can't wait on anything that doesn't finish.
-   - **Every await in every test**: also covers a unit test's code that hangs by mistake, but hundreds of edits, mostly in Sync's unit tests, for waits that can't block.
+None.

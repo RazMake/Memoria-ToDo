@@ -10,6 +10,7 @@ using Memoria.ToDo.Desktop.TaskList;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
+using static Memoria.ToDo.Desktop.VisualTree;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -136,18 +137,5 @@ internal sealed class RealViewTasks : IDisposable
         };
         webView.Failed += (_, reason) => _started.TrySetException(new InvalidOperationException($"The browser did not start: {reason}"));
         return webView;
-    }
-
-    private static IEnumerable<DependencyObject> Visuals(DependencyObject parent)
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            yield return child;
-            foreach (var inner in Visuals(child))
-            {
-                yield return inner;
-            }
-        }
     }
 }

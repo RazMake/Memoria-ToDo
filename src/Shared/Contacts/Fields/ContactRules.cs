@@ -11,7 +11,7 @@ internal static class ContactRules
         if (string.IsNullOrEmpty(contact.FullName))
             return "A contact needs a 'fullName'.";
         foreach (var field in ContactFields.All)
-            if (field.Get(contact) is { } value && value.AsSpan().ContainsAny('\r', '\n'))
+            if (field.TextOf(contact) is { } value && value.AsSpan().ContainsAny('\r', '\n'))
                 return $"'{field.Name}' must be one line.";
         if (!IsName(contact.Id))
             return $"The id '{contact.Id}' may hold only letters, digits, '-', '_', and '.'.";

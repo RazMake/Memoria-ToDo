@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
@@ -12,14 +13,15 @@ public static class TrayApp
 {
     /// <summary>
     /// Creates the app's lifetime. Start first claims the sign-in session; when another instance runs, it ends the app
-    /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Task View, Configure,
-    /// Exit; a left click shows Task View), connects Configure's three shortcuts (a press shows Add, Task View, or
-    /// Configure, and does nothing while Configure is open), begins Updates with the app's exit, and starts the shared sync
+    /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Task View, Contacts while
+    /// contacts are available, Configure, Exit; a left click shows Task View), connects Configure's four shortcuts (a press
+    /// shows Add, Task View, Contacts, or Configure, and does nothing while Configure is open), begins Updates with the
+    /// app's exit, and starts the shared sync
     /// service. Startup and later actions open Configure until setup is complete;
     /// otherwise startup shows Task View when <paramref name="startedAtSignIn"/> is false.
     /// Configure also opens when an initial shortcut could not be registered, after Task View on a configured
     /// start by hand. These startup windows wait for local initialization.
-    /// StopAsync joins sync, then Updates' stop, without blocking the UI, unregisters the three shortcuts,
+    /// StopAsync joins sync, then Updates' stop, without blocking the UI, unregisters the four shortcuts,
     /// removes the icon, and releases the claim. Cleanup still completes when one step fails.
     /// </summary>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
@@ -27,18 +29,20 @@ public static class TrayApp
         ITrayIcon trayIcon,
         IAddWindow add,
         IViewTasksWindow viewTasks,
+        IContactsWindow contacts,
         IConfigureWindow configure,
         IUpdateLifetime updates,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
         ISyncService sync) =>
-        Create(trayIcon, add, viewTasks, configure, updates, shortcut, oneInstance, startedAtSignIn, sync, () => new WpfUiThread());
+        Create(trayIcon, add, viewTasks, contacts, configure, updates, shortcut, oneInstance, startedAtSignIn, sync, () => new WpfUiThread());
 
     internal static IAppLifetime Create(
         ITrayIcon trayIcon,
         IAddWindow add,
         IViewTasksWindow viewTasks,
+        IContactsWindow contacts,
         IConfigureWindow configure,
         IUpdateLifetime updates,
         IGlobalShortcut shortcut,
@@ -50,6 +54,7 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(trayIcon);
         ArgumentNullException.ThrowIfNull(add);
         ArgumentNullException.ThrowIfNull(viewTasks);
+        ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(configure);
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(shortcut);
@@ -60,6 +65,7 @@ public static class TrayApp
         bool ConfigureOpen() => configure.IsOpen;
         bool AddOpen() => add.IsOpen;
         bool ViewTasksOpen() => viewTasks.IsOpen;
+        bool ContactsOpen() => contacts.IsOpen;
         bool CloseAdd()
         {
             add.Close();
@@ -68,27 +74,37 @@ public static class TrayApp
 
         OtherWindow addWindow = new(AddOpen, CloseAdd);
         OtherWindow viewTasksWindow = new(ViewTasksOpen, viewTasks.Close);
+        OtherWindow contactsWindow = new(ContactsOpen, contacts.Close);
 
         var redirect = new SetupRedirect(sync, configure);
         var showAdd = redirect.Through(add.Show);
         var showViewTasks = redirect.Through(viewTasks.Show);
+        var showContacts = redirect.Through(contacts.Show);
         var startup = new StartupNavigation(sync.Setup, configure.Show, showViewTasks, startedAtSignIn, uiThread);
         var addByUser = startup.ByUser(showAdd);
         var viewTasksByUser = startup.ByUser(showViewTasks);
+        var contactsByUser = startup.ByUser(showContacts);
         var configureByUser = startup.ByUser(configure.Show);
 
         return new ShellLifetime(
             trayIcon,
             showAdd,
             showViewTasks,
+            showContacts,
+            contacts,
             configure,
             oneInstance,
-            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, AddOpen, [viewTasksWindow], addByUser).Press),
-            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, [addWindow], viewTasksByUser).Press),
-            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ConfigureOpen, [addWindow, viewTasksWindow], configureByUser).Press),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, AddOpen, [viewTasksWindow, contactsWindow], addByUser).Press),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, [addWindow, contactsWindow], viewTasksByUser).Press),
+            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ConfigureOpen, [addWindow, viewTasksWindow, contactsWindow], configureByUser).Press),
+            new ContactsShortcutAction(
+                shortcut,
+                new ShortcutSwitch(ConfigureOpen, ContactsOpen, [addWindow, viewTasksWindow], contactsByUser).Press,
+                () => contacts.IsAvailable,
+                startup.ShortcutFailed),
             startup,
             updates,
-            endApp => new ShellExit(add, viewTasks, configure, endApp),
+            endApp => new ShellExit(add, viewTasks, contacts, configure, endApp),
             sync);
     }
 }

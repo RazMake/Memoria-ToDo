@@ -59,6 +59,7 @@ public class TrayAppSyncTests
     [Theory]
     [InlineData(ShortcutKind.AddNewTask)]
     [InlineData(ShortcutKind.ManageTasks)]
+    [InlineData(ShortcutKind.Contacts)]
     public async Task A_shortcut_used_while_setup_loads_also_suppresses_the_automatic_window(ShortcutKind kind)
     {
         var app = new ShellHarness(startedAtSignIn: false);

@@ -1,8 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Automation;
-using System.Windows.Automation.Peers;
-using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
@@ -10,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.FormattedView;
+using static Memoria.ToDo.Desktop.VisualTree;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
@@ -263,25 +262,6 @@ internal sealed partial class TaskListScreen : IDisposable
             .Items.OfType<MenuItem>().Single(i => (string)i.Header == label);
         item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         Refresh();
-    }
-
-    private static void MouseClick(UIElement target, MouseButton button)
-    {
-        foreach (var (tunneling, bubbling) in new[]
-        {
-            (Mouse.PreviewMouseDownEvent, Mouse.MouseDownEvent),
-            (Mouse.PreviewMouseUpEvent, Mouse.MouseUpEvent),
-        })
-        {
-            foreach (var routed in new[] { tunneling, bubbling })
-            {
-                target.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, button)
-                {
-                    RoutedEvent = routed,
-                    Source = target,
-                });
-            }
-        }
     }
 
     /// <summary>Clicks the row, which selects its task and gives it the keyboard focus, and presses the keys on it.</summary>
@@ -641,29 +621,10 @@ internal sealed partial class TaskListScreen : IDisposable
     private IEnumerable<ButtonBase> Buttons(DependencyObject root)
     {
         Refresh();
-        return Visuals(root).OfType<ButtonBase>().Where(b => b.IsVisible && b is not CheckBox);
+        return VisibleButtons(root);
     }
 
     private ButtonBase? FindButton(string label, DependencyObject root) => Buttons(root).FirstOrDefault(b => LabelOf(b) == label);
-
-    private static string LabelOf(ButtonBase button) =>
-        AutomationProperties.GetName(button) is { Length: > 0 } name ? name : button.Content as string ?? "";
-
-    // Clicks the way the automation tools do, then lets the click's work finish.
-    private static void Activate(ButtonBase button)
-    {
-        var peer = UIElementAutomationPeer.CreatePeerForElement(button);
-        if (peer.GetPattern(PatternInterface.Invoke) is IInvokeProvider invoke)
-        {
-            invoke.Invoke();
-        }
-        else
-        {
-            ((IToggleProvider)peer.GetPattern(PatternInterface.Toggle)).Toggle();
-        }
-
-        button.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
-    }
 
     private void Refresh()
     {
@@ -685,18 +646,5 @@ internal sealed partial class TaskListScreen : IDisposable
         }
 
         return false;
-    }
-
-    private static IEnumerable<DependencyObject> Visuals(DependencyObject parent)
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            yield return child;
-            foreach (var inner in Visuals(child))
-            {
-                yield return inner;
-            }
-        }
     }
 }

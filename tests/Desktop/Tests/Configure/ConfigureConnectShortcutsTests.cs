@@ -15,13 +15,62 @@ public class ConfigureConnectShortcutsTests
         var addNewTask = new FakeShortcutAction { Answer = _ => false };
         var manageTasks = new FakeShortcutAction();
         var configure = new FakeShortcutAction();
+        var contacts = new FakeShortcutAction();
 
-        var connected = new ConfigureServices().Create().ConnectShortcuts(addNewTask, manageTasks, configure);
+        var connected = new ConfigureServices().Create().ConnectShortcuts(addNewTask, manageTasks, configure, contacts);
 
         Assert.False(connected);
         Assert.Equal([ShortcutCall.Register(TestShortcut.AddNewTaskDefault)], addNewTask.Calls);
         Assert.Equal([ShortcutCall.Register(TestShortcut.ManageTasksDefault)], manageTasks.Calls);
         Assert.Equal([ShortcutCall.Register(TestShortcut.ConfigureDefault)], configure.Calls);
+        Assert.Equal([ShortcutCall.Register(TestShortcut.ContactsDefault)], contacts.Calls);
+    }
+
+    [WpfFact]
+    public void Connecting_registers_the_Contacts_default_and_answers_true_when_all_four_registered()
+    {
+        var contacts = new FakeShortcutAction();
+
+        var connected = new ConfigureServices().Create()
+            .ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), new FakeShortcutAction(), contacts);
+
+        Assert.True(connected);
+        Assert.Equal([ShortcutCall.Register(TestShortcut.ContactsDefault)], contacts.Calls);
+    }
+
+    [WpfFact]
+    public void Connecting_answers_false_when_only_the_Contacts_shortcut_did_not_register()
+    {
+        var connected = new ConfigureServices().Create().ConnectShortcuts(
+            new FakeShortcutAction(), new FakeShortcutAction(), new FakeShortcutAction(), new FakeShortcutAction { Answer = _ => false });
+
+        Assert.False(connected);
+    }
+
+    [WpfFact]
+    public void Connecting_answers_false_when_the_Contacts_action_throws_and_still_registers_the_others()
+    {
+        var addNewTask = new FakeShortcutAction();
+        var configure = new FakeShortcutAction();
+
+        var connected = new ConfigureServices().Create().ConnectShortcuts(
+            addNewTask, new FakeShortcutAction(), configure, new FakeShortcutAction { RegisterFailure = new InvalidOperationException("Windows failed.") });
+
+        Assert.False(connected);
+        Assert.Single(addNewTask.Calls);
+        Assert.Single(configure.Calls);
+    }
+
+    [WpfFact]
+    public void Connecting_registers_the_stored_Contacts_shortcut_instead_of_the_default()
+    {
+        var services = new ConfigureServices();
+        services.Store.Settings.SetContactsShortcut("Ctrl+Alt+K");
+        var contacts = new FakeShortcutAction();
+
+        services.Create().ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), new FakeShortcutAction(), contacts);
+
+        Assert.Equal([ShortcutCall.Register(TestShortcut.A)], contacts.Calls);
     }
 
     [WpfFact]
@@ -30,7 +79,7 @@ public class ConfigureConnectShortcutsTests
         var configure = new FakeShortcutAction();
 
         var connected = new ConfigureServices().Create()
-            .ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), configure);
+            .ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), configure, new FakeShortcutAction());
 
         Assert.True(connected);
         Assert.Equal([ShortcutCall.Register(TestShortcut.ConfigureDefault)], configure.Calls);
@@ -40,7 +89,7 @@ public class ConfigureConnectShortcutsTests
     public void Connecting_answers_false_when_only_the_Configure_shortcut_did_not_register()
     {
         var connected = new ConfigureServices().Create().ConnectShortcuts(
-            new FakeShortcutAction(), new FakeShortcutAction(), new FakeShortcutAction { Answer = _ => false });
+            new FakeShortcutAction(), new FakeShortcutAction(), new FakeShortcutAction { Answer = _ => false }, new FakeShortcutAction());
 
         Assert.False(connected);
     }
@@ -52,7 +101,7 @@ public class ConfigureConnectShortcutsTests
         var manageTasks = new FakeShortcutAction();
 
         var connected = new ConfigureServices().Create().ConnectShortcuts(
-            addNewTask, manageTasks, new FakeShortcutAction { RegisterFailure = new InvalidOperationException("Windows failed.") });
+            addNewTask, manageTasks, new FakeShortcutAction { RegisterFailure = new InvalidOperationException("Windows failed.") }, new FakeShortcutAction());
 
         Assert.False(connected);
         Assert.Single(addNewTask.Calls);
@@ -66,7 +115,7 @@ public class ConfigureConnectShortcutsTests
         services.Store.Settings.SetConfigureShortcut("Ctrl+Alt+K");
         var configure = new FakeShortcutAction();
 
-        services.Create().ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), configure);
+        services.Create().ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), configure, new FakeShortcutAction());
 
         Assert.Equal([ShortcutCall.Register(TestShortcut.A)], configure.Calls);
     }
@@ -77,10 +126,12 @@ public class ConfigureConnectShortcutsTests
         using var configureWindow = new ConfigureServices().Create();
 
         Assert.Equal("addNewTask", Assert.Throws<ArgumentNullException>(() =>
-            configureWindow.ConnectShortcuts(null!, new FakeShortcutAction(), new FakeShortcutAction())).ParamName);
+            configureWindow.ConnectShortcuts(null!, new FakeShortcutAction(), new FakeShortcutAction(), new FakeShortcutAction())).ParamName);
         Assert.Equal("manageTasks", Assert.Throws<ArgumentNullException>(() =>
-            configureWindow.ConnectShortcuts(new FakeShortcutAction(), null!, new FakeShortcutAction())).ParamName);
+            configureWindow.ConnectShortcuts(new FakeShortcutAction(), null!, new FakeShortcutAction(), new FakeShortcutAction())).ParamName);
         Assert.Equal("configure", Assert.Throws<ArgumentNullException>(() =>
-            configureWindow.ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), null!)).ParamName);
+            configureWindow.ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), null!, new FakeShortcutAction())).ParamName);
+        Assert.Equal("contacts", Assert.Throws<ArgumentNullException>(() =>
+            configureWindow.ConnectShortcuts(new FakeShortcutAction(), new FakeShortcutAction(), new FakeShortcutAction(), null!)).ParamName);
     }
 }

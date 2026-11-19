@@ -1,6 +1,6 @@
 # Configure: where the desktop app's settings live
 
-Status: Drafting
+Status: Decided
 
 Configure is the desktop app's settings window. It changes the four global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
 
@@ -12,7 +12,7 @@ The table lists every setting in Configure, the module that owns it, where it's 
 
 | Setting | Owner | Kept | Default |
 | --- | --- | --- | --- |
-| Global shortcuts for Add new task, Task View, Configure, and Contacts | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device | As [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides |
+| Global shortcuts for Add new task, Task View, Configure, and Contacts | Tasks stores the values; Configure checks them | In the repository's `settings.json`, shared by every device | As [Shell](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) decides |
 | The Close window shortcut, which closes the app's windows, as [below](#esc-and-the-close-window-shortcut-close-the-window) | Tasks stores the value; Configure checks it | In the repository's `settings.json`, shared by every device, like the global shortcuts | **Shift+Esc** |
 | The Save shortcut, which saves the task being edited in Add and Task View, as [below](#the-save-shortcut-saves-an-edit-in-any-window) | Tasks stores the value; Configure checks it | In the repository's `settings.json`, shared by every device, like the Close window shortcut | **Ctrl+Enter** |
 | Start with Windows | Configure | In the current user's `Run` registry key, on this device, as [below](#start-with-windows-is-the-run-key-itself) | On |
@@ -30,7 +30,7 @@ Configure reads and changes the deletion delay through Tasks, so a change on one
 
 Proposed: the deletion delay shows in days. This is a decision to confirm.
 
-The user asked for a fourth global shortcut, [Contacts](contact-list.md#a-global-shortcut-and-the-tray-menu-open-contacts), default **Win+Alt+O**, changed here like the others. It's one more global shortcut in the table's first row, kept in `settings.json` as [Tasks' `contactsShortcut`](../tasks.md#one-versioned-file-holds-the-three-shared-settings), checked by the same rules, and Connect the shortcuts takes its action, as [below](#public-interface). Proposed, a decision to confirm: its row in the Shortcuts card comes after Task View's, with the description "Opens Contacts from any app." The row always shows; [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) holds the keys in Windows only while the clone has contact files, so Configure doesn't know about Contacts.
+The user asked for a fourth global shortcut, [Contacts](contact-list.md#a-global-shortcut-and-the-tray-menu-open-contacts), default **Win+Alt+O**, changed here like the others. It's one more global shortcut in the table's first row, kept in `settings.json` as [Tasks' `contactsShortcut`](../tasks.md#one-versioned-file-holds-the-three-shared-settings), checked by the same rules, and Connect the shortcuts takes its action, as [below](#public-interface). Proposed, a decision to confirm: its row in the Shortcuts card comes after Task View's, with the description "Opens Contacts from any app." The row always shows; [Shell](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) holds the keys in Windows only while the clone has contact files, so Configure doesn't know about Contacts.
 
 ### The window shows its settings in labeled sections
 
@@ -105,7 +105,7 @@ The user clicks a shortcut's field and presses the new keys. The field shows the
 
 **Save has rules of its own too**, since it never registers with Windows either: one or more modifier keys plus any other key, but never Shift alone with a key that types a character, such as Shift+A, which would stop typing a capital A; and different from the other five shortcuts. The user decided these rules. Configure checks it, saves it, and hands it to the app's windows as it does Close window. Save wins over any other use of its keys in an editor, as Close window does; this is an accepted risk. The one exception is Ctrl+F in Task View, which the user decided always [moves to the search box](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete), even when it's the Save shortcut.
 
-As the app starts, Configure registers each row's stored shortcut through its [shortcut action](#public-interface), or the row's default when none is stored or the stored text is [invalid](#shared-settings-refresh-even-while-configure-is-closed), then each valid shortcut the user picks on that row. If Windows or another app holds a shortcut, Configure [says why](#configure-explains-every-shortcut-it-cant-use) and lets the user pick another, and the previous shortcut stays active, as [Shell](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) decides.
+As the app starts, Configure registers each row's stored shortcut through its [shortcut action](#public-interface), or the row's default when none is stored or the stored text is [invalid](#shared-settings-refresh-even-while-configure-is-closed), then each valid shortcut the user picks on that row. If Windows or another app holds a shortcut, Configure [says why](#configure-explains-every-shortcut-it-cant-use) and lets the user pick another, and the previous shortcut stays active, as [Shell](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) decides.
 
 Proposed, each a decision to confirm:
 
@@ -126,6 +126,8 @@ While any shortcut field has the keyboard focus, Configure unregisters all four 
 - **A shortcut that can't be released when a field gets the focus** stays active, its row's message shows the error, and Configure still releases the others. Proposed; a decision to confirm.
 
 Proposed: Configure releases every global shortcut, not only the row's own, since pressing another's keys would open its window and take the focus from the field. This is a decision to confirm.
+
+Proposed, a decision to confirm: **each time Configure is shown, it registers each global row's shortcut again through its action**, as it does when the focus leaves the fields, unless a shortcut field has the focus. An action that still holds the shortcut answers true at once, so this changes nothing then. It lets a row learn that its shortcut was lost while Configure was closed, as [Shell's](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) Contacts action does when contacts arrive and the shortcut is taken: the row then shows no shortcut and the taken message.
 
 ### Configure explains every shortcut it can't use
 
@@ -261,19 +263,13 @@ The composition root and Shell use these parts:
   ```
 
   The user decided that Configure may use [Updates](updates.md), for the [Update card](#the-update-card-leads-the-application-section). Proposed: `Create` takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, after `theme`, and the Save keys come last, after it. This is a decision to confirm.
-- **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#three-global-shortcuts-and-the-tray-menu-open-the-apps-three-functions) meanwhile.
+- **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) meanwhile.
 - **Setup and status** come directly from Sync; Configure publishes no parallel clone, Git identity, or repository-settings port. The desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show) still governs opening and closing.
-- **Connect the shortcuts**: Shell calls it once, when it starts, with one [shortcut action](#public-interface) for each global shortcut: Add new task, Task View, and Configure. Configure registers each row's stored shortcut, or its default, at once through its action, then each valid pick on that row, and releases and registers them all as [a field's focus](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) comes and goes, always on the UI thread. It returns whether every shortcut registered, so Shell can show Configure when one didn't. When an action fails, Configure treats it as a setting that [can't be applied](#failure-modes), and that shortcut counts as not registered. The user decided that Configure's action is a third argument, after Task View's:
+- **Connect the shortcuts**: Shell calls it once, when it starts, with one [shortcut action](#public-interface) for each global shortcut: Add new task, Task View, Configure, and Contacts. Configure registers each row's stored shortcut, or its default, at once through its action, then each valid pick on that row, and releases and registers them all as [a field's focus](#while-a-shortcut-field-has-focus-the-apps-shortcuts-are-released) comes and goes, always on the UI thread. It returns whether every shortcut registered, so Shell can show Configure when one didn't. When an action fails, Configure treats it as a setting that [can't be applied](#failure-modes), and that shortcut counts as not registered. The user decided that Configure's action is the third argument, after Task View's, and that the Contacts shortcut is changed here like the others, so Contacts' action is the fourth, after Configure's. Step 15's slice (e) built it in place of the three-argument form, with no overload kept. The Contacts row joins the rows every other row's pick must differ from, and the shortcuts a focused field releases:
 
   ```csharp
-  /// Returns true only when all three initial shortcuts registered.
+  /// Returns true only when all four initial shortcuts registered.
   /// Throws ArgumentNullException when any action is null.
-  bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure);
-  ```
-
-  The user decided that the Contacts shortcut is changed here like the others, so Contacts' action is a fourth argument, after Configure's, and the result is true only when all four registered. This is not implemented:
-
-  ```csharp
   bool ConnectShortcuts(
       IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure, IShortcutAction contacts);
   ```
@@ -459,3 +455,6 @@ Accept now replaces a custom host's changed key, which is what an impostor betwe
 
 Earlier proposed settings remain marked above.
 
+## Open questions
+
+None.

@@ -1,6 +1,6 @@
 # Rendering: how task Markdown shows
 
-Status: Drafting
+Status: Decided
 
 Rendering is the shared module that turns a task's Markdown into what the user sees: an HTML page for a description in the web view, and styled text for titles and the editor. It also owns the color palette, the tag colors, and the look of headings, links, code, and italic text, and decides which links may open in the browser. Both apps use it, so a task looks the same on the desktop and the phone.
 
@@ -405,3 +405,7 @@ The options below were considered and rejected, grouped by decision.
   - **No background, only the link's look**: the user chose one soft accent background per theme.
   - **Rendering reads contacts itself**: Rendering would depend on Contacts, and the Formatted view would need them too. The screens swap the text first instead.
   - **The live text passed into the page and the spans as a new argument**: every caller of `Of` and the spans would change, for what one swap before them does.
+
+## Open questions
+
+None.
