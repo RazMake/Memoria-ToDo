@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -24,19 +25,19 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
     private readonly MessageLine _message = new();
     private string _taskId = "";
 
-    public TaskEditorControl(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    public TaskEditorControl(ITasks tasks, ITagColors tagColors, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys)
-        : this(new TagsModel(tasks, tagColors), tasks, tagColors, palette, theme, time, clipboard, imageFiles, files, Argument.Required(saveKeys))
+        : this(new TagsModel(tasks, tagColors), tasks, tagColors, Argument.Required(contacts), palette, theme, time, clipboard, imageFiles, files, Argument.Required(saveKeys))
     {
     }
 
     // The model is made in the first constructor's arguments, so a missing tasks or tagColors is rejected before any control exists.
-    private TaskEditorControl(TagsModel tagsModel, ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette, ITheme theme,
+    private TaskEditorControl(TagsModel tagsModel, ITasks tasks, ITagColors tagColors, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys)
     {
         _tagsModel = tagsModel;
         _tags = new TagEditor(tasks, _tagsModel, new TagLook(tagColors, theme));
-        _lists = new PickerLists(tasks, palette);
+        _lists = new PickerLists(tasks, contacts, palette);
         _images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId, _message.Show);
         var snippets = new SnippetInserter(time, clipboard, _lists.TaskReferences.Open, _images.InsertClipboardOrChosen);
         _title = new TitleField(theme, _lists, snippets, _router);
@@ -44,8 +45,14 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
         _save = new EditorSave(_tagsModel.AddTypedText, () => Value, _title.MarkMissing, FocusTitle, _message.Show);
 
         var panel = new StackPanel { Margin = new Thickness(16) };
+        var titleMentions = new StackPanel();
+        var descriptionMentions = new StackPanel();
+        _lists.ShowMentionsBelow(_title.Editor, titleMentions);
+        _lists.ShowMentionsBelow(_description.Editor, descriptionMentions);
         Add(panel, "Title", _title.Editor);
+        panel.Children.Add(titleMentions);
         Add(panel, "Description", _description.Editor);
+        panel.Children.Add(descriptionMentions);
         _lists.AddTo(panel);
         Add(panel, "Tag", _tags);
         panel.Children.Add(_message);

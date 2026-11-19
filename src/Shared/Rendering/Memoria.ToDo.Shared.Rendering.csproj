@@ -4,4 +4,8 @@
     <PackageReference Include="Markdig" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Platform\Memoria.ToDo.Shared.Platform.csproj" />
+  </ItemGroup>
+
 </Project>

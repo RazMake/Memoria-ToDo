@@ -6,6 +6,7 @@ using Markdig.Renderers;
 using Markdig.Renderers.Html.Inlines;
 using Memoria.ToDo.Shared.Rendering.ColorDirective;
 using Memoria.ToDo.Shared.Rendering.ImageBox;
+using Memoria.ToDo.Shared.Rendering.MentionChip;
 
 namespace Memoria.ToDo.Shared.Rendering;
 
@@ -35,6 +36,7 @@ public static class DescriptionPage
         return $"html,body{{color:{text};font-family:system-ui;font-size:14px}}"
             + sizes
             + $"a{{color:{look.Link}}}em{{color:{look.Italic}}}"
+            + $".mention{{color:{text};background:{look.MentionBackground};border-radius:3px;padding:0 2px}}"
             + $"code,pre{{color:{look.Code};background:{faded};font-family:{TextLooks.CodeFont},monospace}}"
             + "pre{padding:8px;overflow-x:auto}pre code{background:transparent}"
             + "[data-image]{display:inline-block;" + (resizable ? ResizeRule : "") + "overflow:hidden;max-width:100%}"
@@ -67,6 +69,7 @@ public static class DescriptionPage
         }
 
         var document = Markdown.Parse(markdown, DescriptionMarkdown.Pipeline);
+        MentionInlines.Wrap(document);
         ImageBoxes.Box(document, markdown);
         CloneImages.Restrict(document, cloneAddress);
         NestedTextColors.Apply(document, TextLooks.Of(dark));
@@ -82,6 +85,7 @@ public static class DescriptionPage
         DescriptionMarkdown.Pipeline.Setup(renderer);
         renderer.ObjectRenderers.Insert(0, new ColorInlineRenderer(dark));
         renderer.ObjectRenderers.Insert(0, new ImageBoxRenderer());
+        renderer.ObjectRenderers.Insert(0, new MentionInlineRenderer());
         renderer.ObjectRenderers.FindExact<LineBreakInlineRenderer>()!.RenderAsHardlineBreak = true;
         renderer.Render(document);
 

@@ -5,6 +5,7 @@ using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -40,7 +41,20 @@ internal sealed class EditorServices
 
     public ITasks Tasks { get; }
 
-    public EditorServices() => Tasks = TestTaskStore.Create(Files, Encoder, Time, Device);
+    /// <summary>The real Contacts over the fake files, which the editors list and show mentions from. Empty and with no repository until <see cref="UseContacts"/>.</summary>
+    public IContacts Contacts { get; }
+
+    public EditorServices()
+    {
+        Tasks = TestTaskStore.Create(Files, Encoder, Time, Device);
+        Contacts = TestContactStore.Create(Files).Contacts;
+    }
+
+    /// <summary>
+    /// Seeds a "team" group with the members, and the mention templates when given (else Contacts' default list), then gives Contacts
+    /// its repository folder. A member is <c>ContactFiles.Person(...)</c>.
+    /// </summary>
+    public void UseContacts(string[]? templates, params string[] members) => Contacts.UseContacts(Files, Clone, templates, members);
 
     /// <summary>Gives Tasks its repository folder, as Configure's choice does.</summary>
     public void UseRepository() => Tasks.UseRepositoryFolder(Clone);
@@ -95,13 +109,13 @@ internal sealed class EditorServices
     /// <summary>The Save keys every editor made here saves on. Ctrl+Enter, as Configure sets them at first; a test sets others as Configure does.</summary>
     public SaveKeys SaveKeys { get; } = CtrlEnter();
 
-    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys);
+    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys);
 
-    public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys);
+    public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys);
 
-    public TitleEditor CreateTitleEditor() => new(Tasks, Palette.Colors, Theme, Time, Clipboard, SaveKeys);
+    public TitleEditor CreateTitleEditor() => new(Tasks, Contacts, Palette.Colors, Theme, Time, Clipboard, SaveKeys);
 
-    public DescriptionEditor CreateDescriptionEditor() => new(Tasks, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys);
+    public DescriptionEditor CreateDescriptionEditor() => new(Tasks, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys);
 
     /// <summary>The tag control over this Tasks, these tag colors, and this theme.</summary>
     public TagEditor CreateTagEditor() => new(Tasks, TagColors, Theme);

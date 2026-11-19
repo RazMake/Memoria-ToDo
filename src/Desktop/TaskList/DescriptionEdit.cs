@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -17,13 +18,13 @@ internal sealed class DescriptionEdit : IDescriptionEdit
     private readonly ITasks _tasks;
     private readonly DescriptionEditor _editor;
 
-    public DescriptionEdit(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
+    public DescriptionEdit(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
         IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested)
     {
         _tasks = tasks;
         Started = task;
         Tag = task.Tags.FirstOrDefault();
-        _editor = new DescriptionEditor(tasks, palette, theme, time, clipboard, imageFiles, files, saveKeys) { TaskId = task.Id, Value = task.Description };
+        _editor = new DescriptionEditor(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys) { TaskId = task.Id, Value = task.Description };
         _editor.SaveRequested += (_, _) => saveRequested();
         _editor.CancelRequested += (_, _) => cancelRequested();
     }

@@ -60,11 +60,20 @@ internal static class EditorFields
         return could;
     }
 
+    /// <summary>Copies the text field's selection to the clipboard, as Ctrl+C does. A simulated key press can't, since the editor reads the real keyboard's modifiers for its own shortcuts.</summary>
+    public static void Copy(DependencyObject root, string name) => Editor(root, name).Copy();
+
     /// <summary>The element that lists the snippets the typed "/" matches, as the items of an items control, while the snippet list is open. An item is the snippet's name.</summary>
     public const string SnippetList = "SnippetList";
 
     /// <summary>The element that lists the tasks a reference can point to, as the items of an items control, while the task list is open. An item is the task's title as a reader sees it.</summary>
     public const string TaskReferenceList = "TaskReferenceList";
+
+    /// <summary>The element that lists the contacts the typed "@" matches, as the items of an items control, while the mention list is open. An item is the contact's text in the current template.</summary>
+    public const string MentionList = "MentionList";
+
+    /// <summary>The contacts on offer, in order: empty while the mention list is closed.</summary>
+    public static IReadOnlyList<string> ShownMentions(DependencyObject root) => ShownItems(root, MentionList);
 
     /// <summary>The colors on offer, in order: empty while the color list is closed.</summary>
     public static IReadOnlyList<string> ShownColors(DependencyObject root) => ShownItems(root, ColorList);

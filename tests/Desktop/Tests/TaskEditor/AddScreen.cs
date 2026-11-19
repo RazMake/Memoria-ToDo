@@ -135,6 +135,7 @@ internal sealed class AddScreen : IDisposable
     public void Edit(string field, string text, int start, int length = 0)
     {
         EditorFields.Type(Window, field, text);
+        Window.UpdateLayout(); // The caret moves over the chips of the laid-out lines.
         Focus(field);
         EditorFields.Select(Window, field, start, length);
     }
@@ -147,6 +148,9 @@ internal sealed class AddScreen : IDisposable
 
     /// <summary>Undoes the field's last change once, as Ctrl+Z does.</summary>
     public void Undo(string field) => Assert.True(EditorFields.Undo(Window, field), $"The {field} has nothing to undo.");
+
+    /// <summary>Copies the field's selection to the clipboard, as Ctrl+C does.</summary>
+    public void Copy(string field) => EditorFields.Copy(Window, field);
 
     /// <summary>The colors the open color list offers, in order; empty while it is closed.</summary>
     public IReadOnlyList<string> ShownColors => EditorFields.ShownColors(Window);
@@ -170,6 +174,27 @@ internal sealed class AddScreen : IDisposable
     public void ClickTaskReference(string title) => OpenWindows.Click(EditorFields.ItemButton(Window, EditorFields.TaskReferenceList, title));
 
     public void SaveAndClear() => Press(Key.LeftCtrl, Key.LeftShift, Key.Enter);
+
+    /// <summary>The contacts the open mention list offers, in order; empty while it is closed.</summary>
+    public IReadOnlyList<string> ShownMentions => EditorFields.ShownMentions(Window);
+
+    /// <summary>Clicks the contact, by its text in the current template, in the open mention list.</summary>
+    public void ClickMention(string text) => OpenWindows.Click(EditorFields.ItemButton(Window, EditorFields.MentionList, text));
+
+    /// <summary>The texts of the visible text blocks in the open mention list: each row's text and title, and the last line.</summary>
+    public IReadOnlyList<System.Windows.Controls.TextBlock> MentionListBlocks
+    {
+        get
+        {
+            // The rows and the last line are template content, made at layout and not in the logical tree.
+            Window.UpdateLayout();
+            return
+            [
+                .. VisualTree.Visuals(EditorFields.Field(Window, EditorFields.MentionList)).OfType<System.Windows.Controls.TextBlock>()
+                    .Where(block => block.IsVisible && OpenWindows.TextOf(block).Length > 0),
+            ];
+        }
+    }
 
     /// <summary>The texts the user can see in the window beside its controls.</summary>
     public IReadOnlyList<string> Texts => EditorFields.VisibleTexts(Window);

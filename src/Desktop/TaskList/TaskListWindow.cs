@@ -5,6 +5,7 @@ using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.Updates;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -23,6 +24,7 @@ internal sealed class TaskListWindow : Window
     private readonly ITasks _tasks;
     private readonly ITagColors _tagColors;
     private readonly ITagOrder _tagOrder;
+    private readonly IContacts _contacts;
     private readonly GroupActions _groupActions;
     private readonly ITheme _theme;
     private readonly TimeProvider _time;
@@ -60,11 +62,12 @@ internal sealed class TaskListWindow : Window
     private bool _closing;
     private bool _closed;
 
-    public TaskListWindow(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    public TaskListWindow(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
         IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer, string? message, Action<string> carry)
     {
         _sync = sync;
+        _contacts = contacts;
         _pointer = pointer;
         _tagOrder = tagOrder;
         _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync));
@@ -107,8 +110,8 @@ internal sealed class TaskListWindow : Window
         _deletion = new TaskDeletion(tasks, _content, _pending, Report, Refresh);
         _cleanup = new EditCleanup(tasks, _pending, Report);
         _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report);
-        _editing = new ListEditing(tasks, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit);
-        _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow, pointer);
+        _editing = new ListEditing(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit);
+        _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow, task => LiveMentions.Of(contacts, task.Title, title: true), pointer);
         _groupActions = new GroupActions(tagOrder, Report);
         _header.ShowMessage(message);
         _filter.Changed += (_, _) => Refresh();
@@ -131,6 +134,7 @@ internal sealed class TaskListWindow : Window
         Deactivated += (_, _) => _held.Clear();
         tasks.Changed += OnChanged;
         tagOrder.Changed += OnChanged;
+        contacts.Changed += OnChanged;
         Refresh();
     }
 
@@ -169,8 +173,8 @@ internal sealed class TaskListWindow : Window
         _closing = true;
         _tasks.Changed -= OnChanged;
         _tagOrder.Changed -= OnChanged;
-        try
-        {
+        _contacts.Changed -= OnChanged;
+        try        {
             _pending.Commit();
             if (_editing.Forget() is { } edit)
             {
@@ -267,7 +271,7 @@ internal sealed class TaskListWindow : Window
         {
             if (_previewing)
             {
-                _details.ShowPreview(describing.Draft, describing.Editor, tags);
+                _details.ShowPreview(LiveMentions.Of(_contacts, describing.Draft, title: false), describing.Editor, tags);
             }
             else
             {
@@ -279,11 +283,11 @@ internal sealed class TaskListWindow : Window
         else if (_detailsId != task.Id)
         {
             _detailsId = task.Id;
-            _details.ShowTask(task.Description, tags);
+            _details.ShowTask(LiveMentions.Of(_contacts, task.Description, title: false), tags);
         }
         else
         {
-            _details.UpdateDescription(task.Description);
+            _details.UpdateDescription(LiveMentions.Of(_contacts, task.Description, title: false));
         }
     }
 

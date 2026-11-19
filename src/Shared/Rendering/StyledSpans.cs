@@ -9,7 +9,7 @@ namespace Memoria.ToDo.Shared.Rendering;
 public enum MarkdownField { Title, Description }
 
 [Flags]
-public enum SpanStyle { None = 0, Bold = 1, Italic = 2, Strikethrough = 4, Code = 8, Marker = 16 }
+public enum SpanStyle { None = 0, Bold = 1, Italic = 2, Strikethrough = 4, Code = 8, Marker = 16, Mention = 32 }
 
 /// <summary>One stretch of the text. LinkAddress and Color are null, and HeadingLevel is 0, when they don't apply.</summary>
 public sealed record StyledSpan(int Start, int Length, SpanStyle Styles, string? LinkAddress, string? Color, int HeadingLevel);
@@ -29,9 +29,12 @@ public static class StyledSpans
     public static IReadOnlyList<StyledSpan> Of(string markdown, MarkdownField field)
     {
         ArgumentNullException.ThrowIfNull(markdown);
-        var pipeline = field == MarkdownField.Title ? TitlePipeline : DescriptionMarkdown.Pipeline;
-        return SpanPainter.Paint(markdown, Markdown.Parse(markdown, pipeline));
+        return SpanPainter.Paint(markdown, Markdown.Parse(markdown, PipelineOf(field)));
     }
+
+    /// <summary>The Markdown rules of the field, so every reader of the spans' text agrees with them.</summary>
+    internal static MarkdownPipeline PipelineOf(MarkdownField field) =>
+        field == MarkdownField.Title ? TitlePipeline : DescriptionMarkdown.Pipeline;
 
     private static MarkdownPipelineBuilder InlineOnly(MarkdownPipelineBuilder builder)
     {

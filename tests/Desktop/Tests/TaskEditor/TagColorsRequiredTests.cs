@@ -15,7 +15,7 @@ public class TagColorsRequiredTests
     public void The_Add_window_without_tag_colors_is_rejected()
     {
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
-            _services.Tasks, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            _services.Tasks, null!, _services.Contacts, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             _services.ImageFiles, _services.Files, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys));
 
         Assert.Equal("tagColors", failure.ParamName);
@@ -25,7 +25,7 @@ public class TagColorsRequiredTests
     public void The_editor_without_tag_colors_is_rejected()
     {
         var failure = Assert.Throws<ArgumentNullException>(() => new TaskEditorControl(
-            _services.Tasks, null!, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
+            _services.Tasks, null!, _services.Contacts, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
             _services.ImageFiles, _services.Files, _services.SaveKeys));
 
         Assert.Equal("tagColors", failure.ParamName);

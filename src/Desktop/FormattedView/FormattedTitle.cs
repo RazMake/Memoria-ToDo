@@ -104,6 +104,13 @@ public sealed class FormattedTitle : TextBlock
             run.Foreground = Frozen(new SolidColorBrush(ColorOf(color)));
         }
 
+        if (span.Styles.HasFlag(SpanStyle.Mention))
+        {
+            // A mention is a chip, not a link: its clicks go to the element around the title.
+            run.Background = Frozen(new SolidColorBrush(ColorOf(look.MentionBackground)));
+            return run;
+        }
+
         if (span.LinkAddress is not { } address)
         {
             return run;

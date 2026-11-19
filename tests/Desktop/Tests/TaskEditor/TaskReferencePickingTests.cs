@@ -19,7 +19,7 @@ public class TaskReferencePickingTests
     public TaskReferencePickingTests()
     {
         _services.UseRepository();
-        _picking = new TaskReferencePicking(_services.Tasks, _list, new PopupLists(_list));
+        _picking = new TaskReferencePicking(_services.Tasks, _services.Contacts, _list, new PopupLists(_list));
         _picking.Watch(_field);
     }
 

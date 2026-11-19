@@ -73,7 +73,7 @@ internal sealed class TaskRow : Border
         MouseUp += OnMouseUp;
         MouseMove += OnMouseMove;
         MouseLeave += (_, _) => _press.Leave();
-        Show(task, false, [], GroupKey);
+        Show(task, task.Title, false, [], GroupKey);
     }
 
     /// <summary>The task as the row shows it now.</summary>
@@ -104,16 +104,16 @@ internal sealed class TaskRow : Border
 
     public event EventHandler<Exception>? OpenFailed;
 
-    /// <summary>Shows the task's current title and resolved state, whether it is the selected one, and the group it is in.</summary>
-    public void Show(TaskItem task, bool selected, IReadOnlyList<TaskItem> group, GroupKey groupKey)
+    /// <summary>Shows the task's title as <paramref name="title"/> (its mentions' live text), its resolved state, whether it is the selected one, and the group it is in.</summary>
+    public void Show(TaskItem task, string title, bool selected, IReadOnlyList<TaskItem> group, GroupKey groupKey)
     {
         Task = task;
         Group = group;
         GroupKey = groupKey;
         _selected = selected;
-        if (_title.Markdown != task.Title)
+        if (_title.Markdown != title)
         {
-            _title.Markdown = task.Title;
+            _title.Markdown = title;
             _alignment.Invalidate();
         }
 
@@ -133,7 +133,7 @@ internal sealed class TaskRow : Border
     }
 
     /// <summary>Shows the checkbox as the task is, after a change of it could not be saved.</summary>
-    public void Revert() => Show(Task, _selected, Group, GroupKey);
+    public void Revert() => Show(Task, _title.Markdown, _selected, Group, GroupKey);
 
     private ContextMenu MakeMenu()
     {

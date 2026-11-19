@@ -51,7 +51,7 @@ internal sealed class MarkdownStyler : DocumentColorizingTransformer
 
             var start = Math.Max(span.Start, line.Offset);
             var end = Math.Min(span.Start + span.Length, line.EndOffset);
-            if (start < end)
+            if (start < end && !span.Styles.HasFlag(SpanStyle.Mention)) // A chip draws itself.
             {
                 ChangeLinePart(start, end, element => Apply(span, element.TextRunProperties));
             }

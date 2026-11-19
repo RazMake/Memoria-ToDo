@@ -22,9 +22,10 @@ internal sealed class SnippetPicking
         _list = list;
         _popups = popups;
         _inserter = inserter;
+        var otherListWasOpen = popups.WatchOtherTypedListOpenAtEdits(field, list);
         field.TextEntered += text =>
         {
-            if (text == "/")
+            if (text == "/" && !otherListWasOpen())
             {
                 Open();
             }

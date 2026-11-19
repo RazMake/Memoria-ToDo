@@ -4,6 +4,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 internal sealed class PopupLists
 {
     private readonly IReadOnlyList<ChoiceList> _all;
+    private readonly HashSet<ChoiceList> _typedLists = [];
 
     public PopupLists(params ChoiceList[] lists) => _all = lists;
 
@@ -12,6 +13,19 @@ internal sealed class PopupLists
     {
         CloseOpen();
         list.Show(items);
+    }
+
+    /// <summary>
+    /// Follows the field's edits so that a list opened by typed text (<paramref name="own"/>) can tell whether another list opened
+    /// by typed text was open before that text changed anything: the text is that list's filter, and opens no list.
+    /// </summary>
+    /// <returns>Whether such a list was open when the last edit began.</returns>
+    public Func<bool> WatchOtherTypedListOpenAtEdits(ITextField field, ChoiceList own)
+    {
+        _typedLists.Add(own);
+        var otherWasOpen = false;
+        field.Document.Changing += (_, _) => otherWasOpen = _typedLists.Any(list => list != own && list.IsOpen);
+        return () => otherWasOpen;
     }
 
     /// <summary>Closes the open list. Returns false, doing nothing, when none was open.</summary>

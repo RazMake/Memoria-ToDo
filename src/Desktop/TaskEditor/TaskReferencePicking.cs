@@ -1,4 +1,5 @@
 using ICSharpCode.AvalonEdit.Document;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Editing;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -12,6 +13,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 internal sealed class TaskReferencePicking
 {
     private readonly ITasks _tasks;
+    private readonly IContacts _contacts;
     private readonly ChoiceList _list;
     private readonly PopupLists _popups;
     private ITextField? _field;
@@ -20,9 +22,10 @@ internal sealed class TaskReferencePicking
     private TextAnchor? _filterFrom;
     private IReadOnlyList<TaskItem> _shown = [];
 
-    public TaskReferencePicking(ITasks tasks, ChoiceList list, PopupLists popups)
+    public TaskReferencePicking(ITasks tasks, IContacts contacts, ChoiceList list, PopupLists popups)
     {
         _tasks = tasks;
+        _contacts = contacts;
         _list = list;
         _popups = popups;
         list.Chosen += Choose;
@@ -65,8 +68,9 @@ internal sealed class TaskReferencePicking
             return;
         }
 
-        _popups.Show(_list, [.. _shown.Select(task => PlainTitle(task.Title))]);
+        _popups.Show(_list, [.. _shown.Select(task => Shown(task.Title))]);
     }
+
 
     private void Choose(int position)
     {
@@ -79,11 +83,26 @@ internal sealed class TaskReferencePicking
         var task = _shown[position];
         var offset = replaceFrom.Offset;
         _list.Close();
-        var input = new SnippetInput { Task = new TaskToReference(_tasks.LinkAddress(task.Id), task.Title) };
+        var input = new SnippetInput { Task = new TaskToReference(_tasks.LinkAddress(task.Id), PlainMentions(task.Title)) };
         SnippetInsertion.Apply(field, snippet, offset, input);
     }
 
-    // The title as a reader sees it, without the Markdown marks, for the list. The link text keeps the raw title.
+    // The title with each mention as its live (or stored) text, plain; the reference text is escaped like the rest of the text.
+    private string PlainMentions(string title)
+    {
+        var text = new System.Text.StringBuilder(title);
+        foreach (var mention in Mentions.In(title, true).Reverse())
+        {
+            text.Remove(mention.Start, mention.Length).Insert(mention.Start, MentionChips.TextOf(_contacts, mention));
+        }
+
+        return text.ToString();
+    }
+
+    // The title as a reader sees it, with live mention texts (the stored Markdown when Contacts has none) and without the Markdown marks, for the list.
+    private string Shown(string title) =>
+        PlainTitle(Mentions.WithTexts(title, true, mention => _contacts.TextOf(mention.Address, mention.Template)));
+
     private static string PlainTitle(string title) =>
         string.Concat(StyledSpans.Of(title, MarkdownField.Title)
             .Where(span => !span.Styles.HasFlag(SpanStyle.Marker))

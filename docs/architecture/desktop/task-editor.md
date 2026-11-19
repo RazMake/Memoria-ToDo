@@ -106,13 +106,16 @@ Proposed, each a decision to confirm:
 
 The reference to another task opens a list, as above. It lists open tasks only, and typing filters them with [Tasks' search](../tasks.md#tags-and-search-ignore-case). The link's text is the chosen task's title with its Markdown kept, and only brackets and backslashes escaped; the list itself shows the title as a reader sees it, without its Markdown, which [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) mark.
 
+A title's [mentions](#typing-an-at-sign-mentions-a-contact) show in the task list with their live text, or their stored text when Contacts has none, as in Task View's rows. Markdown can't put a link inside another link's text, so when the reference is inserted, each mention in the title becomes its live text, or its stored text, as plain text. Later changes to the contact don't reach the reference, as later changes to the title don't. Proposed, each a decision to confirm. The user decided that a contact's text keeps any Markdown characters it holds, as the rest of the title's text does, since the reference escapes only brackets and backslashes: a name such as `Ana *QA*` shows "QA" in italic in the reference. Such names are rare, so the reference snippet's escaping stays as it is.
+
 ### Typing an at sign mentions a contact
 
 The user decided that the "@" list shows each contact through a [mention template](../contacts.md#mention-templates-come-from-a-synced-file), that Tab moves to the next template, and that a mention in the editor shows as one chip with its [live text](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows), which Backspace and Delete remove whole and the cursor can't enter. Typing "@" where [Editing's mention list](../editing.md#typing-an-at-sign-opens-the-mention-list) opens, in the Title or the Description, shows contacts found by [Contacts' search](../contacts.md#search-matches-every-typed-word-in-any-field) with the text typed after the "@". Proposed, each a decision to confirm:
 
 - **The list opens under its field**, under the Title when typing there, like the snippet list under the Description. It works as the color, snippet, and task lists do: Down moves through the contacts, Enter chooses, Esc closes, a click chooses, and opening it closes any other list.
 - **It shows up to seven contacts.** With nothing typed yet, the search matches everyone, so it shows the first seven by full name.
-- **Each row shows the contact's text in the current template, and the contact's title in the help style after it**, so two people with one name stay apart.
+- **Each row shows the contact's text in the current template, and the contact's title in the help style after it**, so two people with one name stay apart. A contact with no title shows only its text.
+- **The help style is the theme's secondary text color**, which the Task editor sets on the list's help parts itself, as the Task list and the Contact list do.
 - **The list's last line shows the current template, such as `{fullName} ({careerPath.short})`, and "Tab: next template"**, in the help style.
 - **Tab, while the list is open, moves to the next template**, in the file's order, back to the first after the last, and the rows show their new text at once. Each opening starts at the first template. With one template, Tab does nothing, and never leaves the field while the list is open.
 - **Choosing a contact inserts the mention** Contacts makes from the contact and the current template, through Editing, as one undo step.
@@ -125,6 +128,7 @@ The chips work the same in the Title and the Description:
 - **Backspace after a chip and Delete before it remove the whole mention**, as one undo step.
 - **Saving keeps each mention's Markdown as it is**, stored text included, so the editor changes no mention the user didn't touch.
 - **Copying a chip copies its Markdown**, so pasting it makes the same mention again.
+- **A mention whose Markdown spans a line break shows as its Markdown, not a chip**, since a chip is one piece of one line. Contacts never writes one; only a hand-typed mention can. This is a decision to confirm.
 
 ### Closing without saving keeps a draft on this device
 
@@ -454,6 +458,13 @@ The options below were considered and rejected, grouped by decision.
   - **Its Markdown, styled in place, with the brackets and address dimmed**: the user chose one chip that the cursor can't enter.
   - **Shift+Tab for the previous template too**: the templates are few, and Shift+Tab already means moving back a field.
   - **Refreshing each mention's stored text on Save**: every save would change mentions the user never touched, and the merge would then see edits on both sides.
+  - **A dimmed "No title" in the "@" row of a contact with no title**: every row lines up, but the words add noise to a short list.
+  - **A shared help style in the desktop platform**: one home for which theme color means help, but it changes the platform's public interface and the screens that use the color today.
+- A task reference whose title holds a mention:
+  - **Each mention becomes its stored text**: the reference may show details older than the title shows.
+  - **Keeping the title's Markdown as is**: the reference would show the mention's raw Markdown inside the link.
+- How the task list shows a title's mentions:
+  - **The stored text**: the list and Task View could show one title two ways.
 
 - The Add window:
   - **A full editor window**: Add stays compact, for a quick task.

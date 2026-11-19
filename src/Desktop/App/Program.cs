@@ -68,6 +68,7 @@ internal static class Program
             var pointer = new MousePointer();
             var (add, viewTasks) = TaskWindows.Create(
                 tasks,
+                contacts.Contacts,
                 theme,
                 TimeProvider.System,
                 clipboard,

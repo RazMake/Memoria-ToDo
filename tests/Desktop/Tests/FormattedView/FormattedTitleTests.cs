@@ -194,6 +194,89 @@ public class FormattedTitleTests
         Assert.Empty(screen.Browser.Opened);
     }
 
+    private const string Mention = "[Ana](contact:a1 \"{firstName}\")";
+
+    [WpfFact]
+    public void Shows_a_mention_as_its_text_alone_with_its_markers_hidden()
+    {
+        using var screen = new TitleScreen();
+
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        Assert.Equal("Ask Ana now", screen.Text);
+        Assert.Equal("Ask Ana now", AutomationProperties.GetName(screen.Title));
+    }
+
+    [WpfTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Shows_a_mention_on_the_text_look_mention_background_in_the_normal_text_color(bool dark)
+    {
+        using var screen = new TitleScreen(dark);
+
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        var expected = Parse(TextLooks.Of(dark).MentionBackground);
+        var background = Assert.IsType<SolidColorBrush>(screen.Run("Ana").Background);
+        Assert.Equal(expected.R, background.Color.R);
+        Assert.Equal(expected.G, background.Color.G);
+        Assert.Equal(expected.B, background.Color.B);
+        Assert.Equal(1.0, background.Opacity * background.Color.A / 255, 2);
+        Assert.False(screen.HasOwnColor("Ana"), "The mention has a color of its own.");
+        Assert.Null(screen.Run("now").Background);
+    }
+
+    [WpfFact]
+    public void Switches_a_mention_background_to_the_other_theme_when_Windows_switches()
+    {
+        using var screen = new TitleScreen(dark: false);
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        screen.Theme.Switch(true);
+
+        Assert.Equal(Parse(TextLooks.Dark.MentionBackground), Assert.IsType<SolidColorBrush>(screen.Run("Ana").Background).Color);
+
+        screen.Theme.Switch(false);
+
+        Assert.Equal(Parse(TextLooks.Light.MentionBackground), Assert.IsType<SolidColorBrush>(screen.Run("Ana").Background).Color);
+    }
+
+    [WpfFact]
+    public void Shows_a_mention_without_making_it_a_link()
+    {
+        using var screen = new TitleScreen();
+
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        Assert.False(screen.IsInLink("Ana"), "The mention is a link.");
+    }
+
+    [WpfFact]
+    public void Keeps_a_web_link_in_the_same_title_as_a_link_beside_a_mention()
+    {
+        using var screen = new TitleScreen();
+
+        screen.Title.Markdown = $"Ask {Mention} about [the docs](https://example.com/docs)";
+
+        Assert.True(screen.IsInLink("the docs"), "The web link isn't a link.");
+        Assert.False(screen.IsInLink("Ana"), "The mention is a link.");
+        Assert.Null(screen.Run("the docs").Background);
+    }
+
+    [WpfFact]
+    public void Clicking_a_mention_raises_the_mouse_click_to_the_element_around_the_title_and_opens_nothing()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        screen.MouseClickOn("Ana");
+
+        Assert.True(screen.ParentClicks > 0, "The click didn't reach the element around the title.");
+        Assert.Empty(screen.Browser.Opened);
+        Assert.Empty(screen.OtherLinks);
+        Assert.Empty(screen.OpenFailures);
+    }
+
     private static PaletteColor Red => Palette.Colors.Single(color => color.Name == "red");
 
     private static Color Parse(string hex) => (Color)ColorConverter.ConvertFromString(hex);
@@ -280,6 +363,9 @@ public class FormattedTitleTests
                 HyperlinkActivation.Invoke(link);
             }
         }
+
+        /// <summary>Whether the text is shown inside a link.</summary>
+        public bool IsInLink(string text) => FindLink(Run(text)) is not null;
 
         private static Hyperlink? FindLink(TextElement run)
         {

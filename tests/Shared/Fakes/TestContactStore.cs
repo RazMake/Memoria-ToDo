@@ -56,6 +56,21 @@ public static class TestContactStore
         return relative;
     }
 
+    /// <summary>
+    /// Seeds a "team" group with the members, and the mention templates when given (else Contacts' default list), then gives Contacts
+    /// the clone folder. A member is <see cref="ContactFiles.Person"/>.
+    /// </summary>
+    public static void UseContacts(this IContacts contacts, IFileSystem files, string clone, string[]? templates, params string[] members)
+    {
+        files.SeedGroup(clone, "team", 1000, members);
+        if (templates is not null)
+        {
+            files.Seed(clone, TemplatesFile, ContactFiles.Templates(templates));
+        }
+
+        contacts.UseRepositoryFolder(clone);
+    }
+
     public static void SeedMe(this IFileSystem files, string clone, int position, string details) =>
         files.Seed(clone, MeFile, ContactFiles.Me(position, details));
 

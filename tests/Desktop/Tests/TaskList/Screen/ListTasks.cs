@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using System.Text.Json.Nodes;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
 using Xunit;
@@ -21,6 +22,16 @@ internal class ListTasks
 
     public ITasks Tasks { get; }
 
+    /// <summary>The real Contacts over the fake files, which Task View shows mentions from. Empty and with no repository until <see cref="UseContacts"/>.</summary>
+    public IContacts Contacts { get; }
+
+    /// <summary>Seeds a "team" group with the members, and the mention templates when given, then gives Contacts its repository folder. A member is <c>ContactFiles.Person(...)</c>.</summary>
+    public void UseContacts(string[]? templates, params string[] members) => Contacts.UseContacts(Files, Clone, templates, members);
+
+    /// <summary>Rewrites the "team" group with the members and has Contacts read it again, as a sync does, which raises its Changed event on the calling thread.</summary>
+    public void ChangeContacts(params string[] members) =>
+        Contacts.RepositoryOf().Update(Clone, () => Files.SeedGroup(Clone, "team", 1000, members));
+
     /// <summary>Every file the fake file system holds, task files and images alike.</summary>
     public IReadOnlyList<string> AllFiles => Files.AllFilesUnder(Root);
 
@@ -32,6 +43,7 @@ internal class ListTasks
     public ListTasks()
     {
         Tasks = TestTaskStore.Create(Files, new FakeImageEncoder(), Time, Path.Combine(Root, "device"));
+        Contacts = TestContactStore.Create(Files).Contacts;
         Tasks.UseRepositoryFolder(Clone);
     }
 

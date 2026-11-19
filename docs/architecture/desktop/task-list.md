@@ -50,6 +50,7 @@ The user decided that a mention's text is rebuilt from the contact's current fie
 
 - **Task View swaps each mention's text before it shows a title or a description**, through [Rendering's mentions](../rendering.md#public-interface), with Contacts' live text for the mention's address and template. A mention Contacts has no text for keeps its stored text. The Formatted view then shows the result, and needs no contacts.
 - **When contacts change, such as after a sync or a save in the Contacts window, Task View shows the rows and the selected description again** with the new text. An open edit keeps its text; its chips show the new text, as the [Task editor](task-editor.md#typing-an-at-sign-mentions-a-contact) says.
+- **An edit's [Preview](#edit-description-has-an-edit-tab-and-a-preview-tab) swaps the draft's mentions too**, so it looks like the saved description will, and like the editor's chips. It shows again when contacts change, as the description does.
 - **Search matches the task as saved**, so a mention matches by its stored text, not its live text, as [Contacts](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) says.
 
 ### A click on a group's tag collapses or expands it
@@ -570,6 +571,8 @@ The options below were considered and rejected, grouped by decision.
   - **The edit's Save leaves Custom's text out, so it becomes a tag only by Enter or a color click**: typing in Custom would be lost on Save, unlike in Add.
 - The tag-change Undo bar's text:
   - **"Tag changed" for both a choice and a clear**: the bar wouldn't say the tag is gone.
+- What an edit's Preview shows of a mention:
+  - **The stored text**: the Preview would show a mention's old text while the chip in the editor shows the new.
 
 Who shows formatted Markdown, and who opens links, is decided in the [Formatted view](formatted-view.md#ruled-out).
 

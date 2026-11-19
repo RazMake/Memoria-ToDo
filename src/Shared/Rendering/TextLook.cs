@@ -7,9 +7,10 @@ public sealed class TextLook
 
     internal TextLook(
         bool dark, string heading1, string heading2, string heading3, string heading4, string link, string code,
-        string italic, double codeBackgroundOpacity)
+        string italic, double codeBackgroundOpacity, string mentionBackground)
     {
         _dark = dark;
+        MentionBackground = mentionBackground;
         Heading1 = heading1;
         Heading2 = heading2;
         Heading3 = heading3;
@@ -31,6 +32,9 @@ public sealed class TextLook
     /// <summary>The gray behind code, and how opaque it is: from 0 to 1.</summary>
     public string CodeBackground => "#808080";
     public double CodeBackgroundOpacity { get; }
+
+    /// <summary>The solid background behind a mention.</summary>
+    public string MentionBackground { get; }
 
     /// <summary>A heading's color: <see cref="Heading4"/> for levels 4 to 6. Throws ArgumentOutOfRangeException for a level outside 1 to 6.</summary>
     public string HeadingColor(int level) => level switch
@@ -54,6 +58,11 @@ public sealed class TextLook
                     return _dark ? color.Dark : color.Light;
                 }
             }
+        }
+
+        if ((span.Styles & SpanStyle.Mention) != 0)
+        {
+            return null;
         }
 
         if (span.LinkAddress is not null)
@@ -80,10 +89,10 @@ public static class TextLooks
     private static readonly double[] HeadingScales = [1, 1.6, 1.4, 1.25, 1.15, 1.1, 1.05];
 
     public static TextLook Light { get; } =
-        new(dark: false, "#bc4c00", "#8a6a00", "#5c5c00", "#0550ae", "#0969da", "#9a3c00", "#4f5b93", 0.15);
+        new(dark: false, "#bc4c00", "#8a6a00", "#5c5c00", "#0550ae", "#0969da", "#9a3c00", "#4f5b93", 0.15, "#d6e6fb");
 
     public static TextLook Dark { get; } =
-        new(dark: true, "#ffa500", "#ffff00", "#9a9a00", "#79c0ff", "#4493f8", "#f0a868", "#b4bdf5", 0.25);
+        new(dark: true, "#ffa500", "#ffff00", "#9a9a00", "#79c0ff", "#4493f8", "#f0a868", "#b4bdf5", 0.25, "#2f4b73");
 
     /// <summary>Light or Dark.</summary>
     public static TextLook Of(bool dark) => dark ? Dark : Light;

@@ -19,7 +19,7 @@ internal sealed class DescriptionField
 
     public DescriptionField(ITheme theme, PickerLists lists, SnippetInserter snippets, ImageInsertion images, KeyRouter router)
     {
-        Editor = new StyledTextEditor("Description", MarkdownField.Description, theme)
+        Editor = new StyledTextEditor("Description", MarkdownField.Description, theme, lists.Contacts)
         {
             Margin = new Thickness(0, 0, 0, 12),
             MinHeight = MinHeight,
@@ -31,6 +31,8 @@ internal sealed class DescriptionField
         _ = new SnippetPicking(Editor, lists.SnippetChoices, lists.Popups, snippets);
         ImageDrop.AddTo(Editor, images);
         lists.TaskReferences.Watch(Editor);
+        lists.PickMentionsIn(Editor);
+        Editor.Chips.AddKeysTo(Keys);
         FormattingKeys.AddInline(Keys, Editor, () => lists.Colors.Open(Editor));
         FormattingKeys.AddHeadings(Keys, Editor);
         SnippetKeys.AddTo(Keys, Editor, isTitle: false, snippets);

@@ -17,13 +17,15 @@ internal sealed class TitleField
 
     public TitleField(ITheme theme, PickerLists lists, SnippetInserter snippets, KeyRouter router)
     {
-        Editor = new StyledTextEditor("Title", MarkdownField.Title, theme)
+        Editor = new StyledTextEditor("Title", MarkdownField.Title, theme, lists.Contacts)
         {
             Margin = new Thickness(0, 0, 0, 12),
             HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
         lists.TaskReferences.Watch(Editor);
+        lists.PickMentionsIn(Editor);
+        Editor.Chips.AddKeysTo(Keys);
         Keys.On(ModifierKeys.Shift, Key.Enter, () => { }); // The Title is one line, so no key breaks it.
         FormattingKeys.AddInline(Keys, Editor, () => lists.Colors.Open(Editor));
         SnippetKeys.AddTo(Keys, Editor, isTitle: true, snippets);

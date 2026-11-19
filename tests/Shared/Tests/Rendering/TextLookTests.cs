@@ -292,6 +292,46 @@ public class TextLookTests
         Assert.All(spans, s => Assert.Equal(TextLooks.Dark.Link, TextLooks.Dark.ColorOf(s)));
     }
 
+    // A mention
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Shows_a_mention_in_the_text_color_not_the_link_color(bool dark)
+    {
+        var look = TextLooks.Of(dark);
+
+        Assert.Null(look.ColorOf(Span(SpanStyle.Mention, link: "contact:a1")));
+        Assert.Null(look.ColorOf(Span(SpanStyle.Mention | SpanStyle.Bold, link: "contact:a1")));
+    }
+
+    [Fact]
+    public void Shows_the_text_of_a_mention_from_Markdown_in_the_text_color()
+    {
+        var spans = OfDescription("a [Ana](contact:a1 \"{firstName}\") b").Over("Ana");
+
+        Assert.All(spans, s => Assert.Null(TextLooks.Light.ColorOf(s)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Gives_a_mention_an_opaque_rrggbb_background(bool dark)
+    {
+        Assert.Matches("^#[0-9a-f]{6}$", TextLooks.Of(dark).MentionBackground);
+    }
+
+    [Theory]
+    [InlineData(false, "#1f1f1f")]
+    [InlineData(true, "#f3f3f3")]
+    public void Keeps_normal_text_at_4_5_to_1_or_more_on_a_mentions_background(bool dark, string text)
+    {
+        var background = TextLooks.Of(dark).MentionBackground;
+
+        var contrast = ColorMath.Contrast(text, background);
+        Assert.True(contrast >= MinimumContrast, $"Text {text} on {background} has contrast {contrast:0.00}.");
+    }
+
     [Fact]
     public void Shows_the_plain_text_of_a_heading_1_in_the_heading_color()
     {

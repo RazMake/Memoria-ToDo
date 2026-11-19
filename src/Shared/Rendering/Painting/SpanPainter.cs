@@ -86,7 +86,8 @@ internal sealed class SpanPainter
         [typeof(LinkInline)] = static (SpanPainter p, Inline i, in Look look) =>
         {
             var link = (LinkInline)i;
-            p.VisitFramed(link.Span, link, look with { LinkAddress = link.Url });
+            var linked = look with { LinkAddress = link.Url };
+            p.VisitFramed(link.Span, link, Mentions.IsMention(link) ? linked with { Styles = linked.Styles | SpanStyle.Mention } : linked);
         },
         [typeof(ContainerInline)] = static (SpanPainter p, Inline i, in Look look) => p.VisitChildren((ContainerInline)i, look),
         [typeof(AutolinkInline)] = static (SpanPainter p, Inline i, in Look look) =>

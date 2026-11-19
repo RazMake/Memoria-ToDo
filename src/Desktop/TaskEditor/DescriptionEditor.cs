@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Editing;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
@@ -17,9 +18,9 @@ public sealed class DescriptionEditor : UserControl
     private readonly double _grownCap;
     private string _taskId = "";
 
-    public DescriptionEditor(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    public DescriptionEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys)
-        : this(tasks, new PickerLists(tasks, palette), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files)
+        : this(tasks, new PickerLists(tasks, contacts, palette), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files)
     {
     }
 

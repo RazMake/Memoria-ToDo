@@ -21,6 +21,7 @@ internal sealed class GroupedRows : StackPanel
     private readonly ITheme _theme;
     private readonly ITagOrder _tagOrder;
     private readonly Func<TaskItem, TaskRow> _createRow;
+    private readonly Func<TaskItem, string> _titleOf;
     private readonly IDragPointer _pointer;
     private readonly Button _resolvedButton = new() { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 12, 0, 8) };
     private readonly Dictionary<RowKey, TaskRow> _rows = [];
@@ -41,13 +42,15 @@ internal sealed class GroupedRows : StackPanel
 
     /// <param name="tagOrder">Puts the groups in the user's order.</param>
     /// <param name="createRow">Makes the row of a task, with the window's handlers on it.</param>
+    /// <param name="titleOf">The title text a task's row shows, with its mentions' live text.</param>
     /// <param name="pointer">The mouse the group headings drag with.</param>
-    public GroupedRows(ITagColors tagColors, ITheme theme, ITagOrder tagOrder, Func<TaskItem, TaskRow> createRow, IDragPointer pointer)
+    public GroupedRows(ITagColors tagColors, ITheme theme, ITagOrder tagOrder, Func<TaskItem, TaskRow> createRow, Func<TaskItem, string> titleOf, IDragPointer pointer)
     {
         _tagColors = tagColors;
         _theme = theme;
         _tagOrder = tagOrder;
         _createRow = createRow;
+        _titleOf = titleOf;
         _pointer = pointer;
         Margin = new Thickness(8, 0, 8, 8);
         // A background that is not null makes the gaps between the items take the drag too.
@@ -161,7 +164,7 @@ internal sealed class GroupedRows : StackPanel
                     _rows[key] = row;
                 }
 
-                row.Show(task, isSelected(task.Id), tasks, new GroupKey(tag, resolved));
+                row.Show(task, _titleOf(task), isSelected(task.Id), tasks, new GroupKey(tag, resolved));
                 used.Add(key);
                 shown.Add((row, key));
                 order.Add(row);

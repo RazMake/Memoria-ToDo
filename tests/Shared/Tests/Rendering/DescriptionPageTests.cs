@@ -201,6 +201,74 @@ public class DescriptionPageTests
         AssertTag(Page($"[other task]({address})"), $"<a [^>]*href=\"{address}\"[^>]*>other task</a>");
     }
 
+    // A mention shows as a colored chip with nothing to click.
+
+    private const string Mention = "[Ana](contact:a1 \"{firstName}\")";
+
+    [Fact]
+    public void Shows_a_mention_as_a_mention_span_holding_its_text()
+    {
+        var page = Page($"hi {Mention} bye");
+
+        AssertTag(page, "<span class=\"mention\">Ana</span>");
+    }
+
+    [Fact]
+    public void Shows_a_mention_without_a_link_or_its_address()
+    {
+        var page = Page($"hi {Mention} bye");
+
+        Assert.DoesNotContain("<a ", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("contact:", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("firstName", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Styles_a_mention_with_the_themes_mention_background_in_the_one_style_block(bool dark)
+    {
+        var page = Page($"hi {Mention}", dark);
+
+        Assert.Single(Regex.Matches(page, "<style", RegexOptions.IgnoreCase));
+        Assert.Contains(
+            Rules(page, ".mention"),
+            body => Regex.IsMatch(body, $"background[^:;]*:\\s*{TextLooks.Of(dark).MentionBackground}", RegexOptions.IgnoreCase));
+    }
+
+    [Fact]
+    public void Keeps_the_bold_of_a_mentions_text_inside_its_span()
+    {
+        var page = Page("[**Ana**](contact:a1 \"{firstName}\")");
+
+        AssertTag(page, "<span class=\"mention\"><strong>Ana</strong></span>");
+    }
+
+    [Fact]
+    public void Shows_a_link_to_a_web_address_beside_a_mention_as_a_link()
+    {
+        var page = Page($"{Mention} and [site](https://example.org)");
+
+        AssertTag(page, "<a href=\"https://example.org\">site</a>");
+        AssertTag(page, "<span class=\"mention\">Ana</span>");
+    }
+
+    [Fact]
+    public void Shows_a_contact_link_that_holds_an_image_as_no_mention()
+    {
+        var page = Page("[![face](images/a.png)](contact:a1 \"{fullName}\")");
+
+        Assert.DoesNotContain("class=\"mention\"", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Shows_a_contact_link_with_no_template_as_no_mention()
+    {
+        var page = Page("[Ana](contact:a1)");
+
+        Assert.DoesNotContain("class=\"mention\"", page, StringComparison.OrdinalIgnoreCase);
+    }
+
     // Raw HTML and scripts.
 
     [Fact]
@@ -602,7 +670,7 @@ public class DescriptionPageTests
     private static string? ColorOfElement(string page, string tag, string attributes) =>
         Regex.Match(attributes, "style=\"(?:[^\"]*[;\\s])?color\\s*:\\s*([^;\"\\s]+)", RegexOptions.IgnoreCase) is { Success: true } inline
             ? inline.Groups[1].Value
-            : ColorDeclared(Rules(page, tag));
+            : ColorDeclared(Rules(page, tag).Concat(attributes.Contains("class=\"mention\"") ? Rules(page, ".mention") : []));
 
     private static string? ColorDeclared(IEnumerable<string> bodies) =>
         bodies.Select(b => Regex.Matches(b, "(?:^|[;\\s])color\\s*:\\s*([^;\\s]+)", RegexOptions.IgnoreCase))
@@ -632,6 +700,19 @@ public class DescriptionPageTests
         var expected = DesignedColorOfZed(markdown, dark);
 
         Assert.Equal(expected, ColorOfZed(Page(markdown, dark)));
+    }
+
+    [Theory]
+    [InlineData("# [zed](contact:a1 \"{firstName}\")", false)]
+    [InlineData("# [zed](contact:a1 \"{firstName}\")", true)]
+    [InlineData("*[zed](contact:a1 \"{firstName}\")*", false)]
+    [InlineData("*[zed](contact:a1 \"{firstName}\")*", true)]
+    [InlineData("## *[zed](contact:a1 \"{firstName}\")*", true)]
+    public void Shows_a_mention_in_the_normal_text_color_even_inside_a_heading_or_italic_text(string markdown, bool dark)
+    {
+        var normal = ColorDeclared(Rules(Page("a", dark), "body"))!.ToLowerInvariant();
+
+        Assert.Equal(normal, ColorOfZed(Page(markdown, dark)));
     }
 
     [Fact]

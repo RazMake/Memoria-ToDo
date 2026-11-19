@@ -2,6 +2,7 @@ using Markdig.Renderers.Html;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Memoria.ToDo.Shared.Rendering.ColorDirective;
+using Memoria.ToDo.Shared.Rendering.MentionChip;
 
 namespace Memoria.ToDo.Shared.Rendering;
 
@@ -24,7 +25,8 @@ internal static class NestedTextColors
             var color = look.ColorOf(StretchOf(inline, alone));
             if (color != look.ColorOf(alone))
             {
-                inline.GetAttributes().AddProperty("style", $"color:{color}");
+                // No color of its own means the surrounding text's, such as a mention's.
+                inline.GetAttributes().AddProperty("style", $"color:{color ?? "inherit"}");
             }
         }
     }
@@ -61,6 +63,9 @@ internal static class NestedTextColors
                     break;
                 case LinkInline { IsImage: false } outer:
                     link ??= outer.Url;
+                    break;
+                case MentionInline:
+                    styles |= SpanStyle.Mention;
                     break;
                 case EmphasisInline { DelimiterChar: '*' or '_', DelimiterCount: 1 }:
                     styles |= SpanStyle.Italic;

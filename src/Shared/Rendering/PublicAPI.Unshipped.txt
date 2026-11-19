@@ -109,3 +109,28 @@ static Memoria.ToDo.Shared.Rendering.TextLooks.Dark.get -> Memoria.ToDo.Shared.R
 static Memoria.ToDo.Shared.Rendering.TextLooks.HeadingScale(int level) -> double
 static Memoria.ToDo.Shared.Rendering.TextLooks.Light.get -> Memoria.ToDo.Shared.Rendering.TextLook!
 static Memoria.ToDo.Shared.Rendering.TextLooks.Of(bool dark) -> Memoria.ToDo.Shared.Rendering.TextLook!
+Memoria.ToDo.Shared.Rendering.SpanStyle.Mention = 32 -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.TextLook.MentionBackground.get -> string!
+Memoria.ToDo.Shared.Rendering.Mention
+Memoria.ToDo.Shared.Rendering.Mention.<Clone>$() -> Memoria.ToDo.Shared.Rendering.Mention!
+Memoria.ToDo.Shared.Rendering.Mention.Address.get -> string!
+Memoria.ToDo.Shared.Rendering.Mention.Address.init -> void
+Memoria.ToDo.Shared.Rendering.Mention.Deconstruct(out int Start, out int Length, out string! Address, out string! Template, out string! StoredText) -> void
+Memoria.ToDo.Shared.Rendering.Mention.Equals(Memoria.ToDo.Shared.Rendering.Mention? other) -> bool
+Memoria.ToDo.Shared.Rendering.Mention.Length.get -> int
+Memoria.ToDo.Shared.Rendering.Mention.Length.init -> void
+Memoria.ToDo.Shared.Rendering.Mention.Mention(int Start, int Length, string! Address, string! Template, string! StoredText) -> void
+Memoria.ToDo.Shared.Rendering.Mention.Start.get -> int
+Memoria.ToDo.Shared.Rendering.Mention.Start.init -> void
+Memoria.ToDo.Shared.Rendering.Mention.StoredText.get -> string!
+Memoria.ToDo.Shared.Rendering.Mention.StoredText.init -> void
+Memoria.ToDo.Shared.Rendering.Mention.Template.get -> string!
+Memoria.ToDo.Shared.Rendering.Mention.Template.init -> void
+Memoria.ToDo.Shared.Rendering.Mentions
+override Memoria.ToDo.Shared.Rendering.Mention.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Rendering.Mention.GetHashCode() -> int
+override Memoria.ToDo.Shared.Rendering.Mention.ToString() -> string!
+static Memoria.ToDo.Shared.Rendering.Mention.operator !=(Memoria.ToDo.Shared.Rendering.Mention? left, Memoria.ToDo.Shared.Rendering.Mention? right) -> bool
+static Memoria.ToDo.Shared.Rendering.Mention.operator ==(Memoria.ToDo.Shared.Rendering.Mention? left, Memoria.ToDo.Shared.Rendering.Mention? right) -> bool
+static Memoria.ToDo.Shared.Rendering.Mentions.In(string! markdown, bool title) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.Mention!>!
+static Memoria.ToDo.Shared.Rendering.Mentions.WithTexts(string! markdown, bool title, System.Func<Memoria.ToDo.Shared.Rendering.Mention!, string?>! textOf) -> string!

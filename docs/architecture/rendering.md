@@ -164,6 +164,9 @@ Proposed, each a decision to confirm:
 The user decided that a mention shows on one soft accent background in each theme, and that its text is rebuilt from the contact's current details each time it shows, as [Contacts](contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows) decides. Rendering finds the mentions and draws them; it never reads contacts. Proposed, each a decision to confirm:
 
 - **A link whose address is a [contact address](modules.md#a-contact-address-has-one-home) is a mention.** Its text's spans carry a Mention style, beside the link's address, and its `[` and `](contact:… "…")` stay markers. Rendering asks the shared platform's `ContactAddress`, so it knows no contact format of its own.
+- **A contact link whose text holds an image isn't a mention**, such as a hand-typed `[![face](images/a.png)](contact:… "…")`. Contacts never writes one. It keeps a link's look, and the browser check makes a click do nothing. So swapping mention text never drops an image, and the images keep their positions, which the [edit's Preview](desktop/task-list.md#an-image-resizes-by-dragging-its-corner-in-the-edits-preview) counts to resize the right one.
+- **A contact link with no template in its title isn't a mention either**, such as a hand-typed `[Ana](contact:…)`, since a mention [always names its template](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template). It keeps a link's look, as above.
+- **A reference-style contact link isn't a mention**, such as a hand-typed `[Ana][p]` with `[p]: contact:… "…"` elsewhere. Contacts only writes a mention with its address in place, and a mention's text can only be swapped where its address follows it. It keeps a link's look, as above. This is a decision to confirm.
 - **A mention shows in the normal text color, on the text look's mention background**, one soft color per theme, like code's background. Its text keeps any bold or italic it has. The color itself belongs in code, checked by a unit test to keep normal text at least 4.5:1 on it, as [WCAG 2.2](https://www.w3.org/TR/WCAG22/#contrast-minimum) asks.
 - **The description page shows a mention as `<span class="mention">` with no link**, styled by the page's one style block, so there's nothing to click and the [browser check](#only-web-links-open-in-the-browser) never sees its address.
 - **Rendering lists each mention's whole extent, address, template, and stored text**, so the editors can draw each one as a single chip.
@@ -405,6 +408,11 @@ The options below were considered and rejected, grouped by decision.
   - **No background, only the link's look**: the user chose one soft accent background per theme.
   - **Rendering reads contacts itself**: Rendering would depend on Contacts, and the Formatted view would need them too. The screens swap the text first instead.
   - **The live text passed into the page and the spans as a new argument**: every caller of `Of` and the spans would change, for what one swap before them does.
+- A contact link whose text holds an image:
+  - **A mention like any other**: swapping its text drops the image, so the Preview's image positions no longer match the draft's, and a resize there can change the wrong image.
+  - **A mention, but the swap keeps its text**: the mention would show text that isn't the contact's current details.
+- A contact link with no template:
+  - **A mention with an empty template**: Contacts would be asked for text from an empty template, which no stored mention has.
 
 ## Open questions
 

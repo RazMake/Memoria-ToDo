@@ -5,6 +5,7 @@ using System.Windows.Data;
 using System.Windows.Threading;
 using ICSharpCode.AvalonEdit;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Rendering;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
@@ -24,10 +25,12 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
     private readonly MarkdownStyler _styler;
     private bool _stylingQueued;
 
-    public StyledTextEditor(string automationId,     MarkdownField field, ITheme theme)
+    public StyledTextEditor(string automationId, MarkdownField field, ITheme theme, IContacts contacts)
     {
+        ArgumentNullException.ThrowIfNull(contacts);
         _field = field;
-            _styler = new MarkdownStyler(theme);
+        _styler = new MarkdownStyler(theme);
+        Chips = new MentionChipEditing(this, field, contacts, theme);
         AutomationProperties.SetAutomationId(this, automationId);
 
         // Look like the theme's text box, from the theme's own resources, so the look follows the theme.
@@ -58,6 +61,9 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
         TextArea.TextEntered += (_, e) => TextEntered?.Invoke(e.Text);
         _ = new ThemeFollower(this, theme, QueueStyling);
     }
+
+    /// <summary>The field's mentions, shown as chips.</summary>
+    public MentionChipEditing Chips { get; }
 
     public event Action? Changed;
 

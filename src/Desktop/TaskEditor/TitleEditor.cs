@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Editing;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -13,9 +14,9 @@ public sealed class TitleEditor : UserControl
     private readonly TitleField _title;
     private readonly SingleFieldEditing _editing;
 
-    public TitleEditor(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+    public TitleEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, SaveKeys saveKeys)
-        : this(new PickerLists(tasks, palette), Argument.Required(saveKeys), theme, time, clipboard)
+        : this(new PickerLists(tasks, contacts, palette), Argument.Required(saveKeys), theme, time, clipboard)
     {
     }
 

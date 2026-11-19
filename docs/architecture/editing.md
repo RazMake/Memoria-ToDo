@@ -79,15 +79,17 @@ Editing decides which snippets match the typed text; each app draws the list. Pr
 
 ### Typing an at sign opens the mention list
 
-Typing "@" at the start of a line or after a space opens a list of contacts to [mention](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template), in the Title and in the Description. It follows the snippet picker's rules: the text typed after the "@" filters the list, Enter inserts the chosen contact in place of the "@" and that text, and Esc closes the list. So an email address such as `a@b.com` opens nothing.
+Typing "@" at the start of the text, or right after any character that isn't a letter or a digit, opens a list of contacts to [mention](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template), in the Title and in the Description. So "@" opens the list after a space, a line break, "(", or "-", but an email address such as `a@b.com` opens nothing. It follows the snippet picker's other rules: the text typed after the "@" filters the list, Enter inserts the chosen contact in place of the "@" and that text, and Esc closes the list.
 
 Editing decides where the list opens, what text it searches with, and where the mention goes; [Contacts' search](contacts.md#search-matches-every-typed-word-in-any-field) decides which contacts match, [Contacts](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) makes the mention's Markdown, and each app draws the list. Proposed, each a decision to confirm:
 
-- **The typed text may hold spaces**, so "@Aayushi Mo" still filters, since full names have them. The list closes when nothing matches, keeping the typed text, as the snippet picker's does; also on a line break, or when the cursor moves before the "@".
+- **The typed text may hold spaces**, so "@Aayushi Mo" still filters, since full names have them. The list closes when nothing matches, keeping the typed text, as the snippet picker's does.
 - **The insertion is the mention's whole Markdown, as Contacts gives it, with the cursor right after it**, so Editing knows no mention format.
 - **One list is open at a time.** While the snippet list is open, an "@" is filter text for it, and the other way around.
 
-The "@" and "/" share one rule for where a list opens, so the two pickers can't drift apart.
+Editing alone decides when the mention list must close: when the "@" no longer opens a list, the cursor is at or before the "@", or a line break lies between them. Its query then answers nothing, and the app closes the list, so no app repeats these rules. [Contacts' search](contacts.md#search-matches-every-typed-word-in-any-field) splits on whitespace and would still match a query across two lines, which is why the line break is Editing's rule.
+
+The "@" opens after more characters than the "/" does, by your choice, so the two pickers keep separate opening rules.
 
 ## Public interface
 
@@ -191,22 +193,23 @@ public static class SnippetPicker
 }
 ```
 
-Proposed, with the [mention list](#typing-an-at-sign-opens-the-mention-list), a decision to confirm. Each app's Task editor also uses the mention picker, beside the snippet picker, and it's a pure function too:
+Each app's Task editor also uses the mention picker, beside the snippet picker, for the [mention list](#typing-an-at-sign-opens-the-mention-list), and it's a pure function too:
 
 ```csharp
 namespace Memoria.ToDo.Shared.Editing;
 
 public static class MentionPicker
 {
-    /// True when the character at atIndex is an "@" at a line start or after a space.
+    /// True when the character at atIndex is an "@" at the start of the text or after a character that isn't a letter or a digit.
+    /// False for an atIndex outside the text.
     public static bool OpensAt(string text, int atIndex);
 
-    /// The text typed between the "@" and the cursor, which the app searches contacts with.
-    /// Throws ArgumentOutOfRangeException when atIndex isn't an "@" before the cursor.
-    public static string QueryOf(TextAndSelection field, int atIndex);
+    /// The text typed between the "@" and the cursor, which the app searches contacts with; empty right after the "@".
+    /// Null when the list must close: the "@" no longer opens a list, the cursor is at or before it, or a line break lies between them.
+    public static string? QueryOf(TextAndSelection field, int atIndex);
 
     /// Replaces the "@" and the text typed after it with the mention's Markdown, unchanged, and puts the cursor
-    /// after it. Throws as QueryOf does, and ArgumentException for an empty mention.
+    /// after it. Throws ArgumentOutOfRangeException when QueryOf would answer null, and ArgumentException for an empty mention.
     public static TextAndSelection Insert(TextAndSelection field, int atIndex, string mention);
 }
 ```
@@ -231,3 +234,8 @@ The options below were considered and rejected, grouped by decision.
   - **Editing reads the palette from Rendering**: Editing would depend on Rendering for a list of names; the app passes them in instead.
 - How a snippet asks for its input:
   - **A typed input request on each snippet**, which the app answers: more types for the same five needs, and the app would still have to choose an answer for each kind.
+- Who tells the app that the mention list must close:
+  - **A separate `IsOpen` beside a throwing `QueryOf`**: two calls for each keystroke, and an app that skips `IsOpen` gets an exception or a query across lines.
+  - **Each app checks the close cases itself**: the rules would live in both apps' editors.
+- Where an "@" opens the list:
+  - **Only at a line start or after a space, the same rule as "/"**: a mention right after "(" or "-" would need a space first.

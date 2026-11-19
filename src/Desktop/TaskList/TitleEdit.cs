@@ -1,6 +1,7 @@
 using System.Windows;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -15,13 +16,13 @@ internal sealed class TitleEdit : IFieldEdit
     private readonly ITasks _tasks;
     private readonly TitleEditor _editor;
 
-    public TitleEdit(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
+    public TitleEdit(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
         SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested)
     {
         _tasks = tasks;
         Started = task;
         Tag = task.Tags.FirstOrDefault();
-        _editor = new TitleEditor(tasks, palette, theme, time, clipboard, saveKeys) { Value = task.Title };
+        _editor = new TitleEditor(tasks, contacts, palette, theme, time, clipboard, saveKeys) { Value = task.Title };
         _editor.SaveRequested += (_, _) => saveRequested();
         _editor.CancelRequested += (_, _) => cancelRequested();
     }

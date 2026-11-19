@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
+using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
@@ -12,7 +13,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// The one open edit of a task's title, in its row, or of its description, on the right side. It ends by saving, or by leaving
 /// without saving, where a changed description can be brought back with Undo.
 /// </summary>
-internal sealed class ListEditing(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
+internal sealed class ListEditing(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
     IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, EditCleanup cleanup, Action<string> restored)
 {
     private IFieldEdit? _edit;
@@ -28,11 +29,11 @@ internal sealed class ListEditing(ITasks tasks, IReadOnlyList<PaletteColor> pale
 
     /// <summary>Opens an edit of the task's description, with the editor's Save and Esc calling the given actions.</summary>
     public IFieldEdit BeginDescription(TaskItem task, Action saveRequested, Action cancelRequested) =>
-        _edit = new DescriptionEdit(tasks, palette, theme, time, clipboard, imageFiles, files, saveKeys, task, saveRequested, cancelRequested);
+        _edit = new DescriptionEdit(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, task, saveRequested, cancelRequested);
 
     /// <summary>Opens an edit of the task's title, with the editor's Save and Esc calling the given actions.</summary>
     public IFieldEdit BeginTitle(TaskItem task, Action saveRequested, Action cancelRequested) =>
-        _edit = new TitleEdit(tasks, palette, theme, time, clipboard, saveKeys, task, saveRequested, cancelRequested);
+        _edit = new TitleEdit(tasks, contacts, palette, theme, time, clipboard, saveKeys, task, saveRequested, cancelRequested);
 
     /// <summary>
     /// Saves the edit through Tasks and ends it. False, with the edit still open, when the field is empty or Tasks can't save it;

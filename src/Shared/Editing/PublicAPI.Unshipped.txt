@@ -6,6 +6,7 @@ Memoria.ToDo.Shared.Editing.ISnippet.Name.get -> string!
 Memoria.ToDo.Shared.Editing.ISnippet.Needs.get -> Memoria.ToDo.Shared.Editing.SnippetNeeds
 Memoria.ToDo.Shared.Editing.ISnippet.WorksInTitle.get -> bool
 Memoria.ToDo.Shared.Editing.Lists
+Memoria.ToDo.Shared.Editing.MentionPicker
 Memoria.ToDo.Shared.Editing.SnippetInput
 Memoria.ToDo.Shared.Editing.SnippetInput.<Clone>$() -> Memoria.ToDo.Shared.Editing.SnippetInput!
 Memoria.ToDo.Shared.Editing.SnippetInput.ClipboardText.get -> string?
@@ -60,6 +61,9 @@ static Memoria.ToDo.Shared.Editing.Formatting.Strikethrough(Memoria.ToDo.Shared.
 static Memoria.ToDo.Shared.Editing.Lists.Enter(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
 static Memoria.ToDo.Shared.Editing.Lists.Indent(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
 static Memoria.ToDo.Shared.Editing.Lists.Outdent(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
+static Memoria.ToDo.Shared.Editing.MentionPicker.Insert(Memoria.ToDo.Shared.Editing.TextAndSelection! field, int atIndex, string! mention) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
+static Memoria.ToDo.Shared.Editing.MentionPicker.OpensAt(string! text, int atIndex) -> bool
+static Memoria.ToDo.Shared.Editing.MentionPicker.QueryOf(Memoria.ToDo.Shared.Editing.TextAndSelection! field, int atIndex) -> string?
 static Memoria.ToDo.Shared.Editing.SnippetInput.operator !=(Memoria.ToDo.Shared.Editing.SnippetInput? left, Memoria.ToDo.Shared.Editing.SnippetInput? right) -> bool
 static Memoria.ToDo.Shared.Editing.SnippetInput.operator ==(Memoria.ToDo.Shared.Editing.SnippetInput? left, Memoria.ToDo.Shared.Editing.SnippetInput? right) -> bool
 static Memoria.ToDo.Shared.Editing.SnippetPicker.Insert(Memoria.ToDo.Shared.Editing.TextAndSelection! field, int slashIndex, Memoria.ToDo.Shared.Editing.ISnippet! snippet, Memoria.ToDo.Shared.Editing.SnippetInput! input) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
