@@ -24,24 +24,13 @@ internal sealed partial class TaskService
                 owner.settings = new FileLoad<SharedSettings>(current, true, null);
             });
 
-        public void DeleteExpiredTasks()
-        {
-            var removed = false;
-            try
+        public void DeleteExpiredTasks() =>
+            owner.RemoveAndAnnounce((clone, committed) =>
             {
-                owner.repository.LockedChange(clone =>
-                {
-                    var root = clone ?? throw new NoRepositoryFolderException();
-                    var cutoff = owner.Now().AddDays(-owner.settings.Require().DeletionDelayDays.Value);
-                    foreach (var task in owner.set.Items.Where(task => task.Resolved < cutoff).ToList())
-                        owner.RemoveTask(root, task.Id, ref removed);
-                });
-            }
-            finally
-            {
-                if (removed)
-                    owner.Announce(Notice.Tasks | Notice.LocalSaved);
-            }
-        }
+                var root = clone ?? throw new NoRepositoryFolderException();
+                var cutoff = owner.Now().AddDays(-owner.settings.Require().DeletionDelayDays.Value);
+                foreach (var task in owner.set.Items.Where(task => task.Resolved < cutoff).ToList())
+                    owner.RemoveTask(root, task.Id, committed);
+            });
     }
 }

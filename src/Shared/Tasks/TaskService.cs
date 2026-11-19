@@ -76,16 +76,38 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     /// <summary>Raises the events for what changed. Call it after leaving the lock, so handlers never run inside it.</summary>
     private void Announce(Notice notice)
     {
+        var failures = new FailureList();
+        Announce(notice, failures);
+        failures.ThrowIfAny();
+    }
+
+    /// <summary>Attempts every requested notice in order, each even when an earlier one threw, and keeps the failures in <paramref name="failures"/>.</summary>
+    private void Announce(Notice notice, FailureList failures)
+    {
         if (notice.HasFlag(Notice.Tasks))
-            Changed?.Invoke(this, EventArgs.Empty);
+            failures.Attempt(() => Changed?.Invoke(this, EventArgs.Empty));
         if (notice.HasFlag(Notice.Settings))
-            settingsChanged?.Invoke(this, EventArgs.Empty);
+            failures.Attempt(() => settingsChanged?.Invoke(this, EventArgs.Empty));
         if (notice.HasFlag(Notice.TagColors))
-            tagColorsChanged?.Invoke(this, EventArgs.Empty);
+            failures.Attempt(() => tagColorsChanged?.Invoke(this, EventArgs.Empty));
         if (notice.HasFlag(Notice.TagOrder))
-            tagOrderChanged?.Invoke(this, EventArgs.Empty);
+            failures.Attempt(() => tagOrderChanged?.Invoke(this, EventArgs.Empty));
         if (notice.HasFlag(Notice.LocalSaved))
-            repository.ReportLocalSave();
+            failures.Attempt(repository.ReportLocalSave);
+    }
+
+    /// <summary>
+    /// Runs the removal under the lock. Once <paramref name="remove"/> calls its committed action, the removal is published,
+    /// so the notices run even when it then throws; its failure comes first, then the notices'.
+    /// </summary>
+    private void RemoveAndAnnounce(Action<string?, Action> remove)
+    {
+        var removed = false;
+        var failures = new FailureList();
+        failures.Attempt(() => repository.LockedChange(clone => remove(clone, () => removed = true)));
+        if (removed)
+            Announce(Notice.Tasks | Notice.LocalSaved, failures);
+        failures.ThrowIfAny();
     }
 
     private event EventHandler? settingsChanged;
@@ -253,29 +275,20 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     public void Delete(string taskId)
     {
         TaskId.ThrowIfInvalid(taskId, nameof(taskId));
-        var removed = false;
-        try
+        // Deleting the task file is the commit: once it succeeded the removal is published, even if the image cleanup threw.
+        RemoveAndAnnounce((clone, committed) =>
         {
-            repository.LockedChange(clone =>
-            {
-                Find(taskId);
-                RemoveTask(clone!, taskId, ref removed);
-            });
-        }
-        finally
-        {
-            // Deleting the task file is the commit: once it succeeded the removal is published, even if the image cleanup threw.
-            if (removed)
-                Announce(Notice.Tasks | Notice.LocalSaved);
-        }
+            Find(taskId);
+            RemoveTask(clone!, taskId, committed);
+        });
     }
 
-    /// <summary>Deletes the task's file, then its images. Call under the lock; <paramref name="removed"/> is set once the file is gone.</summary>
-    private void RemoveTask(string root, string taskId, ref bool removed)
+    /// <summary>Deletes the task's file, then its images. Call under the lock; <paramref name="committed"/> runs once the file is gone.</summary>
+    private void RemoveTask(string root, string taskId, Action committed)
     {
         folder.Delete(root, taskId);
         set = set.WithoutTask(taskId);
-        removed = true;
+        committed();
         files.DeleteFolder(RepositoryLayout.ImagesFolder(root, taskId));
         editImages.Discard(taskId);
     }
