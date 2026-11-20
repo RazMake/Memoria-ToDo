@@ -4,7 +4,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 <!-- How to write entries, and when: docs/contributing/changelog.md -->
 
-## Unreleased
+## 1.2.0
 
 - The app now keeps a log of what it does, such as syncs, added, changed, and deleted tasks and contacts, and every error, with the time to the millisecond. When the app says files can't be loaded, the log names each file and why. The log stays on your computer, never holds passwords or keys, and cleans up after itself: entries older than two weeks are deleted, and it never grows past about 30 MB.
 - Logs, a new item in the tray menu, opens a window that lists the log's entries. Filter them by time range, picking a custom range's start and end with a date and time picker, by the part of the app that wrote them, and by how serious they are, and type in the search box to find entries whose text contains what you typed, in any letter case. Errors show in red and warnings in orange. Press F5 or Refresh to load new entries. Opening Logs closes the app's other windows.
