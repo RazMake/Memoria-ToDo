@@ -30,6 +30,17 @@ public sealed class TemplateFileTests
     }
 
     [Fact]
+    public void Accepts_the_nickname_placeholder_in_a_template()
+    {
+        f.Seed(ContactsFixture.TemplatesFile, ContactFiles.Templates("{nickname}", "{nickname} ({title})"));
+
+        LoadWithContacts();
+
+        Assert.Equal(["{nickname}", "{nickname} ({title})"], f.Contacts.MentionTemplates);
+        Assert.Empty(f.Contacts.SkippedFiles);
+    }
+
+    [Fact]
     public void Offers_the_default_when_the_file_is_missing_without_reporting_it()
     {
         LoadWithContacts();

@@ -16,16 +16,22 @@ public sealed class ContactField
 {
     private readonly Func<Contact, string?> _textOf;
     private readonly Func<Contact, string?, Contact> _with;
+    private readonly Func<Contact, string?> _templateTextOf;
 
     internal ContactField(
-        string name, ContactFieldKind kind, bool isTeamField, Func<Contact, string?> textOf, Func<Contact, string?, Contact> with)
+        string name, ContactFieldKind kind, bool isTeamField, Func<Contact, string?> textOf, Func<Contact, string?, Contact> with,
+        Func<Contact, string?>? templateTextOf = null)
     {
         Name = name;
         Kind = kind;
         IsTeamField = isTeamField;
         _textOf = textOf;
         _with = with;
+        _templateTextOf = templateTextOf ?? textOf;
     }
+
+    /// <summary>The value a mention template's placeholder shows: the stored value unless the field falls back to another.</summary>
+    internal string? TemplateTextOf(Contact contact) => _templateTextOf(contact);
 
     /// <summary>The field's name in the file, such as "reportsTo".</summary>
     public string Name { get; }
@@ -64,6 +70,7 @@ public static class ContactFields
         Text("alias", false, c => c.Alias, (c, v) => c with { Alias = v }),
         Text("fullName", false, c => c.FullName, (c, v) => c with { FullName = v ?? "" }),
         Text("firstName", false, c => c.FirstName, (c, v) => c with { FirstName = v }),
+        Text("nickname", false, c => c.StoredNickname, (c, v) => c with { Nickname = v }, c => c.Nickname),
         Text("title", false, c => c.Title, (c, v) => c with { Title = v }),
         Text("location", true, c => c.Location, (c, v) => c with { Location = v }),
         Text("levelId", true, c => c.LevelId, (c, v) => c with { LevelId = v }),
@@ -84,8 +91,10 @@ public static class ContactFields
     internal static ContactField? Named(string name) => ByName.GetValueOrDefault(name);
 
     /// <summary>A text field, or a key field when <see cref="KeyFields"/> lists it.</summary>
-    private static ContactField Text(string name, bool isTeamField, Func<Contact, string?> textOf, Func<Contact, string?, Contact> with) =>
-        new(name, KeyFields.All.Any(key => key.Field == name) ? ContactFieldKind.Key : ContactFieldKind.Text, isTeamField, textOf, with);
+    private static ContactField Text(
+        string name, bool isTeamField, Func<Contact, string?> textOf, Func<Contact, string?, Contact> with,
+        Func<Contact, string?>? templateTextOf = null) =>
+        new(name, KeyFields.All.Any(key => key.Field == name) ? ContactFieldKind.Key : ContactFieldKind.Text, isTeamField, textOf, with, templateTextOf);
 
     /// <summary>A date field; every date field is a team field.</summary>
     private static ContactField Date(string name, Func<Contact, DateOnly?> read, Func<Contact, DateOnly?, Contact> write) =>

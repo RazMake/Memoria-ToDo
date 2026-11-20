@@ -84,6 +84,31 @@ public sealed class SearchTests
     }
 
     [Fact]
+    public void Matches_a_word_found_anywhere_in_the_nickname_ignoring_case()
+    {
+        Seed(ContactFiles.Person("1", "Ana", ("nickname", "Big Zippy Boss")), ContactFiles.Person("2", "Bo"));
+
+        Assert.Equal(["1"], Found("ZIPPY"));
+        Assert.Equal(["1"], Found("ppy bo"));
+    }
+
+    [Fact]
+    public void Lets_the_words_match_across_the_nickname_and_other_fields()
+    {
+        Seed(ContactFiles.Person("1", "Ana", ("nickname", "Zippy"), ("location", "Oslo")), ContactFiles.Person("2", "Bo", ("nickname", "Zippy"), ("location", "Rome")));
+
+        Assert.Equal(["1"], Found("zippy oslo"));
+    }
+
+    [Fact]
+    public void Still_finds_a_contact_without_a_nickname_by_its_first_name()
+    {
+        Seed(ContactFiles.Person("1", "Ana Popa", ("firstName", "Zippy")), ContactFiles.Person("2", "Bo"));
+
+        Assert.Equal(["1"], Found("zippy"));
+    }
+
+    [Fact]
     public void Searches_the_id_and_the_full_name()
     {
         Seed(ContactFiles.Person("77123", "Ana"), ContactFiles.Person("2", "Zoe"));
@@ -145,7 +170,7 @@ public sealed class SearchTests
     [Fact]
     public void Does_not_search_unknown_fields()
     {
-        Seed("""{ "id": "1", "fullName": "Ana", "nickname": "Zippy", "notes": [ "zippy" ] }""");
+        Seed("""{ "id": "1", "fullName": "Ana", "nick": "Zippy", "notes": [ "zippy" ] }""");
 
         Assert.Empty(Found("zippy"));
     }

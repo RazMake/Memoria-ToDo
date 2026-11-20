@@ -59,10 +59,11 @@ Proposed, each a decision to confirm:
 Proposed for building, each a decision to confirm:
 
 - **The fields come from [Contacts' `ContactFields`](../contacts.md#public-interface)**, the user's choice: their order, kinds, and which are team fields. The window keeps only their labels.
-- **The fields' names** are ID, Alias, Full name, First name, Title, Location, Level, Working type, Pronouns, Career path, Reports to, Direct reports, Day start time, Level start date, Team member since, and Exit date. The details and the form show them in the order of [Contacts' field table](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts), with Direct reports after Reports to; the form leaves out Direct reports, which isn't a stored field.
+- **The fields' names** are ID, Alias, Full name, First name, Nickname, Title, Location, Level, Working type, Pronouns, Career path, Reports to, Direct reports, Day start time, Level start date, Team member since, and Exit date. The details and the form show them in the order of [Contacts' field table](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts), with Direct reports after Reports to; the form leaves out Direct reports, which isn't a stored field.
 - **An empty ID says "Write an ID."** and an empty full name "Write the full name.", under the field.
 - **An unlisted stored key is kept, not cleared, while the drop-down shows empty**, so opening and saving a form never changes a key the user didn't touch. A key the user picked that a reload of its file no longer lists also shows empty; Contacts then rejects the save, and the message line says why.
 - **Clicking "Reports to" or a direct report that the search hides empties the search first**, so the selected contact shows in the list. With a changed form open, it asks first, and empties the search only once the form leaves; Cancel keeps both.
+- **Nickname shows and edits only what the file holds**, as a plain text field. Proposed, a decision to confirm: a contact with no nickname shows no Nickname row, like any missing field, though templates [show its first name](../contacts.md#a-nickname-falls-back-to-the-first-name).
 
 ### A contact card shows a mentioned contact's details
 
@@ -75,7 +76,7 @@ The user asked that resting the mouse pointer on a mention, anywhere one shows, 
 Proposed, each a decision to confirm:
 
 - **Its heading is the full name**, with the group's heading under it, as the details show them.
-- **While Ctrl is held, it shows every field the details show**, in the details' order, with their labels: the common fields, plus ID, First name, and Direct reports, and, for a contact in a [team group](../contacts.md#team-groups-show-more-fields), Location, Level, Working type, Day start time, Level start date, Team member since, and Exit date.
+- **While Ctrl is held, it shows every field the details show**, in the details' order, with their labels: the common fields, plus ID, First name, Nickname, and Direct reports, and, for a contact in a [team group](../contacts.md#team-groups-show-more-fields), Location, Level, Working type, Day start time, Level start date, Team member since, and Exit date.
 - **Each value shows as in the details**: a key field as its entry's name, a date in the user's short date format, "Reports to" as the manager's full name or the name as written, and Direct reports as a list of full names. The card and the details share one way of turning a field into its label and text, so the two can't differ.
 - **A field with no value doesn't show**, in either view. A contact with none of the common fields shows only its heading.
 - **The last line, in the help style, says "Ctrl: all details"** while some field shows only with Ctrl, and "Release Ctrl: fewer details" while Ctrl is held.
@@ -236,3 +237,5 @@ public static class ContactCard
   - **`ContactCard.For` takes the color from its caller**: a public interface change, and the Task editor and the Task list would both pick the card's color, two places for one rule.
   - **The desktop platform gives the heading color**: the platform would copy Rendering's colors.
 - **The details pane's name in the heading color too**: a visible change to the Contacts window nobody asked for.
+- **Showing the first name in place of a missing nickname, in the details or as a hint in the form**: the details would show a value the file doesn't hold, and the card would need the same rule, or the form would need a hint style it doesn't have.
+- **Nickname among the card's common fields, shown without Ctrl**: the default card the user chose would grow by a row.

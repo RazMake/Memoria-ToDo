@@ -8,10 +8,10 @@ namespace Memoria.ToDo.Shared.Contacts.Tests;
 public sealed class FieldValueRuleTests
 {
     private static readonly string[] TextFields =
-        ["id", "alias", "fullName", "firstName", "title", "location", "levelId", "workingType", "pronounsKey", "careerPathKey", "reportsTo", "dayStartTime", "levelStartDate", "teamMemberSince", "exitDate"];
+        ["id", "alias", "fullName", "firstName", "nickname", "title", "location", "levelId", "workingType", "pronounsKey", "careerPathKey", "reportsTo", "dayStartTime", "levelStartDate", "teamMemberSince", "exitDate"];
 
     private static readonly string[] FreeTextFields =
-        ["id", "alias", "fullName", "firstName", "title", "location", "levelId", "workingType", "pronounsKey", "careerPathKey", "reportsTo"];
+        ["id", "alias", "fullName", "firstName", "nickname", "title", "location", "levelId", "workingType", "pronounsKey", "careerPathKey", "reportsTo"];
 
     private static readonly string[] DateFields = ["levelStartDate", "teamMemberSince", "exitDate"];
 

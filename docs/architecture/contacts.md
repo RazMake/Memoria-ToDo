@@ -42,7 +42,9 @@ These modules use it:
   | `id` | The contact's ID, as [below](#an-id-and-an-optional-alias-name-each-contact) | Yes | Every contact |
   | `alias` | A short name, such as a sign-in name | No | Every contact |
   | `fullName` | The name shown everywhere | Yes | Every contact |
-  | `firstName`, `title` | Text | No | Every contact |
+  | `firstName` | Text | No | Every contact |
+  | `nickname` | Text: the name the user calls the contact by. A missing one [falls back to the first name](#a-nickname-falls-back-to-the-first-name) | No | Every contact |
+  | `title` | Text | No | Every contact |
   | `location`, `levelId`, `workingType` | Text | No | Team |
   | `pronounsKey`, `careerPathKey` | The `id` of an entry in a [data type file](#key-fields-choose-from-the-users-data-type-files) | No | Every contact |
   | `reportsTo` | The manager's alias or ID, as [below](#reportsto-names-the-manager) | No | Every contact |
@@ -86,6 +88,19 @@ Proposed, each a decision to confirm:
 - **A field that is `null` or not text makes the file unreadable**, rather than counting as missing.
 - **An ID never changes once saved.** The [Contact list](desktop/contact-list.md#add-and-delete-change-the-contacts) lets the user type it only when adding a contact.
 
+### A nickname falls back to the first name
+
+The user decided that every contact may have a `nickname`, the name the user calls them by, and that asking for a contact's nickname anywhere gives the nickname, or the first name when the nickname is missing. This section is that rule's one home; search, templates, and screens link here.
+
+- **The field is optional.** A file without it loads as before, and the contact's stored nickname is null in the code. An empty value counts as missing, as for [every field](#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts).
+- **The nickname shown is the nickname, else the first name**, the user's choice. With neither, the contact has no nickname, and a [template](#mention-templates-come-from-a-synced-file) that asks for one shows the full name.
+- **The user decided `Contact.Nickname` itself gives the nickname, else the first name**, so a caller can't get the rule wrong. The record keeps the stored value apart, as [Public interface](#public-interface) declares.
+- **The file keeps only what the user wrote.** Saving never writes the first name into a missing nickname: `ContactField.TextOf` gives the stored value, as for every field, and the Contact list's form reads and saves through it.
+- **A nickname isn't a name in the ID and alias sense.** Two contacts may share one, and it may hold spaces and any character, on one line. It's never checked against IDs and aliases, and it never makes a [shared name](#a-name-two-contacts-share-points-to-nobody).
+- **It's a field for every contact, not a team field**, as the user's request says "all contacts". Proposed, a decision to confirm: it's written right after `firstName`, as the [field table](#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts) shows, keeping the names together.
+
+Older app versions keep a `nickname` they don't know, as they keep [every unknown field](#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts), and merge it field by field. They don't search it, and they skip a templates file that names `{nickname}`, as [Failure modes](#failure-modes) says.
+
 ### A name two contacts share points to nobody
 
 The user decided that when two contacts share a name, in one file or two, both still load, the shared name is reported, and it resolves to nobody: a `reportsTo` that names it finds no manager, and a mention of it shows its stored text. Each contact still shows and can be edited and searched. The Contact list and Sync's status list the shared names, so the user can fix the files.
@@ -99,6 +114,8 @@ A contact's `reportsTo` holds its manager's alias or ID. It finds the contact wi
 ### Search matches every typed word in any field
 
 The user decided that search, in the Contacts window and in the "@" list alike, matches a contact when every word typed appears, ignoring case, somewhere in its known fields. Empty search text matches everyone. One search serves both, so they always agree. The user decided a time is searched as `HH:mm`, such as `09:30`, as the app writes it, even when the file holds `9:30`.
+
+The user decided the [nickname](#a-nickname-falls-back-to-the-first-name) is searched too, wherever the app finds contacts by typed text: the Contacts window, and the "@" lists of the Task editors and of Task View's search box. Search matches the stored nickname, as for every field. A contact without one is still found by its first name, which is searched anyway, so the fallback changes no result.
 
 Proposed, each a decision to confirm:
 
@@ -161,7 +178,7 @@ Proposed, each a decision to confirm:
 - **The stored text** escapes `[`, `]`, and `\` as a task link's text does, through the platform's [Markdown label](../../src/Shared/Platform/MarkdownLabel.cs). In the title, `"` and `\` take a backslash.
 - **A mention shows on a soft accent background**, one per theme, as the user decided and [Rendering](rendering.md#a-mention-shows-on-a-colored-background) owns.
 - **Clicking a mention does nothing.**
-- **Task search matches a mention's stored text**, since Tasks searches the task as saved. Task View's search box also finds every mention of one contact from a word such as `@anap`, as the user decided for the [Task list](desktop/task-list.md#search-narrows-the-list), through the mention's address; Tasks' own search doesn't change. Proposed, a decision to confirm: the word finds its contact through `Find`.
+- **Task search matches a mention's stored text**, since Tasks searches the task as saved. Task View's search box also finds every mention of one contact from a word such as `@anap`, as the user decided for the [Task list](desktop/task-list.md#search-narrows-the-list), through the mention's address; Tasks' own search doesn't change. Proposed, a decision to confirm: the word finds its contact through `Find`. The user decided `Find` doesn't look up nicknames, since they may repeat and hold spaces; the box's "@" list finds a contact by nickname through [search](#search-matches-every-typed-word-in-any-field) instead.
 
 ### Mention templates come from a synced file
 
@@ -170,6 +187,7 @@ The user decided that the templates are a list in a synced file the user writes 
 - **The file is `autocomplete/contacts/dataTypes/mentionTemplates.json`**, the user's choice: `{ "version": 1, "templates": ["{fullName}", "{fullName} ({careerPath.short})", "{firstName}"] }`. Its order is the order Tab cycles them in. It isn't a [data type](#key-fields-choose-from-the-users-data-type-files): no key field chooses from it.
 - **With no file, the list is `["{fullName}"]`**, and nothing is reported. The user decided an empty file, of zero bytes, counts as no file.
 - **A template shows a time as `HH:mm`**, as [search](#search-matches-every-typed-word-in-any-field) does, the user's choice. Proposed, a decision to confirm: a date shows as `yyyy-MM-dd`.
+- **`{nickname}` shows the [nickname, else the first name](#a-nickname-falls-back-to-the-first-name)**, the user's choice, so `{nickname}` shows "Cami" for a contact with that nickname, and "Ana" for one with only `firstName: "Ana"`. It's the one placeholder that doesn't show its field's stored value. `{firstName}` still shows only the first name.
 
 Proposed, each a decision to confirm:
 
@@ -177,7 +195,7 @@ Proposed, each a decision to confirm:
 - **A placeholder can also reach a key field's entry**, as `{<field without Key>.<property>}`: `{careerPath.short}` shows "EM" for `careerPathKey: "em"`, so `{fullName} ({careerPath.short})` shows "Razvan Popov (EM)", and `{pronouns.subject}` shows "he". The property is any text property of the entry, since entries differ.
 - **A templates file that lists no template is unreadable**, the same as one with an invalid template; only a file of zero bytes means the default.
 - **A template is invalid when it's empty, names an unknown field or key field, or has an unmatched brace.** A file with an invalid template, or that can't be read, is skipped and reported, and the default list is used.
-- **When the contact lacks any value the template names, the mention shows the contact's full name**: a missing field, a key its data type doesn't list, or an entry without the property. So a mention never shows half a text such as "Ana ()".
+- **When the contact lacks any value the template names, the mention shows the contact's full name**: a missing field, a key its data type doesn't list, or an entry without the property. `{nickname}` lacks its value only when both the nickname and the first name are missing. So a mention never shows half a text such as "Ana ()".
 
 ### A mention's text is rebuilt from the contact each time it shows
 
@@ -240,11 +258,21 @@ public interface IContactStore
 }
 
 /// One contact's known fields. Null means the field is missing.
+/// Proposed, a decision to confirm: Nickname comes last, after ExitDate, unlike its place in the file, so calls
+/// that pass every field by position keep their meaning; inserted after FirstName, "Lead" in such a call would
+/// silently become the nickname, since both are text.
 public sealed record Contact(
     string Id, string FullName, string? Alias = null, string? FirstName = null, string? Title = null,
     string? PronounsKey = null, string? CareerPathKey = null, string? LevelId = null, string? WorkingType = null,
     string? Location = null, string? ReportsTo = null, TimeOnly? DayStartTime = null,
-    DateOnly? LevelStartDate = null, DateOnly? TeamMemberSince = null, DateOnly? ExitDate = null);
+    DateOnly? LevelStartDate = null, DateOnly? TeamMemberSince = null, DateOnly? ExitDate = null,
+    string? Nickname = null)
+{
+    /// The user decided: the nickname, or the first name when the stored nickname is null or empty; null when both are.
+    /// The one home of the nickname fallback; {nickname} in a template shows it. Init sets the stored value, which
+    /// equality compares and ContactFields' "nickname" TextOf gives, so a file never gains a nickname the user didn't write.
+    public string? Nickname { get; init; }
+}
 
 /// A contact's time of day as text, the way Contacts reads, writes, and searches dayStartTime.
 /// The user decided it's public, so the Contact list's time field reads the same forms (slice (e) of step 15).
@@ -397,6 +425,7 @@ public interface IContactFileRules
 - **A write fails**: the call throws the file system's exception; the file stays whole, as the [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files) promises, and the screen that asked says why.
 - **A Changed handler or the local save report fails**: after a write, Contacts still raises Changed and reports the local save, each even when the other fails. The user decided this follows the [synced repository's rule](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload): one failure is thrown as it is, and several make an `AggregateException`, the write's own failure first, then Changed's, then the report's.
 - **A sync deletes a contact being edited in the Contact list**: Save adds it back. This is an accepted risk, decided with the [Contact list](desktop/contact-list.md#failure-modes).
+- **A device still runs an app older than the [nickname](#a-nickname-falls-back-to-the-first-name)**: it keeps and merges `nickname` as an unknown field, so no data is lost, but its search ignores it. It reads a templates file that names `{nickname}` as naming an unknown field, so it skips the file, lists it in Sync's status, and offers only the default `{fullName}` until the device updates. Its mentions still show, rebuilt from their stored template only when that template is valid there; a mention stored with `{nickname}` shows its stored text.
 
 ## Ruled out
 
@@ -425,6 +454,9 @@ public interface IContactFileRules
 - **Letting a templates file deletion beat an edit**, as "the changed side wins" alone would: a merge would drop templates the user wrote.
 - **Keeping a one-side change's bytes unchanged in a group or data type file merge**, in Contacts or in Sync for every file kind: the user chose to write every merged file in this app's layout, as task files are.
 - **The contact card reading the ID with the platform's contact address and looking through `Groups` itself**: the rule for resolving an address would live in two places, which could disagree on a shared ID. The user chose `ContactOf`.
+- **A separate `Contact.NicknameOrFirstName` beside a plain stored `Nickname`, or the fallback only inside templates**: a caller could read the stored value and miss the fallback, or a later screen would copy the rule. The user chose `Nickname` itself to fall back.
+- **`Find` falling back to a nickname only one contact holds, or nicknames joining IDs and aliases as unique names**: adding a second contact with the same nickname would silently stop a search word working, or shared nicknames would be reported and couldn't hold spaces. The user kept `Find` to aliases and IDs.
+- **`nickname` as a team field**: the user asked for it on all contacts.
 
 ## Open questions
 

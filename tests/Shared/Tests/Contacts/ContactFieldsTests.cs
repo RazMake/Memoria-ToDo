@@ -16,10 +16,40 @@ public sealed class ContactFieldsTests
     {
         Assert.Equal(
             [
-                "id", "alias", "fullName", "firstName", "title", "location", "levelId", "workingType", "pronounsKey",
+                "id", "alias", "fullName", "firstName", "nickname", "title", "location", "levelId", "workingType", "pronounsKey",
                 "careerPathKey", "reportsTo", "dayStartTime", "levelStartDate", "teamMemberSince", "exitDate",
             ],
             ContactFields.All.Select(field => field.Name));
+    }
+
+    [Fact]
+    public void Gives_the_nickname_field_the_text_kind_and_no_team_field_mark()
+    {
+        Assert.Equal(ContactFieldKind.Text, Field("nickname").Kind);
+        Assert.False(Field("nickname").IsTeamField);
+    }
+
+    [Fact]
+    public void Reads_the_stored_nickname_and_not_the_first_name_as_text()
+    {
+        var field = Field("nickname");
+
+        Assert.Null(field.TextOf(new Contact("ana", "Ana Pop", FirstName: "Ana")));
+        Assert.Equal("Nia", field.TextOf(new Contact("ana", "Ana Pop", FirstName: "Ana", Nickname: "Nia")));
+    }
+
+    [Fact]
+    public void Sets_and_clears_the_stored_nickname_from_text()
+    {
+        var field = Field("nickname");
+
+        var set = field.With(new Contact("ana", "Ana Pop", FirstName: "Ana"), "Nia");
+        Assert.Equal("Nia", set.Nickname);
+        Assert.Equal("Nia", field.TextOf(set));
+
+        Assert.Null(field.TextOf(field.With(set, null)));
+        Assert.Null(field.TextOf(field.With(set, "")));
+        Assert.Equal("Ana", field.With(set, "").Nickname);
     }
 
     [Fact]

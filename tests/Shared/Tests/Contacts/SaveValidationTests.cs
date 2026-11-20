@@ -59,6 +59,9 @@ public sealed class SaveValidationTests
     public void Rejects_a_first_name_that_spans_more_than_one_line() => AssertRejected("team", new Contact("1", "Ana", FirstName: "A\r\nna"));
 
     [Fact]
+    public void Rejects_a_nickname_that_spans_more_than_one_line() => AssertRejected("team", new Contact("1", "Ana", Nickname: "Ni\na"));
+
+    [Fact]
     public void Rejects_a_title_that_spans_more_than_one_line() => AssertRejected("team", new Contact("1", "Ana", Title: "Lead\nDev"));
 
     [Fact]
@@ -109,6 +112,20 @@ public sealed class SaveValidationTests
 
     [Fact]
     public void Rejects_a_new_ID_for_the_user_s_own_contact() => AssertRejected("me", new Contact("43", "Me"));
+
+    [Fact]
+    public void Accepts_a_nickname_with_spaces_one_that_two_contacts_share_and_one_equal_to_another_ID_or_alias()
+    {
+        f.Contacts.Save("team", new Contact("1", "Ana", Alias: "anap", Nickname: "Big Boss"));
+        f.Contacts.Save("team", new Contact("2", "Bo", Nickname: "BIG BOSS"));
+        f.Contacts.Save("friends", new Contact("3", "Cy", Alias: "cyc", Nickname: "anap"));
+        f.Contacts.Save("team", new Contact("2", "Bo", Nickname: "3"));
+
+        Assert.Equal("Big Boss", f.Member("team", "1").Nickname);
+        Assert.Equal("3", f.Member("team", "2").Nickname);
+        Assert.Equal("anap", f.Member("friends", "3").Nickname);
+        Assert.Empty(f.Contacts.SharedNames);
+    }
 
     [Fact]
     public void Accepts_keys_the_data_types_list()

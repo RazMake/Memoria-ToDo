@@ -15,6 +15,7 @@ public sealed class FormattedTitle : TextBlock
 
     private readonly ITheme _theme;
     private readonly LinkOpener _links;
+    private readonly List<Chip> _chips = [];
     private string _markdown = "";
     private string? _shownMarkdown;
     private bool _shownDark;
@@ -72,109 +73,63 @@ public sealed class FormattedTitle : TextBlock
         _shownMarkdown = _markdown;
         _shownDark = dark;
         Inlines.Clear();
+        _chips.Clear();
         var look = TextLooks.Of(dark);
         var spans = TitleText.ShownSpans(_markdown);
-        foreach (var span in spans)
+        var mentions = Mentions.In(_markdown, title: true);
+        var background = Frozen(new SolidColorBrush(ColorOf(look.MentionBackground)));
+        for (var i = 0; i < spans.Count; i++)
         {
-            Inlines.Add(InlineOf(span, look));
+            if (!spans[i].Styles.HasFlag(SpanStyle.Mention))
+            {
+                Inlines.Add(InlineOf(spans[i], look));
+                continue;
+            }
+
+            // A mention is one chip, however many styled spans its text has. A chip is not a link: its clicks go to the
+            // element around the title.
+            var mention = mentions.First(m => spans[i].Start >= m.Start && spans[i].Start < m.Start + m.Length);
+            var runs = new List<Run> { RunOf(spans[i], look) };
+            while (i + 1 < spans.Count
+                && spans[i + 1].Styles.HasFlag(SpanStyle.Mention)
+                && spans[i + 1].Start < mention.Start + mention.Length)
+            {
+                i++;
+                runs.Add(RunOf(spans[i], look));
+            }
+
+            var chip = new Chip(mention, runs, background);
+            _chips.Add(chip);
+            Inlines.Add(new InlineUIContainer(chip));
         }
 
         AutomationProperties.SetName(this, TitleText.TextOf(_markdown, spans));
     }
 
-    // The part of the title under the point: the mention there, boxed around all its lines, with the card MentionCard makes for it.
+    // The part of the title under the point: the mention whose chip is there, boxed by that chip, with the card MentionCard
+    // makes for it. A chip's text isn't in the title's own text flow, so the chips are hit-tested directly, by their boxes
+    // in the title.
     internal Task<HoverPart?> PartAt(Point inTitle)
     {
         HoverPart? part = null;
         if (MentionCard is { } makeCard
-            && ShownOffsetAt(inTitle) is { } offset
-            && TitleMentions.At(_markdown, offset) is { } found
-            && makeCard(found.Mention) is { } card)
+            && _chips.FirstOrDefault(chip => BoxOf(chip).Contains(inTitle)) is { } hit
+            && makeCard(hit.Mention) is { } card)
         {
-            part = new HoverPart(BoxOf(found.ShownStart, found.ShownLength), card);
+            part = new HoverPart(BoxOf(hit), card);
         }
 
         return Task.FromResult(part);
     }
 
-    // The offset into the shown text of the character under the point, or null when none is.
-    // The position nearest the point sits between two characters, so the one under the point is the one after or before it.
-    private int? ShownOffsetAt(Point point)
-    {
-        if (GetPositionFromPoint(point, snapToText: false) is not { } position)
-        {
-            return null;
-        }
+    // The chip's whole background, padding included, in the title's coordinates. Empty while the chip isn't laid out in the title.
+    private Rect BoxOf(Chip chip) =>
+        chip.IsDescendantOf(this)
+            ? chip.TransformToAncestor(this).TransformBounds(new Rect(chip.RenderSize))
+            : Rect.Empty;
 
-        var offset = new TextRange(ContentStart, position).Text.Length;
-        if (position.GetNextInsertionPosition(LogicalDirection.Forward) is { } next
-            && CharacterBox(position, next).Contains(point))
-        {
-            return offset;
-        }
-
-        return offset > 0
-            && position.GetNextInsertionPosition(LogicalDirection.Backward) is { } previous
-            && CharacterBox(previous, position).Contains(point)
-            ? offset - 1
-            : null;
-    }
-
-    // The one box around the characters of a shown range, which covers every line the range wraps onto.
-    private Rect BoxOf(int shownStart, int shownLength)
-    {
-        var position = PositionAt(shownStart);
-        var box = Rect.Empty;
-        for (var i = 0; i < shownLength && position is not null; i++)
-        {
-            var next = position.GetNextInsertionPosition(LogicalDirection.Forward);
-            if (next is null)
-            {
-                break;
-            }
-
-            box.Union(CharacterBox(position, next));
-            position = next;
-        }
-
-        return box;
-    }
-
-    // The box of the character between two neighbouring positions. WPF gives only a zero-width caret at a position,
-    // so the box runs from the caret at the character's start to the caret at its end.
-    // The end caret is the one that belongs to the character, which keeps a character at a line's end on its own line.
-    private static Rect CharacterBox(TextPointer start, TextPointer end)
-    {
-        var box = start.GetCharacterRect(LogicalDirection.Forward);
-        box.Union(end.GetCharacterRect(LogicalDirection.Backward));
-        return box;
-    }
-
-    // The position before the character at an offset into the shown text.
-    private TextPointer PositionAt(int shownOffset)
-    {
-        var position = ContentStart;
-        var remaining = shownOffset;
-        while (position.GetPointerContext(LogicalDirection.Forward) != TextPointerContext.None)
-        {
-            if (position.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.Text)
-            {
-                var length = position.GetTextRunLength(LogicalDirection.Forward);
-                if (remaining < length)
-                {
-                    return position.GetPositionAtOffset(remaining)!;
-                }
-
-                remaining -= length;
-            }
-
-            position = position.GetNextContextPosition(LogicalDirection.Forward);
-        }
-
-        throw new InvalidOperationException("The offset is past the end of the shown text.");
-    }
-
-    private Inline InlineOf(StyledSpan span, TextLook look)
+    // The span's text with the span's own styles.
+    private Run RunOf(StyledSpan span, TextLook look)
     {
         var run = new Run(_markdown.Substring(span.Start, span.Length));
         if (span.Styles.HasFlag(SpanStyle.Bold))
@@ -203,12 +158,13 @@ public sealed class FormattedTitle : TextBlock
             run.Foreground = Frozen(new SolidColorBrush(ColorOf(color)));
         }
 
-        if (span.Styles.HasFlag(SpanStyle.Mention))
-        {
-            // A mention is a chip, not a link: its clicks go to the element around the title.
-            return new InlineUIContainer(new Chip(run, Frozen(new SolidColorBrush(ColorOf(look.MentionBackground)))));
-        }
+        return run;
+    }
 
+    // A span outside any mention: its run, or a link around it.
+    private Inline InlineOf(StyledSpan span, TextLook look)
+    {
+        var run = RunOf(span, look);
         if (span.LinkAddress is not { } address)
         {
             return run;
@@ -230,15 +186,19 @@ public sealed class FormattedTitle : TextBlock
     {
         private readonly TextBlock _text;
 
-        public Chip(Run run, Brush background)
+        public Chip(Mention mention, IEnumerable<Run> runs, Brush background)
         {
-            _text = new TextBlock(run);
+            Mention = mention;
+            _text = new TextBlock();
+            _text.Inlines.AddRange(runs);
             Child = _text;
             Background = background;
             Padding = new Thickness(TextLooks.MentionPaddingSides, TextLooks.MentionPaddingTop, TextLooks.MentionPaddingSides, TextLooks.MentionPaddingBottom);
             Margin = new Thickness(0, -TextLooks.MentionPaddingTop, 0, -TextLooks.MentionPaddingBottom);
             CornerRadius = new CornerRadius(TextLooks.MentionCornerRadius);
         }
+
+        public Mention Mention { get; }
 
         // The title lines the chip up by this offset; without it the chip's bottom would sit on the baseline.
         protected override Size MeasureOverride(Size constraint)

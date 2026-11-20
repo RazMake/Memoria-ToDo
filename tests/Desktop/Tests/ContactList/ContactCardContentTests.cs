@@ -32,7 +32,7 @@ public class ContactCardContentTests
     private void GiveAnaEveryField() =>
         _services.Contacts.Save("team", _services.Member("team", "ana") with
         {
-            FirstName = "Ana", LevelId = "L5", WorkingType = "Remote",
+            FirstName = "Ana", Nickname = "Annie", LevelId = "L5", WorkingType = "Remote",
             TeamMemberSince = new DateOnly(2023, 6, 1), ExitDate = new DateOnly(2026, 1, 31),
         });
 
@@ -115,6 +115,37 @@ public class ContactCardContentTests
     }
 
     [Fact]
+    public void Shows_by_default_no_nickname_though_the_contact_has_one()
+    {
+        GiveAnaEveryField();
+
+        Assert.DoesNotContain("Nickname", Labels(Open("ana")));
+    }
+
+    [Fact]
+    public void Shows_with_Ctrl_the_stored_nickname_right_after_the_first_name()
+    {
+        GiveAnaEveryField();
+
+        var card = Open("ana", ctrl: true);
+        var labels = Labels(card).ToList();
+
+        Assert.Equal(labels.IndexOf("First name") + 1, labels.IndexOf("Nickname"));
+        Assert.Equal("Annie", Assert.Single(Field(card, "Nickname").Values).Text);
+    }
+
+    [Fact]
+    public void Shows_with_Ctrl_no_nickname_for_a_contact_with_a_first_name_and_no_stored_nickname()
+    {
+        _services.Contacts.Save("team", _services.Member("team", "ana") with { FirstName = "Ana" });
+
+        var card = Open("ana", ctrl: true);
+
+        Assert.Contains("First name", Labels(card));
+        Assert.DoesNotContain("Nickname", Labels(card));
+    }
+
+    [Fact]
     public void Shows_the_same_common_fields_for_a_contact_in_another_group()
     {
         Assert.Equal(["Title"], Labels(Open("dan")));
@@ -144,7 +175,7 @@ public class ContactCardContentTests
 
         Assert.Equal(
             [
-                "ID", "Alias", "First name", "Title", "Location", "Level", "Working type", "Pronouns", "Career path",
+                "ID", "Alias", "First name", "Nickname", "Title", "Location", "Level", "Working type", "Pronouns", "Career path",
                 "Reports to", "Direct reports", "Day start time", "Level start date", "Team member since", "Exit date",
             ],
             Labels(Open("ana", ctrl: true)));

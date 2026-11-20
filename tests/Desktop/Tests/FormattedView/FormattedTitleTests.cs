@@ -199,6 +199,90 @@ public class FormattedTitleTests
 
     private const string Mention = "[Ana](contact:a1 \"{firstName}\")";
 
+    private const string Escaped = "[Ana Pop \\(SDE\\)](contact:a1 \"{fullName} ({careerPath.short})\")";
+
+    [WpfFact]
+    public void Shows_a_mention_whose_text_holds_escaped_punctuation_as_one_chip_with_that_text()
+    {
+        using var screen = new TitleScreen();
+
+        screen.Title.Markdown = $"Ask {Escaped} now";
+
+        var chip = Assert.Single(screen.Title.Chips());
+        Assert.Equal("Ana Pop (SDE)", TitleChips.TextOf(chip));
+        Assert.Equal("Ask Ana Pop (SDE) now", screen.Text);
+        Assert.Equal("Ask Ana Pop (SDE) now", AutomationProperties.GetName(screen.Title));
+    }
+
+    [WpfTheory]
+    [InlineData("bold", "[Ana **Pop** Li](contact:a1 \"{fullName}\")")]
+    [InlineData("italic", "[Ana *Pop* Li](contact:a1 \"{fullName}\")")]
+    public void Shows_a_mention_with_bold_or_italic_on_part_of_its_text_as_one_chip_keeping_that_style_on_that_part(string style, string mention)
+    {
+        using var screen = new TitleScreen();
+
+        screen.Title.Markdown = $"Ask {mention} now";
+
+        var chip = Assert.Single(screen.Title.Chips());
+        Assert.Equal("Ana Pop Li", TitleChips.TextOf(chip));
+        Assert.True(HasStyle(style, screen, "Pop"), $"'Pop' isn't {style}.");
+        Assert.False(HasStyle(style, screen, "Ana"), $"'Ana' is {style} too.");
+        Assert.False(HasStyle(style, screen, "Li"), $"'Li' is {style} too.");
+    }
+
+    [WpfFact]
+    public void Shows_each_of_two_mentions_as_its_own_chip_and_the_text_around_them_outside_any_chip()
+    {
+        using var screen = new TitleScreen();
+
+        screen.Title.Markdown = $"Ask {Escaped} and {Bo} now";
+
+        var chips = screen.Title.Chips();
+        Assert.Equal(["Ana Pop (SDE)", "Bo Li"], chips.Select(TitleChips.TextOf));
+        Assert.Equal("Ask Ana Pop (SDE) and Bo Li now", screen.Text);
+        Assert.DoesNotContain(chips, chip => TitleChips.TextOf(chip).Contains("Ask") || TitleChips.TextOf(chip).Contains("now"));
+    }
+
+    [WpfFact]
+    public async Task Makes_the_card_of_a_mention_with_escaped_punctuation_for_any_point_on_its_one_chip_with_that_chip_as_the_box()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = $"Ask {Escaped} now";
+        var chip = screen.ChipBox("Ana Pop (SDE)");
+        var y = chip.Top + (chip.Height / 2);
+
+        foreach (var x in new[] { chip.Left + 1, chip.Left + (chip.Width * 0.25), chip.Left + (chip.Width / 2), chip.Left + (chip.Width * 0.75), chip.Right - 1 })
+        {
+            var part = await screen.Title.PartAt(new Point(x, y));
+
+            Assert.Equal("contact:a1", ((Border)part!.Card).Tag);
+            Assert.InRange(part.Box.Left, chip.Left - 0.5, chip.Left + 0.5);
+            Assert.InRange(part.Box.Top, chip.Top - 0.5, chip.Top + 0.5);
+            Assert.InRange(part.Box.Right, chip.Right - 0.5, chip.Right + 0.5);
+            Assert.InRange(part.Box.Bottom, chip.Bottom - 0.5, chip.Bottom + 0.5);
+        }
+    }
+
+    [WpfFact]
+    public async Task Makes_the_card_of_a_mention_with_a_bold_part_for_any_point_on_its_one_chip()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = "Ask [Ana **Pop** Li](contact:a1 \"{fullName}\") now";
+        var chip = screen.ChipBox("Ana Pop Li");
+        var y = chip.Top + (chip.Height / 2);
+
+        foreach (var x in new[] { chip.Left + 1, chip.Left + (chip.Width / 2), chip.Right - 1 })
+        {
+            var part = await screen.Title.PartAt(new Point(x, y));
+
+            Assert.Equal("contact:a1", ((Border)part!.Card).Tag);
+            Assert.InRange(part.Box.Left, chip.Left - 0.5, chip.Left + 0.5);
+            Assert.InRange(part.Box.Right, chip.Right - 0.5, chip.Right + 0.5);
+        }
+    }
+
     [WpfFact]
     public void Shows_a_mention_as_its_text_alone_with_its_markers_hidden()
     {
@@ -284,37 +368,70 @@ public class FormattedTitleTests
 
     private static Border CardOf(string name) => new() { Width = 60, Height = 24, Tag = name };
 
+    private static Point Middle(Rect box) => new(box.Left + (box.Width / 2), box.Top + (box.Height / 2));
+
     [WpfFact]
-    public async Task Makes_the_card_of_the_mention_under_the_point_from_its_address_and_template_and_returns_it_with_the_mention_box()
+    public async Task Makes_the_card_of_the_mention_chip_under_the_point_from_its_address_and_template_and_returns_it_with_the_chip_background_as_the_box()
     {
         using var screen = new TitleScreen();
         var asked = new List<Mention>();
         screen.Title.MentionCard = mention => { asked.Add(mention); return CardOf(mention.Address); };
         screen.Title.Markdown = $"Ask {Mention} now";
+        var chip = screen.ChipBox("Ana");
 
-        var part = await screen.Title.PartAt(screen.InsideStartOf("Ana"));
+        var part = await screen.Title.PartAt(Middle(chip));
 
         var only = Assert.Single(asked);
         Assert.Equal("contact:a1", only.Address);
         Assert.Equal("{firstName}", only.Template);
         Assert.NotNull(part);
         Assert.Equal("contact:a1", ((Border)part.Card).Tag);
-        Assert.True(part.Box.Contains(screen.InsideStartOf("Ana")), "The box doesn't hold the mention's text.");
-        Assert.False(part.Box.Contains(screen.InsideStartOf("now")), "The box reaches the text after the mention.");
+        Assert.InRange(part.Box.Left, chip.Left - 0.5, chip.Left + 0.5);
+        Assert.InRange(part.Box.Top, chip.Top - 0.5, chip.Top + 0.5);
+        Assert.InRange(part.Box.Right, chip.Right - 0.5, chip.Right + 0.5);
+        Assert.InRange(part.Box.Bottom, chip.Bottom - 0.5, chip.Bottom + 0.5);
     }
 
     [WpfFact]
-    public async Task Makes_the_card_of_the_mention_the_point_is_on_when_a_title_has_two()
+    public async Task Makes_the_card_of_the_mention_for_a_point_on_the_chip_padding_beside_its_text()
     {
         using var screen = new TitleScreen();
         screen.Title.MentionCard = mention => CardOf(mention.Address);
-        screen.Title.Markdown = $"{Mention} and {Bo}";
+        screen.Title.Markdown = $"Ask {Mention} now";
+        var chip = screen.ChipBox("Ana");
 
-        var second = await screen.Title.PartAt(screen.InsideStartOf("Bo Li"));
-        var first = await screen.Title.PartAt(screen.InsideStartOf("Ana"));
+        var onLeftPadding = await screen.Title.PartAt(new Point(chip.Left + 1, chip.Top + (chip.Height / 2)));
+        var onRightPadding = await screen.Title.PartAt(new Point(chip.Right - 1, chip.Top + (chip.Height / 2)));
+
+        Assert.Equal("contact:a1", ((Border)onLeftPadding!.Card).Tag);
+        Assert.Equal("contact:a1", ((Border)onRightPadding!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Makes_the_card_of_the_mention_the_point_is_on_when_a_title_has_text_around_and_two_mentions()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = $"Hi {Mention} and {Bo} bye";
+
+        var second = await screen.Title.PartAt(Middle(screen.ChipBox("Bo Li")));
+        var first = await screen.Title.PartAt(Middle(screen.ChipBox("Ana")));
 
         Assert.Equal("contact:b2", ((Border)second!.Card).Tag);
         Assert.Equal("contact:a1", ((Border)first!.Card).Tag);
+        Assert.NotEqual(first.Box, second.Box);
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_for_a_point_on_the_text_before_between_and_after_two_mentions()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = $"Hi {Mention} and {Bo} bye";
+
+        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("Hi")));
+        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("and")));
+        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("bye")));
     }
 
     [WpfFact]
@@ -337,7 +454,7 @@ public class FormattedTitleTests
         screen.Title.MentionCard = _ => CardOf("any");
         screen.Title.Markdown = $"Ask {Mention}";
 
-        Assert.Null(await screen.Title.PartAt(new Point(screen.InsideStartOf("Ana").X, screen.Title.ActualHeight + 50)));
+        Assert.Null(await screen.Title.PartAt(new Point(Middle(screen.ChipBox("Ana")).X, screen.Title.ActualHeight + 50)));
     }
 
     [WpfFact]
@@ -347,7 +464,7 @@ public class FormattedTitleTests
         screen.Title.MentionCard = _ => null;
         screen.Title.Markdown = $"Ask {Mention} now";
 
-        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("Ana")));
+        Assert.Null(await screen.Title.PartAt(Middle(screen.ChipBox("Ana"))));
     }
 
     [WpfFact]
@@ -357,7 +474,7 @@ public class FormattedTitleTests
         screen.Title.Markdown = $"Ask {Mention} now";
 
         Assert.Null(screen.Title.MentionCard);
-        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("Ana")));
+        Assert.Null(await screen.Title.PartAt(Middle(screen.ChipBox("Ana"))));
     }
 
     [WpfFact]
@@ -378,86 +495,9 @@ public class FormattedTitleTests
         screen.Title.Markdown = $"Ask {Mention} now";
         screen.Title.Markdown = $"Tell {Bo} now";
 
-        var part = await screen.Title.PartAt(screen.InsideStartOf("Bo Li"));
+        var part = await screen.Title.PartAt(Middle(screen.ChipBox("Bo Li")));
 
         Assert.Equal("contact:b2", ((Border)part!.Card).Tag);
-    }
-
-    [WpfFact]
-    public async Task Counts_a_mention_that_wraps_onto_two_lines_as_one_part_with_the_box_around_both_lines()
-    {
-        using var screen = new TitleScreen(width: 200);
-        screen.Title.TextWrapping = TextWrapping.Wrap;
-        screen.Title.MentionCard = mention => CardOf(mention.Address);
-        screen.Title.Markdown = "Please ask the kind colleague [Ana Maria Fernandez Gonzalez](contact:a1 \"{firstName}\") soon";
-        var firstLine = screen.InsideStartOf("Ana Maria");
-        var secondLine = screen.InsideEndOf("Ana Maria Fernandez Gonzalez");
-        Assert.True(secondLine.Y > firstLine.Y, "The setup didn't wrap the mention onto a second line.");
-
-        var onFirst = await screen.Title.PartAt(firstLine);
-        var onSecond = await screen.Title.PartAt(secondLine);
-
-        Assert.NotNull(onFirst);
-        Assert.NotNull(onSecond);
-        Assert.Equal(onFirst.Box, onSecond.Box);
-        Assert.True(onFirst.Box.Contains(firstLine) && onFirst.Box.Contains(secondLine), "The box doesn't hold both lines.");
-    }
-
-    [WpfFact]
-    public async Task Finds_the_mention_under_the_right_half_of_its_last_character()
-    {
-        using var screen = new TitleScreen();
-        screen.Title.MentionCard = mention => CardOf(mention.Address);
-        screen.Title.Markdown = $"Ask {Mention} now";
-        var last = screen.LastCharOf("Ana");
-
-        var part = await screen.Title.PartAt(new Point(last.X + (last.Width * 0.75), last.Y + (last.Height / 2)));
-
-        Assert.NotNull(part);
-        Assert.Equal("contact:a1", ((Border)part.Card).Tag);
-    }
-
-    [WpfFact]
-    public async Task Finds_the_first_mention_under_the_right_half_of_its_last_character_when_another_follows_right_after()
-    {
-        using var screen = new TitleScreen();
-        screen.Title.MentionCard = mention => CardOf(mention.Address);
-        screen.Title.Markdown = $"{Mention}{Bo}";
-        var last = screen.LastCharOf("Ana");
-
-        var part = await screen.Title.PartAt(new Point(last.X + (last.Width * 0.75), last.Y + (last.Height / 2)));
-
-        Assert.NotNull(part);
-        Assert.Equal("contact:a1", ((Border)part.Card).Tag);
-    }
-
-    [WpfFact]
-    public async Task Returns_one_box_around_every_line_of_a_mention_that_wraps_onto_three_lines()
-    {
-        using var screen = new TitleScreen(width: 200);
-        screen.Title.TextWrapping = TextWrapping.Wrap;
-        screen.Title.MentionCard = mention => CardOf(mention.Address);
-        const string Name = "Ana Maria Fernandez Gonzalez Perez Rodriguez Martinez Lopez Hernandez";
-        screen.Title.Markdown = $"Ask [{Name}](contact:a1 \"{{firstName}}\") soon";
-        var chars = screen.CharsOf(Name);
-        var lines = chars.Select(box => Math.Round(box.Y)).Distinct().Count();
-        Assert.True(lines >= 3, $"The setup wrapped the mention onto {lines} lines, not 3 or more.");
-        var expected = chars.Aggregate(Rect.Union);
-
-        var parts = new List<HoverPart?>();
-        foreach (var box in chars.Where(box => box.Width > 0))
-        {
-            parts.Add(await screen.Title.PartAt(new Point(box.X + (box.Width / 2), box.Y + (box.Height / 2))));
-        }
-
-        Assert.All(parts, part => Assert.NotNull(part));
-        foreach (var part in parts)
-        {
-            Assert.InRange(part!.Box.Left, expected.Left - 1.5, expected.Left + 1.5);
-            Assert.InRange(part.Box.Right, expected.Right - 1.5, expected.Right + 1.5);
-            Assert.InRange(part.Box.Top, expected.Top - 1.5, expected.Top + 1.5);
-            Assert.InRange(part.Box.Bottom, expected.Bottom - 1.5, expected.Bottom + 1.5);
-        }
     }
 
     [WpfFact]
@@ -468,7 +508,7 @@ public class FormattedTitleTests
         screen.Title.MentionCard = _ => card;
         screen.Title.Markdown = $"Ask {Mention} now";
 
-        screen.RestOn(screen.InsideStartOf("Ana"));
+        screen.RestOn(Middle(screen.ChipBox("Ana")));
 
         Assert.True(screen.WaitForShown(card), "The card didn't show.");
     }
@@ -481,9 +521,9 @@ public class FormattedTitleTests
         screen.Title.MentionCard = mention => cards[mention.Address];
         screen.Title.Markdown = $"{Mention} and {Bo}";
 
-        screen.RestOn(screen.InsideStartOf("Ana"));
+        screen.RestOn(Middle(screen.ChipBox("Ana")));
         Assert.True(screen.WaitForShown(cards["contact:a1"]), "The first card didn't show.");
-        screen.RestOn(screen.InsideStartOf("Bo Li"));
+        screen.RestOn(Middle(screen.ChipBox("Bo Li")));
 
         Assert.True(screen.WaitForShown(cards["contact:b2"]), "The second card didn't show.");
     }
@@ -589,31 +629,10 @@ public class FormattedTitleTests
             return element as Hyperlink;
         }
 
-        /// <summary>The place of the last character of the first run that holds the text, in the title's coordinates.</summary>
-        public Rect LastCharOf(string text)
-        {
-            window.UpdateLayout();
-            var run = Run(text);
-            return CharBox(run.ContentEnd.GetPositionAtOffset(-1)!);
-        }
-
-        /// <summary>The place of every character of the first run that holds the text, in the title's coordinates.</summary>
-        public Rect[] CharsOf(string text)
-        {
-            window.UpdateLayout();
-            var run = Run(text);
-            return [.. Enumerable.Range(0, run.Text.Length).Where(i => run.Text[i] != ' ').Select(i => CharBox(run.ContentStart.GetPositionAtOffset(i)!))];
-        }
-
-        // A caret rectangle has no width, so a character's box spans from the caret before it to the caret after it, on its own line.
-        private static Rect CharBox(TextPointer before)
-        {
-            var start = before.GetCharacterRect(LogicalDirection.Forward);
-            var end = before.GetPositionAtOffset(1)!.GetCharacterRect(LogicalDirection.Backward);
-            return new Rect(start.TopLeft, end.BottomLeft);
-        }
-
-        /// <summary>A point in the title's coordinates just inside the start of the first run that holds the text, halfway down its line.</summary>
+        /// <summary>
+        /// A point in the title's coordinates just inside the start of the first run that holds the text, halfway down its line.
+        /// For text in the title itself, not a mention's chip; use <see cref="ChipBox"/> for a mention.
+        /// </summary>
         public Point InsideStartOf(string text)
         {
             window.UpdateLayout();
@@ -621,12 +640,11 @@ public class FormattedTitleTests
             return new Point(rect.X + 2, rect.Y + rect.Height / 2);
         }
 
-        /// <summary>A point in the title's coordinates just inside the end of the first run that holds the text, halfway down its last line.</summary>
-        public Point InsideEndOf(string text)
+        /// <summary>The chip that shows the mention with the text: its whole background, padding included, in the title's coordinates.</summary>
+        public Rect ChipBox(string text)
         {
             window.UpdateLayout();
-            var rect = Run(text).ContentEnd.GetCharacterRect(LogicalDirection.Backward);
-            return new Point(rect.X - 2, rect.Y + rect.Height / 2);
+            return Title.ChipBox(text);
         }
 
         /// <summary>Puts the real pointer at the title's point and raises the mouse move a pointer there raises, as a pointer arriving does.</summary>
@@ -701,34 +719,9 @@ public class FormattedTitleTests
 
         public void Dispose() => window.Close();
 
-        private IEnumerable<Run> Runs() => Walk(Title.Inlines).OfType<Run>();
+        private IEnumerable<Run> Runs() => TitleChips.Walk(Title.Inlines).OfType<Run>();
 
         /// <summary>The chip a mention shows as: the border around the mention's text.</summary>
-        public Border Chip(string text) =>
-            Walk(Title.Inlines).OfType<InlineUIContainer>().Select(container => container.Child).OfType<Border>()
-                .First(border => border.Child is TextBlock block && block.Inlines.OfType<Run>().Any(run => run.Text.Contains(text)));
-
-        // A mention is a chip inside the title: the walk goes into the chip's own text too.
-        private static IEnumerable<Inline> Walk(InlineCollection inlines)
-        {
-            foreach (var inline in inlines)
-            {
-                yield return inline;
-                if (inline is Span span)
-                {
-                    foreach (var inner in Walk(span.Inlines))
-                    {
-                        yield return inner;
-                    }
-                }
-                else if (inline is InlineUIContainer { Child: Border { Child: TextBlock chipText } })
-                {
-                    foreach (var inner in Walk(chipText.Inlines))
-                    {
-                        yield return inner;
-                    }
-                }
-            }
-        }
+        public Border Chip(string text) => Title.Chip(text);
     }
 }

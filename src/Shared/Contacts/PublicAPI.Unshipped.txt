@@ -5,10 +5,10 @@ Memoria.ToDo.Shared.Contacts.Contact.Alias.get -> string?
 Memoria.ToDo.Shared.Contacts.Contact.Alias.init -> void
 Memoria.ToDo.Shared.Contacts.Contact.CareerPathKey.get -> string?
 Memoria.ToDo.Shared.Contacts.Contact.CareerPathKey.init -> void
-Memoria.ToDo.Shared.Contacts.Contact.Contact(string! Id, string! FullName, string? Alias = null, string? FirstName = null, string? Title = null, string? PronounsKey = null, string? CareerPathKey = null, string? LevelId = null, string? WorkingType = null, string? Location = null, string? ReportsTo = null, System.TimeOnly? DayStartTime = null, System.DateOnly? LevelStartDate = null, System.DateOnly? TeamMemberSince = null, System.DateOnly? ExitDate = null) -> void
+Memoria.ToDo.Shared.Contacts.Contact.Contact(string! Id, string! FullName, string? Alias = null, string? FirstName = null, string? Title = null, string? PronounsKey = null, string? CareerPathKey = null, string? LevelId = null, string? WorkingType = null, string? Location = null, string? ReportsTo = null, System.TimeOnly? DayStartTime = null, System.DateOnly? LevelStartDate = null, System.DateOnly? TeamMemberSince = null, System.DateOnly? ExitDate = null, string? Nickname = null) -> void
 Memoria.ToDo.Shared.Contacts.Contact.DayStartTime.get -> System.TimeOnly?
 Memoria.ToDo.Shared.Contacts.Contact.DayStartTime.init -> void
-Memoria.ToDo.Shared.Contacts.Contact.Deconstruct(out string! Id, out string! FullName, out string? Alias, out string? FirstName, out string? Title, out string? PronounsKey, out string? CareerPathKey, out string? LevelId, out string? WorkingType, out string? Location, out string? ReportsTo, out System.TimeOnly? DayStartTime, out System.DateOnly? LevelStartDate, out System.DateOnly? TeamMemberSince, out System.DateOnly? ExitDate) -> void
+Memoria.ToDo.Shared.Contacts.Contact.Deconstruct(out string! Id, out string! FullName, out string? Alias, out string? FirstName, out string? Title, out string? PronounsKey, out string? CareerPathKey, out string? LevelId, out string? WorkingType, out string? Location, out string? ReportsTo, out System.TimeOnly? DayStartTime, out System.DateOnly? LevelStartDate, out System.DateOnly? TeamMemberSince, out System.DateOnly? ExitDate, out string? Nickname) -> void
 Memoria.ToDo.Shared.Contacts.Contact.Equals(Memoria.ToDo.Shared.Contacts.Contact? other) -> bool
 Memoria.ToDo.Shared.Contacts.Contact.ExitDate.get -> System.DateOnly?
 Memoria.ToDo.Shared.Contacts.Contact.ExitDate.init -> void
@@ -24,6 +24,8 @@ Memoria.ToDo.Shared.Contacts.Contact.LevelStartDate.get -> System.DateOnly?
 Memoria.ToDo.Shared.Contacts.Contact.LevelStartDate.init -> void
 Memoria.ToDo.Shared.Contacts.Contact.Location.get -> string?
 Memoria.ToDo.Shared.Contacts.Contact.Location.init -> void
+Memoria.ToDo.Shared.Contacts.Contact.Nickname.get -> string?
+Memoria.ToDo.Shared.Contacts.Contact.Nickname.init -> void
 Memoria.ToDo.Shared.Contacts.Contact.PronounsKey.get -> string?
 Memoria.ToDo.Shared.Contacts.Contact.PronounsKey.init -> void
 Memoria.ToDo.Shared.Contacts.Contact.ReportsTo.get -> string?

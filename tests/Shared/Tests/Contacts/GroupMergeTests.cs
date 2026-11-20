@@ -33,6 +33,29 @@ public sealed class GroupMergeTests
     }
 
     [Fact]
+    public void Merges_the_nickname_field_by_field_taking_a_one_side_change()
+    {
+        var basis = Group(Person("1", "Ana", ("nickname", "Nia")), Person("2", "Bob", ("nickname", "Bobo")));
+        var local = Group(Person("1", "Ana", ("nickname", "Ani")), Person("2", "Bob", ("nickname", "Bobo")));
+        var remote = Group(Person("1", "Ana", ("nickname", "Nia")), Person("2", "Bob", ("nickname", "B")));
+
+        var merged = Merge(basis, local, remote);
+
+        Assert.Equal("Ani", merged.WithId("1")["nickname"]);
+        Assert.Equal("B", merged.WithId("2")["nickname"]);
+    }
+
+    [Fact]
+    public void Takes_the_remote_nickname_when_both_sides_changed_it()
+    {
+        var basis = Group(Person("1", "Ana", ("nickname", "Nia")));
+        var local = Group(Person("1", "Ana", ("nickname", "Ani")));
+        var remote = Group(Person("1", "Ana", ("nickname", "Ann")));
+
+        Assert.Equal("Ann", Merge(basis, local, remote).WithId("1")["nickname"]);
+    }
+
+    [Fact]
     public void Takes_the_remote_value_when_both_sides_changed_a_field()
     {
         var basis = Group(Person("1", "Ana", ("title", "Dev")));

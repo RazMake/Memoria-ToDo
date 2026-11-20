@@ -26,6 +26,38 @@ public sealed class TemplateTextTests
     }
 
     [Fact]
+    public void Fills_the_nickname_in_the_template()
+    {
+        Assert.Equal("Nia", f.Contacts.TextOf(Ana with { Nickname = "Nia" }, "{nickname}"));
+    }
+
+    [Fact]
+    public void Shows_the_first_name_for_a_missing_or_empty_nickname()
+    {
+        Assert.Equal("Ana", f.Contacts.TextOf(Ana, "{nickname}"));
+        Assert.Equal("Ana", f.Contacts.TextOf(Ana with { Nickname = "" }, "{nickname}"));
+    }
+
+    [Fact]
+    public void Falls_back_to_the_full_name_when_the_nickname_and_the_first_name_are_missing()
+    {
+        Assert.Equal("Bob Ion", f.Contacts.TextOf(new Contact("2", "Bob Ion"), "{nickname}"));
+        Assert.Equal("Bob Ion", f.Contacts.TextOf(new Contact("2", "Bob Ion", Nickname: ""), "{nickname}"));
+    }
+
+    [Fact]
+    public void Falls_back_to_the_full_name_when_a_template_with_the_nickname_lacks_another_value()
+    {
+        Assert.Equal("Ana Pop", f.Contacts.TextOf(Ana with { Title = null }, "{nickname} ({title})"));
+    }
+
+    [Fact]
+    public void Shows_only_the_first_name_for_the_first_name_placeholder_when_the_contact_has_a_nickname()
+    {
+        Assert.Equal("Ana", f.Contacts.TextOf(Ana with { Nickname = "Nia" }, "{firstName}"));
+    }
+
+    [Fact]
     public void Fills_the_ID_and_the_full_name()
     {
         Assert.Equal("1:Ana Pop", f.Contacts.TextOf(Ana, "{id}:{fullName}"));
@@ -139,6 +171,15 @@ public sealed class AddressTextTests
     }
 
     [Fact]
+    public void Gives_the_live_nickname_of_the_contact_holding_the_ID_and_the_first_name_when_it_has_none()
+    {
+        Load(ContactFiles.Person("12", "Ana Pop", ("firstName", "Ana"), ("nickname", "Nia")), ContactFiles.Person("13", "Bob Ion", ("firstName", "Bob")));
+
+        Assert.Equal("Nia", f.Contacts.TextOf(ContactAddress.Of("12"), "{nickname}"));
+        Assert.Equal("Bob", f.Contacts.TextOf(ContactAddress.Of("13"), "{nickname}"));
+    }
+
+    [Fact]
     public void Gives_null_for_an_unknown_ID()
     {
         Load(ContactFiles.Person("12", "Ana Pop"));
@@ -196,6 +237,14 @@ public sealed class MentionTests
         var link = f.Contacts.MentionOf(new Contact("12", "Ana Pop", FirstName: "Ana"), "{firstName}");
 
         Assert.Equal("[Ana](contact:12 \"{firstName}\")", link);
+    }
+
+    [Fact]
+    public void Makes_a_link_with_the_nickname_as_its_text_and_the_first_name_or_full_name_as_fallbacks()
+    {
+        Assert.Equal("[Nia](contact:12 \"{nickname}\")", f.Contacts.MentionOf(new Contact("12", "Ana Pop", FirstName: "Ana", Nickname: "Nia"), "{nickname}"));
+        Assert.Equal("[Ana](contact:12 \"{nickname}\")", f.Contacts.MentionOf(new Contact("12", "Ana Pop", FirstName: "Ana"), "{nickname}"));
+        Assert.Equal("[Ana Pop](contact:12 \"{nickname}\")", f.Contacts.MentionOf(new Contact("12", "Ana Pop"), "{nickname}"));
     }
 
     [Fact]

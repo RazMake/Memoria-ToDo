@@ -12,19 +12,19 @@ public class ContactFormFieldsTests
     private const string TimeMessage = "Write the time as HH:mm, such as 09:30.";
 
     private static readonly string[] CommonFields =
-        ["id", "alias", "fullName", "firstName", "title", "pronounsKey", "careerPathKey", "reportsTo"];
+        ["id", "alias", "fullName", "firstName", "nickname", "title", "pronounsKey", "careerPathKey", "reportsTo"];
 
     private static readonly string[] TeamOnlyFields =
         ["location", "levelId", "workingType", "dayStartTime", "levelStartDate", "teamMemberSince", "exitDate"];
 
     private static readonly string[] TeamFormOrder =
     [
-        "id", "alias", "fullName", "firstName", "title", "location", "levelId", "workingType", "pronounsKey", "careerPathKey",
+        "id", "alias", "fullName", "firstName", "nickname", "title", "location", "levelId", "workingType", "pronounsKey", "careerPathKey",
         "reportsTo", "dayStartTime", "levelStartDate", "teamMemberSince", "exitDate",
     ];
 
     private static readonly string[] OtherFormOrder =
-        ["id", "alias", "fullName", "firstName", "title", "pronounsKey", "careerPathKey", "reportsTo"];
+        ["id", "alias", "fullName", "firstName", "nickname", "title", "pronounsKey", "careerPathKey", "reportsTo"];
 
     private readonly ContactServices _services = ContactServices.Typical();
 
@@ -77,6 +77,57 @@ public class ContactFormFieldsTests
 
         Assert.Equal(("ana", "Ana Pop", "anap", "Engineer", "Cluj", "razvanp", "she", "se"),
             (form["id"], form["fullName"], form["alias"], form["title"], form["location"], form["reportsTo"], form["pronounsKey"], form["careerPathKey"]));
+    }
+
+    [Fact]
+    public void An_edit_form_starts_with_the_stored_nickname()
+    {
+        _services.Contacts.Save("team", _services.Member("team", "ana") with { FirstName = "Ana", Nickname = "Annie" });
+
+        Assert.Equal("Annie", Edit("team", "ana")["nickname"]);
+    }
+
+    [Fact]
+    public void An_edit_form_with_no_stored_nickname_starts_it_empty_not_as_the_first_name()
+    {
+        _services.Contacts.Save("team", _services.Member("team", "ana") with { FirstName = "Ana" });
+
+        var form = Edit("team", "ana");
+
+        Assert.Equal("Ana", form["firstName"]);
+        Assert.Equal("", form["nickname"]);
+    }
+
+    [Fact]
+    public void Saving_a_typed_nickname_stores_it()
+    {
+        var form = Edit("team", "bob");
+
+        form["nickname"] = "Bobby";
+
+        Assert.True(form.HasChanges);
+        Assert.Equal(_services.Member("team", "bob") with { Nickname = "Bobby" }, form.ToContact());
+    }
+
+    [Fact]
+    public void Clearing_the_nickname_saves_none_and_does_not_store_the_first_name_in_its_place()
+    {
+        var ana = _services.Member("team", "ana") with { FirstName = "Ana", Nickname = "Annie" };
+        _services.Contacts.Save("team", ana);
+        var form = Edit("team", "ana");
+
+        form["nickname"] = "";
+
+        Assert.Equal(ana with { Nickname = null }, form.ToContact());
+    }
+
+    [Fact]
+    public void An_unchanged_form_with_a_first_name_and_no_nickname_does_not_store_a_nickname()
+    {
+        _services.Contacts.Save("team", _services.Member("team", "ana") with { FirstName = "Ana" });
+        var ana = _services.Member("team", "ana");
+
+        Assert.Equal(ana with { Nickname = null }, ContactForm.Edit(_services.Contacts, "team", ana).ToContact());
     }
 
     [Fact]

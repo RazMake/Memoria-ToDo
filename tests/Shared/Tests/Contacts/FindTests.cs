@@ -52,6 +52,15 @@ public sealed class FindTests
     }
 
     [Fact]
+    public void Does_not_find_a_contact_by_its_nickname()
+    {
+        f.SeedGroup("team", 1000, ContactFiles.Person("101", "Ana", ("alias", "anap"), ("firstName", "Cami"), ("nickname", "Cami")), ContactFiles.Person("102", "Bo"));
+        f.Load();
+
+        Assert.Null(f.Contacts.Find("cami"));
+    }
+
+    [Fact]
     public void Finds_nobody_for_an_unknown_name()
     {
         f.SeedGroup("team", 1000, ContactFiles.Person("101", "Ana"));

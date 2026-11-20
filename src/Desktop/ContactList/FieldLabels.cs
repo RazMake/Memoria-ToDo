@@ -9,6 +9,7 @@ internal static class FieldLabels
         ["alias"] = "Alias",
         ["fullName"] = "Full name",
         ["firstName"] = "First name",
+        ["nickname"] = "Nickname",
         ["title"] = "Title",
         ["location"] = "Location",
         ["levelId"] = "Level",

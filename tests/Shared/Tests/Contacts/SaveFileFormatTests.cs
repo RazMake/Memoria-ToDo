@@ -48,11 +48,55 @@ public sealed class SaveFileFormatTests
         Load(ContactsFixture.TeamFile, ContactFiles.Group(1000, ContactFiles.Person("1", "Ana")));
 
         f.Contacts.Save("team", new Contact("1", "Ana Popa", "anap", "Ana", "Lead", "she", "em", "l62", "Remote", "Oslo", "boss",
-            new TimeOnly(9, 30), new DateOnly(2025, 3, 1), new DateOnly(2020, 1, 2), new DateOnly(2026, 2, 3)));
+            new TimeOnly(9, 30), new DateOnly(2025, 3, 1), new DateOnly(2020, 1, 2), new DateOnly(2026, 2, 3), "Nia"));
 
         Assert.Equal(
-            ["id", "alias", "fullName", "firstName", "title", "location", "levelId", "workingType", "pronounsKey", "careerPathKey", "reportsTo", "dayStartTime", "levelStartDate", "teamMemberSince", "exitDate"],
+            ["id", "alias", "fullName", "firstName", "nickname", "title", "location", "levelId", "workingType", "pronounsKey", "careerPathKey", "reportsTo", "dayStartTime", "levelStartDate", "teamMemberSince", "exitDate"],
             f.FirstObjectNames(ContactsFixture.TeamFile));
+    }
+
+    [Fact]
+    public void Writes_the_nickname_right_after_the_first_name()
+    {
+        Load(ContactsFixture.TeamFile, ContactFiles.Group(1000, ContactFiles.Person("1", "Ana")));
+
+        f.Contacts.Save("team", new Contact("1", "Ana Popa", FirstName: "Ana", Title: "Lead", Nickname: "Nia"));
+
+        Assert.Equal(["id", "fullName", "firstName", "nickname", "title"], f.FirstObjectNames(ContactsFixture.TeamFile));
+        Assert.Equal("Nia", f.Parsed(ContactsFixture.TeamFile).WithId("1")["nickname"]);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Leaves_the_nickname_out_when_the_stored_value_is_missing_or_empty(string? nickname)
+    {
+        Load(ContactsFixture.TeamFile, ContactFiles.Group(1000, ContactFiles.Person("1", "Ana", ("nickname", "Nia"))));
+
+        f.Contacts.Save("team", new Contact("1", "Ana", Nickname: nickname));
+
+        Assert.Equal(["id", "fullName"], f.FirstObjectNames(ContactsFixture.TeamFile));
+    }
+
+    [Fact]
+    public void Never_writes_the_first_name_as_the_nickname()
+    {
+        Load(ContactsFixture.TeamFile, ContactFiles.Group(1000, ContactFiles.Person("1", "Ana")));
+
+        f.Contacts.Save("team", new Contact("1", "Ana Popa", FirstName: "Ana"));
+
+        Assert.Equal(["id", "fullName", "firstName"], f.FirstObjectNames(ContactsFixture.TeamFile));
+    }
+
+    [Fact]
+    public void Puts_a_hand_written_nickname_in_the_fixed_order_and_keeps_unknown_fields()
+    {
+        Load(ContactsFixture.TeamFile,
+            """{ "version": 1, "position": 1000, "members": [ { "zeta": "z", "title": "Dev", "nickname": "Nia", "id": "1", "firstName": "Ana", "fullName": "Ana" } ] }""");
+
+        f.Contacts.Save("team", new Contact("1", "Ana", FirstName: "Ana", Title: "Dev", Nickname: "Nia"));
+
+        Assert.Equal(["id", "fullName", "firstName", "nickname", "title", "zeta"], f.FirstObjectNames(ContactsFixture.TeamFile));
     }
 
     [Fact]

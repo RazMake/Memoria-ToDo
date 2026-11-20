@@ -90,7 +90,7 @@ public class ContactDetailsTests
     {
         _services.Contacts.Save("team", _services.Member("team", "ana") with
         {
-            FirstName = "Ana", LevelId = "L5", WorkingType = "Remote",
+            FirstName = "Ana", Nickname = "Annie", LevelId = "L5", WorkingType = "Remote",
             TeamMemberSince = new DateOnly(2023, 6, 1), ExitDate = new DateOnly(2026, 1, 31),
         });
 
@@ -98,10 +98,48 @@ public class ContactDetailsTests
 
         Assert.Equal(
             [
-                "ID", "Alias", "Full name", "First name", "Title", "Location", "Level", "Working type", "Pronouns", "Career path",
+                "ID", "Alias", "Full name", "First name", "Nickname", "Title", "Location", "Level", "Working type", "Pronouns", "Career path",
                 "Reports to", "Direct reports", "Day start time", "Level start date", "Team member since", "Exit date",
             ],
             labels);
+    }
+
+    [Fact]
+    public void Shows_the_stored_nickname_under_its_label_for_a_team_member()
+    {
+        _services.Contacts.Save("team", _services.Member("team", "ana") with { FirstName = "Ana", Nickname = "Annie" });
+
+        Assert.Equal("Annie", Assert.Single(Field(DetailsOf("team", "ana"), "Nickname").Values).Text);
+    }
+
+    [Fact]
+    public void Shows_the_stored_nickname_for_a_contact_in_another_group()
+    {
+        _services.Contacts.Save("friends", _services.Member("friends", "dan") with { Nickname = "Danny" });
+
+        Assert.Equal("Danny", Assert.Single(Field(DetailsOf("friends", "dan"), "Nickname").Values).Text);
+    }
+
+    [Fact]
+    public void Shows_the_nickname_right_after_the_first_name()
+    {
+        _services.Contacts.Save("team", _services.Member("team", "ana") with { FirstName = "Ana", Nickname = "Annie" });
+
+        var labels = DetailsOf("team", "ana").Fields.Select(field => field.Label).ToList();
+
+        Assert.Equal(labels.IndexOf("First name") + 1, labels.IndexOf("Nickname"));
+    }
+
+    [Fact]
+    public void Shows_no_nickname_row_for_a_contact_with_no_stored_nickname_though_it_has_a_first_name()
+    {
+        _services.Contacts.Save("team", _services.Member("team", "ana") with { FirstName = "Ana" });
+
+        var details = DetailsOf("team", "ana");
+
+        Assert.DoesNotContain(details.Fields, field => field.Label == "Nickname");
+        Assert.Equal("Ana", Assert.Single(Field(details, "First name").Values).Text);
+        Assert.Single(Texts(details), "Ana");
     }
 
     [Fact]

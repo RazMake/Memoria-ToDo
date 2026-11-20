@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Documents;
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.FormattedView.Tests;
 using static Memoria.ToDo.Desktop.VisualTree;
 
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
@@ -23,14 +24,27 @@ internal sealed partial class TaskListScreen
     public FormattedTitle TitleOf(string rowTitle, string? group = null) =>
         Visuals(Row(rowTitle, group)).OfType<FormattedTitle>().Single();
 
-    /// <summary>The card the row's title makes for the point just inside the start of the text, or null when it makes none.</summary>
+    /// <summary>
+    /// The card the row's title makes for the middle of the mention's chip when the text is a mention, or else for the point just inside
+    /// the start of the title's own text; null when it makes none.
+    /// </summary>
     public async Task<FrameworkElement?> CardAt(string rowTitle, string text, string? group = null)
     {
         Refresh();
         var title = TitleOf(rowTitle, group);
-        var run = title.Inlines.OfType<Run>().First(r => r.Text.Contains(text));
-        var rect = run.ContentStart.GetCharacterRect(LogicalDirection.Forward);
-        var part = await title.PartAt(new Point(rect.X + 2, rect.Y + rect.Height / 2));
+        Point point;
+        if (title.Inlines.OfType<Run>().FirstOrDefault(r => r.Text.Contains(text)) is { } run)
+        {
+            var rect = run.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+            point = new Point(rect.X + 2, rect.Y + rect.Height / 2);
+        }
+        else
+        {
+            var chip = title.ChipBox(text);
+            point = new Point(chip.Left + (chip.Width / 2), chip.Top + (chip.Height / 2));
+        }
+
+        var part = await title.PartAt(point);
         return part?.Card;
     }
 

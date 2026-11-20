@@ -97,7 +97,7 @@ The user asked that resting the mouse pointer on any mention show a card with th
 Proposed, each a decision to confirm:
 
 - **The formatted title and the formatted description each take the card function**, which gets the mention as [Rendering's mention list](../rendering.md#public-interface) finds it in the shown Markdown, with its address and template. With no function, or when it makes no card, nothing shows, as today.
-- **In a title, each mention's text is the part the pointer rests on.** Every character of it counts whole, so the pointer on the right half of its last character is still on the mention. A mention whose text wraps onto two or more lines counts as one part: one box from the top of its first line to the bottom of its last, and from the leftmost to the rightmost edge of its text on any of those lines. So moving anywhere within a wrapped mention never closes and reopens its card.
+- **In a title, each mention's chip is the part the pointer rests on.** A title shows each mention as one chip, in [Rendering's mention look](../rendering.md#a-mention-shows-on-a-colored-background), and the chip never wraps, so its box is the chip's whole background, padding included. Proposed, a decision to confirm: the pointer anywhere on that background is on the mention, and moving within it never closes and reopens its card.
 - **In a description, the web view finds the mention by the number** [Rendering's page](../rendering.md#a-mention-shows-on-a-colored-background) gives each mention, and reports its box. The Formatted view maps the number back to the mention, counted in the same order. The web view asks through `DOM.getNodeForLocation` and [DOM.getBoxModel](https://chromedevtools.github.io/devtools-protocol/tot/DOM/#method-getBoxModel), as it already [measures the page](#the-app-supplies-the-web-view-and-the-browser).
 - **The point and the box are in the web view element's WPF coordinates at any browser zoom.** The page counts in CSS pixels, which match WPF's units only at 100% zoom, so the web view divides the point by the browser's zoom factor before asking, and multiplies the box it reads by it.
 - **Each lookup releases the browser objects it makes**, such as the remote object for the node it reads, whether it finds a mention, finds none, comes too late, or fails. So resting on a description many times doesn't grow the page's memory.
@@ -299,6 +299,8 @@ The options below were considered and rejected, grouped by decision.
   - **An event that reports the hovered mention, which the Task list answers with a card**: the hover's timing and closing would then sit in the Task list, away from the part that finds the mention.
 - What a failed mention lookup does:
   - **The web view fails, and descriptions show as source from then on**: a pointer resting on a mention would turn off a page that shows fine, until Task View opens again.
+- How a title finds the mention under the pointer:
+  - **From the character under the pointer, counted in the title's own text**: a chip holds its text in a text block of its own, which the title's text doesn't count, so the lookup found no mention and no card showed.
 
 ## Open questions
 
