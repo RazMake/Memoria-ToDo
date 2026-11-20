@@ -63,6 +63,11 @@ internal sealed class LogsModel
             {
                 FillBoxes();
             }
+            else if (_to.Length == 0)
+            {
+                // Choosing Custom shows the To bound, so it starts at now rather than empty.
+                _to = TimeRange.Format(TimeZoneInfo.ConvertTime(_time.GetUtcNow(), _time.LocalTimeZone).DateTime);
+            }
 
             Refilter();
         }

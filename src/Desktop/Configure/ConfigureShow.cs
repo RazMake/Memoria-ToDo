@@ -89,6 +89,8 @@ internal sealed class ConfigureShow : IConfigureWindow
 
     public bool IsOpen => _window.IsOpen;
 
+    public void Close() => _open?.Close();
+
     public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure, IShortcutAction contacts)
     {
         ArgumentNullException.ThrowIfNull(addNewTask);

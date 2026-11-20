@@ -6,8 +6,8 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.Shell.Tests;
 
 /// <summary>
-/// The tray menu's Logs item: it opens the Logs window, whatever the setup, and the window stays out of the switching
-/// rules, the "any window open" answer, and Close windows, since it holds nothing to save.
+/// The tray menu's Logs item: it closes every other window and opens the Logs window, whatever the setup, and the window stays
+/// out of the switching rules, the "any window open" answer, and Close windows, since it holds nothing to save.
 /// </summary>
 [Unit]
 public class TrayAppLogsItemTests
@@ -29,13 +29,14 @@ public class TrayAppLogsItemTests
     }
 
     [Fact]
-    public void The_Logs_item_shows_only_the_Logs_window()
+    public void The_Logs_item_closes_the_other_windows_and_shows_the_Logs_window()
     {
         var app = Started();
 
         app.TrayIcon.ChooseMenuItem("Logs");
 
-        Assert.Equal(["Logs"], app.Shown);
+        Assert.Equal(ShellHarness.LogsShown, app.Shown);
+        Assert.Equal(1, app.Configure.CloseCount);
         Assert.Equal(1, app.Logs.ShowCount);
         Assert.Equal(0, app.EndAppCalls);
     }
@@ -61,12 +62,12 @@ public class TrayAppLogsItemTests
 
         app.TrayIcon.ChooseMenuItem("Logs");
 
-        Assert.Equal(["Logs"], app.Shown);
+        Assert.Equal(ShellHarness.LogsShown, app.Shown);
         await app.Lifetime.StopAsync(CancellationToken.None);
     }
 
     [Fact]
-    public async Task The_Logs_item_used_while_setup_loads_shows_Logs_and_leaves_the_automatic_window_pending()
+    public async Task The_Logs_item_used_while_setup_loads_shows_Logs_and_suppresses_the_later_automatic_window()
     {
         var app = new ShellHarness(startedAtSignIn: false);
         app.Sync.HoldStartupPublication = true;
@@ -75,12 +76,12 @@ public class TrayAppLogsItemTests
         app.TrayIcon.ChooseMenuItem("Logs");
         app.Sync.SetupControl.Publish(new FakeSyncSetupState { IsConfigured = true });
 
-        Assert.Equal(["Logs", "Task View"], app.Shown);
+        Assert.Equal(ShellHarness.LogsShown, app.Shown);
         await app.Lifetime.StopAsync(CancellationToken.None);
     }
 
     [Fact]
-    public void The_Logs_item_with_other_windows_open_closes_none_of_them()
+    public void The_Logs_item_closes_every_open_window_and_shows_Logs()
     {
         var app = Started();
         app.Add.IsOpen = true;
@@ -90,7 +91,25 @@ public class TrayAppLogsItemTests
 
         app.TrayIcon.ChooseMenuItem("Logs");
 
-        Assert.Equal(["Logs"], app.Shown);
+        Assert.False(app.Add.IsOpen);
+        Assert.False(app.ViewTasks.IsOpen);
+        Assert.False(app.Contacts.IsOpen);
+        Assert.False(app.Configure.IsOpen);
+        Assert.Equal(1, app.Logs.ShowCount);
+    }
+
+    [Fact]
+    public void The_Logs_item_shows_Logs_even_when_a_window_stays_open_because_the_user_cancelled_its_close()
+    {
+        var app = Started();
+        app.ViewTasks.IsOpen = true;
+        app.ViewTasks.CloseAnswer = false;
+        app.Contacts.IsOpen = true;
+        app.Contacts.CloseAnswer = false;
+
+        app.TrayIcon.ChooseMenuItem("Logs");
+
+        Assert.Equal(1, app.Logs.ShowCount);
     }
 
     [Theory]

@@ -8,6 +8,9 @@ internal sealed record KeyField(string Field, string FileName)
 
     public string RelativePath => $"{ContactLayout.DataTypesFolderName}/{FileName}";
 
+    /// <summary>The property that holds the file's entries: the file name without ".json", such as "pronouns".</summary>
+    public string ListName => Path.GetFileNameWithoutExtension(FileName);
+
     public string? KeyOf(Contact contact) => ContactFields.Named(Field)!.TextOf(contact);
 }
 

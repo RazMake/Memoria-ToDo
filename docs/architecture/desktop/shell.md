@@ -23,7 +23,7 @@ The user also asked for a Contacts shortcut, changed in Configure like the other
 
 The tray icon's menu offers Add new task, Task View, Contacts, Configure, and Exit, for when the mouse is closer than the keyboard. Proposed, a decision to confirm: Contacts sits after Task View, beside the other window that lists things.
 
-The user decided that **a Logs item, after Configure and before Exit, opens the [Logs window](logs.md#the-tray-menus-logs-item-opens-one-window)**, which shows the app's [log](../logging.md), and that the window is a module of its own, which Shell uses. Proposed, a decision to confirm: the item always shows, needs no configured device, has no global shortcut, and stays out of the switching rules below.
+The user decided that **a Logs item, after Configure and before Exit, opens the [Logs window](logs.md#the-tray-menus-logs-item-opens-one-window)**, which shows the app's [log](../logging.md), and that the window is a module of its own, which Shell uses. The user also decided that opening Logs, from the item or a sync error notification, first closes every other window, through each window port's Close; Configure's port gains a Close for this. Proposed, a decision to confirm: the item always shows, needs no configured device, has no global shortcut, and stays out of the switching rules below.
 
 The user decided that **the Contacts tray item and shortcut show only when the clone [has contact files](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts)**, in `autocomplete/contacts/`. Shell reads this from the [Contacts window port's](contact-list.md#public-interface) `IsAvailable` and follows its `AvailableChanged`, so a clone or a sync that adds or removes the files updates the menu at once. Proposed, each a decision to confirm:
 
@@ -117,7 +117,7 @@ Shell shows sync status in the tray and never interrupts while sync works. The t
 [Configure](configure.md#configure-shows-how-sync-is-doing) shows the same details. Proposed, each a decision to confirm:
 
 - A kind of error notifies again only after a sync succeeds.
-- Clicking the notification opens Configure.
+- Clicking the notification opens the [Logs window](logs.md#the-tray-menus-logs-item-opens-one-window), as the user decided, since the log holds the error's details.
 - Shell reads sync status from Sync directly, which adds Sync to the modules Shell may use in the [module map](../modules.md#module-map).
 
 Shell starts the shared service only after winning the one-instance claim. Before Start, it subscribes to setup
@@ -141,7 +141,7 @@ An already configured device that becomes offline keeps opening its task windows
 [`ITrayIcon`](../../../src/Desktop/Shell/ITrayIcon.cs) adds status updates and error notifications, not Sync or WPF
 types. Its adapter marshals those calls to the UI, while Shell's status handling uses no WPF objects. Idle/working
 use the plain icon, offline uses its badge without a notification, and errors use the warning badge. Shell remembers
-notified failure kinds until a clean success, so retries do not spam notifications. Notification clicks open Configure.
+notified failure kinds until a clean success, so retries do not spam notifications. Notification clicks open Logs.
 
 Decision to confirm: the tooltip has one line for the app's name, then `Last synced` and the successful time in
 the user's local short date/time format when there is one, then error/offline details when present. Put the sync

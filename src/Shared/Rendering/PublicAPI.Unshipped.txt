@@ -105,6 +105,10 @@ Memoria.ToDo.Shared.Rendering.TextLook.Italic.get -> string!
 Memoria.ToDo.Shared.Rendering.TextLook.Link.get -> string!
 Memoria.ToDo.Shared.Rendering.TextLooks
 static Memoria.ToDo.Shared.Rendering.TextLooks.CodeFont.get -> string!
+static Memoria.ToDo.Shared.Rendering.TextLooks.MentionPaddingSides.get -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.MentionPaddingTop.get -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.MentionPaddingBottom.get -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.MentionCornerRadius.get -> double
 static Memoria.ToDo.Shared.Rendering.TextLooks.Dark.get -> Memoria.ToDo.Shared.Rendering.TextLook!
 static Memoria.ToDo.Shared.Rendering.TextLooks.HeadingScale(int level) -> double
 static Memoria.ToDo.Shared.Rendering.TextLooks.Light.get -> Memoria.ToDo.Shared.Rendering.TextLook!

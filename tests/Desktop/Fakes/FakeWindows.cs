@@ -157,6 +157,15 @@ public sealed class FakeConfigureWindow(List<string>? shownLog = null) : IConfig
     /// <summary>What IsOpen answers; false when not set.</summary>
     public bool IsOpen { get; set; }
 
+    /// <summary>How many times Close was called. Close also makes <see cref="IsOpen"/> false.</summary>
+    public int CloseCount { get; private set; }
+
+    public void Close()
+    {
+        CloseCount++;
+        IsOpen = false;
+    }
+
     /// <summary>How many times <see cref="ConnectShortcuts"/> was called.</summary>
     public int ConnectCount { get; private set; }
 

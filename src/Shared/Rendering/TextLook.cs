@@ -89,10 +89,10 @@ public static class TextLooks
     private static readonly double[] HeadingScales = [1, 1.6, 1.4, 1.25, 1.15, 1.1, 1.05];
 
     public static TextLook Light { get; } =
-        new(dark: false, "#bc4c00", "#8a6a00", "#5c5c00", "#0550ae", "#0969da", "#9a3c00", "#4f5b93", 0.15, "#d6e6fb");
+        new(dark: false, "#bc4c00", "#8a6a00", "#5c5c00", "#0550ae", "#0969da", "#9a3c00", "#4f5b93", 0.15, "#e9ddf7");
 
     public static TextLook Dark { get; } =
-        new(dark: true, "#ffa500", "#ffff00", "#9a9a00", "#79c0ff", "#4493f8", "#f0a868", "#b4bdf5", 0.25, "#2f4b73");
+        new(dark: true, "#ffa500", "#ffff00", "#9a9a00", "#79c0ff", "#4493f8", "#f0a868", "#b4bdf5", 0.25, "#4a3670");
 
     /// <summary>Light or Dark.</summary>
     public static TextLook Of(bool dark) => dark ? Dark : Light;
@@ -105,4 +105,16 @@ public static class TextLooks
 
     /// <summary>The monospaced font code shows in.</summary>
     public static string CodeFont => "Consolas";
+
+    /// <summary>The room, in device-independent pixels, a mention's background leaves left and right of its text.</summary>
+    public static double MentionPaddingSides => 4;
+
+    /// <summary>The room, in device-independent pixels, a mention's background leaves above its text, without moving the line.</summary>
+    public static double MentionPaddingTop => 1;
+
+    /// <summary>The room, in device-independent pixels, a mention's background leaves below its text, without moving the line.</summary>
+    public static double MentionPaddingBottom => 3;
+
+    /// <summary>The radius, in device-independent pixels, of a mention background's rounded corners.</summary>
+    public static double MentionCornerRadius => 4;
 }

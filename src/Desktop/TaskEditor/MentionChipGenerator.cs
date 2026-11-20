@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.TextFormatting;
 using ICSharpCode.AvalonEdit.Rendering;
@@ -48,13 +49,35 @@ internal sealed class MentionChipGenerator : VisualLineElementGenerator
             : new Chip(MentionChips.TextOf(_contacts, mention), mention.Length, Backgrounds[_theme.IsDark ? 1 : 0]);
     }
 
-    // The background is set when the text is made, after the line transformers have had their say.
+    // Draws its own rounded background around the text by the mention padding; only the sides take room in the line.
     private sealed class Chip(string text, int documentLength, Brush background) : FormattedTextElement(text, documentLength)
     {
         public override TextRun CreateTextRun(int startVisualColumn, ITextRunConstructionContext context)
         {
-            TextRunProperties.SetBackgroundBrush(background);
-            return base.CreateTextRun(startVisualColumn, context);
+            base.CreateTextRun(startVisualColumn, context);
+            return new PaddedRun(this, background);
+        }
+    }
+
+    private sealed class PaddedRun(FormattedTextElement element, Brush background) : FormattedTextRun(element, element.TextRunProperties)
+    {
+        private static readonly double Sides = TextLooks.MentionPaddingSides;
+        private static readonly double Top = TextLooks.MentionPaddingTop;
+        private static readonly double Bottom = TextLooks.MentionPaddingBottom;
+
+        public override TextEmbeddedObjectMetrics Format(double remainingParagraphWidth)
+        {
+            var text = base.Format(remainingParagraphWidth);
+            return new TextEmbeddedObjectMetrics(text.Width + (2 * Sides), text.Height, text.Baseline);
+        }
+
+        public override void Draw(DrawingContext drawingContext, Point origin, bool rightToLeft, bool sideways)
+        {
+            var text = base.Format(double.PositiveInfinity);
+            var radius = TextLooks.MentionCornerRadius;
+            var box = new Rect(origin.X, origin.Y - text.Baseline - Top, text.Width + (2 * Sides), text.Height + Top + Bottom);
+            drawingContext.DrawRoundedRectangle(background, null, box, radius, radius);
+            base.Draw(drawingContext, new Point(origin.X + Sides, origin.Y), rightToLeft, sideways);
         }
     }
 }

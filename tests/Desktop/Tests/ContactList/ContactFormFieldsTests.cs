@@ -322,62 +322,44 @@ public class ContactFormFieldsTests
     {
         var form = Edit("team", "ana");
 
-        Assert.Equal([new FormChoice("em", "Engineering Manager", null), new FormChoice("se", "Software Engineer", null)], form.ChoicesOf("careerPathKey"));
-        Assert.Equal([new FormChoice("he", "he", null), new FormChoice("she", "she", null)], form.ChoicesOf("pronounsKey"));
+        Assert.Equal([new FormChoice("em", "Engineering Manager"), new FormChoice("se", "Software Engineer")], form.ChoicesOf("careerPathKey"));
+        Assert.Equal([new FormChoice("he", "he"), new FormChoice("she", "she")], form.ChoicesOf("pronounsKey"));
     }
 
     [Fact]
-    public void A_stored_key_the_file_does_not_list_shows_first_as_written_and_marked()
+    public void A_stored_key_the_file_does_not_list_is_not_among_the_choices_but_stays_the_value_and_is_saved_unchanged()
     {
         var form = ContactForm.Edit(_services.Contacts, "team", _services.Member("team", "bob") with { CareerPathKey = "zz" });
 
-        var choices = form.ChoicesOf("careerPathKey");
+        form["title"] = "Lead";
 
-        Assert.Equal(new FormChoice("zz", "zz", "Not in the list"), choices[0]);
-        Assert.Equal(["zz", "em", "se"], choices.Select(choice => choice.Key));
+        Assert.Equal(["em", "se"], form.ChoicesOf("careerPathKey").Select(choice => choice.Key));
         Assert.Equal("zz", form["careerPathKey"]);
+        Assert.Equal("zz", form.ToContact().CareerPathKey);
     }
 
     [Fact]
-    public void A_stored_key_the_file_does_not_list_stays_in_the_choices_after_another_is_picked()
+    public void A_missing_key_has_no_empty_choice_and_is_saved_missing()
     {
-        var form = ContactForm.Edit(_services.Contacts, "team", _services.Member("team", "bob") with { CareerPathKey = "zz" });
+        var form = ContactForm.Edit(_services.Contacts, "team", _services.Member("team", "bob") with { CareerPathKey = null });
 
-        form["careerPathKey"] = "em";
-        var choices = form.ChoicesOf("careerPathKey");
-
-        Assert.Equal(new FormChoice("zz", "zz", "Not in the list"), choices[0]);
-        Assert.Equal(["zz", "em", "se"], choices.Select(choice => choice.Key));
-        Assert.Equal("em", form["careerPathKey"]);
+        Assert.Equal(["em", "se"], form.ChoicesOf("careerPathKey").Select(choice => choice.Key));
+        Assert.Equal("", form["careerPathKey"]);
+        Assert.Null(form.ToContact().CareerPathKey);
     }
 
     [Fact]
-    public void A_picked_key_that_a_reload_of_the_data_type_file_no_longer_lists_shows_in_the_choices_marked_and_stays_the_value()
+    public void A_picked_key_that_a_reload_of_the_data_type_file_no_longer_lists_leaves_the_choices_and_stays_the_value()
     {
         var form = Edit("team", "ana");
         form["careerPathKey"] = "em";
 
-        _services.Disk.Seed(_services.Clone, TestContactStore.CareerPathsFile, ContactFiles.ArrayOf(
+        _services.Disk.Seed(_services.Clone, TestContactStore.CareerPathsFile, ContactFiles.DataType("careerPaths",
             ContactFiles.Object(("id", "se"), ("name", "Software Engineer"))));
         _services.Load();
-        var choices = form.ChoicesOf("careerPathKey");
 
-        Assert.Contains(new FormChoice("em", "em", "Not in the list"), choices);
-        Assert.Contains(new FormChoice("se", "Software Engineer", null), choices);
-        Assert.Equal(2, choices.Count);
+        Assert.Equal([new FormChoice("se", "Software Engineer")], form.ChoicesOf("careerPathKey"));
         Assert.Equal("em", form["careerPathKey"]);
-    }
-
-    [Fact]
-    public void Picking_the_unlisted_stored_key_back_sets_it_again()
-    {
-        var form = ContactForm.Edit(_services.Contacts, "team", _services.Member("team", "bob") with { CareerPathKey = "zz" });
-        form["careerPathKey"] = "em";
-
-        form["careerPathKey"] = "zz";
-
-        Assert.Equal("zz", form["careerPathKey"]);
-        Assert.False(form.HasChanges);
     }
 
     [Fact]

@@ -36,7 +36,7 @@ public static class DescriptionPage
         return $"html,body{{color:{text};font-family:system-ui;font-size:14px}}"
             + sizes
             + $"a{{color:{look.Link}}}em{{color:{look.Italic}}}"
-            + $".mention{{color:{text};background:{look.MentionBackground};border-radius:3px;padding:0 2px}}"
+            + $".mention{{color:{text};background:{look.MentionBackground};border-radius:{TextLooks.MentionCornerRadius}px;padding:{TextLooks.MentionPaddingTop}px {TextLooks.MentionPaddingSides}px {TextLooks.MentionPaddingBottom}px}}"
             + $"code,pre{{color:{look.Code};background:{faded};font-family:{TextLooks.CodeFont},monospace}}"
             + "pre{padding:8px;overflow-x:auto}pre code{background:transparent}"
             + "[data-image]{display:inline-block;" + (resizable ? ResizeRule : "") + "overflow:hidden;max-width:100%}"

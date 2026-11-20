@@ -114,4 +114,19 @@ public class LogsWindowTests
 
         Assert.Equal(["New", "Old"], screen.RowMessages);
     }
+
+    [WpfTheory]
+    [InlineData("All", false, false)]
+    [InlineData("Last hour", true, false)]
+    [InlineData("Today", true, false)]
+    [InlineData("Custom", true, true)]
+    public void The_time_range_shows_only_the_bounds_its_choice_uses(string preset, bool from, bool to)
+    {
+        using var screen = new LogsScreen(_services);
+
+        screen.ChoosePreset(preset);
+
+        Assert.Equal(from, screen.ShowsBound("From"));
+        Assert.Equal(to, screen.ShowsBound("To"));
+    }
 }

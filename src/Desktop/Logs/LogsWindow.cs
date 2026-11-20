@@ -15,7 +15,7 @@ public static class LogsWindow
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(logger);
-        return new Opener(source, closeWindowKeys, time, logger);
+        return new Opener(source, theme, closeWindowKeys, time, logger);
     }
 
     private sealed class Opener : ILogsWindow
@@ -23,10 +23,10 @@ public static class LogsWindow
         private readonly SingleWindow _window;
         private LogsMainWindow? _current;
 
-        public Opener(ILogSource source, CloseWindowKeys closeWindowKeys, TimeProvider time, ILogger logger) =>
+        public Opener(ILogSource source, ITheme theme, CloseWindowKeys closeWindowKeys, TimeProvider time, ILogger logger) =>
             _window = new SingleWindow(() =>
             {
-                var window = new LogsMainWindow(source, time, logger);
+                var window = new LogsMainWindow(source, theme, time, logger);
                 closeWindowKeys.Attach(window);
                 _current = window;
                 window.Closed += (_, _) => _current = null;

@@ -5,6 +5,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -67,6 +68,87 @@ internal sealed class ContactsScreen : IDisposable
 
     /// <summary>What the search box holds.</summary>
     public string SearchText => TextFields.TextOf(Find(element => AutomationProperties.GetName(element) == "Search"));
+
+    /// <summary>The text a row shows, such as "Ana Pop (anap)".</summary>
+    public string RowText(string fullName) => OpenWindows.TextOf(RowBlock(fullName));
+
+    /// <summary>The italic text of a row, or null when the row has none.</summary>
+    public string? RowItalicText(string fullName) =>
+        RowBlock(fullName).Inlines.OfType<Italic>().Select(italic => string.Concat(italic.Inlines.OfType<Run>().Select(run => run.Text))).SingleOrDefault();
+
+    /// <summary>The full name of the row that has the keyboard focus, or null when another element has it.</summary>
+    public string? FocusedRowName
+    {
+        get
+        {
+            Refresh();
+            return Keyboard.FocusedElement is FrameworkElement { } element && AutomationProperties.GetAutomationId(element) == "Row"
+                ? AutomationProperties.GetName(element)
+                : null;
+        }
+    }
+
+    /// <summary>Runs the action, answers every question it asks by clicking the button with the label, and returns how many questions it asked.</summary>
+    public int QuestionsAskedWhile(Action action, string answer)
+    {
+        var questions = new ClosePrompt("Contacts");
+        questions.Run(() =>
+        {
+            action();
+            return 0;
+        }, ClosePrompt.Click(answer), answerEveryPrompt: true);
+        return questions.Shown;
+    }
+
+    /// <summary>Puts the keyboard focus on the contact's row without clicking it, so the selection doesn't change.</summary>
+    public void FocusRow(string fullName)
+    {
+        var row = Row(fullName);
+        row.Focus();
+        Keyboard.Focus(row);
+        Refresh();
+    }
+
+    /// <summary>The label of the button that has the keyboard focus inside the group's heading, or null when another element has it.</summary>
+    public string? FocusedButtonLabelIn(string heading)
+    {
+        Refresh();
+        var group = Heading(heading);
+        for (var element = Keyboard.FocusedElement as DependencyObject; element is not null; element = VisualTreeHelper.GetParent(element))
+        {
+            if (ReferenceEquals(element, group))
+            {
+                return Keyboard.FocusedElement is ButtonBase button ? LabelOf(button) : null;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Moves the keyboard focus to the next element Tab stops on, as Tab does.</summary>
+    public void PressTab() => MoveFocus(FocusNavigationDirection.Next);
+
+    /// <summary>Moves the keyboard focus to the previous element Tab stops on, as Shift+Tab does.</summary>
+    public void PressShiftTab() => MoveFocus(FocusNavigationDirection.Previous);
+
+    private void MoveFocus(FocusNavigationDirection direction)
+    {
+        ((UIElement)Keyboard.FocusedElement).MoveFocus(new TraversalRequest(direction));
+        Refresh();
+    }
+
+    /// <summary>Whether the search box has the keyboard focus.</summary>
+    public bool SearchHasFocus => Find(element => AutomationProperties.GetName(element) == "Search").IsKeyboardFocused;
+
+    /// <summary>The text selected in the search box.</summary>
+    public string SearchSelectedText => ((TextBox)Find(element => AutomationProperties.GetName(element) == "Search")).SelectedText;
+
+    /// <summary>Presses the key on the element that has the keyboard focus, as the keyboard does.</summary>
+    public void PressKey(Key key)
+    {
+        SimulatedKey.Raise((UIElement)Keyboard.FocusedElement, key, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
+        Refresh();
+    }
 
     /// <summary>Whether a text showing in the window contains the text.</summary>
     public bool ShowsText(string part) => TextsIn(Window).Any(text => text.Contains(part, StringComparison.Ordinal));
@@ -224,6 +306,8 @@ internal sealed class ContactsScreen : IDisposable
 
     private FrameworkElement Heading(string heading) =>
         Headings().Single(candidate => AutomationProperties.GetName(candidate) == heading);
+
+    private TextBlock RowBlock(string fullName) => Visuals(Row(fullName)).OfType<TextBlock>().Single();
 
     private FrameworkElement Row(string fullName)
     {

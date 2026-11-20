@@ -30,7 +30,7 @@ public sealed class DataTypeTests
     public void Lists_the_entries_in_file_order_showing_the_name_or_else_the_ID()
     {
         f.SeedGroup("team", 1000);
-        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.ArrayOf(
+        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.DataType("careerPaths",
             ContactFiles.Object(("id", "zz"), ("name", "Zebra Keeper")),
             ContactFiles.Object(("id", "aa"), ("short", "AA"))));
         f.Load();
@@ -46,7 +46,7 @@ public sealed class DataTypeTests
     {
         f.SeedGroup("team", 1000);
         f.Seed(ContactsFixture.CareerPathsFile,
-            """[ { "id": "em", "name": "Engineering Manager", "short": "EM", "alternatives": [ "Lead", "Head" ] } ]""");
+            """{ "version": 1, "careerPaths": [ { "id": "em", "name": "Engineering Manager", "short": "EM", "alternatives": [ "Lead", "Head" ] } ] }""");
         f.Load();
 
         var entry = Assert.Single(Type("careerPathKey").Entries);
@@ -71,7 +71,7 @@ public sealed class DataTypeTests
     public void Marks_a_missing_file_not_loaded_and_reports_it_when_the_clone_has_contacts()
     {
         f.SeedGroup("team", 1000);
-        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.ArrayOf(ContactFiles.Object(("id", "em"))));
+        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.DataType("careerPaths", ContactFiles.Object(("id", "em"))));
 
         f.Load();
 

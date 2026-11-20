@@ -11,19 +11,27 @@ public sealed class DataTypeFileTests
 
     [Theory]
     [InlineData("{ not json")]
-    [InlineData("""{ "id": "he" }""")]
+    [InlineData("""{ "version": 1, "pronouns": { "id": "he" } }""")]
     [InlineData("\"text\"")]
-    [InlineData("[ 1 ]")]
-    [InlineData("""[ { "name": "no id" } ]""")]
-    [InlineData("""[ { "id": "" } ]""")]
-    [InlineData("""[ { "id": 5 } ]""")]
-    [InlineData("""[ { "id": "a" }, { "id": "a" } ]""")]
-    [InlineData("""[ { "id": "a" }, { "id": "A" } ]""")]
-    [InlineData("""[ { "id": "a", "n": 5 } ]""")]
-    [InlineData("""[ { "id": "a", "n": true } ]""")]
-    [InlineData("""[ { "id": "a", "n": { "x": "y" } } ]""")]
-    [InlineData("""[ { "id": "a", "n": [ "x", 1 ] } ]""")]
-    [InlineData("""[ { "id": "a", "n": [ [ "x" ] ] } ]""")]
+    [InlineData("[]")]
+    [InlineData("""[ { "id": "he" } ]""")]
+    [InlineData("""{ "pronouns": [] }""")]
+    [InlineData("""{ "version": 0, "pronouns": [] }""")]
+    [InlineData("""{ "version": "1", "pronouns": [] }""")]
+    [InlineData("""{ "version": 1 }""")]
+    [InlineData("""{ "version": 1, "careerPaths": [] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [], "note": "x" }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ 1 ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "name": "no id" } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": "" } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": 5 } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": "a" }, { "id": "a" } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": "a" }, { "id": "A" } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": "a", "n": 5 } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": "a", "n": true } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": "a", "n": { "x": "y" } } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": "a", "n": [ "x", 1 ] } ] }""")]
+    [InlineData("""{ "version": 1, "pronouns": [ { "id": "a", "n": [ [ "x" ] ] } ] }""")]
     public void Reports_the_file_and_marks_its_data_type_not_loaded_even_when_the_clone_has_no_contacts(string content)
     {
         f.Seed(ContactsFixture.PronounsFile, content);
@@ -37,11 +45,37 @@ public sealed class DataTypeFileTests
     }
 
     [Fact]
+    public void Reads_the_entries_of_the_list_named_after_the_file()
+    {
+        f.Seed(ContactsFixture.PronounsFile, ContactFiles.DataType("pronouns", ContactFiles.Object(("id", "he"), ("subject", "he"))));
+        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.DataType("careerPaths", ContactFiles.Object(("id", "em"), ("name", "EM"))));
+
+        f.Load();
+
+        Assert.Equal(["he"], f.Contacts.DataTypes.Single(type => type.KeyField == "pronounsKey").Entries.Select(entry => entry.Id));
+        Assert.Equal(["em"], f.Contacts.DataTypes.Single(type => type.KeyField == "careerPathKey").Entries.Select(entry => entry.Id));
+        Assert.Empty(f.Contacts.SkippedFiles);
+    }
+
+    [Fact]
+    public void Skips_a_file_with_a_newer_version_and_says_it_needs_an_update()
+    {
+        f.Seed(ContactsFixture.PronounsFile, """{ "version": 2, "pronouns": [] }""");
+
+        f.Load();
+
+        var skipped = Assert.Single(f.Contacts.SkippedFiles);
+        Assert.Equal(ContactsFixture.PronounsFile, skipped.RelativePath);
+        Assert.True(skipped.RequiresUpdate);
+        Assert.False(f.Contacts.DataTypes.Single(type => type.KeyField == "pronounsKey").Loaded);
+    }
+
+    [Fact]
     public void Reports_a_file_with_a_lone_surrogate_and_still_loads_the_contacts_using_its_type()
     {
         f.SeedGroup("team", 1000, ContactFiles.Person("1", "Ana", ("pronounsKey", "he")));
-        f.Seed(ContactsFixture.PronounsFile, """[ { "id": "he", "subject": "he\uD800" } ]""");
-        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.ArrayOf());
+        f.Seed(ContactsFixture.PronounsFile,         """{ "version": 1, "pronouns": [ { "id": "he", "subject": "he\uD800" } ] }""");
+                f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.DataType("careerPaths"));
 
         f.Load();
 
@@ -68,7 +102,7 @@ public sealed class DataTypeFileTests
     public void Still_loads_the_other_data_type()
     {
         f.Seed(ContactsFixture.PronounsFile, "{ not json");
-        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.ArrayOf(ContactFiles.Object(("id", "em"), ("name", "EM"))));
+        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.DataType("careerPaths", ContactFiles.Object(("id", "em"), ("name", "EM"))));
 
         f.Load();
 
@@ -77,9 +111,9 @@ public sealed class DataTypeFileTests
     }
 
     [Fact]
-    public void Reads_an_empty_array_as_a_loaded_data_type_with_no_entries()
+    public void Reads_an_empty_list_as_a_loaded_data_type_with_no_entries()
     {
-        f.Seed(ContactsFixture.PronounsFile, "[]");
+        f.Seed(ContactsFixture.PronounsFile, ContactFiles.DataType("pronouns"));
 
         f.Load();
 

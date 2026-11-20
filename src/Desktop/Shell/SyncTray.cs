@@ -8,7 +8,7 @@ namespace Memoria.ToDo.Desktop.Shell;
 /// Shows sync status on the tray icon: a badge and tooltip for every status change, and one notification for each new
 /// kind of error until a clean success. Status changes arrive on any thread; the icon's adapter owns UI dispatch.
 /// </summary>
-internal sealed class SyncTray(ISyncService sync, ITrayIcon trayIcon, Action openConfigure, ILogger logger)
+internal sealed class SyncTray(ISyncService sync, ITrayIcon trayIcon, Action openLogs, ILogger logger)
 {
     private readonly object gate = new();
     private readonly HashSet<SyncFailure> notified = [];
@@ -71,7 +71,7 @@ internal sealed class SyncTray(ISyncService sync, ITrayIcon trayIcon, Action ope
         {
             var text = ErrorText(status);
             logger.Information("Showing the sync notification: {Notification}", text);
-            trayIcon.NotifySyncError(text, openConfigure);
+            trayIcon.NotifySyncError(text, openLogs);
         }
     }
 

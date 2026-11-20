@@ -113,6 +113,30 @@ public class LogsTimeRangeTests
     }
 
     [Fact]
+    public async Task Choosing_Custom_fills_an_empty_To_with_the_current_minute_and_keeps_From()
+    {
+        var model = await LoadedWithHoursAsync();
+        model.Preset = TimePreset.Today;
+
+        model.Preset = TimePreset.Custom;
+
+        Assert.Equal("2026-03-14 14:30", model.To);
+        Assert.Equal("2026-03-14 00:00", model.From);
+        Assert.Equal(TimePreset.Custom, model.Preset);
+    }
+
+    [Fact]
+    public async Task Choosing_Custom_keeps_a_To_that_is_already_there()
+    {
+        var model = await LoadedWithHoursAsync();
+        model.To = "2026-03-14 12:00";
+
+        model.Preset = TimePreset.Custom;
+
+        Assert.Equal("2026-03-14 12:00", model.To);
+    }
+
+    [Fact]
     public async Task Editing_To_also_changes_the_preset_to_Custom_and_keeps_From()
     {
         var model = await LoadedWithHoursAsync();

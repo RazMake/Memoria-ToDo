@@ -8,10 +8,11 @@ The Logs window lets the user read what the app did and what went wrong, without
 
 ### The tray menu's Logs item opens one window
 
-- **The tray menu has a Logs item, after Configure and before Exit.** It always shows, also before the device is configured, since that's when setup problems need reading. Unlike Add and Task View, it never redirects to Configure. Shell owns the [menu](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions).
+- **The tray menu has a Logs item, after Configure and before Exit.** It always shows, also before the device is configured, since that's when setup problems need reading. Unlike Add and Task View, it never redirects to Configure. Shell owns the [menu](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions). Clicking a sync error notification opens it too, as the user decided, since the log holds the error's details.
+- **Opening it closes every other window**, as the user decided: Add keeps its draft, and Task View and Contacts may first ask about a changed edit. Logs opens whatever the answer. Proposed, a decision to confirm.
 - **No global shortcut opens it.** Reading logs is rare, and the shortcuts are kept for daily work. Proposed, a decision to confirm.
 - **One window at a time.** Logs again with the window open brings it to the front. It uses the platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), opens on the [screen with the mouse pointer](README.md#windows-open-on-the-screen-with-the-mouse-pointer), follows the theme, and closes with Esc and the [Close window shortcut](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows), as the other windows do.
-- **It stays out of Shell's window rules.** The global shortcuts [switch](shell.md#a-shortcut-switches-between-add-and-task-view) as if it weren't open, and an update's restart doesn't wait for it, since it holds nothing to save; it closes with the app. Proposed, a decision to confirm.
+- **It stays out of the shortcuts' switching rules.** The global shortcuts [switch](shell.md#a-shortcut-switches-between-add-and-task-view) as if it weren't open, and an update's restart doesn't wait for it, since it holds nothing to save; it closes with the app. Proposed, a decision to confirm.
 
 ### It loads every kept entry off the UI thread
 
@@ -21,9 +22,9 @@ The Logs window lets the user read what the app did and what went wrong, without
 
 ### The list shows newest first, one row per entry
 
-- **Columns: Time, Severity, Component, Message.** Time is this PC's local time, with the date and milliseconds. Message shows the first line of the rendered message; a row with an exception shows a mark beside its severity.
+- **Columns: Time, Severity, Component, Message.** Time is this PC's local time, with the date and milliseconds. Message shows the first line of the rendered message; a row with an exception shows a mark beside its severity. Error and Fatal rows show in red and Warning rows in orange, as the user decided, in shades for the light and the dark theme. The list, its headers, and its rows follow the theme.
 - **Newest first**, since the question is usually "what just happened". Proposed, a decision to confirm.
-- **Selecting a row shows the whole entry below the list**, in a pane the user resizes by dragging the bar above it up or down. The bar is Logs' own, since the platform's [split panes](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them) only place two sides beside each other. The pane holds the full message and the exception's text with its stack trace. The text can be selected and copied.
+- **Selecting a row shows the whole entry below the list**, in a pane the user resizes by dragging the bar above it up or down. The pane opens at its smallest height, 65 pixels, as the user decided, so the list gets the room. The bar is Logs' own, since the platform's [split panes](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them) only place two sides beside each other. The pane holds the full message and the exception's text with its stack trace. The text can be selected and copied.
 - **Ctrl+C copies the selected rows** as text, one line each with time, severity, component, and message, followed by any exception, so the user can paste them into an issue. Proposed, a decision to confirm.
 - **The list scrolls smoothly through every entry**: only the rows on screen are drawn.
 
@@ -31,10 +32,11 @@ The Logs window lets the user read what the app did and what went wrong, without
 
 A bar above the list holds four filters, as the user decided. Each change applies at once, and every filter must match for a row to show:
 
-- **Time range: presets that fill a From and a To box the user can edit.** The presets are Last hour, Today, Last 24 hours, Last 7 days, and All, which is the default.
-  - A preset fills From with its start, in this PC's local time, and empties To, which means "up to now". Today starts at midnight; All empties both boxes.
-  - The boxes take a date and time, such as `2025-03-14 10:40`, so the user can look at the exact minute an error happened. WPF has a date picker but no time picker, so they're text boxes, checked as the user types. A date alone isn't a valid value. An empty box sets no bound, and so does a To of `9999-12-31 23:59`. Each bound includes its own minute.
-  - Editing a box changes the preset list to Custom. A box with a value that isn't a date and time shows red, a From later than To shows both boxes red, and the time range doesn't filter until it's fixed.
+- **Time range: presets that fill a From and a To bound the user can edit.** The presets are Last hour, Today, Last 24 hours, Last 7 days, and All, which is the default.
+  - A preset fills From with its start, in this PC's local time, and empties To, which means "up to now". Today starts at midnight; All empties both bounds.
+  - Only the bounds a choice uses show, as the user decided: All shows neither, the other presets show only From, and Custom shows both.
+  - Each bound is a date picker and a time box, as the user decided, so the user can look at the exact minute an error happened. WPF has no time picker, so the time box is an editable list of every half hour that also takes any time typed, such as `10:43`, checked as the user types. No date sets no bound, and the time box is off until a date is picked. Picking a date while the time is empty fills in 00:00 for From and 23:59 for To, so a To date includes its whole day. Proposed, a decision to confirm. A To of `9999-12-31 23:59` sets no bound either. Each bound includes its own minute.
+  - Editing a bound changes the preset list to Custom. Choosing Custom in the list fills an empty To with the current minute, as the user decided. A time that isn't a time shows red, a From later than To shows both bounds red, and the time range doesn't filter until it's fixed.
   - Refresh and F5 work a preset out again from the current time, so Last hour still means the last hour. The user decided this.
 - **Severity: a minimum level.** The list holds Information and up, the default, Warning and up, Error and up, and Fatal only: the four [levels the app uses](../logging.md#four-levels-say-how-bad-an-entry-is). Proposed, a decision to confirm: Fatal gets its own item, for the errors that ended the app.
 - **Component**: a list of the components found in the loaded entries, in name order ignoring case, as the user decided, such as `Sync` or `Tasks`, each with a check box, all checked by default, with one box to check or clear them all. The component is each entry's `SourceContext`, which the [log](../logging.md#every-module-logs-through-serilogs-logger) names after each module. An entry without one shows as `Unknown`. Proposed, a decision to confirm.

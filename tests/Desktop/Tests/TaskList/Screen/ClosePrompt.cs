@@ -39,7 +39,7 @@ internal sealed class ClosePrompt(string title = ClosePrompt.Title)
     /// Calls <paramref name="close"/>, answers the prompt it shows with <paramref name="answer"/>, and returns what
     /// <paramref name="close"/> returned. When <paramref name="close"/> shows no prompt, <paramref name="answer"/> never runs.
     /// </summary>
-    public T Run<T>(Func<T> close, Action<Window> answer)
+    public T Run<T>(Func<T> close, Action<Window> answer, bool answerEveryPrompt = false)
     {
         var finished = false;
         Exception? failure = null;
@@ -81,7 +81,7 @@ internal sealed class ClosePrompt(string title = ClosePrompt.Title)
         WhenLoaded = prompt =>
         {
             // The prompt is owned; a window with the same title and no owner, such as Contacts' own, is not it.
-            if (!answered && prompt.Title == title && prompt.Owner is not null)
+            if ((answerEveryPrompt || !answered) && prompt.Title == title && prompt.Owner is not null)
             {
                 answered = true;
                 prompt.Dispatcher.BeginInvoke(DispatcherPriority.Background, () => AnswerWhenShown(prompt));

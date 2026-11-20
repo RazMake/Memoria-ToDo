@@ -16,8 +16,8 @@ public static class TrayApp
     /// <summary>
     /// Creates the app's lifetime. Start first claims the sign-in session; when another instance runs, it ends the app
     /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Task View, Contacts while
-    /// contacts are available, Configure, Logs, Exit; a left click shows Task View; Logs shows the Logs window at once,
-    /// whatever the setup), connects Configure's four shortcuts (a press
+    /// contacts are available, Configure, Logs, Exit; a left click shows Task View; Logs, and a click on a sync error
+    /// notification, close every other window and show the Logs window at once, whatever the setup), connects Configure's four shortcuts (a press
     /// shows Add, Task View, Contacts, or Configure, and does nothing while Configure is open), begins Updates with the
     /// app's exit, and starts the shared sync
     /// service. Startup and later actions open Configure until setup is complete;
@@ -116,9 +116,19 @@ public static class TrayApp
             updates,
             endApp => new ShellExit(add, viewTasks, contacts, configure, endApp),
             sync,
-            logs.Show,
+            ShowLogs,
             logger);
 
         Action Press(string name, ShortcutSwitch switcher) => LoggedUse.Of(logger, $"Shortcut for {name} used", switcher.Press);
+
+        // Logs opens alone. Task View and Contacts may first ask about a changed edit; Logs opens whatever the answer.
+        void ShowLogs()
+        {
+            add.Close();
+            viewTasks.Close();
+            contacts.Close();
+            configure.Close();
+            logs.Show();
+        }
     }
 }

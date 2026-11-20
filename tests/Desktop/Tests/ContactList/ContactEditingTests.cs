@@ -94,7 +94,7 @@ public class ContactEditingTests
         model.SaveForm();
 
         Assert.Equal("bob", model.Selected!.Contact.Id);
-        Assert.Equal("Lead", model.Selected.Title);
+        Assert.Equal("Lead", model.Selected.Contact.Title);
         Assert.NotNull(model.Details);
     }
 

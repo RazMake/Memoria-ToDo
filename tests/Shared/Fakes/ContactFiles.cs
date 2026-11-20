@@ -22,7 +22,9 @@ public static class ContactFiles
     public static string Me(int position, string details) =>
         $$"""{ "version": 1, "position": {{position}}, "details": {{details}} }""";
 
-    public static string ArrayOf(params string[] entries) => "[ " + string.Join(", ", entries) + " ]";
+    /// <summary>A data type file: version 1 and the entries under <paramref name="listName"/> (the file name without ".json").</summary>
+    public static string DataType(string listName, params string[] entries) =>
+        $$"""{ "version": 1, {{Quote(listName)}}: [ {{string.Join(", ", entries)}} ] }""";
 
     public static string Templates(params string[] templates) =>
         $$"""{ "version": 1, "templates": [ {{string.Join(", ", templates.Select(Quote))}} ] }""";
@@ -38,19 +40,16 @@ public static class ContactFiles
         public IReadOnlyList<string> Ids => [.. Objects.Select(o => o["id"])];
     }
 
-    /// <summary>A group file's or data type file's content: its objects (the members, the details, or the array's entries), position, and other top-level fields.</summary>
+    /// <summary>A group file's or data type file's content: its objects (the members, the details, or the data type's entries), position, and other top-level fields.</summary>
     public static Parsed Read(byte[] bytes)
     {
         using var json = JsonDocument.Parse(bytes);
         var root = json.RootElement;
-        if (root.ValueKind == JsonValueKind.Array)
-            return new Parsed(null, [.. root.EnumerateArray().Select(Fields)], new Dictionary<string, string>());
-
         var objects = new List<IReadOnlyDictionary<string, string>>();
         var top = new Dictionary<string, string>();
         foreach (var property in root.EnumerateObject())
         {
-            if (property.Name == "members")
+            if (property.Name is "members" or "pronouns" or "careerPaths")
                 objects.AddRange(property.Value.EnumerateArray().Select(Fields));
             else if (property.Name == "details")
                 objects.Add(Fields(property.Value));

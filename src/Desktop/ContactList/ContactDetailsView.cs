@@ -81,18 +81,38 @@ internal sealed class ContactDetailsView : ScrollViewer
         }
 
         panel.Children.Add(buttons);
+        panel.Children.Add(FieldsOf(details));
+        return panel;
+    }
+
+    // One row per field: its label, then its values, each on a subtle background a little larger than the text.
+    private Grid FieldsOf(ContactDetails details)
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         foreach (var field in details.Fields)
         {
-            var label = new TextBlock { Text = field.Label, Margin = new Thickness(0, 8, 0, 0) };
+            var row = grid.RowDefinitions.Count;
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var label = new TextBlock { Text = field.Label, Margin = new Thickness(0, 6 + ValuePadding.Top, 12, 0) };
             ContactHelpStyle.Apply(label);
-            panel.Children.Add(label);
+            Grid.SetRow(label, row);
+            grid.Children.Add(label);
+
+            var values = new StackPanel { Margin = new Thickness(0, 6, 0, 0) };
             foreach (var value in field.Values)
             {
-                panel.Children.Add(ValueOf(value));
+                values.Children.Add(ValueOf(value));
             }
+
+            Grid.SetRow(values, row);
+            Grid.SetColumn(values, 1);
+            grid.Children.Add(values);
         }
 
-        return panel;
+        return grid;
     }
 
     private Button ButtonOf(string label, Func<bool> action)
@@ -106,10 +126,21 @@ internal sealed class ContactDetailsView : ScrollViewer
         return button;
     }
 
+    private static readonly Thickness ValuePadding = new(6, 2, 6, 2);
+
     // A value a click goes from, to the contact it names, looks like a link.
-    private TextBlock ValueOf(DetailValue value)
+    private Border ValueOf(DetailValue value)
     {
         var block = new TextBlock { Text = value.Text, TextWrapping = TextWrapping.Wrap };
+        var box = new Border
+        {
+            Child = block,
+            Padding = ValuePadding,
+            CornerRadius = new CornerRadius(4),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 0, 0, 2),
+        };
+        box.SetResourceReference(Border.BackgroundProperty, "SubtleFillColorSecondaryBrush");
         if (value.Target is { } target)
         {
             block.TextDecorations = TextDecorations.Underline;
@@ -121,6 +152,6 @@ internal sealed class ContactDetailsView : ScrollViewer
             };
         }
 
-        return block;
+        return box;
     }
 }

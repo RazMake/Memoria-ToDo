@@ -107,8 +107,7 @@ public sealed class FormattedTitle : TextBlock
         if (span.Styles.HasFlag(SpanStyle.Mention))
         {
             // A mention is a chip, not a link: its clicks go to the element around the title.
-            run.Background = Frozen(new SolidColorBrush(ColorOf(look.MentionBackground)));
-            return run;
+            return new InlineUIContainer(new Chip(run, Frozen(new SolidColorBrush(ColorOf(look.MentionBackground)))));
         }
 
         if (span.LinkAddress is not { } address)
@@ -125,6 +124,31 @@ public sealed class FormattedTitle : TextBlock
     }
 
     private static Color ColorOf(string hex) => (Color)ColorConverter.ConvertFromString(hex);
+
+    // A mention's text on its background, with room around it, sitting on the title's baseline. The negative margin keeps the
+    // room above and below from making the line taller.
+    private sealed class Chip : Border
+    {
+        private readonly TextBlock _text;
+
+        public Chip(Run run, Brush background)
+        {
+            _text = new TextBlock(run);
+            Child = _text;
+            Background = background;
+            Padding = new Thickness(TextLooks.MentionPaddingSides, TextLooks.MentionPaddingTop, TextLooks.MentionPaddingSides, TextLooks.MentionPaddingBottom);
+            Margin = new Thickness(0, -TextLooks.MentionPaddingTop, 0, -TextLooks.MentionPaddingBottom);
+            CornerRadius = new CornerRadius(TextLooks.MentionCornerRadius);
+        }
+
+        // The title lines the chip up by this offset; without it the chip's bottom would sit on the baseline.
+        protected override Size MeasureOverride(Size constraint)
+        {
+            var size = base.MeasureOverride(constraint);
+            TextBlock.SetBaselineOffset(this, _text.FontFamily.Baseline * _text.FontSize);
+            return size;
+        }
+    }
 
     private static T Frozen<T>(T freezable) where T : Freezable
     {

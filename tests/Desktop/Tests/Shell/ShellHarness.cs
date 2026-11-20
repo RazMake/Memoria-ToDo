@@ -86,6 +86,9 @@ internal sealed class ShellHarness
     public int EndAppCalls { get; private set; }
     public IAppLifetime Lifetime { get; }
 
+    /// <summary>What opening the Logs window writes in <see cref="Shown"/>: it closes the Add, Task View, and Contacts windows first (Configure's Close isn't logged), then shows Logs.</summary>
+    public static IReadOnlyList<string> LogsShown { get; } = ["Close Add", "Close Task View", "Close Contacts", "Logs"];
+
     /// <summary>The window calls, in order: "Add", "Task View", "Contacts", and "Configure" for a Show, "Close Add", "Close Task View", and "Close Contacts" for a Close, and "Logs" for a Show of the Logs window.</summary>
     public List<string> Shown { get; } = [];
 
