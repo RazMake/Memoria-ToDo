@@ -63,6 +63,33 @@ Proposed for building, each a decision to confirm:
 - **A stored key marked "Not in the list" stays in the drop-down while the form is open**, also after the user picks another, so the user can pick it back. A key the user picked that a reload of its file no longer lists shows the same way, marked "Not in the list", so the drop-down always shows the form's value; Contacts then rejects the save, and the message line says why.
 - **Clicking "Reports to" or a direct report that the search hides empties the search first**, so the selected contact shows in the list. With a changed form open, it asks first, and empties the search only once the form leaves; Cancel keeps both.
 
+### A contact card shows a mentioned contact's details
+
+The user asked that resting the mouse pointer on a mention, anywhere one shows, open a card with the contact's details: the common ones by default, and every one, including a team member's extra fields, while Ctrl is held. The platform's [hover card](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) decides when it opens, where, and when it closes. The user decided:
+
+- **The Contact list publishes the card**, since the details' labels and the way each value shows already live here, and the [Task editor](task-editor.md#resting-the-pointer-on-a-chip-shows-the-contacts-card) and the [Task list](task-list.md#resting-the-pointer-on-a-mention-shows-the-contacts-card) show it.
+- **The card is for the contact the mention's address names**, as Contacts' [`ContactOf`](../contacts.md#public-interface) finds it, the way it finds it for the mention's live text: [by ID only](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows), and nobody when no contact or two contacts hold the ID. With nobody, there's no card, since the mention already shows its stored text.
+- **By default it shows the common fields**: Title, Alias, Pronouns, Career path, and Reports to, the same for every group.
+
+Proposed, each a decision to confirm:
+
+- **Its heading is the full name**, with the group's heading under it, as the details show them.
+- **While Ctrl is held, it shows every field the details show**, in the details' order, with their labels: the common fields, plus ID, First name, and Direct reports, and, for a contact in a [team group](../contacts.md#team-groups-show-more-fields), Location, Level, Working type, Day start time, Level start date, Team member since, and Exit date.
+- **Each value shows as in the details**: a key field as its entry's name, a date in the user's short date format, "Reports to" as the manager's full name or the name as written, and Direct reports as a list of full names. The card and the details share one way of turning a field into its label and text, so the two can't differ.
+- **A field with no value doesn't show**, in either view. A contact with none of the common fields shows only its heading.
+- **The last line, in the help style, says "Ctrl: all details"** while some field shows only with Ctrl, and "Release Ctrl: fewer details" while Ctrl is held.
+- **Pressing Ctrl while the card shows switches it to every field at once, and releasing Ctrl switches it back**, without closing it; the card grows or shrinks in place, up to the [hover card's height limit](README.md#a-tall-card-scrolls-and-the-pointer-can-reach-it), past which it scrolls. Ctrl already held when the card opens opens it with every field. Ctrl is the only key that changes the card; the other modifiers do nothing to it.
+- **Nothing on the card acts on a click or takes the focus**, so "Reports to" and Direct reports aren't links there, unlike in the details. The pointer can still move onto the card, and the wheel scrolls it, as the platform's [hover card](README.md#a-tall-card-scrolls-and-the-pointer-can-reach-it) decides; the card sets no height limit of its own.
+- **It shows the contact as it was when the card opened**; a change to contacts while it shows reaches the next card.
+
+The user decided how the card uses the theme:
+
+- **The heading, the contact's full name, shows in the theme's heading color**: [Rendering's text look](../rendering.md#public-interface) for the light or dark theme, at heading level 1, the color of a description's top heading. Only its color changes; its size stays the details'.
+- **The heading's color follows a switch between light and dark while the card shows**, through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
+- **The card's surface keeps the Windows theme's colors**, its background, border, and text, as today, so it looks like the app's other popups.
+
+The user decided the Contact list may use Rendering, as the [module map](../modules.md#module-map) says, so the heading color keeps its one home in Rendering's text look. Rendering uses no module, so no loop forms. The user also decided only the card shows the name in the heading color; the Contacts window's details pane keeps the normal text color.
+
 ### Add and Delete change the contacts
 
 The user decided the window offers Add and Delete, and no Move between groups. The user's own contact can't be deleted, and its group takes no new contact.
@@ -152,6 +179,23 @@ The window uses the platform's [single window](README.md#a-closed-window-is-made
 
 Proposed, each a decision to confirm: `Create` throws `ArgumentNullException` for a null argument, before it makes anything, and makes no window until Show. `IsAvailable` and `AvailableChanged` work from creation, with the window never opened. The Contacts window's [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test), for Shell's tests, lives in the desktop fakes project beside Task View's.
 
+For [the contact card](#a-contact-card-shows-a-mentioned-contacts-details), the user decided that the Contact list also publishes the card, which the Task editor and the Task list may use, as the [module map](../modules.md#module-map) says, and that it finds the contact through Contacts' new [`ContactOf`](../contacts.md#public-interface). Proposed, a decision to confirm: the card's shape below.
+
+```csharp
+namespace Memoria.ToDo.Desktop.ContactList;
+
+/// A mentioned contact's details, to show while the pointer rests on the mention.
+public static class ContactCard
+{
+    /// The card for the contact address names, as Contacts' ContactOf finds it, or null when it finds nobody.
+    /// The card shows the common fields, and every field while Ctrl is held, switching as Ctrl goes down and up;
+    /// it shows the contact as it is now, its heading in theme's heading color, following theme switches,
+    /// and nothing on it acts on a click or takes the focus.
+    /// Throws ArgumentNullException for a null argument. Use it on the UI thread.
+    public static System.Windows.FrameworkElement? For(IContacts contacts, ITheme theme, string address);
+}
+```
+
 ## Failure modes
 
 - **No clone is selected, or the clone has no contact files**: the list is empty and says there are no contact files; Add, Delete, Edit, and the drag are off. Shell offers the window only while there are contact files, so this shows only in a window left open.
@@ -173,7 +217,21 @@ Proposed, each a decision to confirm: `Create` throws `ArgumentNullException` fo
 - **The window's own rule for reading a time**: the forms would live in two places, which the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) forbids.
 - **A time picker of hour and minute lists**: a slower pick, and the field would differ from how the file reads.
 - **A dialog that lists the problems**: the inline list needs no new platform part, and stays beside the list while the user fixes the files.
-
-## Open questions
-
-None.
+- Where the contact card lives:
+  - **A new desktop module, Contact card, that the Contact list, the Task editor, and the Task list use**: a ninth module, project, and test folder for one small control, and the details' labels would move out of the Contact list.
+  - **Field labels and value text move into Contacts, in the shared library, and the Task editor draws the card**: Contacts [stays out of the screens](../contacts.md#contacts-stays-out-of-the-screens), and the Task list would still reach the card only through the Task editor.
+- Where the contact card's labels and values come from:
+  - **A card of the Task editor's own, with its own labels**: the labels and value rules would live in two places, which the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) forbids.
+- Which fields the card shows without Ctrl:
+  - **Title and Alias only**: Ctrl would be needed for nearly everything.
+  - **The common fields, plus Location and Working type for a team member**: the card's size would differ by group even without Ctrl.
+- What a mention whose contact Contacts can't find shows on hover:
+  - **A card that says "This contact isn't in your contacts." under the stored text**: a card with no details, for what the stored text already shows.
+- How the card shows every field (proposed, a decision to confirm):
+  - **A "More" button on the card**: the card would need the focus or a click, and the user asked for Ctrl.
+- What color the card's heading shows in:
+  - **The normal text color, as in the details**: the card would take the theme only to pass it on, and the name would stand out less.
+- How the card reaches the heading color:
+  - **`ContactCard.For` takes the color from its caller**: a public interface change, and the Task editor and the Task list would both pick the card's color, two places for one rule.
+  - **The desktop platform gives the heading color**: the platform would copy Rendering's colors.
+- **The details pane's name in the heading color too**: a visible change to the Contacts window nobody asked for.

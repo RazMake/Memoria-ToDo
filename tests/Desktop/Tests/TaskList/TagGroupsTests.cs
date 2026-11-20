@@ -13,7 +13,9 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 public class TagGroupsTests
 {
     private readonly ListTasks _tasks = new();
-    private readonly ListFilter _filter = new();
+    private readonly ListFilter _filter;
+
+    public TagGroupsTests() => _filter = new ListFilter(_tasks.Contacts);
 
     private ListSnapshot Snapshot() => new ListContent(_tasks.Tasks, _filter).Build(null, null);
 

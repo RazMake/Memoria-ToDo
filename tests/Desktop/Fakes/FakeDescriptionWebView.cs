@@ -13,6 +13,8 @@ public sealed class FakeDescriptionWebView : IDescriptionWebView
 {
     private readonly CountSignal shown = new();
     private readonly List<string> pages = [];
+    private readonly List<Point> mentionQueries = [];
+    private TaskCompletionSource? heldAnswers;
     private string? waiting;
     private bool started;
 
@@ -20,7 +22,7 @@ public sealed class FakeDescriptionWebView : IDescriptionWebView
     public FakeDescriptionWebView(bool started = true) => this.started = started;
 
     /// <inheritdoc />
-    public FrameworkElement Element { get; } = new Border();
+    public FrameworkElement Element { get; } = new Border { Margin = new Thickness(7, 5, 0, 0) };
 
     /// <inheritdoc />
     public Uri CloneAddress { get; set; } = new("https://clone.fake.example/");
@@ -45,6 +47,31 @@ public sealed class FakeDescriptionWebView : IDescriptionWebView
 
     /// <inheritdoc />
     public event EventHandler<ImageResize>? ImageResized;
+
+    /// <summary>What <see cref="MentionAtAsync"/> answers: the mention under every point. Null answers that none is there.</summary>
+    public MentionAt? MentionUnderPointer { get; set; }
+
+    /// <summary>The points <see cref="MentionAtAsync"/> was asked about, in order.</summary>
+    public IReadOnlyList<Point> MentionQueries => mentionQueries;
+
+    /// <summary>From now on, answers to <see cref="MentionAtAsync"/> wait until <see cref="ReleaseMentionAnswers"/>, as a browser that is still looking does.</summary>
+    public void HoldMentionAnswers() => heldAnswers = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Lets every held answer to <see cref="MentionAtAsync"/> through.</summary>
+    public void ReleaseMentionAnswers() => heldAnswers?.SetResult();
+
+    /// <inheritdoc />
+    public async Task<MentionAt?> MentionAtAsync(Point point)
+    {
+        mentionQueries.Add(point);
+        var answer = MentionUnderPointer;
+        if (heldAnswers is { } held)
+        {
+            await held.Task;
+        }
+
+        return answer;
+    }
 
     /// <inheritdoc />
     public void Show(string page)

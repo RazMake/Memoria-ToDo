@@ -1,6 +1,8 @@
+using System.Windows.Input;
+
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
-/// <summary>The popup lists of one editor, of which at most one is open. Down and Enter act on the open one.</summary>
+/// <summary>The popup lists of one editor, of which at most one is open. Down, Up, and Enter act on the open one.</summary>
 internal sealed class PopupLists
 {
     private readonly IReadOnlyList<ChoiceList> _all;
@@ -46,6 +48,24 @@ internal sealed class PopupLists
         open.MoveDown();
         return true;
     }
+
+    /// <summary>Moves to the item before in the open list. Returns false, doing nothing, when none is open.</summary>
+    public bool MoveUp()
+    {
+        if (Open() is not { } open)
+        {
+            return false;
+        }
+
+        open.MoveUp();
+        return true;
+    }
+
+    /// <summary>Adds Down, Up, and Enter, which act on the open list and keep their usual meaning when none is open.</summary>
+    public KeyMap AddKeysTo(KeyMap keys) => keys
+        .Try(ModifierKeys.None, Key.Down, MoveDown)
+        .Try(ModifierKeys.None, Key.Up, MoveUp)
+        .Try(ModifierKeys.None, Key.Enter, ChooseMovedOrClose);
 
     /// <summary>
     /// Chooses the item Down moved to in the open list. When the list is open and nothing was moved to, closes it and

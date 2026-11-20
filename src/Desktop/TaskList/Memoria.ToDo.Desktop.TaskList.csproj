@@ -16,6 +16,7 @@
     <ProjectReference Include="..\..\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
     <ProjectReference Include="..\..\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
     <ProjectReference Include="..\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
+    <ProjectReference Include="..\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
     <PackageReference Include="Serilog" />

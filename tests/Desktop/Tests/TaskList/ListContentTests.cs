@@ -12,11 +12,12 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 public class ListContentTests
 {
     private readonly ListTasks _tasks = new();
-    private readonly ListFilter _filter = new();
+    private readonly ListFilter _filter;
     private readonly ListContent _content;
 
     public ListContentTests()
     {
+        _filter = new ListFilter(_tasks.Contacts);
         _content = new ListContent(_tasks.Tasks, _filter);
     }
 

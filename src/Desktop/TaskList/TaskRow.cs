@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.TaskList;
@@ -84,6 +85,14 @@ internal sealed class TaskRow : Border
 
     /// <summary>The key of the group the row is in.</summary>
     public GroupKey GroupKey { get; private set; }
+
+    /// <summary>Makes the card a mention in the title shows while the pointer rests on it; null from it shows none. Unset, none shows.</summary>
+    public Func<Mention, FrameworkElement?>? MentionCard
+    {
+        get => _title.MentionCard;
+        set => _title.MentionCard = value;
+    }
+
     /// <summary>Raised when the user selects the task: a left click on the row, or a right-click.</summary>
     public event EventHandler? SelectRequested;
 

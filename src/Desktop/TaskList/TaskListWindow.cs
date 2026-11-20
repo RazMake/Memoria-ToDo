@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
@@ -36,7 +37,7 @@ internal sealed class TaskListWindow : Window
     private readonly DetailsPane _details;
     private readonly GroupedRows _rows;
     private readonly GroupCollapse _collapse = new();
-    private readonly ListFilter _filter = new();
+    private readonly ListFilter _filter;
     private readonly ListHeader _header;
     private readonly ListSync _sync;
     private readonly UpdateStatusBar _statusBar;
@@ -70,6 +71,7 @@ internal sealed class TaskListWindow : Window
     {
         _sync = sync;
         _contacts = contacts;
+        _filter = new ListFilter(contacts);
         _pointer = pointer;
         _tagOrder = tagOrder;
         _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync));
@@ -98,7 +100,7 @@ internal sealed class TaskListWindow : Window
         Height = 720;
         MinWidth = 680;
 
-        _description = new FormattedDescription(webView, theme, browser);
+        _description = new FormattedDescription(webView, theme, browser) { MentionCard = CardOf };
         _description.OtherLinkClicked += (_, address) => FollowLink(address);
         _description.OpenFailed += (_, failure) =>
         {
@@ -110,6 +112,7 @@ internal sealed class TaskListWindow : Window
         _details.TabChosen += (_, preview) => SwitchTab(preview);
 
         _header = new ListHeader(_filter);
+        ContactAliasList.Attach(_header.SearchBox, contacts, theme);
         _content = new ListContent(tasks, _filter);
         _links = new ListLinks(tasks, _filter, _content);
         _actions = new ListActions(tasks, Report, logger);
@@ -121,7 +124,7 @@ internal sealed class TaskListWindow : Window
         _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow, task => LiveMentions.Of(contacts, task.Title, title: true), pointer);
         _groupActions = new GroupActions(tagOrder, Report, logger);
         _header.ShowMessage(message);
-        _filter.Changed += (_, _) => Refresh();
+        _filter.Changed += OnChanged;
         _header.UndoClicked += (_, _) => _pending.Undo();
         _header.EdgeRowRequested += (_, last) => SelectEdgeRow(last);
         Loaded += (_, _) => _header.FocusSearch();
@@ -141,7 +144,7 @@ internal sealed class TaskListWindow : Window
         Deactivated += (_, _) => _held.Clear();
         tasks.Changed += OnChanged;
         tagOrder.Changed += OnChanged;
-        contacts.Changed += OnChanged;
+        // The filter raises Changed for contacts too, so the rows' mention text follows them through it.
         Refresh();
     }
 
@@ -180,7 +183,7 @@ internal sealed class TaskListWindow : Window
         _closing = true;
         _tasks.Changed -= OnChanged;
         _tagOrder.Changed -= OnChanged;
-        _contacts.Changed -= OnChanged;
+        _filter.Dispose();
         try
         {
             _pending.Commit();
@@ -367,8 +370,12 @@ internal sealed class TaskListWindow : Window
         row.ResolveToggled += (_, on) => Resolve(row.Task, row, on);
         row.LinkClicked += (_, address) => FollowLink(address);
         row.OpenFailed += (_, failure) => Report(failure.Message);
+        row.MentionCard = CardOf;
         return row;
     }
+
+    // The card a mention shows while the pointer rests on it, in a row's title, the description, and the edit's preview.
+    private FrameworkElement? CardOf(Mention mention) => ContactCard.For(_contacts, _theme, mention.Address);
 
     private void Report(string message)
     {

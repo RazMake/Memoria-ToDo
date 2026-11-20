@@ -15,6 +15,9 @@ internal sealed class ShownDescription(ITheme theme, Func<Uri> cloneAddress, Act
     private bool _shownPreview;
     private bool _preview;
 
+    /// <summary>How many pages have been shown. A page that replaces the one shown makes it one more.</summary>
+    public int Pages { get; private set; }
+
     /// <summary>Shows the Markdown set, if any, with resizable images (while true) or without, unless that is already shown.</summary>
     public void SetPreview(bool preview)
     {
@@ -49,6 +52,7 @@ internal sealed class ShownDescription(ITheme theme, Func<Uri> cloneAddress, Act
         _shownMarkdown = _markdown;
         _shownDark = dark;
         _shownPreview = _preview;
+        Pages++;
         showPage(_preview
             ? DescriptionPage.WithResizableImages(_markdown, dark, cloneAddress())
             : DescriptionPage.Of(_markdown, dark, cloneAddress()));

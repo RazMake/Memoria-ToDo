@@ -31,9 +31,11 @@ public class MentionPickingTests
         _picking = new MentionPicking(_field, _list, _popups, _services.Contacts);
     }
 
+    private IEnumerable<string> FullNames => _picking.Rows.Select(row => row.FullName);
+
     private void UseNineContacts(params string[] templates) =>
         _services.UseContacts(templates.Length == 0 ? [WithTitle, FirstName, FullName] : templates,
-            ContactFiles.Person("ana", "Ana Pop", ("firstName", "Ana"), ("title", "Engineer")),
+            ContactFiles.Person("ana", "Ana Pop", ("firstName", "Ana"), ("title", "Engineer"), ("alias", "anap")),
             ContactFiles.Person("bob", "Bob Stan"),
             ContactFiles.Person("cris", "Cris Ilie", ("title", "Designer")),
             ContactFiles.Person("dan", "Dan Rus"),
@@ -78,7 +80,7 @@ public class MentionPickingTests
         _field.Type("/");
 
         Assert.False(_other.IsOpen);
-        Assert.Equal(["Ana /Pop"], _list.Items);
+        Assert.Equal(["Ana /Pop"], FullNames);
     }
 
     // The other list of the popups stands for the snippet list, as the editor shares its popups between the pickers of a field.
@@ -136,7 +138,7 @@ public class MentionPickingTests
 
         _field.Type("@");
 
-        Assert.Equal(["Ana Pop", "Bob Stan", "Cris Ilie", "Dan Rus", "Eva Mic", "Fay Nan", "Gus Oro"], _list.Items);
+        Assert.Equal(["Ana Pop", "Bob Stan", "Cris Ilie", "Dan Rus", "Eva Mic", "Fay Nan", "Gus Oro"], FullNames);
     }
 
     [Fact]
@@ -146,7 +148,7 @@ public class MentionPickingTests
 
         _field.Type("@bo");
 
-        Assert.Equal(["Bob Stan"], _list.Items);
+        Assert.Equal(["Bob Stan"], FullNames);
     }
 
     [Fact]
@@ -156,7 +158,7 @@ public class MentionPickingTests
 
         _field.Type("@ANA p");
 
-        Assert.Equal(["Ana Pop"], _list.Items);
+        Assert.Equal(["Ana Pop"], FullNames);
     }
 
     [Fact]
@@ -181,7 +183,7 @@ public class MentionPickingTests
 
         _field.Backspace();
 
-        Assert.Equal(["Bob Stan"], _list.Items);
+        Assert.Equal(["Bob Stan"], FullNames);
     }
 
     [Fact]
@@ -315,56 +317,167 @@ public class MentionPickingTests
     }
 
     [Fact]
-    public void Each_row_shows_the_contact_text_in_the_current_template()
+    public void Each_row_has_the_contacts_full_name_and_its_alias()
     {
         UseNineContacts(WithTitle, FirstName);
 
         _field.Type("@a");
 
-        Assert.Equal("Ana Pop (Engineer)", _list.Items[0]);
+        Assert.Equal(new MentionRow("Ana Pop", "anap"), _picking.Rows[0]);
     }
 
     [Fact]
-    public void A_contact_that_lacks_a_value_the_template_names_shows_its_full_name()
+    public void A_row_of_a_contact_with_no_alias_has_its_ID_in_the_aliass_place()
     {
-        UseNineContacts(WithTitle, FirstName);
+        UseNineContacts(FullName);
 
         _field.Type("@bob");
 
-        Assert.Equal(["Bob Stan"], _list.Items);
+        Assert.Equal([new MentionRow("Bob Stan", "bob")], _picking.Rows);
     }
 
     [Fact]
-    public void Each_row_has_the_contacts_title_for_the_help_style_and_none_when_the_contact_has_no_title()
+    public void The_lists_items_are_each_rows_plain_text_as_Full_Name_then_the_alias_in_parentheses()
     {
         UseNineContacts(FullName);
 
         _field.Type("@");
 
-        Assert.Equal(["Engineer", null, "Designer", null, null, null, null], _picking.Titles);
+        Assert.Equal(["Ana Pop (anap)", "Bob Stan (bob)"], _list.Items.Take(2));
+        Assert.Equal(_picking.Rows.Select(row => $"{row.FullName} ({row.Alias})"), _list.Items);
     }
 
     [Fact]
-    public void The_last_line_shows_the_current_template_and_the_Tab_hint()
+    public void The_rows_do_not_show_the_template_and_stay_the_same_when_the_template_changes()
+    {
+        UseNineContacts(WithTitle, FirstName);
+        _field.Type("@ana");
+        var before = _picking.Rows.ToList();
+
+        _picking.NextTemplate();
+
+        Assert.Equal(before, _picking.Rows);
+        Assert.Equal(["Ana Pop (anap)"], _list.Items);
+    }
+
+    [Fact]
+    public void The_rows_are_empty_while_the_list_is_closed()
+    {
+        UseNineContacts(FullName);
+
+        Assert.Empty(_picking.Rows);
+        Assert.Equal("", _picking.Header);
+        Assert.Equal("", _picking.TemplateHint);
+    }
+
+    [Fact]
+    public void The_header_shows_the_first_contact_in_the_current_template_while_none_is_moved_to()
+    {
+        UseNineContacts(WithTitle, FirstName);
+
+        _field.Type("@");
+
+        Assert.Equal("Ana Pop (Engineer)", _picking.Header);
+    }
+
+    [Fact]
+    public void The_header_shows_a_contact_that_lacks_a_value_the_template_names_by_its_full_name()
+    {
+        UseNineContacts(WithTitle, FirstName);
+
+        _field.Type("@bob");
+
+        Assert.Equal("Bob Stan", _picking.Header);
+    }
+
+    [Fact]
+    public void The_header_follows_Down_and_Up_to_the_contact_moved_to()
     {
         UseNineContacts(WithTitle, FirstName);
         _field.Type("@");
 
-        Assert.Contains(WithTitle, _picking.Hint);
-        Assert.Contains("Tab: next template", _picking.Hint);
+        _popups.MoveDown();
+        _popups.MoveDown();
+        _popups.MoveDown();
+        Assert.Equal("Cris Ilie (Designer)", _picking.Header);
+
+        _popups.MoveUp();
+        Assert.Equal("Bob Stan", _picking.Header);
     }
 
     [Fact]
-    public void Tab_moves_to_the_next_template_and_the_rows_and_the_last_line_update_at_once()
+    public void The_header_shows_the_filtered_first_contact_after_typing_narrows_the_list()
+    {
+        UseNineContacts(WithTitle, FirstName);
+        _field.Type("@");
+
+        _field.Type("cr");
+
+        Assert.Equal("Cris Ilie (Designer)", _picking.Header);
+    }
+
+    [Fact]
+    public void The_template_hint_shows_while_there_are_two_or_more_templates()
+    {
+        UseNineContacts(WithTitle, FirstName);
+        _field.Type("@");
+
+        Assert.Equal("Tab or click: next template", _picking.TemplateHint);
+    }
+
+    [Fact]
+    public void The_template_hint_is_empty_with_one_template()
+    {
+        UseNineContacts(FullName);
+        _field.Type("@");
+
+        Assert.Equal("", _picking.TemplateHint);
+    }
+
+    [Fact]
+    public void Down_and_Up_stop_at_the_first_and_the_last_row()
+    {
+        UseNineContacts(FullName);
+        _field.Type("@");
+
+        _popups.MoveDown();
+        _popups.MoveUp();
+        _popups.MoveUp();
+        Assert.Equal(0, _list.SelectedIndex);
+
+        for (var i = 0; i < 12; i++)
+        {
+            _popups.MoveDown();
+        }
+
+        Assert.Equal(6, _list.SelectedIndex);
+        _popups.ChooseMovedOrClose();
+        Assert.Equal("[Gus Oro](contact:gus \"{fullName}\")", _field.Text);
+    }
+
+    [Fact]
+    public void Up_after_Down_chooses_the_contact_before()
+    {
+        UseNineContacts(FullName);
+        _field.Type("@");
+        _popups.MoveDown();
+        _popups.MoveDown();
+        _popups.MoveUp();
+
+        _popups.ChooseMovedOrClose();
+
+        Assert.Equal("[Ana Pop](contact:ana \"{fullName}\")", _field.Text);
+    }
+
+    [Fact]
+    public void Tab_moves_to_the_next_template_and_the_header_updates_at_once_while_the_rows_stay()
     {
         UseNineContacts(WithTitle, FirstName);
         _field.Type("@ana");
 
         Assert.True(_picking.NextTemplate());
 
-        Assert.Equal(["Ana"], _list.Items);
-        Assert.Contains(FirstName, _picking.Hint);
-        Assert.DoesNotContain(WithTitle, _picking.Hint);
+        Assert.Equal("Ana", _picking.Header);
     }
 
     [Fact]
@@ -376,8 +489,7 @@ public class MentionPickingTests
         _picking.NextTemplate();
         _picking.NextTemplate();
 
-        Assert.Equal(["Ana Pop (Engineer)"], _list.Items);
-        Assert.Contains(WithTitle, _picking.Hint);
+        Assert.Equal("Ana Pop (Engineer)", _picking.Header);
     }
 
     [Fact]
@@ -389,7 +501,24 @@ public class MentionPickingTests
         _picking.NextTemplate();
         _picking.NextTemplate();
 
-        Assert.Equal(["Ana Pop"], _list.Items);
+        Assert.Equal("Ana Pop", _picking.Header);
+    }
+
+    [Fact]
+    public void Tab_keeps_the_row_moved_to_and_the_header_shows_that_contact_in_the_next_template()
+    {
+        UseNineContacts(WithTitle, "{title}");
+        _field.Type("@");
+        _popups.MoveDown();
+        _popups.MoveDown();
+        _popups.MoveDown();
+
+        _picking.NextTemplate();
+
+        Assert.Equal(2, _list.SelectedIndex);
+        Assert.Equal("Designer", _picking.Header);
+        _popups.ChooseMovedOrClose();
+        Assert.Equal("[Designer](contact:cris \"{title}\")", _field.Text);
     }
 
     [Fact]
@@ -402,7 +531,7 @@ public class MentionPickingTests
 
         _field.Type(" @ana");
 
-        Assert.Equal(["Ana Pop (Engineer)"], _list.Items);
+        Assert.Equal("Ana Pop (Engineer)", _picking.Header);
     }
 
     [Fact]
@@ -413,8 +542,8 @@ public class MentionPickingTests
 
         Assert.True(_picking.NextTemplate());
 
-        Assert.Equal(["Ana Pop"], _list.Items);
-        Assert.Contains(FullName, _picking.Hint);
+        Assert.Equal("Ana Pop", _picking.Header);
+        Assert.True(_list.IsOpen);
     }
 
     [Fact]
@@ -423,6 +552,40 @@ public class MentionPickingTests
         UseNineContacts(WithTitle, FirstName);
 
         Assert.False(_picking.NextTemplate());
+    }
+
+    [Fact]
+    public void The_list_closes_when_the_field_loses_the_keyboard_focus_and_the_typed_text_stays()
+    {
+        UseNineContacts(FullName);
+        _field.Type("@bo");
+
+        _field.LoseFocus();
+
+        Assert.False(_list.IsOpen);
+        Assert.Equal("@bo", _field.Text);
+    }
+
+    [Fact]
+    public void Losing_the_focus_with_no_list_open_does_nothing()
+    {
+        UseNineContacts(FullName);
+
+        _field.LoseFocus();
+
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void After_the_focus_is_lost_a_new_at_sign_opens_the_list_again()
+    {
+        UseNineContacts(FullName);
+        _field.Type("@bo");
+        _field.LoseFocus();
+
+        _field.Type(" @bo");
+
+        Assert.Equal(["Bob Stan"], FullNames);
     }
 
     [Fact]

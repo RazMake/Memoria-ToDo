@@ -64,10 +64,8 @@ internal sealed class ContactDetailsView : ScrollViewer
     private StackPanel DetailsOf(ContactDetails details)
     {
         var panel = new StackPanel { Margin = new Thickness(16) };
-        panel.Children.Add(new TextBlock { Text = details.Heading, FontSize = 20, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-        var group = new TextBlock { Text = details.GroupHeading, Margin = new Thickness(0, 0, 0, 8) };
-        ContactHelpStyle.Apply(group);
-        panel.Children.Add(group);
+        panel.Children.Add(DetailBlocks.Heading(details.Heading));
+        panel.Children.Add(DetailBlocks.GroupHeading(details.GroupHeading));
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
         if (_model.CanEdit)
@@ -83,9 +81,7 @@ internal sealed class ContactDetailsView : ScrollViewer
         panel.Children.Add(buttons);
         foreach (var field in details.Fields)
         {
-            var label = new TextBlock { Text = field.Label, Margin = new Thickness(0, 8, 0, 0) };
-            ContactHelpStyle.Apply(label);
-            panel.Children.Add(label);
+            panel.Children.Add(DetailBlocks.Label(field.Label));
             foreach (var value in field.Values)
             {
                 panel.Children.Add(ValueOf(value));
@@ -109,7 +105,7 @@ internal sealed class ContactDetailsView : ScrollViewer
     // A value a click goes from, to the contact it names, looks like a link.
     private TextBlock ValueOf(DetailValue value)
     {
-        var block = new TextBlock { Text = value.Text, TextWrapping = TextWrapping.Wrap };
+        var block = DetailBlocks.Value(value.Text);
         if (value.Target is { } target)
         {
             block.TextDecorations = TextDecorations.Underline;

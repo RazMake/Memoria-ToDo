@@ -533,6 +533,84 @@ public sealed class MousePointer : IDragPointer
 }
 ```
 
+## A hover card shows while the pointer rests on a part
+
+The user asked that resting the mouse pointer on a mention show the contact's card, in the Task editor's chips and in the Formatted view's titles and descriptions. Those are two modules, so the user decided that when a card opens, where, and when it closes has one home: a platform part, Hover card, which the Task editor and the Formatted view use. It knows nothing of contacts or mentions: its user says which part of an element is under the pointer, and which card goes with it. The card itself is the [Contact list's](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details). Proposed, each a decision to confirm:
+
+- **A card opens once the pointer rests on a part for Windows' hover time**, [SystemParameters.MouseHoverTime](https://learn.microsoft.com/en-us/dotnet/api/system.windows.systemparameters.mousehovertime), 400 ms by default, as a tooltip does.
+- **It opens under the part, lined up with its left edge**, in a popup, and, where it doesn't fit on the screen's work area, above the part or moved left, as the ["@" list](task-editor.md#typing-an-at-sign-mentions-a-contact) does.
+- **It closes when the pointer is off both the part and the card**, as [below](#a-tall-card-scrolls-and-the-pointer-can-reach-it); **when a mouse button is pressed or the wheel turns anywhere but on the card; when a key other than a modifier is pressed**, which still does its own job; and **when the window is deactivated, moved, or hidden, or the element leaves the screen**. Ctrl, Shift, Alt, and Win don't close it, so Ctrl can change the card.
+- **Cards show only while their window is active**, since a card's Ctrl needs the window to hear the keys.
+- **At most one card shows in the app.** Resting on another part closes the first card and opens the next after the hover time.
+- **An answer that comes after the pointer moved on shows nothing**, since a description's web view answers later than a title does.
+- **It's a platform class, not an interface**, as the other platform parts are: one implementation, and UX tests use the real one.
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// A card that shows by a part of an element while the pointer rests on that part, as a tooltip does.
+public sealed class HoverCard
+{
+    /// Watches owner's pointer while owner is on screen. Once the pointer rests on one place for Windows' hover time,
+    /// asks partAt for the part there, in owner's coordinates, and shows its card, if any, under the part.
+    /// Throws ArgumentNullException for a null argument. Use it on the UI thread.
+    public HoverCard(System.Windows.FrameworkElement owner,
+        System.Func<System.Windows.Point, System.Threading.Tasks.Task<HoverPart?>> partAt);
+}
+
+/// A part of an element, its box in the element's coordinates, and the card to show for it.
+public sealed record HoverPart(System.Windows.Rect Box, System.Windows.FrameworkElement Card);
+```
+
+WPF's own tooltip, with the card as its content, was ruled out: chips and descriptions would still need their own hit tests and opening, a tooltip closes on its own after a few seconds, and it may close when Ctrl is pressed.
+
+### A tall card scrolls, and the pointer can reach it
+
+With Ctrl held, a card can be taller than the screen, such as for a manager with many direct reports. The user decided:
+
+- **A card is never taller than the work area of the screen it shows on**, the screen minus the taskbar, as for [windows](#windows-open-on-the-screen-with-the-mouse-pointer). Content taller than that scrolls inside the card.
+- **The mouse wheel over the card scrolls it**, and doesn't close it. The wheel anywhere else still closes it.
+
+So the pointer must be able to reach the card. Proposed, each a decision to confirm:
+
+- **The pointer may cross from the part to the card.** Leaving the part starts a short grace, Windows' hover time again, so a user who slows the hover also gets longer to cross. The card closes when the grace ends with the pointer on neither the part nor the card.
+- **The card stays open while the pointer is over it**, and leaving it starts the same grace. Coming back to the part or the card within the grace keeps it open.
+- **A press on the card keeps it open**, so its scroll bar can be dragged. Nothing on the card acts on a click, and the card never takes the keyboard focus, so keys and Ctrl still reach the window.
+- **The pointer on the card doesn't count as resting on the owner**, so it opens no other card.
+- **A card as tall as the work area may cover its part**: the pointer is then on the card, so the card stays open.
+
+The hover card owns all of this, the cap and the scrolling included, since it alone knows which screen the card shows on and where the pointer is. A card's maker, such as the [Contact list](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details), sets no height of its own. The public declarations don't change.
+
+Two other ways to reach the card were ruled out:
+
+- **The wheel scrolls the card from wherever the pointer is**, with the card still closing when the pointer leaves the part: the pointer must stay on a small mention, and the list under the pointer couldn't scroll while a card shows.
+- **No grace: the card opens touching its part, so the pointer crosses no gap**: a pointer moved slightly sideways, or a card moved left at the screen's edge, would still close it on the way.
+
+## The search band publishes its box for the alias list
+
+The user decided that the [search band](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them) publishes its box, so the Task list can attach the Task editor's ["@" list for aliases](task-editor.md#a-plain-text-box-can-offer-contacts-by-alias) to it, and that its Down and Up select the top or bottom row only when no handler before the band's, such as an open list, used the key. The band stays the one search box for every window.
+
+- **With no list open, Down and Up select the top or bottom row, exactly as before.** The band still hears them as they tunnel down to the box, before the box's own handling, which would otherwise use them up.
+- **An open list gets the first refusal**: the alias list hears Down and Up before the band, and the band acts only on a key the list left unhandled.
+
+Proposed, a decision to confirm: the members' shape below.
+
+```csharp
+// On SearchBand:
+
+    /// The search box itself, for a part that works on any text box. Its text is Text.
+    public System.Windows.Controls.TextBox Box { get; }
+
+    /// Raised on Down (false) or Up (true) in the box with no modifier key held, when no handler before the band's
+    /// used the key, to select the top or bottom row. The key goes no further.
+    public event System.EventHandler<bool>? EdgeRowRequested;
+```
+
+Two other ways were ruled out:
+
+- **The band takes an optional helper through a small interface the platform defines**: an extension point for one caller.
+- **Task View drops the band for a search box of its own**: Task View and Contacts would stop sharing the band the user moved into the platform.
+
 ## The message line and store failures serve every window that shows them
 
 The Task list decided the look of Task View's message line, and the [Contact list](contact-list.md#messages-and-problems-show-at-the-top) shows one at its top too. Proposed, each a decision to confirm, made when the Contact list is built:
@@ -680,6 +758,7 @@ The table lists each step, what it builds, and its status:
 | 15 | Contacts | Built in slices, in this order, each reviewed on its own: (a) the platform's [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), with Tasks, Sync, and App moved onto it and no change users notice; (b) the shared [Contacts](../contacts.md) module, with the platform's [contact address](../modules.md#a-contact-address-has-one-home), and Tasks' JSON style, version check, skip rule, and path check moved into the platform's [shared file rules](../modules.md#stores-share-one-json-style-and-one-set-of-file-rules) with no change users notice; (c) Sync [carrying contact files](../sync.md#sync-manages-contact-files-through-contacts-rules), with App's composition root creating the Contacts store; (d) the platform's [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), with Task View moved onto them unchanged; (e) the [Contact list](contact-list.md), with Shell's and Configure's [Contacts shortcut](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) and tray item; (f) Rendering's [mentions](../rendering.md#a-mention-shows-on-a-colored-background) and Editing's [mention list](../editing.md#typing-an-at-sign-opens-the-mention-list); (g) the [Task editor's "@" list and chips](task-editor.md#typing-an-at-sign-mentions-a-contact), then Task View's [live mention text](task-list.md#mentions-show-each-contacts-current-details). The Android app's mentions come when the Android app is built. | Implemented |
 | 16 | Tasks' notices after a change | Tasks raises its notices one by one after a change: `Changed`, then settings, tag colors, and tag order, then the [local save report](../tasks.md#sync-shares-the-repositorys-lock-never-a-network-wait). When a handler throws, the notices after it and the report are skipped, so Sync doesn't learn of the save. This step makes Tasks attempt every notice and the report, even when one fails, and throw the failures by the platform's [rule for steps that must all run](../modules.md#steps-that-must-all-run-throw-their-failures-together), as [Contacts](../contacts.md#failure-modes) does. Its design is in Tasks' [failure modes](../tasks.md#failure-modes). | Implemented |
 | 17 | Application logs | [Serilog's logger](../logging.md#every-module-logs-through-serilogs-logger) in every module's create method, with every module logging its [operations and failures](../logging.md#every-operation-and-every-failure-is-logged-where-it-happens), including each skipped file by path; the composition root's [log files](../logging.md#the-desktop-app-keeps-two-weeks-of-logs-at-most-30-mb) and [background writer](../logging.md#a-slow-disk-never-holds-up-the-app), with [secrets kept out](../logging.md#passwords-and-keys-never-reach-the-log); the platform's [logging of errors no module handles](../logging.md#errors-no-module-handles-are-logged-before-theyre-shown), after which the app [keeps running](#the-platform-runs-the-app-and-the-composition-root-builds-it) on a UI-thread error; and the [Logs window](logs.md) with Shell's Logs tray item. Waits for [Logging](../logging.md) to be decided. | Not scheduled |
+| 18 | Contact cards and the "@" list at the cursor | The Task editor's ["@" list in a popup at the "@"](task-editor.md#typing-an-at-sign-mentions-a-contact), with its template header and "**Full Name** (_alias_)" rows, and its [alias list for a plain text box](task-editor.md#a-plain-text-box-can-offer-contacts-by-alias); Task View's [search by "@" alias](task-list.md#search-narrows-the-list); the Contact list's [contact card](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details), with Contacts' `ContactOf`; the platform's [hover card](#a-hover-card-shows-while-the-pointer-rests-on-a-part) and search band box; Rendering's [mention numbers](../rendering.md#a-mention-shows-on-a-colored-background); and the cards on [chips](task-editor.md#resting-the-pointer-on-a-chip-shows-the-contacts-card), [titles and descriptions](task-list.md#resting-the-pointer-on-a-mention-shows-the-contacts-card), through the [Formatted view](formatted-view.md#a-mention-shows-a-card-its-user-makes). | Not scheduled |
 
 The remaining work follows this order:
 

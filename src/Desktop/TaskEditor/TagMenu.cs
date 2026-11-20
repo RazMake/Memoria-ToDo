@@ -14,16 +14,14 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// </summary>
 internal sealed class TagMenu : Popup
 {
-    private const string Surface = "SolidBackgroundFillColorQuarternaryBrush";
-    private const string Outline = "SurfaceStrokeColorDefaultBrush";
     private const string Text = "TextFillColorPrimaryBrush";
     private const string DimmedText = "TextFillColorTertiaryBrush";
 
     private readonly TagMenuModel _model;
     private readonly TagLook _look;
     private readonly UIElement _owner;
-    private readonly Border _frame = Frame();
-    private readonly Border _submenuFrame = Frame();
+    private readonly Border _frame = PopupFrame.Make();
+    private readonly Border _submenuFrame = PopupFrame.Make();
     private readonly StackPanel _items = new() { MinWidth = 180 };
     private readonly StackPanel _tags = new();
     private readonly Separator _separator = new();
@@ -230,14 +228,6 @@ internal sealed class TagMenu : Popup
     }
 
     private static Brush Marker(bool marked) => marked ? SystemColors.HighlightBrush : Brushes.Transparent;
-
-    private static Border Frame()
-    {
-        var frame = new Border { BorderThickness = new Thickness(1), Padding = new Thickness(4), CornerRadius = new CornerRadius(4) };
-        frame.SetResourceReference(Border.BackgroundProperty, Surface);
-        frame.SetResourceReference(Border.BorderBrushProperty, Outline);
-        return frame;
-    }
 
     private static DependencyObject? ParentOf(DependencyObject element) =>
         element is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element);

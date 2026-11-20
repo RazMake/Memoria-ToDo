@@ -34,7 +34,14 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         webView.Failed += OnFailed;
         webView.ImageResized += OnImageResized;
         _themeFollower = new ThemeFollower(this, theme, OnThemeChanged);
+        _ = new HoverCard(this, PartAt);
     }
+
+    /// <summary>
+    /// Makes the card shown by a mention while the pointer rests on it, from the mention's address and template.
+    /// Returns null to show none. Unset, no mention shows a card.
+    /// </summary>
+    public Func<Mention, FrameworkElement?>? MentionCard { get; set; }
 
     /// <summary>The description's Markdown. Setting it shows it formatted.</summary>
     public string Markdown
@@ -115,6 +122,31 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         {
             ImageResized?.Invoke(this, resize);
         }
+    }
+
+    // The mention under the point, boxed, with the card MentionCard makes for it. The web view finds it by number in its page; the
+    // number is the mention's place among Rendering's description mentions. An answer for a page that another has replaced shows nothing.
+    internal async Task<HoverPart?> PartAt(Point inDescription)
+    {
+        if (MentionCard is not { } makeCard || _source is not null || _disposed)
+        {
+            return null;
+        }
+
+        var page = _shown.Pages;
+        var found = await _webView.MentionAtAsync(TransformToDescendant(_webView.Element).Transform(inDescription));
+        if (found is null || page != _shown.Pages || _source is not null || _disposed)
+        {
+            return null;
+        }
+
+        var mentions = Mentions.In(_markdown, title: false);
+        if (found.Mention >= mentions.Count || makeCard(mentions[found.Mention]) is not { } card)
+        {
+            return null;
+        }
+
+        return new HoverPart(_webView.Element.TransformToAncestor(this).TransformBounds(found.Box), card);
     }
 
     // Shows the Markdown as source with the reason, in place of the web view, for good: the browser raises this once.

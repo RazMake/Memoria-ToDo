@@ -210,7 +210,7 @@ public class DescriptionPageTests
     {
         var page = Page($"hi {Mention} bye");
 
-        AssertTag(page, "<span class=\"mention\">Ana</span>");
+        AssertTag(page, "<span class=\"mention\"[^>]*>Ana</span>");
     }
 
     [Fact]
@@ -241,7 +241,7 @@ public class DescriptionPageTests
     {
         var page = Page("[**Ana**](contact:a1 \"{firstName}\")");
 
-        AssertTag(page, "<span class=\"mention\"><strong>Ana</strong></span>");
+        AssertTag(page, "<span class=\"mention\"[^>]*><strong>Ana</strong></span>");
     }
 
     [Fact]
@@ -250,7 +250,7 @@ public class DescriptionPageTests
         var page = Page($"{Mention} and [site](https://example.org)");
 
         AssertTag(page, "<a href=\"https://example.org\">site</a>");
-        AssertTag(page, "<span class=\"mention\">Ana</span>");
+        AssertTag(page, "<span class=\"mention\"[^>]*>Ana</span>");
     }
 
     [Fact]
@@ -267,6 +267,95 @@ public class DescriptionPageTests
         var page = Page("[Ana](contact:a1)");
 
         Assert.DoesNotContain("class=\"mention\"", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Each mention's span carries its number, so an app can tell which mention the pointer is over.
+
+    private const string Bo = "[Bo Li](contact:b2 \"{fullName}\")";
+
+    /// <summary>The (number, text) of every element that carries data-mention, in page order.</summary>
+    private static (string Number, string Text)[] NumberedMentions(string page) =>
+        Regex.Matches(page, "<span\\b[^>]*\\bdata-mention=\"([^\"]*)\"[^>]*>(.*?)</span>", RegexOptions.Singleline)
+            .Select(m => (m.Groups[1].Value, Regex.Replace(m.Groups[2].Value, "<[^>]*>", "")))
+            .ToArray();
+
+    [Fact]
+    public void Numbers_the_only_mention_0_on_the_mention_span_itself()
+    {
+        var page = Page($"hi {Mention} bye");
+
+        AssertTag(page, "<span\\b(?=[^>]*class=\"mention\")(?=[^>]*data-mention=\"0\")[^>]*>Ana</span>");
+    }
+
+    [Fact]
+    public void Numbers_mentions_from_0_in_the_order_they_appear()
+    {
+        var page = Page($"{Mention} then {Bo} and {Mention}");
+
+        Assert.Equal([("0", "Ana"), ("1", "Bo Li"), ("2", "Ana")], NumberedMentions(page));
+    }
+
+    [Fact]
+    public void Numbers_a_mention_in_a_heading_a_list_item_and_a_quote_in_document_order()
+    {
+        var page = Page($"# {Mention}\n\n- {Bo}\n\n> {Mention} and {Bo}");
+
+        Assert.Equal([("0", "Ana"), ("1", "Bo Li"), ("2", "Ana"), ("3", "Bo Li")], NumberedMentions(page));
+    }
+
+    [Fact]
+    public void Numbers_a_mention_whose_text_is_bold_on_its_span()
+    {
+        var page = Page($"[**Ana**](contact:a1 \"{{firstName}}\") and {Bo}");
+
+        Assert.Equal([("0", "Ana"), ("1", "Bo Li")], NumberedMentions(page));
+    }
+
+    [Fact]
+    public void Numbers_no_text_that_is_not_a_mention()
+    {
+        var page = Page("plain Ana, a [link](https://example.org), `code` and **bold**");
+
+        Assert.DoesNotContain("data-mention", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("[Ana](contact:a1)")]
+    [InlineData("[![face](images/a.png)](contact:a1 \"{fullName}\")")]
+    [InlineData("[Ana][p]\n\n[p]: contact:a1 \"{firstName}\"")]
+    [InlineData("`[Ana](contact:a1 \"{firstName}\")`")]
+    public void Does_not_count_a_contact_link_that_is_not_a_mention_in_the_numbers(string notMention)
+    {
+        var page = Page($"{notMention}\n\n{Bo}");
+
+        Assert.Equal([("0", "Bo Li")], NumberedMentions(page));
+    }
+
+    [Fact]
+    public void Numbers_the_mentions_exactly_as_the_mention_list_finds_them_in_the_same_Markdown()
+    {
+        var markdown = $"[Ana](contact:a1) `{Mention}`\n\n# {Bo}\n\n- {Mention}\n- [![f](images/a.png)](contact:c3 \"{{fullName}}\") {Bo}";
+
+        var numbered = NumberedMentions(Page(markdown));
+
+        var found = Mentions.In(markdown, title: false);
+        Assert.Equal(found.Count, numbered.Length);
+        Assert.Equal(Enumerable.Range(0, found.Count).Select(n => n.ToString()), numbered.Select(m => m.Number));
+        Assert.Equal(found.Select(m => m.StoredText), numbered.Select(m => m.Text));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Numbers_the_mentions_the_same_in_every_theme_and_in_a_page_with_resizable_images(bool dark)
+    {
+        var markdown = $"![a](a.png) {Mention} and {Bo}";
+
+        var plain = NumberedMentions(DescriptionPage.Of(markdown, dark, Clone));
+        var resizable = NumberedMentions(DescriptionPage.WithResizableImages(markdown, dark, Clone));
+
+        Assert.Equal([("0", "Ana"), ("1", "Bo Li")], plain);
+        Assert.Equal(plain, resizable);
     }
 
     // Raw HTML and scripts.

@@ -52,6 +52,20 @@ internal sealed class ChoiceList
         Changed?.Invoke();
     }
 
+    /// <summary>Moves to the item before, staying on the first; does nothing when none was moved to.</summary>
+    public void MoveUp()
+    {
+        if (SelectedIndex > 0)
+        {
+            SelectedIndex--;
+        }
+
+        Changed?.Invoke();
+    }
+
+    /// <summary>Raises <see cref="Changed"/> with the items and the item moved to as they are, for what is drawn around them having changed.</summary>
+    public void Refresh() => Changed?.Invoke();
+
     /// <summary>Chooses the item Down moved to; the list stays open. Returns false, doing nothing, when none was moved to.</summary>
     public bool ChooseMoved()
     {

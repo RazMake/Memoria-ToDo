@@ -192,6 +192,232 @@ public class FormattedDescriptionTests
         Assert.Empty(screen.OtherLinks);
     }
 
+    private const string Ana = "[Ana](contact:a1 \"{firstName}\")";
+
+    private const string Bo = "[Bo Li](contact:b2 \"{fullName}\")";
+
+    private static Border CardOf(string name) => new() { Width = 60, Height = 24, Tag = name };
+
+    private static readonly Rect MentionBox = new(40, 12, 30, 16);
+
+    [WpfFact]
+    public async Task Makes_the_card_of_the_mention_the_web_view_found_from_its_address_and_template_and_returns_it_with_the_mention_box()
+    {
+        using var screen = new DescriptionScreen();
+        var asked = new List<Mention>();
+        screen.Description.MentionCard = mention => { asked.Add(mention); return CardOf(mention.Address); };
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+
+        var part = await screen.Description.PartAt(new Point(45, 20));
+
+        var only = Assert.Single(asked);
+        Assert.Equal("contact:a1", only.Address);
+        Assert.Equal("{firstName}", only.Template);
+        Assert.NotNull(part);
+        Assert.Equal("contact:a1", ((Border)part.Card).Tag);
+        Assert.Equal(screen.InDescription(MentionBox), part.Box);
+    }
+
+    [WpfFact]
+    public async Task Asks_the_web_view_about_the_point_in_the_web_views_own_coordinates()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+        var point = new Point(45, 20);
+
+        await screen.Description.PartAt(point);
+
+        Assert.Equal([screen.InWebView(point)], screen.WebView.MentionQueries);
+    }
+
+    [WpfFact]
+    public async Task Maps_each_mention_number_to_the_mention_counted_in_the_same_order_as_the_page()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"{Ana} and {Bo} and {Ana}";
+
+        screen.WebView.MentionUnderPointer = new MentionAt(1, MentionBox);
+        var second = await screen.Description.PartAt(new Point(1, 1));
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+        var first = await screen.Description.PartAt(new Point(1, 1));
+        screen.WebView.MentionUnderPointer = new MentionAt(2, MentionBox);
+        var third = await screen.Description.PartAt(new Point(1, 1));
+
+        Assert.Equal("contact:b2", ((Border)second!.Card).Tag);
+        Assert.Equal("contact:a1", ((Border)first!.Card).Tag);
+        Assert.Equal("contact:a1", ((Border)third!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Counts_a_mention_in_a_list_after_a_heading_by_its_place_in_the_document()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"# {Ana}\n\n- {Bo}";
+        screen.WebView.MentionUnderPointer = new MentionAt(1, MentionBox);
+
+        var part = await screen.Description.PartAt(new Point(1, 1));
+
+        Assert.Equal("contact:b2", ((Border)part!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Does_not_count_a_contact_link_that_is_not_a_mention_when_it_maps_the_number()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"[Cy](contact:c3) `{Ana}` {Bo}";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+
+        var part = await screen.Description.PartAt(new Point(1, 1));
+
+        Assert.Equal("contact:b2", ((Border)part!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_where_the_web_view_finds_no_mention()
+    {
+        using var screen = new DescriptionScreen();
+        var asked = 0;
+        screen.Description.MentionCard = _ => { asked++; return CardOf("any"); };
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = null;
+
+        Assert.Null(await screen.Description.PartAt(new Point(200, 100)));
+        Assert.Equal(0, asked);
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_for_a_mention_whose_user_makes_none()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = _ => null;
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+
+        Assert.Null(await screen.Description.PartAt(new Point(45, 20)));
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_before_a_card_function_is_set()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+
+        Assert.Null(screen.Description.MentionCard);
+        Assert.Null(await screen.Description.PartAt(new Point(45, 20)));
+    }
+
+    [WpfFact]
+    public async Task Makes_the_card_for_the_Markdown_now_shown_after_the_description_changes()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.Description.Markdown = $"Tell {Bo} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+
+        var part = await screen.Description.PartAt(new Point(45, 20));
+
+        Assert.Equal("contact:b2", ((Border)part!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Shows_nothing_for_an_answer_that_comes_after_another_Markdown_was_shown()
+    {
+        using var screen = new DescriptionScreen();
+        var asked = 0;
+        screen.Description.MentionCard = mention => { asked++; return CardOf(mention.Address); };
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+        screen.WebView.HoldMentionAnswers();
+        var answer = screen.Description.PartAt(new Point(45, 20));
+
+        screen.Description.Markdown = $"Tell {Bo} now";
+        screen.WebView.ReleaseMentionAnswers();
+
+        Assert.Null(await answer);
+        Assert.Equal(0, asked);
+    }
+
+    [WpfFact]
+    public async Task Shows_nothing_for_an_answer_that_comes_after_the_description_became_a_preview()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+        screen.WebView.HoldMentionAnswers();
+        var answer = screen.Description.PartAt(new Point(45, 20));
+
+        screen.Description.IsPreview = true;
+        screen.WebView.ReleaseMentionAnswers();
+
+        Assert.Null(await answer);
+    }
+
+    [WpfFact]
+    public async Task Shows_the_card_of_an_answer_that_comes_while_the_same_page_is_still_shown()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+        screen.WebView.HoldMentionAnswers();
+        var answer = screen.Description.PartAt(new Point(45, 20));
+
+        screen.WebView.ReleaseMentionAnswers();
+
+        Assert.Equal("contact:a1", ((Border)(await answer)!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task A_preview_shows_cards_too()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.IsPreview = true;
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+
+        var part = await screen.Description.PartAt(new Point(45, 20));
+
+        Assert.Equal("contact:a1", ((Border)part!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_once_the_web_view_failed_and_the_Markdown_shows_as_source()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = new MentionAt(0, MentionBox);
+        screen.WebView.Fail("The WebView2 Runtime is missing.");
+
+        Assert.Null(await screen.Description.PartAt(new Point(45, 20)));
+    }
+
+    [WpfFact]
+    public async Task Keeps_showing_the_formatted_page_after_a_lookup_that_found_nothing()
+    {
+        using var screen = new DescriptionScreen();
+        screen.Description.MentionCard = mention => CardOf(mention.Address);
+        screen.Description.Markdown = $"Ask {Ana} now";
+        screen.WebView.MentionUnderPointer = null;
+
+        var part = await screen.Description.PartAt(new Point(45, 20));
+
+        Assert.Null(part);
+        Assert.True(screen.WebView.Element.IsVisible, "The formatted page no longer shows.");
+        Assert.DoesNotContain(screen.Texts, text => text.Contains("Descriptions can't show formatted"));
+        Assert.Empty(screen.OpenFailures);
+    }
+
     /// <summary>A description in a showing window over the shared fakes, with every event it raises recorded. Dispose it to close the window.</summary>
     private sealed class DescriptionScreen : IDisposable
     {
@@ -223,6 +449,12 @@ public class FormattedDescriptionTests
         public List<Exception> OpenFailures { get; } = [];
 
         public List<ImageResize> Resizes { get; } = [];
+
+        /// <summary>A box in the web view's coordinates, in the description's.</summary>
+        public Rect InDescription(Rect inWebView) => WebView.Element.TransformToAncestor(Description).TransformBounds(inWebView);
+
+        /// <summary>A point in the description's coordinates, in the web view's.</summary>
+        public Point InWebView(Point inDescription) => Description.TransformToDescendant(WebView.Element).Transform(inDescription);
 
         /// <summary>The texts the description displays, including a text box's text.</summary>
         public IReadOnlyList<string> Texts =>

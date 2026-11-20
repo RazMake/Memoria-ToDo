@@ -102,6 +102,34 @@ public class ChoiceListTests
     }
 
     [Fact]
+    public void Moving_up_selects_the_item_before_and_stays_on_the_first()
+    {
+        var list = new ChoiceList();
+        list.Show(["a", "b", "c"]);
+        list.MoveDown();
+        list.MoveDown();
+        list.MoveDown();
+
+        list.MoveUp();
+        Assert.Equal(1, list.SelectedIndex);
+
+        list.MoveUp();
+        list.MoveUp();
+        Assert.Equal(0, list.SelectedIndex);
+    }
+
+    [Fact]
+    public void Moving_up_with_nothing_moved_to_leaves_nothing_moved_to()
+    {
+        var list = new ChoiceList();
+        list.Show(["a", "b"]);
+
+        list.MoveUp();
+
+        Assert.Equal(-1, list.SelectedIndex);
+    }
+
+    [Fact]
     public void Choosing_the_moved_to_item_when_none_was_moved_to_does_nothing_and_says_so()
     {
         var list = new ChoiceList();

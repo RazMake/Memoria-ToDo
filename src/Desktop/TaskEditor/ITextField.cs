@@ -24,4 +24,7 @@ internal interface ITextField
 
     /// <summary>Raised with the text the user typed.</summary>
     event Action<string> TextEntered;
+
+    /// <summary>Raised when the field loses the keyboard focus.</summary>
+    event Action FocusLost;
 }

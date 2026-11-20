@@ -91,6 +91,8 @@ Editing alone decides when the mention list must close: when the "@" no longer o
 
 The "@" opens after more characters than the "/" does, by your choice, so the two pickers keep separate opening rules.
 
+The desktop's Task View search box uses the same rules, through the Task editor's [alias list](desktop/task-editor.md#a-plain-text-box-can-offer-contacts-by-alias): there, the text Editing's insertion puts in place is "@" and the contact's alias, not a mention, so Editing doesn't change. Proposed, a decision to confirm.
+
 ## Public interface
 
 Each app's Task editor uses these parts:

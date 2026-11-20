@@ -98,6 +98,11 @@ Proposed, each a decision to confirm:
 - Editing sees every line break as "\n". If the text holds any "\r\n" or "\r", the key converts them first.
 - In the Description, Enter, Tab, and Shift+Tab run Editing's list commands in a list item. Tab on a first item that can't move is swallowed: the cursor stays in the Description. Outside a list item, Enter breaks the line as usual, Tab moves to the tags, and Shift+Tab moves back to the Title.
 - The snippet list and the task list open under the Description, like the color list, not at the cursor. The color, snippet, and task lists work alike, and at most one is open: opening one closes the others. Down moves through the items and Enter chooses the one moved to. Enter with a list open and nothing moved to closes the list and then does what Enter does with no list.
+
+The user decided that Up works the same in every popup list, the color, snippet, task, and "@" lists alike: while a list is open, Up moves to the item before, stopping at the first, and never moves the cursor in the field. With nothing moved to yet, Up does nothing. With no list open, Up moves the cursor as usual.
+
+Proposed, each a decision to confirm:
+
 - Items are chosen by position, so tasks with equal titles stay apart.
 - The snippet list closes when nothing matches, when the cursor moves before the "/", or when the "/" no longer opens Editing's picker, such as after Backspace removes it. Choosing a snippet replaces the "/" and what was typed after it, even for the link, whose text is then empty.
 - Snippet keys do nothing in the Title unless Editing says the snippet works in a Title.
@@ -110,14 +115,36 @@ A title's [mentions](#typing-an-at-sign-mentions-a-contact) show in the task lis
 
 ### Typing an at sign mentions a contact
 
-The user decided that the "@" list shows each contact through a [mention template](../contacts.md#mention-templates-come-from-a-synced-file), that Tab moves to the next template, and that a mention in the editor shows as one chip with its [live text](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows), which Backspace and Delete remove whole and the cursor can't enter. Typing "@" where [Editing's mention list](../editing.md#typing-an-at-sign-opens-the-mention-list) opens, in the Title or the Description, shows contacts found by [Contacts' search](../contacts.md#search-matches-every-typed-word-in-any-field) with the text typed after the "@". Proposed, each a decision to confirm:
+The user decided that the "@" list shows each contact through a [mention template](../contacts.md#mention-templates-come-from-a-synced-file), that Tab moves to the next template, and that a mention in the editor shows as one chip with its [live text](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows), which Backspace and Delete remove whole and the cursor can't enter. Typing "@" where [Editing's mention list](../editing.md#typing-an-at-sign-opens-the-mention-list) opens, in the Title or the Description, shows contacts found by [Contacts' search](../contacts.md#search-matches-every-typed-word-in-any-field) with the text typed after the "@".
 
-- **The list opens under its field**, under the Title when typing there, like the snippet list under the Description. It works as the color, snippet, and task lists do: Down moves through the contacts, Enter chooses, Esc closes, a click chooses, and opening it closes any other list.
+The user then asked for three changes: the list opens at the cursor, in a popup as menus do, not at the bottom of the field; the template shows once, in a header at the top, which a click moves to the next template as Tab does; and each row reads "**Full Name** (_alias_)". The user decided:
+
+- **The header shows the contact moved to, in the current template**, such as "Ana Pop (EM)", so the user sees exactly what Enter inserts.
+- **Each row shows the contact's full name in bold, then its alias in italics in parentheses**: "**Ana Pop** (_anap_)". A contact with no alias shows its ID in the alias's place, so every row names something the user can type.
+- **Only the "@" list moves to a popup.** The color, snippet, and task lists stay under the Description, as [above](#every-formatting-command-and-snippet-has-a-key).
+
+The user then decided how the list uses the theme, so it looks like the text it inserts:
+
+- **The header shows its text as a mention chip**: on the theme's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), in the normal text color, as the editor's chips show a mention, below.
+- **Each row's alias shows in the theme's italic color**, [Rendering's text look](../rendering.md#public-interface) for italic text, in this list and in the [alias list](#a-plain-text-box-can-offer-contacts-by-alias) alike. The full name keeps the normal text color.
+- **Both follow a switch between light and dark while the list is open**, through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
+- **The popup's surface keeps the Windows theme's colors**: its background, border, row highlight, and help text, as today.
+
+The theme comes from the editor that owns the list, which already takes it, and from the theme the [alias list](#public-interface) is attached with. No public part changes.
+
+Proposed, each a decision to confirm:
+
+- **The list opens in a popup at the "@"**, as the [tag menu](#a-click-on-the-pill-opens-the-tag-menu) does, not inside the editor. Its top-left corner sits just under the line that holds the "@", lined up with the "@"'s left edge, so it stays put while the user types after the "@". In a tall Description, it opens beside the text being typed, wherever that is.
+- **Near a screen's edge, the popup moves to stay whole on that screen's work area**: where it doesn't fit below the line, it opens above it, and where it doesn't fit to the right, it moves left until it fits. WPF's popup placement does both for a popup placed under a rectangle ([popup placement](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/popup-placement-behavior)).
+- **The popup never takes the keyboard focus**: the cursor stays in the field, and typing still goes there and narrows the list.
+- **It follows the "@" when the field scrolls**, and closes when the "@" scrolls out of the field's view.
+- **It closes, leaving the text as it is**, when [Editing's query](../editing.md#typing-an-at-sign-opens-the-mention-list) answers nothing (the cursor moved to or before the "@", a line break lies between them, or the "@" is gone), when nothing matches, on Esc, when the field loses the keyboard focus, when another list opens, and when the window is deactivated, moved, resized, minimized, or hidden. A popup is a window of its own and doesn't move with its owner, so it closes instead of floating away.
+- **Keys work as in the other lists**: Down moves to the next contact and Up to the one before, stopping at the first and the last; Enter chooses the contact moved to; Esc closes; a click on a row chooses it. Enter with nothing moved to closes the list and then does what Enter does with no list, as the [other lists](#every-formatting-command-and-snippet-has-a-key) do.
 - **It shows up to seven contacts.** With nothing typed yet, the search matches everyone, so it shows the first seven by full name.
-- **Each row shows the contact's text in the current template, and the contact's title in the help style after it**, so two people with one name stay apart. A contact with no title shows only its text.
+- **While no contact is moved to, the header shows the first row's contact.** It changes as Down and Up move, and when the template changes. Under it, in the help style, "Tab or click: next template" shows while there are two or more templates.
+- **A click on the header moves to the next template**, exactly as Tab does. The cursor stays in the field, and the row moved to stays moved to.
 - **The help style is the theme's secondary text color**, which the Task editor sets on the list's help parts itself, as the Task list and the Contact list do.
-- **The list's last line shows the current template, such as `{fullName} ({careerPath.short})`, and "Tab: next template"**, in the help style.
-- **Tab, while the list is open, moves to the next template**, in the file's order, back to the first after the last, and the rows show their new text at once. Each opening starts at the first template. With one template, Tab does nothing, and never leaves the field while the list is open.
+- **Tab, while the list is open, moves to the next template**, in the file's order, back to the first after the last, and the header shows its new text at once. Each opening starts at the first template. With one template, Tab and a click on the header do nothing, and Tab never leaves the field while the list is open.
 - **Choosing a contact inserts the mention** Contacts makes from the contact and the current template, through Editing, as one undo step.
 - **With no contacts, or no repository, no list shows**, and the "@" stays as typed.
 
@@ -129,6 +156,22 @@ The chips work the same in the Title and the Description:
 - **Saving keeps each mention's Markdown as it is**, stored text included, so the editor changes no mention the user didn't touch.
 - **Copying a chip copies its Markdown**, so pasting it makes the same mention again.
 - **A mention whose Markdown spans a line break shows as its Markdown, not a chip**, since a chip is one piece of one line. Contacts never writes one; only a hand-typed mention can. This is a decision to confirm.
+
+### A plain text box can offer contacts by alias
+
+The user asked that "@" in Task View's [search box](task-list.md#search-narrows-the-list) insert the contact's alias. The Task editor publishes its "@" list for any plain WPF text box, so a contact is found the same way in both, and the popup, its rows, and its keys have one home. Proposed, each a decision to confirm:
+
+- **It opens and closes as in the Title**: by Editing's rule for where "@" opens and what it searches with, at the "@", in a popup, with the same rows, keys, and closing rules. It opens only when "@" is typed, so moving the cursor back into a word such as `@anap` opens nothing.
+- **It has no header and no templates**, since what it inserts isn't a mention. Tab, while it's open, closes it and then moves the focus as it would with no list.
+- **Choosing a contact replaces the "@" and the text typed after it with "@" and the contact's alias**, or its ID when it has none, through Editing's [mention picker](../editing.md#public-interface), with the cursor right after it and no space added. An alias and an ID hold no spaces, so the result is one search word.
+- **While it's open, it takes Down, Up, Enter, and Esc first**, so the box's owner sees them only while it's closed: in the search box, Down and Up then move through contacts, not to the [top or bottom row](task-list.md#search-narrows-the-list), and Esc closes the list before it [empties the search](task-list.md#esc-goes-back-one-step-then-closes-task-view). While it's closed, it takes none of them, so the box and its owner work exactly as with no list.
+
+### Resting the pointer on a chip shows the contact's card
+
+The user asked that resting the mouse pointer on any mention show a card with the contact's details, with the common details by default and every detail while Ctrl is held. The card itself, and what it shows, is the [Contact list's](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details), and the platform's [hover card](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) decides when it opens, where, and when it closes. The user decided that a chip whose contact Contacts can't find shows no card, since the chip already shows the stored text, as the [Contact list](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) says. Proposed, each a decision to confirm:
+
+- **Each chip in the Title and the Description shows the card** of the contact its address names, in Add and in Task View's edits alike.
+- **A mention shown as Markdown, across a line break, shows no card**, as it's no chip.
 
 ### Closing without saving keeps a draft on this device
 
@@ -313,6 +356,25 @@ public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyLis
 ```
 
 With the [mention list and chips](#typing-an-at-sign-mentions-a-contact), the user decided that the Task editor uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own). Proposed, a decision to confirm: Contacts' [`IContacts contacts`](../contacts.md#public-interface) joins `AddWindow.Create` right after `tagColors`, and the Title and Description editors' constructors right after `tasks`, so the "@" list searches them and the chips show live text. No other member changes. This is not implemented.
+
+For the [chips' cards](#resting-the-pointer-on-a-chip-shows-the-contacts-card), the user decided that the Task editor may use the [Contact list](contact-list.md#public-interface), for its contact card, as the [module map](../modules.md#module-map) says. No constructor changes: the editors already take Contacts and the theme, which the card needs.
+
+Proposed, a decision to confirm, for the [popup "@" list](#typing-an-at-sign-mentions-a-contact) and the [alias list](#a-plain-text-box-can-offer-contacts-by-alias): the Task editor publishes the alias list, which the Task list attaches to its search box:
+
+```csharp
+namespace Memoria.ToDo.Desktop.TaskEditor;
+
+/// The "@" list for a plain text box: typing "@" where Editing's mention list opens shows the contacts Contacts'
+/// search finds, in a popup at the "@", and choosing one replaces the "@" and the text typed after it with "@" and
+/// the contact's alias, or its ID when it has none. It has no header and no templates. Each row's alias shows in
+/// theme's italic color, following theme switches.
+public static class ContactAliasList
+{
+    /// From now on, box offers the list, and while it's open, Down, Up, Enter, and Esc reach the list before any other
+    /// handler of the box or its ancestors. Throws ArgumentNullException for a null argument. Use it on the UI thread.
+    public static void Attach(System.Windows.Controls.TextBox box, IContacts contacts, ITheme theme);
+}
+```
 
 The user decided that `TitleEditor`, `DescriptionEditor`, and `TagEditor` each take a required `ILogger logger` as their last constructor argument, as every module's create method does, and null is refused with an `ArgumentNullException`. The editor that catches a failure it shows logs it, so a host such as the Task list doesn't log the same failure again.
 
@@ -541,3 +603,21 @@ The options below were considered and rejected, grouped by decision.
 - How a resized image's width reaches the draft:
   - **The Task list sets `Value` to the new text**: setting `Value` starts `HasChanges` over, so Esc would show no Undo bar and closing wouldn't ask.
   - **A general member that replaces the text and keeps the changes check**: a wider part than the one need, which a caller could use to lose the user's typing.
+- Where the "@" list shows (proposed, a decision to confirm):
+  - **Under the field, as before**: the user asked for the list at the cursor, since a tall Description puts the list far from the "@".
+  - **Following the cursor as the user types after the "@"**: the popup would jump sideways with each letter.
+- How a plain text box gets the "@" list (proposed, a decision to confirm):
+  - **A mode flag on one list, templates on or off**: a flag every key and row must check, against the [code design](../../../AGENTS.md#code-design) rules; the two lists share their parts instead.
+  - **The list in the desktop platform**: the platform [never names a module](../modules.md#the-platform-serves-every-module-and-knows-none), and the list needs Contacts and Editing.
+- What the "@" list's header shows:
+  - **The template itself, such as `{fullName} ({careerPath.short})`**: users would read field names instead of the result.
+  - **Both, the result with the template under it**: a taller header for little gain.
+- What a row shows for a contact with no alias:
+  - **The full name alone**: two contacts with one name and no alias would look alike.
+  - **The title in the alias's place**: mixes two kinds of value in one place.
+- Which lists move to a popup at the cursor:
+  - **All four lists**: more work and more UX tests now, for a change the user asked only of the "@" list.
+- What Up does while the color, snippet, or task list is open:
+  - **It moves the cursor in the field, as before**: Up would move through the "@" list but not the others, so the lists would work differently.
+- How the "@" lists use the theme:
+  - **Only the Windows theme's colors, with a plain header and an alias in the normal text color**: the header wouldn't look like the chip Enter inserts.

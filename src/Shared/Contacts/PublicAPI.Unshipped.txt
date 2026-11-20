@@ -80,6 +80,7 @@ Memoria.ToDo.Shared.Contacts.IContactFileRules.Merge(string! relativePath, byte[
 Memoria.ToDo.Shared.Contacts.IContacts
 Memoria.ToDo.Shared.Contacts.IContacts.Changed -> System.EventHandler?
 Memoria.ToDo.Shared.Contacts.IContacts.DataTypes.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.DataType!>!
+Memoria.ToDo.Shared.Contacts.IContacts.ContactOf(string! address) -> Memoria.ToDo.Shared.Contacts.Contact?
 Memoria.ToDo.Shared.Contacts.IContacts.Delete(string! groupName, string! id) -> void
 Memoria.ToDo.Shared.Contacts.IContacts.DirectReportsOf(Memoria.ToDo.Shared.Contacts.Contact! contact) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.Contact!>!
 Memoria.ToDo.Shared.Contacts.IContacts.Find(string! name) -> Memoria.ToDo.Shared.Contacts.Contact?

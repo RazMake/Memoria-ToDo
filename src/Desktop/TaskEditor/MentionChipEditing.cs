@@ -26,6 +26,9 @@ internal sealed class MentionChipEditing
         WhileLoaded.Run(editor, () => contacts.Changed += OnChanged, () => contacts.Changed -= OnChanged);
     }
 
+    /// <summary>The mention whose chip covers the document offset, or null.</summary>
+    public Mention? At(int offset) => MentionChips.At(_mentions.Chips, offset);
+
     /// <summary>Adds Backspace and Delete, which remove the whole mention beside the cursor as one undo step.</summary>
     public void AddKeysTo(KeyMap keys) => keys
         .Try(ModifierKeys.None, Key.Back, () => _editor.Run(field => MentionChips.Backspace(field, _mentions.In(field.Text))))

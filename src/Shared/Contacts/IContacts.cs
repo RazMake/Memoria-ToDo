@@ -48,6 +48,14 @@ public interface IContacts
     string? TextOf(string address, string template);
 
     /// <summary>
+    /// The one contact a stored mention's address names, by ID only, ignoring case, as <see cref="TextOf(string, string)"/> finds it;
+    /// null when the address isn't a contact address, or no contact or several hold the ID. The contact is the
+    /// instance its group in <see cref="Groups"/> holds, so a caller finds its group there.
+    /// Throws <see cref="ArgumentNullException"/> for a null address.
+    /// </summary>
+    Contact? ContactOf(string address);
+
+    /// <summary>
     /// The whole Markdown link for a new mention: <c>[text](contact:&lt;id&gt; "&lt;template&gt;")</c>.
     /// Throws <see cref="ArgumentException"/> for an invalid template.
     /// </summary>

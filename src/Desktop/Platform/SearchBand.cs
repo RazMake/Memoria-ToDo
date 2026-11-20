@@ -14,6 +14,8 @@ public sealed class SearchBand : Border
     {
         AutomationProperties.SetName(_box, "Search");
         _box.TextChanged += (_, _) => TextChanged?.Invoke(this, EventArgs.Empty);
+        // Preview phase, so a TextBox's own Up/Down handling can't consume the keys first. An attached list or a class-level handler
+        // that used the key marks it handled, and WPF then doesn't call this handler.
         _box.PreviewKeyDown += (_, e) =>
         {
             var key = EventKey.Of(e);
@@ -33,6 +35,9 @@ public sealed class SearchBand : Border
         SetResourceReference(BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
     }
 
+    /// <summary>The search box itself, for a part that works on any text box. Its text is <see cref="Text"/>.</summary>
+    public TextBox Box => _box;
+
     /// <summary>The box's text.</summary>
     public string Text
     {
@@ -44,8 +49,8 @@ public sealed class SearchBand : Border
     public event EventHandler? TextChanged;
 
     /// <summary>
-    /// Raised on Down (false) or Up (true) in the box with no modifier key held, to select the top or bottom row.
-    /// The key goes no further.
+    /// Raised on Down (false) or Up (true) in the box with no modifier key held, when no handler before the band's used the key,
+    /// to select the top or bottom row. The key goes no further.
     /// </summary>
     public event EventHandler<bool>? EdgeRowRequested;
 

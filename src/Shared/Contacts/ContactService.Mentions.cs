@@ -15,12 +15,22 @@ internal sealed partial class ContactService
     {
         ArgumentNullException.ThrowIfNull(address);
         ArgumentNullException.ThrowIfNull(template);
-        if (MentionTemplate.Parse(template, out _) is not { } parsed || ContactAddress.IdOf(address) is not { } id)
+        if (MentionTemplate.Parse(template, out _) is not { } parsed)
             return null;
-        return repository.Locked(_ => snapshot.Names.Find(id) is { } contact && contact.Id.Equals(id, StringComparison.OrdinalIgnoreCase)
-            ? parsed.Render(contact, snapshot.DataTypes)
-            : null);
+        return repository.Locked(_ => ContactAt(address) is { } contact ? parsed.Render(contact, snapshot.DataTypes) : null);
     }
+
+    public Contact? ContactOf(string address)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        return repository.Locked(_ => ContactAt(address));
+    }
+
+    /// <summary>The one contact whose ID the address names. Call inside the repository lock.</summary>
+    private Contact? ContactAt(string address) =>
+        ContactAddress.IdOf(address) is { } id && snapshot.Names.Find(id) is { } contact && contact.Id.Equals(id, StringComparison.OrdinalIgnoreCase)
+            ? contact
+            : null;
 
     public string MentionOf(Contact contact, string template) => MentionLink.Of(TextOf(contact, template), contact.Id, template);
 

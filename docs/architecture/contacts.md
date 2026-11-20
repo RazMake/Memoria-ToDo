@@ -17,9 +17,9 @@ These modules use it:
 | Module | What it uses |
 | --- | --- |
 | [Sync](sync.md#sync-manages-contact-files-through-contacts-rules) | Which files are contact files, and how two versions of one merge |
-| Desktop [Contact list](desktop/contact-list.md) | Everything: groups, details, search, saving, adding, deleting, and moving groups |
+| Desktop [Contact list](desktop/contact-list.md) | Everything: groups, details, search, saving, adding, deleting, and moving groups; and the contact a mention names, for the [contact card](desktop/contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) |
 | Desktop [Task editor](desktop/task-editor.md#typing-an-at-sign-mentions-a-contact) and [Android Task editor](android/task-editor.md#typing-an-at-sign-mentions-a-contact) | Search, the templates, and the mention to insert, for the "@" list; and the live text, for the mention chips |
-| Desktop [Task list](desktop/task-list.md#mentions-show-each-contacts-current-details) and [Android Task list](android/task-list.md#mentions-show-each-contacts-current-details) | The live text of each mention they show, and the editors' contacts |
+| Desktop [Task list](desktop/task-list.md#mentions-show-each-contacts-current-details) and [Android Task list](android/task-list.md#mentions-show-each-contacts-current-details) | The live text of each mention they show, and the editors' contacts; and, proposed on the desktop, the contact a search word such as `@anap` names |
 | Each app's composition root | Creating the store |
 
 ### The clone keeps contacts in group files under `autocomplete/contacts/`
@@ -161,7 +161,7 @@ Proposed, each a decision to confirm:
 - **The stored text** escapes `[`, `]`, and `\` as a task link's text does, through the platform's [Markdown label](../../src/Shared/Platform/MarkdownLabel.cs). In the title, `"` and `\` take a backslash.
 - **A mention shows on a soft accent background**, one per theme, as the user decided and [Rendering](rendering.md#a-mention-shows-on-a-colored-background) owns.
 - **Clicking a mention does nothing.**
-- **Task search matches a mention's stored text**, since Tasks searches the task as saved.
+- **Task search matches a mention's stored text**, since Tasks searches the task as saved. Task View's search box also finds every mention of one contact from a word such as `@anap`, as the user decided for the [Task list](desktop/task-list.md#search-narrows-the-list), through the mention's address; Tasks' own search doesn't change. Proposed, a decision to confirm: the word finds its contact through `Find`.
 
 ### Mention templates come from a synced file
 
@@ -338,6 +338,12 @@ public interface IContacts
     /// or the template is invalid. The caller then shows the stored text.
     string? TextOf(string address, string template);
 
+    /// The one contact a stored mention's address names, by ID only, ignoring case, as TextOf finds it;
+    /// null when the address isn't a contact address, or no contact or several hold the ID. The contact is the
+    /// instance its group in Groups holds, so a caller finds its group there.
+    /// Throws ArgumentNullException for a null address, as TextOf does.
+    Contact? ContactOf(string address);
+
     /// The whole Markdown link for a new mention: [text](contact:<id> "<template>").
     /// Throws ArgumentException for an invalid template.
     string MentionOf(Contact contact, string template);
@@ -417,6 +423,7 @@ public interface IContactFileRules
 - **Reading only `H:mm` for `dayStartTime`, or writing `H:mm`**: a hand-written `09:30` would be skipped, and the two forms would mix. The user chose to read both and write `HH:mm`.
 - **Letting a templates file deletion beat an edit**, as "the changed side wins" alone would: a merge would drop templates the user wrote.
 - **Keeping a one-side change's bytes unchanged in a group or data type file merge**, in Contacts or in Sync for every file kind: the user chose to write every merged file in this app's layout, as task files are.
+- **The contact card reading the ID with the platform's contact address and looking through `Groups` itself**: the rule for resolving an address would live in two places, which could disagree on a shared ID. The user chose `ContactOf`.
 
 ## Open questions
 

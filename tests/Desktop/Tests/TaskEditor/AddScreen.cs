@@ -178,23 +178,73 @@ internal sealed class AddScreen : IDisposable
     /// <summary>The contacts the open mention list offers, in order; empty while it is closed.</summary>
     public IReadOnlyList<string> ShownMentions => EditorFields.ShownMentions(Window);
 
-    /// <summary>Clicks the contact, by its text in the current template, in the open mention list.</summary>
-    public void ClickMention(string text) => OpenWindows.Click(EditorFields.ItemButton(Window, EditorFields.MentionList, text));
+    /// <summary>Clicks the contact, by its plain text "Full Name (alias)", in the open mention list. A row is a button named by that text.</summary>
+    public void ClickMention(string text) => OpenWindows.Click(MentionRow(text));
 
-    /// <summary>The texts of the visible text blocks in the open mention list: each row's text and title, and the last line.</summary>
-    public IReadOnlyList<System.Windows.Controls.TextBlock> MentionListBlocks
+    /// <summary>The button of the row with the plain text "Full Name (alias)".</summary>
+    public System.Windows.Controls.Button MentionRow(string text)
+    {
+        var list = EditorFields.Field(Window, EditorFields.MentionList);
+        list.UpdateLayout();
+        return VisualTree.Visuals(list).OfType<System.Windows.Controls.Button>()
+            .Single(button => AutomationProperties.GetName(button) == text);
+    }
+
+    /// <summary>The header at the top of the open mention list: a button with the id "MentionHeader" whose content is the highlighted contact in the current template.</summary>
+    public System.Windows.Controls.Button MentionHeader =>
+        (System.Windows.Controls.Button)EditorFields.Field(EditorFields.Field(Window, EditorFields.MentionList), EditorFields.MentionHeader);
+
+    /// <summary>The header's text.</summary>
+    public string MentionHeaderText => (string)MentionHeader.Content;
+
+    /// <summary>Clicks the header, which moves to the next template as Tab does.</summary>
+    public void ClickMentionHeader() => OpenWindows.Click(MentionHeader);
+
+    /// <summary>The help line under the header: a text block with the id "MentionHint", in the help style.</summary>
+    public System.Windows.Controls.TextBlock MentionHint =>
+        (System.Windows.Controls.TextBlock)EditorFields.Field(EditorFields.Field(Window, EditorFields.MentionList), EditorFields.MentionHint);
+
+    /// <summary>The open mention list's rectangle on the screen, in device pixels.</summary>
+    public Rect MentionListOnScreen
     {
         get
         {
-            // The rows and the last line are template content, made at layout and not in the logical tree.
-            Window.UpdateLayout();
-            return
-            [
-                .. VisualTree.Visuals(EditorFields.Field(Window, EditorFields.MentionList)).OfType<System.Windows.Controls.TextBlock>()
-                    .Where(block => block.IsVisible && OpenWindows.TextOf(block).Length > 0),
-            ];
+            var list = EditorFields.Field(Window, EditorFields.MentionList);
+            list.UpdateLayout();
+            return new Rect(list.PointToScreen(new Point(0, 0)), list.PointToScreen(new Point(list.ActualWidth, list.ActualHeight)));
         }
     }
+
+    /// <summary>Whether the open mention list shows in a window of its own, as a menu does, not inside the Add window.</summary>
+    public bool MentionListIsInAPopup =>
+        PresentationSource.FromVisual(EditorFields.Field(Window, EditorFields.MentionList)) is { } source
+        && !ReferenceEquals(source, PresentationSource.FromVisual(Window));
+
+    /// <summary>The left edge and the bottom of the line at the offset in the field, on the screen, in device pixels.</summary>
+    public (double Left, double LineBottom) PlaceOnScreen(string field, int offset)
+    {
+        var editor = (ICSharpCode.AvalonEdit.TextEditor)EditorFields.Field(Window, field);
+        var view = editor.TextArea.TextView;
+        var location = editor.Document.GetLocation(offset);
+        var position = new ICSharpCode.AvalonEdit.TextViewPosition(location.Line, location.Column);
+        var bottom = view.GetVisualPosition(position, ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineBottom) - view.ScrollOffset;
+        var onScreen = view.PointToScreen(new Point(bottom.X, bottom.Y));
+        return (onScreen.X, onScreen.Y);
+    }
+
+    /// <summary>The height of the Description's text line, in device pixels.</summary>
+    public double LineHeightOnScreen(string field)
+    {
+        var editor = (ICSharpCode.AvalonEdit.TextEditor)EditorFields.Field(Window, field);
+        var view = editor.TextArea.TextView;
+        var top = view.GetVisualPosition(new ICSharpCode.AvalonEdit.TextViewPosition(1, 1), ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineTop);
+        var bottom = view.GetVisualPosition(new ICSharpCode.AvalonEdit.TextViewPosition(1, 1), ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineBottom);
+        return view.PointToScreen(new Point(0, bottom.Y)).Y - view.PointToScreen(new Point(0, top.Y)).Y;
+    }
+
+    /// <summary>The row's text blocks: the row's button holds the full name in bold and the alias in italics.</summary>
+    public IReadOnlyList<System.Windows.Documents.Run> RowRuns(string text) =>
+        [.. VisualTree.Visuals(MentionRow(text)).OfType<System.Windows.Controls.TextBlock>().SelectMany(block => block.Inlines).OfType<System.Windows.Documents.Run>()];
 
     /// <summary>The texts the user can see in the window beside its controls.</summary>
     public IReadOnlyList<string> Texts => EditorFields.VisibleTexts(Window);

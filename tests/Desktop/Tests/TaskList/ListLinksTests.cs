@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -11,12 +12,13 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 public class ListLinksTests
 {
     private readonly ListTasks _tasks = new();
-    private readonly ListFilter _filter = new();
+    private readonly ListFilter _filter;
     private readonly ListContent _content;
     private readonly ListLinks _links;
 
     public ListLinksTests()
     {
+        _filter = new ListFilter(_tasks.Contacts);
         _content = new ListContent(_tasks.Tasks, _filter);
         _links = new ListLinks(_tasks.Tasks, _filter, _content);
     }
@@ -53,6 +55,34 @@ public class ListLinksTests
         var outcome = _links.Follow(address);
 
         Assert.Equal(LinkOutcome.Show(IdOf("Call Ana")), outcome);
+        Assert.Equal("", _filter.SearchText);
+    }
+
+    [Fact]
+    public void A_link_to_a_task_an_at_search_shows_clears_nothing()
+    {
+        _tasks.UseContacts(["{fullName}"], ContactFiles.Person("ana", "Ana Pop", ("alias", "anap")));
+        var shown = _tasks.Add("Call [Old Name](contact:ana \"{fullName}\")");
+        _tasks.Add("Other");
+        _filter.SearchText = "@anap";
+
+        var outcome = _links.Follow(_tasks.Tasks.LinkAddress(shown.Id));
+
+        Assert.Equal(LinkOutcome.Show(shown.Id), outcome);
+        Assert.Equal("@anap", _filter.SearchText);
+    }
+
+    [Fact]
+    public void A_link_to_a_task_an_at_search_hides_clears_the_search()
+    {
+        _tasks.UseContacts(["{fullName}"], ContactFiles.Person("ana", "Ana Pop", ("alias", "anap")));
+        _tasks.Add("Call [Old Name](contact:ana \"{fullName}\")");
+        var hidden = _tasks.Add("Other");
+        _filter.SearchText = "@anap";
+
+        var outcome = _links.Follow(_tasks.Tasks.LinkAddress(hidden.Id));
+
+        Assert.Equal(LinkOutcome.Show(hidden.Id), outcome);
         Assert.Equal("", _filter.SearchText);
     }
 

@@ -4,6 +4,9 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
 using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Document;
+using ICSharpCode.AvalonEdit.Rendering;
+using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Rendering;
@@ -14,7 +17,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// A text field that shows its Markdown styled in place. Typed text shows at once; its styling follows on the dispatcher,
 /// once for any number of edits queued before it, and again when the theme changes.
 /// </summary>
-internal sealed class StyledTextEditor : TextEditor, ITextField
+internal sealed class StyledTextEditor : TextEditor, ITextField, IPopupPlace
 {
     private const string BorderName = "ContentBorder";
 
@@ -22,12 +25,16 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
         DependencyProperty.Register("IsInvalid", typeof(bool), typeof(StyledTextEditor));
 
     private readonly MarkdownField _field;
+    private readonly IContacts _contacts;
+    private readonly ITheme _theme;
     private readonly MarkdownStyler _styler;
     private bool _stylingQueued;
 
     public StyledTextEditor(string automationId, MarkdownField field, ITheme theme, IContacts contacts)
     {
         ArgumentNullException.ThrowIfNull(contacts);
+        _contacts = contacts;
+        _theme = theme;
         _field = field;
         _styler = new MarkdownStyler(theme);
         Chips = new MentionChipEditing(this, field, contacts, theme);
@@ -59,7 +66,10 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
         };
         TextArea.Caret.PositionChanged += (_, _) => Changed?.Invoke();
         TextArea.TextEntered += (_, e) => TextEntered?.Invoke(e.Text);
+        TextArea.LostKeyboardFocus += (_, _) => FocusLost?.Invoke();
+        TextArea.TextView.ScrollOffsetChanged += (_, _) => Scrolled?.Invoke();
         _ = new ThemeFollower(this, theme, QueueStyling);
+        _ = new HoverCard(this, PartAt);
     }
 
     /// <summary>The field's mentions, shown as chips.</summary>
@@ -68,6 +78,50 @@ internal sealed class StyledTextEditor : TextEditor, ITextField
     public event Action? Changed;
 
     public event Action<string>? TextEntered;
+
+    public event Action? FocusLost;
+
+    public event Action? Scrolled;
+
+    public UIElement Target => TextArea.TextView;
+
+    /// <summary>The box of the character at the offset, in the text view's coordinates, or null when it is out of the view.</summary>
+    public Rect? AnchorOf(int offset)
+    {
+        var view = TextArea.TextView;
+        view.EnsureVisualLines();
+        var rect = BoxOf(offset, 1);
+        return rect is { } box ? PopupAnchor.At(box, new Rect(0, 0, view.ActualWidth, view.ActualHeight)) : null;
+    }
+
+    // The part of the text under the point, in the editor's coordinates: the mention chip there, boxed, with its contact's card.
+    internal Task<HoverPart?> PartAt(Point inEditor)
+    {
+        HoverPart? part = null;
+        var view = TextArea.TextView;
+        var inView = TranslatePoint(inEditor, view);
+        if (view.GetPositionFloor(inView + view.ScrollOffset) is { } position
+            && Chips.At(Document.GetOffset(position.Location)) is { } mention
+            && BoxOf(mention.Start, mention.Length) is { } box
+            && ContactCard.For(_contacts, _theme, mention.Address) is { } card)
+        {
+            part = new HoverPart(view.TransformToAncestor(this).TransformBounds(box), card);
+        }
+
+        return Task.FromResult(part);
+    }
+
+    private Rect? BoxOf(int offset, int length)
+    {
+        var rects = BackgroundGeometryBuilder.GetRectsForSegment(TextArea.TextView, new TextSegment { StartOffset = offset, Length = length });
+        Rect? box = null;
+        foreach (var rect in rects)
+        {
+            box = box is { } known ? Rect.Union(known, rect) : rect;
+        }
+
+        return box;
+    }
 
     public void FocusField() => KeyboardFocus.MoveTo(this);
 

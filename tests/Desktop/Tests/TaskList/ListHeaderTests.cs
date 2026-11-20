@@ -59,7 +59,7 @@ public class ListHeaderTests
             Layout(width);
         }
 
-        public ListFilter Filter { get; } = new();
+        public ListFilter Filter { get; } = new(new ListTasks().Contacts);
 
         public ListHeader Header { get; }
 

@@ -8,11 +8,12 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 public class ListFilterTests
 {
     private readonly ListTasks _tasks = new();
-    private readonly ListFilter _filter = new();
+    private readonly ListFilter _filter;
     private int _changed;
 
     public ListFilterTests()
     {
+        _filter = new ListFilter(_tasks.Contacts);
         _filter.Changed += (_, _) => _changed++;
     }
 

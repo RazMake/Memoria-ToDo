@@ -69,6 +69,47 @@ public class MentionChipsTests
     }
 
     [Unit]
+    public class Which_chip_a_place_is_on
+    {
+        [Fact]
+        public void A_place_inside_a_chip_is_on_that_chip()
+        {
+            Assert.Equal(One[0], MentionChips.At(One, 2));
+            Assert.Equal(One[0], MentionChips.At(One, 5));
+            Assert.Equal(One[0], MentionChips.At(One, ChipEnd - 1));
+        }
+
+        [Fact]
+        public void A_place_before_or_after_a_chip_is_on_none_and_the_end_is_exclusive()
+        {
+            Assert.Null(MentionChips.At(One, 1));
+            Assert.Null(MentionChips.At(One, ChipEnd));
+        }
+
+        [Fact]
+        public void A_place_is_on_the_chip_that_holds_it_when_there_are_two()
+        {
+            var two = new[] { Chip(0), Chip(AnaLength + 3, address: "contact:bob") };
+
+            Assert.Equal("contact:bob", MentionChips.At(two, AnaLength + 4)!.Address);
+            Assert.Equal("contact:ana", MentionChips.At(two, 1)!.Address);
+            Assert.Null(MentionChips.At(two, AnaLength + 1));
+        }
+
+        [Fact]
+        public void No_chips_means_no_chip()
+        {
+            Assert.Null(MentionChips.At([], 0));
+        }
+
+        [Fact]
+        public void A_place_outside_the_text_is_on_no_chip()
+        {
+            Assert.Null(MentionChips.At(One, -1));
+        }
+    }
+
+    [Unit]
     public class Backspace_and_Delete_at_a_chip
     {
         [Fact]

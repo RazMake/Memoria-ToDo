@@ -24,7 +24,14 @@ internal sealed class ListHeader : StackPanel
         _undoBar.SetResourceReference(Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
         _search.TextChanged += (_, _) => _filter.SearchText = _search.Text;
         _search.EdgeRowRequested += (_, last) => EdgeRowRequested?.Invoke(this, last);
-        _filter.Changed += (_, _) => ShowFilter();
+        _filter.Changed += (_, _) =>
+        {
+            // A change of contacts can come from another thread, and leaves the text as it is.
+            if (Dispatcher.CheckAccess())
+            {
+                ShowFilter();
+            }
+        };
 
         var undo = new Button { Content = "Undo" };
         AutomationProperties.SetName(undo, "Undo");
@@ -45,6 +52,9 @@ internal sealed class ListHeader : StackPanel
     public event EventHandler<bool>? EdgeRowRequested;
 
     public void FocusSearch() => _search.FocusText();
+
+    /// <summary>The search box, for the "@" list to attach to.</summary>
+    public TextBox SearchBox => _search.Box;
 
     /// <summary>Shows the message, or hides the line when it is null or empty.</summary>
     public void ShowMessage(string? message) => _message.Show(message);

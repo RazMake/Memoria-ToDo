@@ -1,3 +1,4 @@
+using System.Globalization;
 using Markdig.Renderers;
 using Markdig.Renderers.Html;
 
@@ -14,7 +15,7 @@ internal sealed class MentionInlineRenderer : HtmlObjectRenderer<MentionInline>
             return;
         }
 
-        renderer.Write("<span class=\"mention\">");
+        renderer.Write("<span class=\"mention\" data-mention=\"").Write(mention.Number.ToString(CultureInfo.InvariantCulture)).Write("\">");
         renderer.WriteChildren(mention);
         renderer.Write("</span>");
     }

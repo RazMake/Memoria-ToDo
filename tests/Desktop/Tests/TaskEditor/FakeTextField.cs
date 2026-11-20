@@ -40,6 +40,12 @@ internal sealed class FakeTextField : ITextField
 
     public event Action<string>? TextEntered;
 
+    /// <summary>Raised when the field loses the keyboard focus.</summary>
+    public event Action? FocusLost;
+
+    /// <summary>The field loses the keyboard focus, as when the user clicks elsewhere.</summary>
+    public void LoseFocus() => FocusLost?.Invoke();
+
     public void Select(int start, int length)
     {
         (SelectionStart, SelectionLength, _caret) = (start, length, start + length);

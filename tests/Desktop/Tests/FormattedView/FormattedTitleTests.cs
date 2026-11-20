@@ -6,7 +6,10 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.Platform.Tests;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -277,6 +280,214 @@ public class FormattedTitleTests
         Assert.Empty(screen.OpenFailures);
     }
 
+    private const string Bo = "[Bo Li](contact:b2 \"{fullName}\")";
+
+    private static Border CardOf(string name) => new() { Width = 60, Height = 24, Tag = name };
+
+    [WpfFact]
+    public async Task Makes_the_card_of_the_mention_under_the_point_from_its_address_and_template_and_returns_it_with_the_mention_box()
+    {
+        using var screen = new TitleScreen();
+        var asked = new List<Mention>();
+        screen.Title.MentionCard = mention => { asked.Add(mention); return CardOf(mention.Address); };
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        var part = await screen.Title.PartAt(screen.InsideStartOf("Ana"));
+
+        var only = Assert.Single(asked);
+        Assert.Equal("contact:a1", only.Address);
+        Assert.Equal("{firstName}", only.Template);
+        Assert.NotNull(part);
+        Assert.Equal("contact:a1", ((Border)part.Card).Tag);
+        Assert.True(part.Box.Contains(screen.InsideStartOf("Ana")), "The box doesn't hold the mention's text.");
+        Assert.False(part.Box.Contains(screen.InsideStartOf("now")), "The box reaches the text after the mention.");
+    }
+
+    [WpfFact]
+    public async Task Makes_the_card_of_the_mention_the_point_is_on_when_a_title_has_two()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = $"{Mention} and {Bo}";
+
+        var second = await screen.Title.PartAt(screen.InsideStartOf("Bo Li"));
+        var first = await screen.Title.PartAt(screen.InsideStartOf("Ana"));
+
+        Assert.Equal("contact:b2", ((Border)second!.Card).Tag);
+        Assert.Equal("contact:a1", ((Border)first!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_for_a_point_on_text_that_is_not_a_mention()
+    {
+        using var screen = new TitleScreen();
+        var asked = 0;
+        screen.Title.MentionCard = _ => { asked++; return CardOf("any"); };
+        screen.Title.Markdown = $"Ask {Mention} about [the docs](https://example.com/docs)";
+
+        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("Ask")));
+        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("the docs")));
+        Assert.Equal(0, asked);
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_for_a_point_below_the_text()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = _ => CardOf("any");
+        screen.Title.Markdown = $"Ask {Mention}";
+
+        Assert.Null(await screen.Title.PartAt(new Point(screen.InsideStartOf("Ana").X, screen.Title.ActualHeight + 50)));
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_for_a_mention_whose_user_makes_none()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = _ => null;
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("Ana")));
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_before_a_card_function_is_set()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        Assert.Null(screen.Title.MentionCard);
+        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("Ana")));
+    }
+
+    [WpfFact]
+    public async Task Makes_no_card_for_the_name_of_a_task_reference_where_mentions_are_plain_text()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = _ => CardOf("any");
+        screen.Title.Markdown = "Ask Ana now";
+
+        Assert.Null(await screen.Title.PartAt(screen.InsideStartOf("Ana")));
+    }
+
+    [WpfFact]
+    public async Task Makes_the_card_for_the_Markdown_now_shown_after_the_title_changes()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = $"Ask {Mention} now";
+        screen.Title.Markdown = $"Tell {Bo} now";
+
+        var part = await screen.Title.PartAt(screen.InsideStartOf("Bo Li"));
+
+        Assert.Equal("contact:b2", ((Border)part!.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Counts_a_mention_that_wraps_onto_two_lines_as_one_part_with_the_box_around_both_lines()
+    {
+        using var screen = new TitleScreen(width: 200);
+        screen.Title.TextWrapping = TextWrapping.Wrap;
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = "Please ask the kind colleague [Ana Maria Fernandez Gonzalez](contact:a1 \"{firstName}\") soon";
+        var firstLine = screen.InsideStartOf("Ana Maria");
+        var secondLine = screen.InsideEndOf("Ana Maria Fernandez Gonzalez");
+        Assert.True(secondLine.Y > firstLine.Y, "The setup didn't wrap the mention onto a second line.");
+
+        var onFirst = await screen.Title.PartAt(firstLine);
+        var onSecond = await screen.Title.PartAt(secondLine);
+
+        Assert.NotNull(onFirst);
+        Assert.NotNull(onSecond);
+        Assert.Equal(onFirst.Box, onSecond.Box);
+        Assert.True(onFirst.Box.Contains(firstLine) && onFirst.Box.Contains(secondLine), "The box doesn't hold both lines.");
+    }
+
+    [WpfFact]
+    public async Task Finds_the_mention_under_the_right_half_of_its_last_character()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = $"Ask {Mention} now";
+        var last = screen.LastCharOf("Ana");
+
+        var part = await screen.Title.PartAt(new Point(last.X + (last.Width * 0.75), last.Y + (last.Height / 2)));
+
+        Assert.NotNull(part);
+        Assert.Equal("contact:a1", ((Border)part.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Finds_the_first_mention_under_the_right_half_of_its_last_character_when_another_follows_right_after()
+    {
+        using var screen = new TitleScreen();
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        screen.Title.Markdown = $"{Mention}{Bo}";
+        var last = screen.LastCharOf("Ana");
+
+        var part = await screen.Title.PartAt(new Point(last.X + (last.Width * 0.75), last.Y + (last.Height / 2)));
+
+        Assert.NotNull(part);
+        Assert.Equal("contact:a1", ((Border)part.Card).Tag);
+    }
+
+    [WpfFact]
+    public async Task Returns_one_box_around_every_line_of_a_mention_that_wraps_onto_three_lines()
+    {
+        using var screen = new TitleScreen(width: 200);
+        screen.Title.TextWrapping = TextWrapping.Wrap;
+        screen.Title.MentionCard = mention => CardOf(mention.Address);
+        const string Name = "Ana Maria Fernandez Gonzalez Perez Rodriguez Martinez Lopez Hernandez";
+        screen.Title.Markdown = $"Ask [{Name}](contact:a1 \"{{firstName}}\") soon";
+        var chars = screen.CharsOf(Name);
+        var lines = chars.Select(box => Math.Round(box.Y)).Distinct().Count();
+        Assert.True(lines >= 3, $"The setup wrapped the mention onto {lines} lines, not 3 or more.");
+        var expected = chars.Aggregate(Rect.Union);
+
+        var parts = new List<HoverPart?>();
+        foreach (var box in chars.Where(box => box.Width > 0))
+        {
+            parts.Add(await screen.Title.PartAt(new Point(box.X + (box.Width / 2), box.Y + (box.Height / 2))));
+        }
+
+        Assert.All(parts, part => Assert.NotNull(part));
+        foreach (var part in parts)
+        {
+            Assert.InRange(part!.Box.Left, expected.Left - 1.5, expected.Left + 1.5);
+            Assert.InRange(part.Box.Right, expected.Right - 1.5, expected.Right + 1.5);
+            Assert.InRange(part.Box.Top, expected.Top - 1.5, expected.Top + 1.5);
+            Assert.InRange(part.Box.Bottom, expected.Bottom - 1.5, expected.Bottom + 1.5);
+        }
+    }
+
+    [WpfFact]
+    public void Shows_the_card_under_a_mention_once_the_pointer_rests_on_it()
+    {
+        using var screen = new TitleScreen();
+        var card = CardOf("a1");
+        screen.Title.MentionCard = _ => card;
+        screen.Title.Markdown = $"Ask {Mention} now";
+
+        screen.RestOn(screen.InsideStartOf("Ana"));
+
+        Assert.True(screen.WaitForShown(card), "The card didn't show.");
+    }
+
+    [WpfFact]
+    public void Shows_the_card_of_the_second_mention_when_the_pointer_moves_on_to_it_and_rests()
+    {
+        using var screen = new TitleScreen();
+        var cards = new Dictionary<string, Border> { ["contact:a1"] = CardOf("a1"), ["contact:b2"] = CardOf("b2") };
+        screen.Title.MentionCard = mention => cards[mention.Address];
+        screen.Title.Markdown = $"{Mention} and {Bo}";
+
+        screen.RestOn(screen.InsideStartOf("Ana"));
+        Assert.True(screen.WaitForShown(cards["contact:a1"]), "The first card didn't show.");
+        screen.RestOn(screen.InsideStartOf("Bo Li"));
+
+        Assert.True(screen.WaitForShown(cards["contact:b2"]), "The second card didn't show.");
+    }
+
     private static PaletteColor Red => Palette.Colors.Single(color => color.Name == "red");
 
     private static Color Parse(string hex) => (Color)ColorConverter.ConvertFromString(hex);
@@ -306,7 +517,7 @@ public class FormattedTitleTests
     {
         private readonly Window window;
 
-        public TitleScreen(bool dark = false)
+        public TitleScreen(bool dark = false, double width = 480)
         {
             Theme = new FakeTheme { IsDark = dark };
             Browser = new FakeDefaultBrowser();
@@ -318,7 +529,7 @@ public class FormattedTitleTests
             var around = new Border { Child = Title };
             around.MouseLeftButtonUp += (_, _) => ParentClicks++;
             around.MouseUp += (_, _) => ParentClicks++;
-            window = new Window { Content = around, Width = 480, Height = 120 };
+            window = new Window { Content = around, Width = width, Height = 160 };
             window.Show();
         }
 
@@ -376,6 +587,83 @@ public class FormattedTitleTests
             }
 
             return element as Hyperlink;
+        }
+
+        /// <summary>The place of the last character of the first run that holds the text, in the title's coordinates.</summary>
+        public Rect LastCharOf(string text)
+        {
+            window.UpdateLayout();
+            var run = Run(text);
+            return CharBox(run.ContentEnd.GetPositionAtOffset(-1)!);
+        }
+
+        /// <summary>The place of every character of the first run that holds the text, in the title's coordinates.</summary>
+        public Rect[] CharsOf(string text)
+        {
+            window.UpdateLayout();
+            var run = Run(text);
+            return [.. Enumerable.Range(0, run.Text.Length).Where(i => run.Text[i] != ' ').Select(i => CharBox(run.ContentStart.GetPositionAtOffset(i)!))];
+        }
+
+        // A caret rectangle has no width, so a character's box spans from the caret before it to the caret after it, on its own line.
+        private static Rect CharBox(TextPointer before)
+        {
+            var start = before.GetCharacterRect(LogicalDirection.Forward);
+            var end = before.GetPositionAtOffset(1)!.GetCharacterRect(LogicalDirection.Backward);
+            return new Rect(start.TopLeft, end.BottomLeft);
+        }
+
+        /// <summary>A point in the title's coordinates just inside the start of the first run that holds the text, halfway down its line.</summary>
+        public Point InsideStartOf(string text)
+        {
+            window.UpdateLayout();
+            var rect = Run(text).ContentStart.GetCharacterRect(LogicalDirection.Forward);
+            return new Point(rect.X + 2, rect.Y + rect.Height / 2);
+        }
+
+        /// <summary>A point in the title's coordinates just inside the end of the first run that holds the text, halfway down its last line.</summary>
+        public Point InsideEndOf(string text)
+        {
+            window.UpdateLayout();
+            var rect = Run(text).ContentEnd.GetCharacterRect(LogicalDirection.Backward);
+            return new Point(rect.X - 2, rect.Y + rect.Height / 2);
+        }
+
+        /// <summary>Puts the real pointer at the title's point and raises the mouse move a pointer there raises, as a pointer arriving does.</summary>
+        public void RestOn(Point inTitle)
+        {
+            var onScreen = Title.PointToScreen(inTitle);
+            Win32.MoveCursor(new Win32.Point { X = (int)onScreen.X, Y = (int)onScreen.Y });
+            Title.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount)
+            {
+                RoutedEvent = Mouse.PreviewMouseMoveEvent,
+                Source = Title,
+            });
+        }
+
+        /// <summary>Lets the dispatcher work until the card is on screen, or ten seconds pass; says whether it showed.</summary>
+        public bool WaitForShown(FrameworkElement card)
+        {
+            if (card.IsLoaded)
+            {
+                return true;
+            }
+
+            var frame = new DispatcherFrame();
+            RoutedEventHandler loaded = (_, _) => frame.Continue = false;
+            var timeout = new DispatcherTimer(TimeSpan.FromSeconds(10), DispatcherPriority.Normal, (_, _) => frame.Continue = false, Title.Dispatcher);
+            card.Loaded += loaded;
+            try
+            {
+                Dispatcher.PushFrame(frame);
+            }
+            finally
+            {
+                timeout.Stop();
+                card.Loaded -= loaded;
+            }
+
+            return card.IsLoaded;
         }
 
         public Run Run(string text) => Runs().First(run => run.Text.Contains(text));

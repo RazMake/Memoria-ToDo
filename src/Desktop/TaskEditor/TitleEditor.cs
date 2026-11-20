@@ -17,7 +17,7 @@ public sealed class TitleEditor : UserControl
 
     public TitleEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, SaveKeys saveKeys, ILogger logger)
-        : this(new PickerLists(tasks, contacts, palette), Argument.Required(saveKeys), theme, time, clipboard, Argument.Required(logger))
+        : this(new PickerLists(tasks, contacts, palette, theme), Argument.Required(saveKeys), theme, time, clipboard, Argument.Required(logger))
     {
     }
 

@@ -1,4 +1,6 @@
 Memoria.ToDo.Desktop.TaskEditor.AddWindow
+Memoria.ToDo.Desktop.TaskEditor.ContactAliasList
+static Memoria.ToDo.Desktop.TaskEditor.ContactAliasList.Attach(System.Windows.Controls.TextBox! box, Memoria.ToDo.Shared.Contacts.IContacts! contacts, Memoria.ToDo.Desktop.Platform.ITheme! theme) -> void
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.Close() -> void
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.Show() -> void

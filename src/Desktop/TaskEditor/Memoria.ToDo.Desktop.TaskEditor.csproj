@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
+    <ProjectReference Include="..\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
     <ProjectReference Include="..\..\Shared\Contacts\Memoria.ToDo.Shared.Contacts.csproj" />
     <ProjectReference Include="..\..\Shared\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />

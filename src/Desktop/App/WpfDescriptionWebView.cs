@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -9,6 +10,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Serilog;
 using static Memoria.ToDo.Desktop.App.DevTools;
+using Point = System.Windows.Point;
 
 namespace Memoria.ToDo.Desktop.App;
 
@@ -39,6 +41,9 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
     private Task<int>? _root;
     private int _page;
 
+    // Completes with true once the page shown has been measured and the browser's viewport has taken the element's size, and with
+    // false when that page is replaced or the view ends first. A new page gets a new one.
+    private TaskCompletionSource<bool> _sized = new(TaskCreationOptions.RunContinuationsAsynchronously);
     // Counts the drag steps and the pages shown, so a measurement that finishes after either knows it is stale.
     private int _drag;
     private int _draggedBox;
@@ -110,6 +115,8 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
     // no new one starts, since the page being replaced is about to lose the node ids a measurement holds.
     private void Navigate(string page)
     {
+        _sized.TrySetResult(false);
+        _sized = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _measurement++;
         _page++;
         _drag++;
@@ -154,6 +161,7 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
         }
 
         _disposed = true;
+        _sized.TrySetResult(false);
         _pages.Clear();
         _dragPause.Stop();
         if (_resized is not null)
@@ -247,6 +255,8 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
 
         core.NavigationCompleted += OnNavigationCompleted;
         _control.SizeChanged += (_, _) => RemeasureIfIdle();
+        // A new zoom changes the page's size on screen and the width it lays out in.
+        _control.ZoomFactorChanged += (_, _) => RemeasureIfIdle();
     }
 
     private void OnFrameResized(object? sender, CoreWebView2DevToolsProtocolEventReceivedEventArgs e) => RemeasureIfIdle();
@@ -324,6 +334,13 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
     private async void MeasureHeight()
     {
         var measurement = ++_measurement;
+        // The element is no longer known to fit the browser's viewport, until this measurement finds it does.
+        if (_sized.Task is { IsCompletedSuccessfully: true, Result: true })
+        {
+            _sized = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+
+        var sized = _sized;
         try
         {
             var core = _control.CoreWebView2;
@@ -332,7 +349,12 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
             var box = await CallAsync(core, "DOM.getBoxModel", $"{{\"nodeId\":{html.GetProperty("nodeId").GetInt32()}}}");
             if (!_disposed && measurement == _measurement)
             {
-                _control.Height = Math.Ceiling(box.GetProperty("model").GetProperty("height").GetDouble());
+                // The box is in CSS pixels, which the zoom makes that many device-independent units each on screen.
+                _control.Height = Math.Ceiling(box.GetProperty("model").GetProperty("height").GetDouble() * _control.ZoomFactor);
+                if (await ViewportFitsControl(core) && !_disposed && measurement == _measurement)
+                {
+                    sized.TrySetResult(true);
+                }
             }
         }
         catch (Exception failure)
@@ -344,6 +366,18 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
                 Fail(failure);
             }
         }
+    }
+
+    // Whether the browser has taken the control's size as its viewport. A new height reaches it a moment after the element
+    // is given it, and a point outside the viewport has no node, so a lookup waits for this. While it is false, the viewport's
+    // own resize raises Page.frameResized, which measures again and asks once more.
+    private async Task<bool> ViewportFitsControl(CoreWebView2 core)
+    {
+        var metrics = await CallAsync(core, "Page.getLayoutMetrics", "{}");
+        var viewport = metrics.GetProperty("cssLayoutViewport");
+        var zoom = _control.ZoomFactor;
+        return Math.Abs(viewport.GetProperty("clientHeight").GetDouble() - (_control.Height / zoom)) <= 1
+            && Math.Abs(viewport.GetProperty("clientWidth").GetDouble() - (_control.ActualWidth / zoom)) <= 1;
     }
 
     // Sends the page's document and its image boxes to the browser, which tells of a changed style only for nodes
@@ -428,6 +462,42 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
         }
     }
 
+    // The mention under the point, found by MentionLookup. DevTools works in CSS pixels, which are WPF's device-independent units
+    // times the control's zoom factor (MeasureHeight reads the box model at zoom 1), so the lookup converts both ways. A lookup
+    // never fails the view: only page load and measurement failures do. An answer about a page that a newer one replaced, or after
+    // a failure, is null.
+    public async Task<MentionAt?> MentionAtAsync(Point point)
+    {
+        if (_disposed || _failed || !_pageLoaded || _pages.IsLoading)
+        {
+            return null;
+        }
+
+        var page = _page;
+        var sized = _sized;
+        MentionAt? found;
+        try
+        {
+            // A lookup before the browser has the element's size would find nothing where a mention is.
+            if (!await sized.Task)
+            {
+                return null;
+            }
+
+            var core = _control.CoreWebView2;
+            await (_root ??= BindPage(core, _page));
+            found = await new MentionLookup(new CoreDevToolsCalls(core), _logger, () => _disposed || _failed || page != _page)
+                .FindAsync(point, _control.ZoomFactor);
+        }
+        catch (Exception)
+        {
+            // Binding the page failed; the measurement that shares it reports that failure. Nothing may escape to the caller's hover.
+            return null;
+        }
+
+        return _disposed || _failed || page != _page ? null : found;
+    }
+
     // Raised once, so the exception reaches the listener and not the unhandled-exception handler.
     private void Fail(Exception failure)
     {
@@ -437,6 +507,7 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
         }
 
         _failed = true;
+        _sized.TrySetResult(false);
         _logger.Error(failure, "The description view failed");
         Failed?.Invoke(this, failure.Message);
     }

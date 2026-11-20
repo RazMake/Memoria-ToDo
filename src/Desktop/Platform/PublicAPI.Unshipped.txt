@@ -64,6 +64,23 @@ Memoria.ToDo.Desktop.Platform.SplitPanes
 Memoria.ToDo.Desktop.Platform.SplitPanes.SplitPanes(System.Windows.UIElement! left, double leftShare, double leftMinWidth, System.Windows.UIElement! right, double rightShare, double rightMinWidth) -> void
 Memoria.ToDo.Desktop.Platform.SearchBand
 Memoria.ToDo.Desktop.Platform.SearchBand.SearchBand() -> void
+Memoria.ToDo.Desktop.Platform.SearchBand.Box.get -> System.Windows.Controls.TextBox!
+Memoria.ToDo.Desktop.Platform.HoverCard
+Memoria.ToDo.Desktop.Platform.HoverCard.HoverCard(System.Windows.FrameworkElement! owner, System.Func<System.Windows.Point, System.Threading.Tasks.Task<Memoria.ToDo.Desktop.Platform.HoverPart?>!>! partAt) -> void
+Memoria.ToDo.Desktop.Platform.HoverPart
+Memoria.ToDo.Desktop.Platform.HoverPart.Box.get -> System.Windows.Rect
+Memoria.ToDo.Desktop.Platform.HoverPart.Box.init -> void
+Memoria.ToDo.Desktop.Platform.HoverPart.Card.get -> System.Windows.FrameworkElement!
+Memoria.ToDo.Desktop.Platform.HoverPart.Card.init -> void
+Memoria.ToDo.Desktop.Platform.HoverPart.Deconstruct(out System.Windows.Rect Box, out System.Windows.FrameworkElement! Card) -> void
+Memoria.ToDo.Desktop.Platform.HoverPart.Equals(Memoria.ToDo.Desktop.Platform.HoverPart? other) -> bool
+Memoria.ToDo.Desktop.Platform.HoverPart.HoverPart(System.Windows.Rect Box, System.Windows.FrameworkElement! Card) -> void
+override Memoria.ToDo.Desktop.Platform.HoverPart.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Platform.HoverPart.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Platform.HoverPart.ToString() -> string!
+static Memoria.ToDo.Desktop.Platform.HoverPart.operator !=(Memoria.ToDo.Desktop.Platform.HoverPart? left, Memoria.ToDo.Desktop.Platform.HoverPart? right) -> bool
+static Memoria.ToDo.Desktop.Platform.HoverPart.operator ==(Memoria.ToDo.Desktop.Platform.HoverPart? left, Memoria.ToDo.Desktop.Platform.HoverPart? right) -> bool
+Memoria.ToDo.Desktop.Platform.HoverPart.<Clone>$() -> Memoria.ToDo.Desktop.Platform.HoverPart!
 Memoria.ToDo.Desktop.Platform.SearchBand.Text.get -> string!
 Memoria.ToDo.Desktop.Platform.SearchBand.Text.set -> void
 Memoria.ToDo.Desktop.Platform.SearchBand.TextChanged -> System.EventHandler?

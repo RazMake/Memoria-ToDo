@@ -4,6 +4,23 @@ Memoria.ToDo.Desktop.FormattedView.FormattedDescription.FormattedDescription(Mem
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.ImageResized -> System.EventHandler<Memoria.ToDo.Desktop.FormattedView.ImageResize!>?
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.IsPreview.get -> bool
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.IsPreview.set -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.MentionCard.get -> System.Func<Memoria.ToDo.Shared.Rendering.Mention!, System.Windows.FrameworkElement?>?
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.MentionCard.set -> void
+Memoria.ToDo.Desktop.FormattedView.MentionAt
+Memoria.ToDo.Desktop.FormattedView.MentionAt.<Clone>$() -> Memoria.ToDo.Desktop.FormattedView.MentionAt!
+Memoria.ToDo.Desktop.FormattedView.MentionAt.Box.get -> System.Windows.Rect
+Memoria.ToDo.Desktop.FormattedView.MentionAt.Box.init -> void
+Memoria.ToDo.Desktop.FormattedView.MentionAt.Deconstruct(out int Mention, out System.Windows.Rect Box) -> void
+Memoria.ToDo.Desktop.FormattedView.MentionAt.Equals(Memoria.ToDo.Desktop.FormattedView.MentionAt? other) -> bool
+Memoria.ToDo.Desktop.FormattedView.MentionAt.Mention.get -> int
+Memoria.ToDo.Desktop.FormattedView.MentionAt.Mention.init -> void
+Memoria.ToDo.Desktop.FormattedView.MentionAt.MentionAt(int Mention, System.Windows.Rect Box) -> void
+override Memoria.ToDo.Desktop.FormattedView.MentionAt.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.FormattedView.MentionAt.GetHashCode() -> int
+override Memoria.ToDo.Desktop.FormattedView.MentionAt.ToString() -> string!
+static Memoria.ToDo.Desktop.FormattedView.MentionAt.operator !=(Memoria.ToDo.Desktop.FormattedView.MentionAt? left, Memoria.ToDo.Desktop.FormattedView.MentionAt? right) -> bool
+static Memoria.ToDo.Desktop.FormattedView.MentionAt.operator ==(Memoria.ToDo.Desktop.FormattedView.MentionAt? left, Memoria.ToDo.Desktop.FormattedView.MentionAt? right) -> bool
+Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView.MentionAtAsync(System.Windows.Point point) -> System.Threading.Tasks.Task<Memoria.ToDo.Desktop.FormattedView.MentionAt?>!
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Markdown.get -> string!
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Markdown.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.OpenFailed -> System.EventHandler<System.Exception!>?
@@ -12,6 +29,8 @@ Memoria.ToDo.Desktop.FormattedView.FormattedTitle
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.FormattedTitle(Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser) -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.get -> string!
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.set -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.MentionCard.get -> System.Func<Memoria.ToDo.Shared.Rendering.Mention!, System.Windows.FrameworkElement?>?
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.MentionCard.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.OpenFailed -> System.EventHandler<System.Exception!>?
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.OtherLinkClicked -> System.EventHandler<string!>?
 Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser

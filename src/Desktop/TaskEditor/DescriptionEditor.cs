@@ -21,7 +21,7 @@ public sealed class DescriptionEditor : UserControl
 
     public DescriptionEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, ILogger logger)
-                : this(tasks, new PickerLists(tasks, contacts, palette), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files, Argument.Required(logger))
+                : this(tasks, new PickerLists(tasks, contacts, palette, theme), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files, Argument.Required(logger))
     {
     }
 

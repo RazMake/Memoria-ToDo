@@ -71,7 +71,7 @@ public class LiveMentionsTests
     public void Search_matches_a_mentions_stored_text_and_not_its_live_text()
     {
         _services.Add($"Call {AnaOld} today");
-        var filter = new ListFilter();
+        var filter = new ListFilter(_services.Contacts);
 
         filter.SearchText = "Old Name";
         var byStored = filter.Matching(_services.Tasks);

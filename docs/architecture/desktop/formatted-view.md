@@ -20,7 +20,7 @@ The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-pre
 Proposed, each a decision to confirm:
 
 - Code in a title shows as the text look's code does: in its font and color, on its faded background.
-- A [mention](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) in a title shows its text on the text look's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), in the normal text color, and isn't a link: clicking it reports nothing and selects the row as a click on the title does. In a description, Rendering's page already shows it so. The text is whatever the Markdown it's given holds: the screen that shows it [swaps in the contact's current details](task-list.md#mentions-show-each-contacts-current-details) first, so the Formatted view needs no contacts. No public part changes.
+- A [mention](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) in a title shows its text on the text look's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), in the normal text color, and isn't a link: clicking it reports nothing and selects the row as a click on the title does. In a description, Rendering's page already shows it so. The text is whatever the Markdown it's given holds: the screen that shows it [swaps in the contact's current details](task-list.md#mentions-show-each-contacts-current-details) first, so the Formatted view needs no contacts. Resting the pointer on a mention shows the [card its user makes](#a-mention-shows-a-card-its-user-makes).
 - A shown title and description stop following the theme while they're off screen, so a closed Task View holds no subscription. They follow it through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), which the Task editor and Configure use too.
 
 ### A title's name is the text it shows
@@ -88,6 +88,30 @@ The user decided that an image is resized only while its description is edited, 
 - **A measurement that finishes late is dropped.** The report needs two DevTools round trips after the pause, and they can end after a new drag step, a new page, a failure, or a new press of the button. The web view counts the drag steps and the pages shown, and reports only if, once the round trips are done, the count is as it was at the pause, the page is the same, nothing has failed, and the button is still up. A late measurement that finds the button down again reports nothing and starts the pause again, as at the pause itself.
 - **The pause and the button are a small seam, so tests can drive the window above.** Proposed, a decision to confirm: `IDragPause`, internal to the desktop app, with `Start`, `Stop`, a `Tick` event, and `IsButtonDown`, which holds the `Mouse.LeftButton` read of the bullet before. The web view takes it through an internal constructor, with the dispatcher-timer pause as the default of the public one, which the composition root uses. A test drives the pause with a fake and fires the tick itself, since a test that waited for the real pause couldn't hit the time between the tick and the report without a sleep. The width measurement, the DevTools round trips that read the dragged box's image number and width, is a second internal constructor dependency, `IImageMeasure`, which the web view awaits before its stale checks. A test wraps the real measurement and holds its result, so it can make a new drag step between the measurement and the report. These two are the only test seams; no switch or hook is added to the web view.
 
+### A mention shows a card its user makes
+
+The user asked that resting the mouse pointer on any mention show a card with the contact's details. The Formatted view knows no contacts, so its user, the [Task list](task-list.md#resting-the-pointer-on-a-mention-shows-the-contacts-card), passes a function that makes the card from the mention; the Formatted view only finds which mention is under the pointer, and the platform's [hover card](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) shows it. The user decided that in a description, the web view finds the mention under the pointer through DevTools, with no script on the page, and the platform's hover card shows its card, so chips, titles, and descriptions share one card look and one Ctrl rule.
+
+**WPF sees the pointer over the page, and DevTools finds the mention under it.** WPF raises mouse moves over `WebView2CompositionControl` while the page has the pointer, so no page script is needed to say where it is. [DOM.getNodeForLocation](https://chromedevtools.github.io/devtools-protocol/tot/DOM/#method-getNodeForLocation), given that point, returns the mention's span. A point off a mention returns another element, so the web view walks up to the nearest element with `data-mention` and reports no mention when there is none. Confirmed by a run on 2026-11-20 with WebView2 1.0.4314.35: five cursor moves raised five mouse moves, and the call returned the `span` with `data-mention="3"`.
+
+Proposed, each a decision to confirm:
+
+- **The formatted title and the formatted description each take the card function**, which gets the mention as [Rendering's mention list](../rendering.md#public-interface) finds it in the shown Markdown, with its address and template. With no function, or when it makes no card, nothing shows, as today.
+- **In a title, each mention's text is the part the pointer rests on.** Every character of it counts whole, so the pointer on the right half of its last character is still on the mention. A mention whose text wraps onto two or more lines counts as one part: one box from the top of its first line to the bottom of its last, and from the leftmost to the rightmost edge of its text on any of those lines. So moving anywhere within a wrapped mention never closes and reopens its card.
+- **In a description, the web view finds the mention by the number** [Rendering's page](../rendering.md#a-mention-shows-on-a-colored-background) gives each mention, and reports its box. The Formatted view maps the number back to the mention, counted in the same order. The web view asks through `DOM.getNodeForLocation` and [DOM.getBoxModel](https://chromedevtools.github.io/devtools-protocol/tot/DOM/#method-getBoxModel), as it already [measures the page](#the-app-supplies-the-web-view-and-the-browser).
+- **The point and the box are in the web view element's WPF coordinates at any browser zoom.** The page counts in CSS pixels, which match WPF's units only at 100% zoom, so the web view divides the point by the browser's zoom factor before asking, and multiplies the box it reads by it.
+- **Each lookup releases the browser objects it makes**, such as the remote object for the node it reads, whether it finds a mention, finds none, comes too late, or fails. So resting on a description many times doesn't grow the page's memory.
+- **An answer that comes after the page changed, or after the pointer moved on, shows nothing.**
+- **A lookup waits until the browser has the element's size.** Decision to confirm: a freshly loaded page, or one whose width or zoom changed, is laid out at a size the browser corrects a moment later, and a point outside the browser's viewport has no node. So the web view answers a lookup only once the browser's viewport matches the element, and an answer about a page replaced meanwhile is none. To fit, the element's height is the page's height in CSS pixels times the zoom factor, so a zoomed page isn't cut.
+- **An edit's Preview shows cards too**, as a mention there is a mention like any other.
+
+The user decided that a failed lookup never stops descriptions showing formatted:
+
+- **A failed lookup shows no card, and the page stays formatted.** The next rest on a mention looks again.
+- **A point with no node under it, or a lookup the page outran, is no card, not a failure.** The page outran it when a newer page replaced it, or the node it found is gone; neither is logged, as [Logging](../logging.md#every-operation-and-every-failure-is-logged-where-it-happens) treats an expected outcome.
+- **Any other lookup error is logged**, at Warning, by the web view, and doesn't raise `Failed`.
+- **Only these make the web view fail**, so descriptions show as Markdown source: its browser can't start, or the shown page can't load or be measured. Measuring covers the page's height and a [resized image's width](#a-resized-image-is-reported-not-saved).
+
 ### The page never holds the keyboard focus
 
 The user decided that every key must always reach the window, so the page never holds the keyboard focus. The desktop app's web view isn't focusable: a click on the page moves the focus to the nearest focusable ancestor, such as the right side's scrolling pane, and Tab skips the page. Without this, the browser keeps the function keys for itself: a run showed it raises no event for them, so the window never saw F5. With it, [Esc, and the keys with Ctrl or Alt held](task-list.md#esc-goes-back-one-step-then-closes-task-view), reach the window as they do from any control. The page keeps its mouse: dragging an image's corner and clicking a link still work, and so does the mouse wheel over it. Selecting text in the page, and so copying it with Ctrl+C, is the cost: the page has no focus to copy from. This is a decision to confirm.
@@ -97,15 +121,15 @@ Proposed, each a decision to confirm:
 - The clone's address is `https://clone.memoria-todo.example/`. The `.example` name can never be a real site ([RFC 2606](https://www.rfc-editor.org/rfc/rfc2606.html)).
 - WebView2 keeps its browser data in `%LocalAppData%\Memoria-ToDo\WebView2\`, outside the folder the installer replaces on update.
 - A web view serves the clone folder set when it was made. After Configure picks another folder, images load from it once Task View opens again. The waiting edit images' folder never changes while the app runs.
-- When WebView2 refuses the shown page, such as a page over the 2 MB that [NavigateToString](https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.navigatetostring) takes, or the shown page doesn't finish loading or can't be measured, the web view fails, as when its browser can't start: every description shows as Markdown source until Task View opens again. For a page that didn't load, the reason is "The page did not load: " followed by WebView2's error status. The web view doesn't check a page's size first, since WebView2 sets the limit. Showing only that one description as source would need the Formatted view to recover page by page, for a failure that's rare.
+- When WebView2 refuses the shown page, such as a page over the 2 MB that [NavigateToString](https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.navigatetostring) takes, or the shown page doesn't finish loading or can't be measured, the web view fails, as when its browser can't start: every description shows as Markdown source until Task View opens again. For a page that didn't load, the reason is "The page did not load: " followed by WebView2's error status. The web view doesn't check a page's size first, since WebView2 sets the limit. Showing only that one description as source would need the Formatted view to recover page by page, for a failure that's rare. A failed [mention lookup](#a-mention-shows-a-card-its-user-makes) never makes the web view fail, as the user decided.
 
 ## Public interface
 
 The Task list uses these parts, and the composition root implements the two ports:
 
-- **The formatted title**: shows a title's Markdown as WPF text, [named by that text](#a-titles-name-is-the-text-it-shows), opens web links, and reports other links.
-- **The formatted description**: shows a description's Markdown in its web view, opens web links, and reports other links. As an edit's preview, it shows images with resize corners, reports [resized images](#a-resized-image-is-reported-not-saved), and opens no link. If the web view fails, it shows the Markdown source with a message instead, from then on.
-- **The description web view**, a port: the WPF element, the clone's address, showing a page, reporting a clicked link's address, a resized image, and a failure that stops it showing pages, and releasing its browser.
+- **The formatted title**: shows a title's Markdown as WPF text, [named by that text](#a-titles-name-is-the-text-it-shows), opens web links, reports other links, and shows the [card its user makes](#a-mention-shows-a-card-its-user-makes) for a mention under the pointer.
+- **The formatted description**: shows a description's Markdown in its web view, opens web links, and reports other links. As an edit's preview, it shows images with resize corners, reports [resized images](#a-resized-image-is-reported-not-saved), and opens no link. If the web view fails, it shows the Markdown source with a message instead, from then on. It shows a mention's card as the title does.
+- **The description web view**, a port: the WPF element, the clone's address, showing a page, reporting a clicked link's address, a resized image, and a failure that stops it showing pages, finding the mention under a point, and releasing its browser.
 - **The default browser**, a port: opens an address.
 
 Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) builds it, in `Memoria.ToDo.Desktop.FormattedView`, and row 11 adds `ImageResize`, the two `ImageResized` events, and `FormattedDescription.IsPreview`. Proposed: `IsPreview`'s shape. This is a decision to confirm. The user decided that the formatted title no longer takes the palette, since the [text look](../rendering.md#public-interface) gives every color it shows.
@@ -181,7 +205,8 @@ public interface IDescriptionWebView : IDisposable
     event EventHandler<ImageResize>? ImageResized;
 
     /// Raised once, with the reason, when the web view can't show pages any more: its browser can't
-    /// start, or it can't load or measure the shown page. It can be raised while Show runs.
+    /// start, or it can't load or measure the shown page. A failed MentionAtAsync never raises it.
+    /// It can be raised while Show runs.
     event EventHandler<string>? Failed;
 }
 
@@ -194,9 +219,31 @@ public interface IDefaultBrowser
 }
 ```
 
+For [a mention's card](#a-mention-shows-a-card-its-user-makes), proposed, each a decision to confirm: the formatted title and the formatted description each gain one property, and the web view port one method, which the composition root's web view implements:
+
+```csharp
+// On FormattedTitle and on FormattedDescription:
+
+    /// Makes the card that shows while the pointer rests on a mention, from the mention as Rendering's
+    /// Mentions.In finds it in Markdown; a null card shows none. Null, at first, shows no cards.
+    public Func<Mention, FrameworkElement?>? MentionCard { get; set; }
+
+// On IDescriptionWebView:
+
+    /// The mention under point, in Element's coordinates at any browser zoom, on the shown page: its number, counted
+    /// from 0 as Rendering's page numbers mentions, and its box in Element's coordinates. Null when no mention is there,
+    /// when the page changed or the web view failed before the answer came, or when the lookup fails; a failed lookup
+    /// is logged and never raises Failed. Never throws.
+    Task<MentionAt?> MentionAtAsync(Point point);
+
+/// A mention on the description page: its number, counted from 0, and its box in the web view's coordinates.
+public sealed record MentionAt(int Mention, Rect Box);
+```
+
 ## Failure modes
 
 - **The web view fails**: its browser can't start, for example when the WebView2 Runtime is missing, or, as [proposed](#the-app-supplies-the-web-view-and-the-browser), it can't load or measure the shown page, so the page would show cut, with no height, or not at all. The description shows as Markdown source, with a message saying why, from then on. Titles don't need a web view, so they still show formatted.
+- **Finding the mention under the pointer fails**: the user sees no card, and the description stays formatted. The web view logs the error at Warning, unless it only found no node or the page changed, as the user [decided](#a-mention-shows-a-card-its-user-makes).
 - **A link fails the browser check**: it opens nothing, and the Formatted view reports its address.
 - **The default browser can't open a web link**: the Formatted view reports the error, and its user shows it.
 
@@ -242,6 +289,16 @@ The options below were considered and rejected, grouped by decision.
   - **A second virtual host mapping for the waiting images, at an address of its own**: the page would have to name that address for each waiting image, but Rendering can't tell which images wait. Tasks, the Task list, and Rendering's page would all change, and a link would change address at Save.
   - **The virtual host mapping for the clone, plus a WebResourceRequested handler for the waiting images on the same host**: WebView2 never raises the event for a mapped host.
   - **Serving every file in both folders, as the mapping did**: no page loads anything but images, so serving task files and settings only widens what a page could read.
+- How a description shows a mention's card:
+  - **No cards in descriptions, only in titles and the editor**: the user asked for cards anywhere a contact is mentioned.
+  - **A card drawn by the page itself, shown by CSS when the pointer is over the mention**: no port change, but the page can't tell Ctrl is held, the card would look unlike the one in titles, and every page would carry every mentioned contact's details.
+  - **The mention's `title` attribute, as the browser's own tooltip**: plain text only, with no Ctrl and a second look.
+  - **A script on the page that reports the pointer**: the page [runs no scripts](../rendering.md#the-web-view-runs-no-scripts-and-loads-images-only-from-the-clones-address).
+- How the Formatted view gets a mention's card (proposed, a decision to confirm):
+  - **The Formatted view uses Contacts and the Contact list itself**: it would need contacts only for this, while today it [needs none](#it-shows-what-rendering-decides-never-markdown).
+  - **An event that reports the hovered mention, which the Task list answers with a card**: the hover's timing and closing would then sit in the Task list, away from the part that finds the mention.
+- What a failed mention lookup does:
+  - **The web view fails, and descriptions show as source from then on**: a pointer resting on a mention would turn off a page that shows fine, until Task View opens again.
 
 ## Open questions
 

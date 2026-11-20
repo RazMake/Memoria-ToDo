@@ -69,11 +69,69 @@ internal static class EditorFields
     /// <summary>The element that lists the tasks a reference can point to, as the items of an items control, while the task list is open. An item is the task's title as a reader sees it.</summary>
     public const string TaskReferenceList = "TaskReferenceList";
 
-    /// <summary>The element that lists the contacts the typed "@" matches, as the items of an items control, while the mention list is open. An item is the contact's text in the current template.</summary>
+    /// <summary>
+    /// The element that lists the contacts the typed "@" matches, shown in a popup, as the items of an items control, while the mention list is open.
+    /// An item is the row's plain text "Full Name (alias)", the alias being the ID when the contact has none. Each row is a button named by that text,
+    /// with the full name in bold and the alias in italics. Above the rows, the child with id <see cref="MentionHeader"/> is a button whose content is the highlighted
+    /// contact in the current template; under it, the text block with id <see cref="MentionHint"/> reads "Tab or click: next template", shown while there are two or more templates.
+    /// </summary>
     public const string MentionList = "MentionList";
+
+    /// <summary>The header button of the mention list.</summary>
+    public const string MentionHeader = "MentionHeader";
+
+    /// <summary>The help text block under the mention list's header.</summary>
+    public const string MentionHint = "MentionHint";
 
     /// <summary>The contacts on offer, in order: empty while the mention list is closed.</summary>
     public static IReadOnlyList<string> ShownMentions(DependencyObject root) => ShownItems(root, MentionList);
+
+    /// <summary>
+    /// The "@" list of a plain text box, or null while it is closed. It shows in a popup, a window of its own, so it is found through the
+    /// presentation sources, not through a window.
+    /// </summary>
+    public static FrameworkElement? ShownPopupMentionList() =>
+        PresentationSource.CurrentSources.OfType<System.Windows.Interop.HwndSource>()
+            .Select(source => source.RootVisual)
+            .OfType<FrameworkElement>()
+            .Where(root => root is not Window)
+            .Select(root => TextFields.FindShowing(root, MentionList))
+            .FirstOrDefault(list => list is not null);
+
+    /// <summary>The contacts the "@" list of a plain text box offers, in order: empty while it is closed.</summary>
+    public static IReadOnlyList<string> ShownPopupMentions() =>
+        ShownPopupMentionList() is System.Windows.Controls.ItemsControl list ? [.. list.Items.Cast<string>()] : [];
+
+    /// <summary>The texts a card shows, read by showing it in a window of its own for a moment.</summary>
+    public static IReadOnlyList<string> TextsOfCard(FrameworkElement card)
+    {
+        var window = new Window { Content = card, SizeToContent = SizeToContent.WidthAndHeight, ShowActivated = false };
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            return
+            [
+                .. VisualTree.Visuals(card).OfType<System.Windows.Controls.TextBlock>().Select(OpenWindows.TextOf).Where(text => text.Length > 0),
+            ];
+        }
+        finally
+        {
+            window.Content = null;
+            window.Close();
+        }
+    }
+
+    /// <summary>A point in the editor's coordinates just inside the text at the offset, halfway down its line.</summary>
+    public static Point InsideAt(StyledTextEditor editor, int offset)
+    {
+        editor.UpdateLayout();
+        var view = editor.TextArea.TextView;
+        var location = editor.Document.GetLocation(offset);
+        var position = new ICSharpCode.AvalonEdit.TextViewPosition(location.Line, location.Column);
+        var inView = view.GetVisualPosition(position, ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineMiddle) - view.ScrollOffset;
+        return view.TranslatePoint(new Point(inView.X + 4, inView.Y), editor);
+    }
 
     /// <summary>The colors on offer, in order: empty while the color list is closed.</summary>
     public static IReadOnlyList<string> ShownColors(DependencyObject root) => ShownItems(root, ColorList);

@@ -22,7 +22,7 @@ The user decided that titles and descriptions show formatted, as a reader sees t
 - **Titles show as native Windows Presentation Foundation (WPF) text**, so they need no web view.
 - **The selected task's description shows in the one web view**, which the Task list makes when Task View opens and releases when it closes. It stays on the right side, so selecting another task only gives it another page.
 - **Links**: a web link opens in the default browser, as the [Formatted view](formatted-view.md#web-links-open-in-the-default-browser-and-other-links-are-reported) does. A link to another task selects that task, which the Task list tells by asking [Tasks](../tasks.md#a-time-ordered-id-names-each-task-its-file-and-links-to-it). Every other link does nothing, as [Rendering](../rendering.md#only-web-links-open-in-the-browser) decides.
-- **Mentions**: a [mention of a contact](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) shows the contact's [current details](#mentions-show-each-contacts-current-details) on [Rendering's mention background](../rendering.md#a-mention-shows-on-a-colored-background), in titles and descriptions alike, through the Formatted view; clicking it does nothing.
+- **Mentions**: a [mention of a contact](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) shows the contact's [current details](#mentions-show-each-contacts-current-details) on [Rendering's mention background](../rendering.md#a-mention-shows-on-a-colored-background), in titles and descriptions alike, through the Formatted view; clicking it does nothing. Resting the pointer on it shows the contact's [card](#resting-the-pointer-on-a-mention-shows-the-contacts-card).
 
 The user decided:
 
@@ -51,7 +51,16 @@ The user decided that a mention's text is rebuilt from the contact's current fie
 - **Task View swaps each mention's text before it shows a title or a description**, through [Rendering's mentions](../rendering.md#public-interface), with Contacts' live text for the mention's address and template. A mention Contacts has no text for keeps its stored text. The Formatted view then shows the result, and needs no contacts.
 - **When contacts change, such as after a sync or a save in the Contacts window, Task View shows the rows and the selected description again** with the new text. An open edit keeps its text; its chips show the new text, as the [Task editor](task-editor.md#typing-an-at-sign-mentions-a-contact) says.
 - **An edit's [Preview](#edit-description-has-an-edit-tab-and-a-preview-tab) swaps the draft's mentions too**, so it looks like the saved description will, and like the editor's chips. It shows again when contacts change, as the description does.
-- **Search matches the task as saved**, so a mention matches by its stored text, not its live text, as [Contacts](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) says.
+- **Search matches the task as saved**, so a plain word matches a mention by its stored text, not its live text, as [Contacts](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) says. A word that names a contact with "@" matches the [mentions of that contact](#search-narrows-the-list) instead, whatever their text.
+
+### Resting the pointer on a mention shows the contact's card
+
+The user asked that resting the mouse pointer on any mention show a card with the contact's details: the common ones by default, and every one while Ctrl is held. The [Contact list](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) makes the card and decides what it shows, the [Formatted view](formatted-view.md#a-mention-shows-a-card-its-user-makes) finds the mention under the pointer, and the platform's [hover card](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) decides when it opens and closes. The user decided that a mention whose contact Contacts can't find shows no card, as the [Contact list](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) says. Proposed, each a decision to confirm:
+
+- **Every mention Task View shows has a card**: in each row's title, in the selected task's description, in an edit's Preview, and on the chips of an open edit, which the [Task editor](task-editor.md#resting-the-pointer-on-a-chip-shows-the-contacts-card) shows.
+- **Task View passes the Formatted view a function that makes the card** from the mention's address, so the Formatted view still needs no contacts.
+- **A title inside a task reference shows no card**: its mentions became [plain text](task-editor.md#every-formatting-command-and-snippet-has-a-key) when the reference was inserted.
+- **The card doesn't stop a click**: the card shows only while the pointer rests, so a click on the mention still selects the row as before, and closes the card.
 
 ### A click on a group's tag collapses or expands it
 
@@ -218,7 +227,7 @@ The list scrolls during a drag, so a task or a group can go to a place off scree
 
 The user decided that Esc closes every window, one step per press, so one key press never loses the user's text, and Esc means "back one step" in Task View as it does in Add. Each press does the first of these that applies:
 
-1. **It closes an open list or menu**, such as the editor's snippet picker, the tag control's menu, or its Custom box and colors, which drop what was typed there, as in [Add](task-editor.md#a-click-on-the-pill-opens-the-tag-menu). The tag control's `CloseEdit` closes its menu first, then Custom, one per press.
+1. **It closes an open list or menu**, such as the editor's snippet picker, the search box's ["@" list](#search-narrows-the-list), the tag control's menu, or its Custom box and colors, which drop what was typed there, as in [Add](task-editor.md#a-click-on-the-pill-opens-the-tag-menu). The tag control's `CloseEdit` closes its menu first, then Custom, one per press.
 2. **It leaves an edit**, dropping a tag chosen in it, with its Undo bar when a description edit had changes, as [Edit Description](#edit-description-turns-the-right-side-into-the-editor) and [Edit Title](#edit-title-edits-the-title-in-its-row) say.
 3. **It empties the search when the search box holds text**, from anywhere in the window, so every task shows again and Task View stays open. The user asked for this.
 4. **It closes Task View**, as its close button does, so a pending Undo finishes, as above.
@@ -301,6 +310,20 @@ Proposed, each a decision to confirm:
 - Search looks in titles, descriptions, and tags. Each group shows only its tasks that match, and a group with none is hidden. An empty box shows every task.
 - Opening Task View from the tray while it is open also empties the search, since the tray and the shortcut share the window's Show.
 - The resolved count, below, counts only the resolved tasks that match the search.
+
+The user asked that typing "@" in the search box insert the chosen contact's alias, and that the search then find every task that refers to that contact in its title or description. Proposed, each a decision to confirm:
+
+- **"@" in the search box opens the Task editor's [alias list](task-editor.md#a-plain-text-box-can-offer-contacts-by-alias)**, where Editing's rule opens the "@" list: at the box's start, or after a character that isn't a letter or a digit. It looks and works like the editor's "@" list, without the template header. The search box's own Down and Up, to the top or bottom row, work only while the list is closed, and then exactly as before the list existed.
+- **Choosing a contact puts "@" and its alias in the box**, or its ID when it has no alias, in place of the "@" and what was typed after it, and the list narrows at once.
+- **A search word that starts with "@" names a contact when the rest of it finds one**, through Contacts' [Find](../contacts.md#public-interface), which looks up an alias first, then an ID, ignoring case. Typing `@anap` by hand works the same as choosing it.
+- **Every word must still match**, as today: `@anap budget` finds the tasks that mention Ana and also hold "budget". Words without "@" match through [Tasks' search](../tasks.md#tags-and-search-ignore-case), unchanged.
+- **The search follows contact changes**: when contacts change, Task View matches the box's text again, so a word that now names a contact, or no longer does, takes effect without typing.
+
+The user decided:
+
+- **A word that names a contact matches only a task whose title or description holds a mention of that contact**: a mention whose address holds the contact's ID, ignoring case, whatever its stored text and template.
+- **A word that starts with "@" but finds no contact matches as a plain word**, through Tasks' search, so nothing typed is ever ignored. So does "@" alone, and a name two contacts share, which [finds nobody](../contacts.md#a-name-two-contacts-share-points-to-nobody).
+- **The Task list does this matching itself**: it splits off the words that name a contact, finds each task's mentions with [Rendering's mention list](../rendering.md#public-interface), reads each mention's ID with the platform's [contact address](../modules.md#a-contact-address-has-one-home), and passes the other words to Tasks' search. Tasks still knows no contacts. When the Android Task list needs the same matching, the second use moves it to a shared home, as the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) says.
 
 ### The search bar spans the window in its own shade
 
@@ -445,6 +468,16 @@ public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOr
 
 The user decided that Task View uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), for [live mention text](#mentions-show-each-contacts-current-details) and the editors' "@" list. Proposed, a decision to confirm: Contacts' `IContacts contacts` joins `Create` right after `tagOrder`, and Task View passes it to the Title and Description editors, as the [Task editor](task-editor.md#public-interface) takes them. The user also decided that Task View's split bar and search band come from the [desktop platform](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), shared with the Contacts window, with no change in behavior; its drag parts moved there too, and the composition root passes the mouse as `Create`'s last argument, `IDragPointer pointer`, shown above. Contacts' argument is not implemented.
 
+For the [search box's "@" list](#search-narrows-the-list) and the [contact cards](#resting-the-pointer-on-a-mention-shows-the-contacts-card), the user decided:
+
+- **The Task list may use the [Contact list](contact-list.md#public-interface)**, for its contact card, as the [module map](../modules.md#module-map) says.
+- **It attaches the Task editor's `ContactAliasList` to the search band's box**, which the platform's [search band](README.md#the-search-band-publishes-its-box-for-the-alias-list) publishes.
+
+Proposed, each a decision to confirm:
+
+- **It gives the Formatted view's title and description a card function** that calls the Contact list's `ContactCard.For` with Contacts, the theme, and the mention's address.
+- **`Create` takes nothing new**: it already takes Contacts and the theme.
+
 ## Failure modes
 
 - **The web view fails**, for example when the WebView2 Runtime is missing: the description shows as Markdown source, with a message saying why, as the [Formatted view](formatted-view.md#failure-modes) does. So does an edit's Preview, where no image can then resize. The rest of the list works.
@@ -573,6 +606,17 @@ The options below were considered and rejected, grouped by decision.
   - **"Tag changed" for both a choice and a clear**: the bar wouldn't say the tag is gone.
 - What an edit's Preview shows of a mention:
   - **The stored text**: the Preview would show a mention's old text while the chip in the editor shows the new.
+- What "@" in the search box inserts (proposed, a decision to confirm):
+  - **A whole mention, as in the editor**: the box would hold Markdown the user can't read or edit.
+  - **The full name**: it holds spaces, so it would split into words that match anyone sharing a first name.
+- What a search word starting with "@" does when it finds no contact:
+  - **It matches nothing**: the list would always empty while the user types.
+  - **It's ignored**: a wrong name would silently search for less than the user typed.
+- What a word that names a contact matches:
+  - **Mentions, plus the contact's alias or full name written as plain text**: a full name such as "Ana Pop" can match text that isn't a mention, and the rule grows.
+- Where the matching of "@" words lives:
+  - **In Tasks' search, with a function for "@" words that the caller passes**: a Tasks interface change for one caller.
+  - **In Rendering, as a function that says whether Markdown mentions an ID**: a search rule in the module that draws text, with no second caller yet.
 
 Who shows formatted Markdown, and who opens links, is decided in the [Formatted view](formatted-view.md#ruled-out).
 

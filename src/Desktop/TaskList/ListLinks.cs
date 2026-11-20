@@ -34,7 +34,7 @@ internal sealed class ListLinks(ITasks tasks, ListFilter filter, ListContent con
         }
 
         // Clear the search only when it hides the task.
-        if (filter.SearchText.Length > 0 && tasks.Search(filter.SearchText).All(task => task.Id != id))
+        if (filter.SearchText.Length > 0 && filter.Matching(tasks).All(task => task.Id != id))
         {
             filter.ClearSearch();
         }

@@ -46,7 +46,7 @@ internal static class TextEditorCommands
     private static string Lf(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
 
     // The characters between the text's common start and common end with the new text.
-    private static (int Start, int OldLength, string New) ChangedPart(string old, string now)
+    internal static (int Start, int OldLength, string New) ChangedPart(string old, string now)
     {
         var shortest = Math.Min(old.Length, now.Length);
         var start = 0;

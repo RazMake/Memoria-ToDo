@@ -339,7 +339,7 @@ public class TagChangesTests
         var shown = _tasks.Add("Buy milk");
         var doomed = _tasks.Add("Call Ana");
         _changes.Choose(shown, "home");
-        var deletion = new TaskDeletion(_tasks.Tasks, new ListContent(_tasks.Tasks, new ListFilter()), _pending, _reports.Add, () => { }, Serilog.Core.Logger.None);
+        var deletion = new TaskDeletion(_tasks.Tasks, new ListContent(_tasks.Tasks, new ListFilter(_tasks.Contacts)), _pending, _reports.Add, () => { }, Serilog.Core.Logger.None);
 
         deletion.Start(doomed.Id);
         _pending.Undo();

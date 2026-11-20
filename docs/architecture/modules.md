@@ -311,9 +311,9 @@ The desktop app has eight modules of its own:
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
 | Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs |
-| Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates |
-| Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates |
-| Contact list | The Contacts window: contacts grouped by file, in groups the user orders by dragging, beside the selected contact's details, with search, editing, adding, and deleting | [Contact list](desktop/contact-list.md) | Contacts |
+| Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips, and the "@" list for a plain text box that Task View's search box uses | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates, Contact list |
+| Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates, Contact list |
+| Contact list | The Contacts window: contacts grouped by file, in groups the user orders by dragging, beside the selected contact's details, with search, editing, adding, and deleting; and the contact card a mention shows | [Contact list](desktop/contact-list.md) | Contacts, Rendering |
 | Configure | The four global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 | Updates | Checking for a new version, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
@@ -324,9 +324,13 @@ Proposed, each a decision to confirm:
 - Shell may use Sync, so the tray shows sync status without going through Configure.
 - The Task list may use Sync, for its Sync button and the sync when Task View opens.
 
-The user decided that [Contacts](contacts.md) is a shared module of its own, that the desktop has a Contacts window with a fourth global shortcut, and that the Android Task editor and Task list mention contacts too. Proposed, a decision to confirm: the desktop module keeps the name Contact list, beside the shared Contacts, as the Task list sits beside Tasks; it uses only Contacts, since its split panes, search band, and drag come from the desktop platform.
+The user decided that [Contacts](contacts.md) is a shared module of its own, that the desktop has a Contacts window with a fourth global shortcut, and that the Android Task editor and Task list mention contacts too. Proposed, a decision to confirm: the desktop module keeps the name Contact list, beside the shared Contacts, as the Task list sits beside Tasks; it uses Contacts, and Rendering only for the contact card's heading color, as below, since its split panes, search band, and drag come from the desktop platform.
 
 The user decided that the [Logs window](desktop/logs.md) is a desktop module of its own, which uses no module, and that Shell may use it, for its tray item.
+
+The user decided that the Task editor and the Task list may use the Contact list, for the [contact card](desktop/contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) a mention shows while the pointer rests on it. The Contact list uses no desktop module, so no loop forms. The other homes considered are in the [Contact list's Ruled out](desktop/contact-list.md#ruled-out).
+
+The user decided that the contact card's heading shows in Rendering's heading color. Proposed, a decision to confirm: so the Contact list may use Rendering, for its text look. Rendering uses no module, so no loop forms.
 
 The Android app has four modules with the same names as the desktop app's first four, separate from them:
 

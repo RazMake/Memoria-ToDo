@@ -66,6 +66,24 @@ public class PopupListsTests
     }
 
     [Fact]
+    public void Moving_up_moves_back_in_the_open_list()
+    {
+        _popups.Show(_second, ["a", "b"]);
+        _popups.MoveDown();
+        _popups.MoveDown();
+
+        Assert.True(_popups.MoveUp());
+
+        Assert.Equal(0, _second.SelectedIndex);
+    }
+
+    [Fact]
+    public void Moving_up_with_none_open_says_so_so_Up_keeps_its_usual_meaning()
+    {
+        Assert.False(_popups.MoveUp());
+    }
+
+    [Fact]
     public void Enter_chooses_the_item_Down_moved_to()
     {
         var chosen = new List<int>();
