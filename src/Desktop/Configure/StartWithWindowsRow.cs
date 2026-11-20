@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -11,9 +12,9 @@ internal sealed class StartWithWindowsRow : StackPanel
     private readonly TextBlock _problem = ThemedText.Message();
     private bool _reverting;
 
-    public StartWithWindowsRow(IStartWithWindows startWithWindows)
+    public StartWithWindowsRow(IStartWithWindows startWithWindows, ILogger logger)
     {
-        _setting = new StartWithWindowsSetting(startWithWindows);
+        _setting = new StartWithWindowsSetting(startWithWindows, logger);
         _box.IsChecked = _setting.IsOn;
         _box.Checked += (_, _) => Switch(true);
         _box.Unchecked += (_, _) => Switch(false);

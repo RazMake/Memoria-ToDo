@@ -23,6 +23,8 @@ The user also asked for a Contacts shortcut, changed in Configure like the other
 
 The tray icon's menu offers Add new task, Task View, Contacts, Configure, and Exit, for when the mouse is closer than the keyboard. Proposed, a decision to confirm: Contacts sits after Task View, beside the other window that lists things.
 
+The user decided that **a Logs item, after Configure and before Exit, opens the [Logs window](logs.md#the-tray-menus-logs-item-opens-one-window)**, which shows the app's [log](../logging.md), and that the window is a module of its own, which Shell uses. Proposed, a decision to confirm: the item always shows, needs no configured device, has no global shortcut, and stays out of the switching rules below.
+
 The user decided that **the Contacts tray item and shortcut show only when the clone [has contact files](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts)**, in `autocomplete/contacts/`. Shell reads this from the [Contacts window port's](contact-list.md#public-interface) `IsAvailable` and follows its `AvailableChanged`, so a clone or a sync that adds or removes the files updates the menu at once. Proposed, each a decision to confirm:
 
 - **The tray item is hidden, not disabled**, while there are no contact files.
@@ -197,6 +199,13 @@ No module uses Shell. Only the composition root does, through one part:
     ```
   - Proposed: when a new shortcut registers but releasing the action's previous one fails, the action releases the new one again, keeps the previous one, and passes the failure on to Configure. When releasing a shortcut fails, Stopping still releases the other, removes the tray icon, and gives up the claim, then passes the failures on. This is a decision to confirm.
   - If releasing the new one again fails too, both stay registered until the app ends, the previous one stays active, and Configure gets both failures.
+  - **Create the tray app takes the [Logs window](logs.md#public-interface), `ILogsWindow logs`, after the Configure window**, as the user's choice of a Logs module needs, **and Shell's Serilog [logger](../logging.md#public-interface), `ILogger logger`, last.** The Logs menu item calls its Show part. Proposed, a decision to confirm: any window open and Close windows ignore it, since it holds nothing to save. Shell logs what the [log's table](../logging.md#every-operation-and-every-failure-is-logged-where-it-happens) lists for it.
+
+    ```csharp
+    public static IAppLifetime Create(ITrayIcon trayIcon, IAddWindow add, IViewTasksWindow viewTasks,
+        IContactsWindow contacts, IConfigureWindow configure, ILogsWindow logs, IUpdateLifetime updates,
+        IGlobalShortcut shortcut, IOneInstance oneInstance, bool startedAtSignIn, ISyncService sync, ILogger logger);
+    ```
 
 Shell publishes three ports. The composition root implements each one, and Shell's unit tests use each one's [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test); the real adapters have integration tests. Shell's former updates port, its one part that downloaded a newer version for the next start, moves to Updates as its [install port](updates.md#velopack-checks-downloads-and-applies-behind-one-port), and its update schedule and the time source it needed move with it, as the user decided.
 

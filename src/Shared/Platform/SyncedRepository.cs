@@ -1,3 +1,5 @@
+using Serilog;
+
 namespace Memoria.ToDo.Shared.Platform;
 
 /// <summary>
@@ -8,8 +10,16 @@ public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
 {
     private readonly Lock gate = new();
     private readonly List<IRepositoryPart> parts = [];
+    private readonly ILogger logger;
     private string? folder;
     private bool selected;
+
+    /// <summary>Logs each load of the clone, and each file a part skipped, to <paramref name="logger"/>. Throws <see cref="ArgumentNullException"/> for null.</summary>
+    public SyncedRepository(ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        this.logger = logger;
+    }
 
     /// <inheritdoc />
     public event EventHandler? LocalSaved;
@@ -104,6 +114,8 @@ public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
             foreach (var apply in applies)
                 apply();
             this.folder = folder;
+            if (folder is not null)
+                LogLoad(folder, parts);
         }
 
         var noticeFailures = new FailureList();
@@ -133,10 +145,26 @@ public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
                     reloaded.Add(part);
                 });
             }
+
+            if (reloaded.Count > 0)
+                LogLoad(expectedFolder, reloaded);
         }
 
         RaiseLoaded(reloaded, failures);
         failures.ThrowIfAny();
+    }
+
+    /// <summary>Logs a load: how many files each part skipped, then each skipped file. Call under the lock.</summary>
+    private void LogLoad(string loadedFolder, List<IRepositoryPart> loaded)
+    {
+        var counts = loaded.Select(part => part.SkippedFiles.Count).ToArray();
+        logger.Information("Loaded the repository folder {Folder}; files skipped by each store: {SkippedCounts}", loadedFolder, counts);
+        foreach (var file in loaded.SelectMany(part => part.SkippedFiles))
+        {
+            logger.Warning(
+                "Skipped {Path}: {Reason} (needs a newer app: {RequiresUpdate})",
+                file.RelativePath, file.Reason, file.RequiresUpdate);
+        }
     }
 
     /// <summary>Raises every part's notices, even when one throws, keeping each failure in order.</summary>

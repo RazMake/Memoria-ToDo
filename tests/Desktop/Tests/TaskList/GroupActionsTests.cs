@@ -16,7 +16,7 @@ public class GroupActionsTests
     public GroupActionsTests()
     {
         _tagOrder.Seed("home", "play", "work");
-        _actions = new GroupActions(_tagOrder, _reports.Add);
+        _actions = new GroupActions(_tagOrder, _reports.Add, Serilog.Core.Logger.None);
     }
 
     private IReadOnlyList<string> Shown => _tagOrder.Sort(["home", "play", "work"]);

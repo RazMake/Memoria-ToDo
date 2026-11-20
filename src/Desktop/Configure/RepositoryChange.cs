@@ -48,6 +48,7 @@ internal sealed class RepositoryChange
         catch (Exception error)
         {
             _readFailed = true;
+            _ui.Logger.Error(error, "The repository couldn't be read");
             Message = $"The repository couldn't be read: {error.Message}";
         }
 
@@ -94,6 +95,7 @@ internal sealed class RepositoryChange
         }
         catch (Exception error)
         {
+            _ui.Logger.Error(error, "Copying the public key or opening the key page failed");
             Show(error.Message);
         }
     }

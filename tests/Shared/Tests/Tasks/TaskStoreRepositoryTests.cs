@@ -1,5 +1,6 @@
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Shared.Tasks.Tests;
@@ -13,7 +14,15 @@ public sealed class TaskStoreRepositoryTests
     [Fact]
     public void Refuses_to_create_without_a_repository_and_touches_no_file()
     {
-        Assert.Throws<ArgumentNullException>(() => TaskStore.Create(f.Files, f.Encoder, f.Time, f.Device, null!));
+        Assert.Throws<ArgumentNullException>(() => TaskStore.Create(f.Files, f.Encoder, f.Time, f.Device, null!, Logger.None));
+
+        Assert.Empty(f.Files.AllFilesUnder(f.Device));
+    }
+
+    [Fact]
+    public void Refuses_to_create_without_a_logger_and_touches_no_file()
+    {
+        Assert.Throws<ArgumentNullException>(() => TaskStore.Create(f.Files, f.Encoder, f.Time, f.Device, new SyncedRepository(Logger.None), null!));
 
         Assert.Empty(f.Files.AllFilesUnder(f.Device));
     }
@@ -21,10 +30,10 @@ public sealed class TaskStoreRepositoryTests
     [Fact]
     public void Refuses_to_create_over_a_repository_that_already_selected_a_folder_and_touches_no_file()
     {
-        var selected = new SyncedRepository();
+        var selected = new SyncedRepository(Logger.None);
         selected.Select(f.Clone);
 
-        Assert.Throws<InvalidOperationException>(() => TaskStore.Create(f.Files, f.Encoder, f.Time, f.Device, selected));
+        Assert.Throws<InvalidOperationException>(() => TaskStore.Create(f.Files, f.Encoder, f.Time, f.Device, selected, Logger.None));
 
         Assert.Equal(f.Clone, selected.Folder);
         Assert.Empty(selected.SkippedFiles);

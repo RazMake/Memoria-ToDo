@@ -109,16 +109,19 @@ internal sealed class EditorServices
     /// <summary>The Save keys every editor made here saves on. Ctrl+Enter, as Configure sets them at first; a test sets others as Configure does.</summary>
     public SaveKeys SaveKeys { get; } = CtrlEnter();
 
-    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys);
+    /// <summary>The entries the window made by <see cref="CreateAddWindow"/> logged, through the logger it was given.</summary>
+    public InMemoryLogSink Log { get; } = new();
 
-    public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys);
+    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys, Log.CreateLogger());
 
-    public TitleEditor CreateTitleEditor() => new(Tasks, Contacts, Palette.Colors, Theme, Time, Clipboard, SaveKeys);
+    public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys, Serilog.Core.Logger.None);
 
-    public DescriptionEditor CreateDescriptionEditor() => new(Tasks, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys);
+    public TitleEditor CreateTitleEditor() => new(Tasks, Contacts, Palette.Colors, Theme, Time, Clipboard, SaveKeys, Serilog.Core.Logger.None);
+
+        public DescriptionEditor CreateDescriptionEditor() => new(Tasks, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys, Serilog.Core.Logger.None);
 
     /// <summary>The tag control over this Tasks, these tag colors, and this theme.</summary>
-    public TagEditor CreateTagEditor() => new(Tasks, TagColors, Theme);
+        public TagEditor CreateTagEditor() => new(Tasks, TagColors, Theme, Serilog.Core.Logger.None);
 
     public TagBadges CreateTagBadges() => new(TagColors, Theme);
 

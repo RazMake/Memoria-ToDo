@@ -45,7 +45,7 @@ internal sealed class RealViewTasks : IDisposable
         View = ViewTasksWindow.Create(
             Tasks, new FakeTagColors(), store.TagOrder, TestContactStore.Create(files).Contacts, Palette.Colors, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(),
             files, () => MakeWebView(clone), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
-            new FakeUpdateStatus(), new Platform.SaveKeys(), new Platform.MousePointer());
+            new FakeUpdateStatus(), new Platform.SaveKeys(), new Platform.MousePointer(), Serilog.Core.Logger.None);
     }
 
     public ITasks Tasks { get; }
@@ -121,7 +121,7 @@ internal sealed class RealViewTasks : IDisposable
     private WpfDescriptionWebView MakeWebView(string clone)
     {
         var webView = new WpfDescriptionWebView(
-            clone, Path.Combine(_root, "edit-images"), Path.Combine(_root, "browser-data"), new WindowsFileSystem(), _rules);
+            clone, Path.Combine(_root, "edit-images"), Path.Combine(_root, "browser-data"), new WindowsFileSystem(), _rules, Serilog.Core.Logger.None);
         _made.Add(webView);
         var control = (WebView2CompositionControl)webView.Element;
         control.CoreWebView2InitializationCompleted += (_, e) =>

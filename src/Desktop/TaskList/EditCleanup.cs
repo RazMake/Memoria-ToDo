@@ -1,13 +1,15 @@
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// Removing the images an edit of a task leaves. They stay while the user can still Undo a discarded edit, and go when it
-/// can't be undone any more. A known failure is reported and the caller goes on; it is not retried.
+/// can't be undone any more. A known failure is logged and reported and the caller goes on; it is not retried.
 /// </summary>
-internal sealed class EditCleanup(ITasks tasks, PendingUndo pending, Action<string> report)
+internal sealed class EditCleanup(ITasks tasks, PendingUndo pending, Action<string> report, ILogger logger)
 {
+    private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     /// <summary>
     /// Makes ready a fresh edit of the task: finishes its own pending discard, then removes what an earlier edit left.
     /// False when that can't be done, so the edit must not open.
@@ -52,6 +54,7 @@ internal sealed class EditCleanup(ITasks tasks, PendingUndo pending, Action<stri
         }
         catch (Exception failure) when (ListFailures.MessageOf(failure) is { } reason)
         {
+            _logger.Error(failure, "An edit's images couldn't be removed: {Reason}", reason);
             report("The edit's images couldn't be removed: " + reason);
             return false;
         }

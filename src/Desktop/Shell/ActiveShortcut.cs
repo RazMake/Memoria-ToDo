@@ -1,10 +1,15 @@
 using Memoria.ToDo.Desktop.Configure;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Shell;
 
-/// <summary>Keeps one shortcut registered with Windows at a time, and runs <paramref name="pressed"/> when it's pressed.</summary>
-internal sealed class ActiveShortcut(IGlobalShortcut globalShortcut, Action pressed) : IShortcutAction
+/// <summary>
+/// Keeps one shortcut registered with Windows at a time, and runs <paramref name="pressed"/> when it's pressed.
+/// Logs a Warning, naming <paramref name="name"/>, when another app holds a shortcut.
+/// </summary>
+internal sealed class ActiveShortcut(IGlobalShortcut globalShortcut, Action pressed, string name, ILogger logger) : IShortcutAction
 {
+    private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private Shortcut? active;
 
     /// <summary>
@@ -22,6 +27,7 @@ internal sealed class ActiveShortcut(IGlobalShortcut globalShortcut, Action pres
 
         if (!globalShortcut.Register(shortcut, pressed))
         {
+            _logger.Warning("The {Shortcut} shortcut {Keys} is held by another app", name, shortcut);
             return false;
         }
 

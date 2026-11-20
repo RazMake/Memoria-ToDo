@@ -24,7 +24,7 @@ public class TaskDeletionTests
     {
         _content = new ListContent(_tasks.Tasks, new ListFilter());
         _pending = new PendingUndo(_tasks.Time, post => post(), () => _changed++);
-        _deletion = new TaskDeletion(_tasks.Tasks, _content, _pending, _reports.Add, () => _changed++);
+        _deletion = new TaskDeletion(_tasks.Tasks, _content, _pending, _reports.Add, () => _changed++, Serilog.Core.Logger.None);
     }
 
     [Fact]

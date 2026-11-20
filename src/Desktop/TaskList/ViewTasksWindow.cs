@@ -8,6 +8,7 @@ using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Shared.Sync;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
@@ -21,7 +22,7 @@ public static class ViewTasksWindow
     public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
         Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys,
-        IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer)
+        IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(tagColors);
@@ -40,7 +41,8 @@ public static class ViewTasksWindow
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(saveKeys);
         ArgumentNullException.ThrowIfNull(pointer);
-        return new Opener(tasks, tagColors, tagOrder, contacts, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates, saveKeys, pointer);
+        ArgumentNullException.ThrowIfNull(logger);
+        return new Opener(tasks, tagColors, tagOrder, contacts, palette, theme, time, clipboard, imageFiles, files, createWebView, browser, sync, closeWindowKeys, updates, saveKeys, pointer, logger);
     }
 
     // Holds a failure from a delete finished while the window closed, so the next window shows it, and the sync
@@ -55,17 +57,17 @@ public static class ViewTasksWindow
         public Opener(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
             IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
             Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys,
-            IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer)
+            IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer, ILogger logger)
         {
             _window = new SingleWindow(() =>
             {
                 var message = _carried;
                 var webView = createWebView();
-                var listSync = new ListSync(sync, palette, theme);
+                var listSync = new ListSync(sync, palette, theme, logger);
                 try
                 {
                     var window = new TaskListWindow(tasks, tagColors, tagOrder, contacts, palette, theme, time, clipboard, imageFiles, files, webView,
-                        browser, listSync, updates, saveKeys, pointer, message, failure => _carried = failure);
+                        browser, listSync, updates, saveKeys, pointer, message, failure => _carried = failure, logger);
                     _carried = null;
                     closeWindowKeys.Attach(window);
                     _current = window;

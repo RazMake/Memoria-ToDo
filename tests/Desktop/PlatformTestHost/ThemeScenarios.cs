@@ -62,7 +62,7 @@ internal static class ThemeScenarios
         });
     }
 
-    // Start makes a Changed handler that throws, then switches the setting from a background thread. Nothing ends the app.
+    // Start makes a Changed handler that throws, then switches the setting from a background thread. The app ends when the test says so.
     public static void ChangedHandlerThrows(Action endApp)
     {
         var setting = new FakeThemeSetting();
@@ -72,6 +72,7 @@ internal static class ThemeScenarios
             ScenarioLifetime.Say("theme-created");
             new Thread(() => setting.Switch(true)).Start();
         });
+        Scenarios.EndWhenTold(endApp);
     }
 
     // Start makes the theme, says how many listeners the setting has, and ends the app; once the UI thread has shut down, says it again.

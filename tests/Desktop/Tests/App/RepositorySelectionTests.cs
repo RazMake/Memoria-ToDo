@@ -3,6 +3,7 @@ using System.Text;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
+using Serilog.Events;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.App.Tests;
@@ -16,7 +17,53 @@ public class RepositorySelectionTests
     // What the selection tells Tasks to use, in order; BadFolder is a folder Tasks cannot adopt.
     private readonly List<string?> used = [];
 
-    private RepositorySelection Selection(IFileSystem files) => new(files, UseRepositoryFolder, Setting);
+    private readonly InMemoryLogSink log = new();
+
+    private RepositorySelection Selection(IFileSystem files) => new(files, UseRepositoryFolder, Setting, log.CreateLogger());
+
+    [Fact]
+    public void Creating_the_selection_without_a_logger_is_refused()
+    {
+        var error = Assert.Throws<ArgumentNullException>(
+            () => new RepositorySelection(new FakeFileSystem(), UseRepositoryFolder, Setting, null!));
+
+        Assert.Equal("logger", error.ParamName);
+    }
+
+    [Fact]
+    public void Selecting_a_folder_logs_one_information_entry_that_names_the_folder_and_no_problem()
+    {
+        var selection = Selection(new FakeFileSystem());
+
+        selection.Select(@"C:\Tasks");
+
+        var entry = log.Events.SingleAt(LogEventLevel.Information, @"C:\Tasks");
+        Assert.Null(entry.Exception);
+        log.Events.AssertNoProblems();
+    }
+
+    [Fact]
+    public void Selecting_a_folder_Tasks_cannot_adopt_logs_no_chosen_folder_and_leaves_the_failure_to_the_caller()
+    {
+        var selection = Selection(new FakeFileSystem());
+
+        Assert.Throws<IOException>(() => selection.Select(BadFolder));
+
+        Assert.DoesNotContain(log.Events, entry => entry.Level == LogEventLevel.Information);
+        log.Events.AssertNoProblems();
+    }
+
+    [Fact]
+    public void A_selection_that_cannot_be_saved_logs_no_chosen_folder_and_leaves_the_failure_to_the_caller()
+    {
+        var files = new FakeFileSystem();
+        files.FailWritesUnder(@"C:\Selection tests\device");
+
+        Assert.Throws<IOException>(() => Selection(files).Select(@"C:\New"));
+
+        Assert.DoesNotContain(log.Events, entry => entry.Level == LogEventLevel.Information);
+        log.Events.AssertNoProblems();
+    }
 
     private void UseRepositoryFolder(string? folder)
     {

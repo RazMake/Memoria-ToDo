@@ -8,35 +8,44 @@ internal sealed partial class ContactService
     {
         ArgumentNullException.ThrowIfNull(groupName);
         ArgumentNullException.ThrowIfNull(contact);
-        Change(current => [SaveInto(current, groupName, contact)]);
+        Change(current => [SaveInto(current, groupName, contact)], written =>
+            logger.Information("Saved contact {ContactId} {ContactName} in {GroupFile}", contact.Id, contact.FullName, GroupFileOf(written[0])));
     }
 
     public void Delete(string groupName, string id)
     {
         ArgumentNullException.ThrowIfNull(groupName);
         ArgumentNullException.ThrowIfNull(id);
-        Change(current =>
-        {
-            if (GroupNames.IsMe(groupName))
-                throw new ArgumentException("The user's own contact can't be deleted.", nameof(groupName));
-            var group = WritableGroup(current, groupName);
-            var member = MemberWithId(group, id) ?? throw new ArgumentException($"The group has no contact '{id}'.", nameof(id));
-            return [group.WithMembers(group.Members.Where(other => !ReferenceEquals(other, member)))];
-        });
+        Contact? deleted = null;
+        Change(
+            current =>
+            {
+                if (GroupNames.IsMe(groupName))
+                    throw new ArgumentException("The user's own contact can't be deleted.", nameof(groupName));
+                var group = WritableGroup(current, groupName);
+                var member = MemberWithId(group, id) ?? throw new ArgumentException($"The group has no contact '{id}'.", nameof(id));
+                deleted = member.Contact;
+                return [group.WithMembers(group.Members.Where(other => !ReferenceEquals(other, member)))];
+            },
+            written => logger.Information("Deleted contact {ContactId} {ContactName} from {GroupFile}", deleted!.Id, deleted.FullName, GroupFileOf(written[0])));
     }
 
     public void MoveGroup(string groupName, string? previousGroup, string? nextGroup)
     {
         ArgumentNullException.ThrowIfNull(groupName);
-        Change(current => GroupOrder.Plan(current.GroupFiles, groupName, previousGroup, nextGroup));
+        Change(current => GroupOrder.Plan(current.GroupFiles, groupName, previousGroup, nextGroup), _ =>
+            logger.Information("Moved the group in {GroupFile}", ContactLayout.GroupRelativePath(groupName)));
     }
+
+    private static string GroupFileOf(GroupFile group) => ContactLayout.GroupRelativePath(group.Name);
 
     /// <summary>
     /// Writes the group files the plan names, one by one, under the lock, then announces what was written outside it.
     /// A write that fails partway still publishes the files already written. Then Changed is raised and the local save reported,
     /// each even when the other fails; one failure is thrown as it is, several together in that order: the write's, Changed's, the report's.
+    /// <paramref name="logWritten"/> logs the operation under the lock once files were written, given the files written, so it is logged even when a notice then fails.
     /// </summary>
-    private void Change(Func<ContactSnapshot, IReadOnlyList<GroupFile>> plan)
+    private void Change(Func<ContactSnapshot, IReadOnlyList<GroupFile>> plan, Action<IReadOnlyList<GroupFile>> logWritten)
     {
         var (wrote, writeFailure) = repository.LockedChange(clone =>
         {
@@ -57,7 +66,12 @@ internal sealed partial class ContactService
             }
 
             if (written.Count > 0)
+            {
                 snapshot = snapshot.With(written);
+                if (failed is null)
+                    logWritten(written);
+            }
+
             return (written.Count > 0, failed);
         });
         var failures = new FailureList();

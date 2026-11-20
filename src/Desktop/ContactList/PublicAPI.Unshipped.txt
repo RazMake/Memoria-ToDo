@@ -5,4 +5,4 @@ Memoria.ToDo.Desktop.ContactList.IContactsWindow.Close() -> bool
 Memoria.ToDo.Desktop.ContactList.IContactsWindow.IsAvailable.get -> bool
 Memoria.ToDo.Desktop.ContactList.IContactsWindow.IsOpen.get -> bool
 Memoria.ToDo.Desktop.ContactList.IContactsWindow.Show() -> void
-static Memoria.ToDo.Desktop.ContactList.ContactsWindow.Create(Memoria.ToDo.Shared.Contacts.IContacts! contacts, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys, Memoria.ToDo.Desktop.Platform.IDragPointer! pointer) -> Memoria.ToDo.Desktop.ContactList.IContactsWindow!
+static Memoria.ToDo.Desktop.ContactList.ContactsWindow.Create(Memoria.ToDo.Shared.Contacts.IContacts! contacts, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys, Memoria.ToDo.Desktop.Platform.IDragPointer! pointer, Serilog.ILogger! logger) -> Memoria.ToDo.Desktop.ContactList.IContactsWindow!

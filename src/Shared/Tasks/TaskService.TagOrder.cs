@@ -50,7 +50,10 @@ internal sealed partial class TaskService
             });
 
             if (written)
+            {
+                owner.logger.Information("Moved tag {Tag}", tag);
                 owner.Announce(Notice.TagOrder | Notice.LocalSaved);
+            }
         }
 
         private static void RequireTag(string tag, string paramName)

@@ -2,7 +2,7 @@ Memoria.ToDo.Desktop.TaskEditor.AddWindow
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.Close() -> void
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.Show() -> void
-static Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Shared.Contacts.IContacts! contacts, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys, Memoria.ToDo.Desktop.Updates.IUpdateStatus! updates, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys) -> Memoria.ToDo.Desktop.TaskEditor.IAddWindow!
+static Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Shared.Contacts.IContacts! contacts, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys, Memoria.ToDo.Desktop.Updates.IUpdateStatus! updates, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys, Serilog.ILogger! logger) -> Memoria.ToDo.Desktop.TaskEditor.IAddWindow!
 Memoria.ToDo.Desktop.TaskEditor.IAddWindow.IsOpen.get -> bool
 Memoria.ToDo.Desktop.TaskEditor.IClipboard
 Memoria.ToDo.Desktop.TaskEditor.IClipboard.ImagePng() -> byte[]?
@@ -10,7 +10,7 @@ Memoria.ToDo.Desktop.TaskEditor.IClipboard.Text() -> string?
 Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser
 Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser.Choose() -> string?
 Memoria.ToDo.Desktop.TaskEditor.TagEditor
-Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme) -> void
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme, Serilog.ILogger! logger) -> void
 const Memoria.ToDo.Desktop.TaskEditor.TagEditor.NoTagText = "No tag" -> string!
 Memoria.ToDo.Desktop.TaskEditor.TagEditor.TaskTag.get -> string?
 Memoria.ToDo.Desktop.TaskEditor.TagEditor.TaskTag.set -> void
@@ -22,7 +22,7 @@ Memoria.ToDo.Desktop.TaskEditor.TagBadges.TagBadges(Memoria.ToDo.Shared.Tasks.IT
 Memoria.ToDo.Desktop.TaskEditor.TagBadges.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Memoria.ToDo.Desktop.TaskEditor.TagBadges.Tags.set -> void
 Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor
-Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor.DescriptionEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Contacts.IContacts! contacts, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys) -> void
+Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor.DescriptionEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Contacts.IContacts! contacts, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser! imageFiles, Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys, Serilog.ILogger! logger) -> void
 Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor.TaskId.get -> string!
 Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor.TaskId.set -> void
 Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor.Value.get -> string!
@@ -34,7 +34,7 @@ Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor.SetImageWidth(int image, int w
 Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor.SaveRequested -> System.EventHandler?
 Memoria.ToDo.Desktop.TaskEditor.DescriptionEditor.CancelRequested -> System.EventHandler?
 Memoria.ToDo.Desktop.TaskEditor.TitleEditor
-Memoria.ToDo.Desktop.TaskEditor.TitleEditor.TitleEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Contacts.IContacts! contacts, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys) -> void
+Memoria.ToDo.Desktop.TaskEditor.TitleEditor.TitleEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Contacts.IContacts! contacts, System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>! palette, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.TimeProvider! time, Memoria.ToDo.Desktop.TaskEditor.IClipboard! clipboard, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys, Serilog.ILogger! logger) -> void
 Memoria.ToDo.Desktop.TaskEditor.TitleEditor.Value.get -> string!
 Memoria.ToDo.Desktop.TaskEditor.TitleEditor.Value.set -> void
 Memoria.ToDo.Desktop.TaskEditor.TitleEditor.HasChanges.get -> bool

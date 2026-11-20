@@ -29,6 +29,7 @@ internal sealed partial class ConfigureScreen : IDisposable
     /// <param name="manageTasks">The Task View action; a new fake that accepts every shortcut when null.</param>
     /// <param name="configure">The Configure action; a new fake that accepts every shortcut when null.</param>
     /// <param name="contacts">The Contacts action; a new fake that accepts every shortcut when null.</param>
+    /// <param name="settings">The shared settings the window gets, such as a fake that fails; the store's real ones when null.</param>
     public ConfigureScreen(
         FakeStartWithWindows? startWithWindows = null,
         FakeShortcutAction? addNewTask = null,
@@ -36,9 +37,10 @@ internal sealed partial class ConfigureScreen : IDisposable
         FakeSyncService? sync = null,
         Action<ISharedTaskSettings>? initialSettings = null,
         FakeShortcutAction? configure = null,
-        FakeShortcutAction? contacts = null)
+        FakeShortcutAction? contacts = null,
+        ISharedTaskSettings? settings = null)
     {
-        services = new ConfigureServices(startWithWindows, sync);
+        services = new ConfigureServices(startWithWindows, sync, settings);
         AddNewTask = addNewTask ?? new FakeShortcutAction();
         ManageTasks = manageTasks ?? new FakeShortcutAction();
         ConfigureAction = configure ?? new FakeShortcutAction();
@@ -54,6 +56,9 @@ internal sealed partial class ConfigureScreen : IDisposable
 
     public FakeSyncService Sync => services.Sync;
     public FakeSetupActions SetupActions => services.SetupActions;
+
+    /// <summary>The entries the window logged, through the logger it was given.</summary>
+    public InMemoryLogSink Log => services.Log;
     public ITaskStore Store => services.Store;
 
     /// <summary>The headings of Configure's three sections, in order.</summary>

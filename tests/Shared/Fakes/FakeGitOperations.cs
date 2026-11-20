@@ -281,6 +281,9 @@ internal sealed class FakeGitOperations : IGitOperations
         /// <summary>Ends the held pass with a result.</summary>
         public void Complete(bool hasPendingChanges = false) => Finish.TrySetResult(new GitPassResult(hasPendingChanges));
 
+        /// <summary>Ends the held pass with the given result, such as one reporting what it fetched, merged, and pushed.</summary>
+        public void Complete(GitPassResult result) => Finish.TrySetResult(result);
+
         /// <summary>Ends the held pass with a failure.</summary>
         public void Fail(Exception failure) => Finish.TrySetException(failure);
 

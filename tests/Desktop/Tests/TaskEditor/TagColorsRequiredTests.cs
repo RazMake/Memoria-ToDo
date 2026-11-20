@@ -1,6 +1,7 @@
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
@@ -16,7 +17,7 @@ public class TagColorsRequiredTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             _services.Tasks, null!, _services.Contacts, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
-            _services.ImageFiles, _services.Files, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys));
+            _services.ImageFiles, _services.Files, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys, Logger.None));
 
         Assert.Equal("tagColors", failure.ParamName);
     }
@@ -26,7 +27,7 @@ public class TagColorsRequiredTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => new TaskEditorControl(
             _services.Tasks, null!, _services.Contacts, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
-            _services.ImageFiles, _services.Files, _services.SaveKeys));
+            _services.ImageFiles, _services.Files, _services.SaveKeys, Serilog.Core.Logger.None));
 
         Assert.Equal("tagColors", failure.ParamName);
     }
@@ -34,9 +35,17 @@ public class TagColorsRequiredTests
     [Fact]
     public void The_tag_editor_without_tag_colors_is_rejected()
     {
-        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, null!, _services.Theme));
+        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, null!, _services.Theme, Logger.None));
 
         Assert.Equal("tagColors", failure.ParamName);
+    }
+
+    [Fact]
+    public void Creating_the_TagEditor_without_a_logger_is_refused()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, _services.TagColors, _services.Theme, null!));
+
+        Assert.Equal("logger", failure.ParamName);
     }
 
     [Fact]

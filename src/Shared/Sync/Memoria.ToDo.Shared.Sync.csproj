@@ -5,6 +5,7 @@
     <ProjectReference Include="..\Platform\Memoria.ToDo.Shared.Platform.csproj" />
     <ProjectReference Include="..\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
     <PackageReference Include="LibGit2Sharp" />
+    <PackageReference Include="Serilog" />
     <PackageReference Include="SSH.NET" />
     <InternalsVisibleTo Include="Memoria.ToDo.Shared.Tests" />
     <InternalsVisibleTo Include="Memoria.ToDo.Shared.Fakes" />

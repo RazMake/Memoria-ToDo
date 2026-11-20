@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -48,8 +49,8 @@ public sealed class TagEditor : UserControl
     private readonly KeyMap _pillKeys = new();
     private Window? _window;
 
-    public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme)
-        : this(tasks, new TagsModel(tasks, tagColors), new TagLook(tagColors, theme))
+    public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme, ILogger logger)
+        : this(tasks, new TagsModel(tasks, tagColors, Argument.Required(logger)), new TagLook(tagColors, theme))
     {
     }
 

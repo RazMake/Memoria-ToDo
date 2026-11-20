@@ -20,8 +20,8 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 
 ### The platform serves every module and knows none
 
-- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), the [JSON style and file rules](#stores-share-one-json-style-and-one-set-of-file-rules) every store follows, and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
-- **Every module takes the time from .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, which gives the time and timers, and the composition root passes the system's. The shared library has no clock interface of its own.
+- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), the [JSON style and file rules](#stores-share-one-json-style-and-one-set-of-file-rules) every store follows, and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The platform holds no log interface: every module and platform project depends on the [Serilog](https://serilog.net) package and logs through its `ILogger`, as [Logging](logging.md#every-module-logs-through-serilogs-logger) decides. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
+- **Every module takes the time from .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, which gives the time and timers, and the composition root passes the system's. The shared library has no clock interface of its own. The one exception is the time on a log entry, which Serilog stamps, as [Logging](logging.md#every-module-logs-through-serilogs-logger) says.
 - **Every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files.
 - **Code shared by two modules moves to the platform**, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) requires. Code shared only inside one module stays in that module.
 - **Only the composition root names modules.** Each app has one. It creates each module's parts and connects them, and it chooses the implementation of every interface a module or the platform publishes, as [AGENTS.md](../../AGENTS.md#code-design) says. A module wires its own `internal` code itself, as Sync does with its git code.
@@ -306,17 +306,18 @@ The shared library has five modules:
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's and mention list's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, the text look of headings, links, mentions, code, and italic text, and which links may open in the browser | [Rendering](rendering.md) | None |
 
-The desktop app has seven modules of its own:
+The desktop app has eight modules of its own:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates |
+| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs |
 | Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates |
 | Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates |
 | Contact list | The Contacts window: contacts grouped by file, in groups the user orders by dragging, beside the selected contact's details, with search, editing, adding, and deleting | [Contact list](desktop/contact-list.md) | Contacts |
 | Configure | The four global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 | Updates | Checking for a new version, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
+| Logs | The Logs window: the app's log entries, newest first, with filters by time, severity, and component, and a quick search | [Logs](desktop/logs.md) | None |
 
 Proposed, each a decision to confirm:
 
@@ -324,6 +325,8 @@ Proposed, each a decision to confirm:
 - The Task list may use Sync, for its Sync button and the sync when Task View opens.
 
 The user decided that [Contacts](contacts.md) is a shared module of its own, that the desktop has a Contacts window with a fourth global shortcut, and that the Android Task editor and Task list mention contacts too. Proposed, a decision to confirm: the desktop module keeps the name Contact list, beside the shared Contacts, as the Task list sits beside Tasks; it uses only Contacts, since its split panes, search band, and drag come from the desktop platform.
+
+The user decided that the [Logs window](desktop/logs.md) is a desktop module of its own, which uses no module, and that Shell may use it, for its tray item.
 
 The Android app has four modules with the same names as the desktop app's first four, separate from them:
 

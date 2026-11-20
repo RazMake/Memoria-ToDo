@@ -11,7 +11,7 @@ Memoria.ToDo.Desktop.Platform.SingleWindow.SingleWindow(System.Func<System.Windo
 Memoria.ToDo.Desktop.Platform.SingleWindow.Show() -> void
 Memoria.ToDo.Desktop.Platform.WindowPlacement
 static Memoria.ToDo.Desktop.Platform.WindowPlacement.ShowOnPointerScreen(System.Windows.Window! window) -> void
-static Memoria.ToDo.Desktop.Platform.AppRunner.Run(System.Func<Memoria.ToDo.Desktop.Platform.IAppLifetime!>! createLifetime) -> int
+static Memoria.ToDo.Desktop.Platform.AppRunner.Run(System.Func<Memoria.ToDo.Desktop.Platform.IAppLifetime!>! createLifetime, Serilog.ILogger! logger) -> int
 Memoria.ToDo.Desktop.Platform.SingleWindow.IsOpen.get -> bool
 Memoria.ToDo.Desktop.Platform.ITheme
 Memoria.ToDo.Desktop.Platform.ITheme.IsDark.get -> bool
@@ -95,7 +95,7 @@ Memoria.ToDo.Desktop.Platform.MessageLine.MessageLine() -> void
 Memoria.ToDo.Desktop.Platform.MessageLine.Show(string? text) -> void
 Memoria.ToDo.Desktop.Platform.StoreFailures
 static Memoria.ToDo.Desktop.Platform.StoreFailures.MessageOf(System.Exception! failure) -> string?
-static Memoria.ToDo.Desktop.Platform.StoreFailures.Run(System.Action! call, System.Func<System.Exception!, string?>! messageOf, System.Action<string!>! report) -> bool
+static Memoria.ToDo.Desktop.Platform.StoreFailures.Run(System.Action! call, System.Func<System.Exception!, string?>! messageOf, System.Action<string!>! report, Serilog.ILogger! logger) -> bool
 Memoria.ToDo.Desktop.Platform.LeaveAnswer
 Memoria.ToDo.Desktop.Platform.LeaveAnswer.Cancel = 2 -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
 Memoria.ToDo.Desktop.Platform.LeaveAnswer.Discard = 1 -> Memoria.ToDo.Desktop.Platform.LeaveAnswer

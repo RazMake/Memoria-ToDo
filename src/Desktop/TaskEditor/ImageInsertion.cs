@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Memoria.ToDo.Shared.Editing;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -23,12 +24,14 @@ internal sealed class ImageInsertion
     private readonly IFileSystem _files;
     private readonly Func<string> _taskId;
     private readonly Action<string> _report;
+    private readonly ILogger _logger;
 
     /// <param name="taskId">Gives the ID of the task being edited, read when an image is kept.</param>
     /// <param name="report">Gets the message to show, or an empty one to clear it.</param>
     public ImageInsertion(ITasks tasks, IClipboard clipboard, IImageFileChooser chooser, IFileSystem files,
-        Func<string> taskId, Action<string> report)
+        Func<string> taskId, Action<string> report, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(clipboard);
         ArgumentNullException.ThrowIfNull(chooser);
@@ -41,6 +44,7 @@ internal sealed class ImageInsertion
         _files = files;
         _taskId = taskId;
         _report = report;
+        _logger = logger;
     }
 
     /// <summary>Whether the file dialog is open, so a window that deactivates because of it isn't one the user clicked away from.</summary>
@@ -128,12 +132,14 @@ internal sealed class ImageInsertion
             result = step();
             return true;
         }
-        catch (ImageTooLargeException)
+        catch (ImageTooLargeException failure)
         {
+            _logger.Error(failure, "An image couldn't be added: it can't be shrunk to 1 MB");
             Fail(field, TooLargeMessage);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or ExternalException)
         {
+            _logger.Error(e, "An image couldn't be added");
             Fail(field, FailedPrefix + e.Message);
         }
 

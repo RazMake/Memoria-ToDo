@@ -2,6 +2,7 @@ using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.Shell.Tests;
@@ -48,14 +49,14 @@ public class TrayAppStartTests
     }
 
     [Fact]
-    public void Start_offers_Add_new_task_Task_View_Contacts_Configure_and_Exit_in_that_order_under_the_apps_name()
+    public void Start_offers_Add_new_task_Task_View_Contacts_Configure_Logs_and_Exit_in_that_order_under_the_apps_name()
     {
         var app = new ShellHarness();
 
         app.Start();
 
         Assert.Equal("Memoria-ToDo", app.TrayIcon.ToolTip);
-        Assert.Equal(["Add new task", "Task View", "Contacts", "Configure", "Exit"], app.TrayIcon.MenuTexts);
+        Assert.Equal(["Add new task", "Task View", "Contacts", "Configure", "Logs", "Exit"], app.TrayIcon.MenuTexts);
     }
 
     [Fact]
@@ -63,9 +64,32 @@ public class TrayAppStartTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
             new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), null!, new FakeConfigureWindow(),
-            new FakeUpdateLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true, new FakeSyncService()));
+            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            new FakeSyncService(), Logger.None));
 
         Assert.Equal("contacts", failure.ParamName);
+    }
+
+    [Fact]
+    public void Create_rejects_a_missing_Logs_window()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
+            new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), new FakeContactsWindow(), new FakeConfigureWindow(),
+            null!, new FakeUpdateLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            new FakeSyncService(), Logger.None));
+
+        Assert.Equal("logs", failure.ParamName);
+    }
+
+    [Fact]
+    public void Create_rejects_a_missing_logger()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
+            new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), new FakeContactsWindow(), new FakeConfigureWindow(),
+            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            new FakeSyncService(), null!));
+
+        Assert.Equal("logger", failure.ParamName);
     }
 
     [Fact]

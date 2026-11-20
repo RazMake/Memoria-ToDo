@@ -23,6 +23,11 @@
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <PackageVersion Include="Microsoft.DevTunnels.Ssh.Tcp" Version="3.12.42" />
     <PackageVersion Include="Velopack" Version="$(MemoriaVelopackVersion)" />
+    <PackageVersion Include="Serilog" Version="4.4.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Async" Version="2.1.0" />
+    <PackageVersion Include="Serilog.Formatting.Compact" Version="3.0.0" />
+    <PackageVersion Include="Serilog.Formatting.Compact.Reader" Version="4.0.0" />
   </ItemGroup>
 
   <Target Name="MemoriaCheckVelopackVersion" BeforeTargets="Restore;CollectPackageReferences">

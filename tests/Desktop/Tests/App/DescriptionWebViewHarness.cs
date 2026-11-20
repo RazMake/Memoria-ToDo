@@ -48,6 +48,9 @@ internal sealed class DescriptionWebViewHarness : IDisposable
     /// <summary>Every reason the adapter reported through <c>Failed</c>, at startup or later.</summary>
     public IReadOnlyCollection<string> Failures => _failures;
 
+    /// <summary>The entries the adapter logged.</summary>
+    public InMemoryLogSink Log { get; } = new();
+
     /// <param name="dragPause">Tells when a drag has ended, or null for the real pause on the dispatcher's clock.</param>
     /// <param name="measure">Reads a dragged box's width, or null for the real DevTools measurement.</param>
     public DescriptionWebViewHarness(IDragPause? dragPause = null, IImageMeasure? measure = null)
@@ -60,7 +63,7 @@ internal sealed class DescriptionWebViewHarness : IDisposable
 
         var files = new WindowsFileSystem();
         var rules = TestTaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device")).Synchronization.Files;
-        WebView = new WpfDescriptionWebView(CloneFolder, EditImagesFolder, BrowserDataFolder, files, rules, dragPause ?? new DispatcherDragPause(), measure ?? new DevToolsImageMeasure());
+        WebView = new WpfDescriptionWebView(CloneFolder, EditImagesFolder, BrowserDataFolder, files, rules, dragPause ?? new DispatcherDragPause(), measure ?? new DevToolsImageMeasure(), Log.CreateLogger());
         Port = WebView;
         Control = (WebView2CompositionControl)Port.Element;
         Control.CoreWebView2InitializationCompleted += OnInitialized;
@@ -157,6 +160,17 @@ internal sealed class DescriptionWebViewHarness : IDisposable
     public Process Browser => _browser ?? throw new InvalidOperationException("The browser has not started.");
 
     /// <summary>
+    /// Completes once the browser has drawn the page it shows: asking for a picture of the page makes it draw one and answers
+    /// when it has.
+    /// </summary>
+    public async Task WaitForRenderedFrame()
+    {
+        var core = await Started;
+        await core.CallDevToolsProtocolMethodAsync(
+            "Page.captureScreenshot", "{\"format\":\"jpeg\",\"quality\":1,\"clip\":{\"x\":0,\"y\":0,\"width\":1,\"height\":1,\"scale\":1}}").WaitAsync(Limit);
+    }
+
+    /// <summary>
     /// Clicks the centre of the page's link at the index, with a mouse press and release sent to this browser alone
     /// through the DevTools protocol. The browser takes them as the user's own input, as it would a mouse's, with no
     /// effect on the Windows keyboard focus or on other programs.
@@ -164,6 +178,7 @@ internal sealed class DescriptionWebViewHarness : IDisposable
     public async Task ClickLink(int index)
     {
         var core = await Started;
+        await WaitForRenderedFrame();
         var centre = await core.ExecuteScriptAsync(
             $"(() => {{ const r = document.querySelectorAll('a')[{index}].getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()");
         var point = System.Text.Json.JsonSerializer.Deserialize<double[]>(centre)

@@ -1,5 +1,6 @@
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Contacts;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.ContactList;
 
@@ -8,7 +9,7 @@ public static class ContactsWindow
 {
     /// <summary>Creates the Contacts window. It opens only on <see cref="IContactsWindow.Show"/>.</summary>
     public static IContactsWindow Create(IContacts contacts, ITheme theme, TimeProvider time,
-        CloseWindowKeys closeWindowKeys, SaveKeys saveKeys, IDragPointer pointer)
+        CloseWindowKeys closeWindowKeys, SaveKeys saveKeys, IDragPointer pointer, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(theme);
@@ -16,7 +17,8 @@ public static class ContactsWindow
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(saveKeys);
         ArgumentNullException.ThrowIfNull(pointer);
-        return new Opener(contacts, time, closeWindowKeys, saveKeys, pointer);
+        ArgumentNullException.ThrowIfNull(logger);
+        return new Opener(contacts, time, closeWindowKeys, saveKeys, pointer, logger);
     }
 
     private sealed class Opener : IContactsWindow
@@ -25,12 +27,12 @@ public static class ContactsWindow
         private readonly ContactsAvailability _availability;
         private ContactsMainWindow? _current;
 
-        public Opener(IContacts contacts, TimeProvider time, CloseWindowKeys closeWindowKeys, SaveKeys saveKeys, IDragPointer pointer)
+        public Opener(IContacts contacts, TimeProvider time, CloseWindowKeys closeWindowKeys, SaveKeys saveKeys, IDragPointer pointer, ILogger logger)
         {
             _availability = new ContactsAvailability(contacts);
             _window = new SingleWindow(() =>
             {
-                var window = new ContactsMainWindow(contacts, time, saveKeys, pointer);
+                var window = new ContactsMainWindow(contacts, time, saveKeys, pointer, logger);
                 closeWindowKeys.Attach(window);
                 _current = window;
                 window.Closed += (_, _) => _current = null;

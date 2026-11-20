@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using Xunit;
+using Xunit.Sdk;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
 
@@ -15,6 +16,8 @@ internal sealed class HostProcess : IDisposable
     private readonly Process _process;
     private readonly DialogWatcher _dialogs;
     private readonly List<string> _lines = [];
+    private readonly List<HostLogEntry> _entries = [];
+    private readonly List<string> _output = [];
 
     private HostProcess(Process process, DialogWatcher dialogs)
     {
@@ -22,8 +25,17 @@ internal sealed class HostProcess : IDisposable
         _dialogs = dialogs;
     }
 
-    /// <summary>What the program printed, one entry per line. Read it after <see cref="WaitForExit"/>.</summary>
+    /// <summary>What the program printed, one entry per line, apart from its log entries. Read it after <see cref="WaitForExit"/>.</summary>
     public IReadOnlyList<string> Lines => _lines;
+
+    /// <summary>The log entries the platform wrote, in order. Read it after <see cref="WaitForExit"/>.</summary>
+    public IReadOnlyList<HostLogEntry> LogEntries => _entries;
+
+    /// <summary>
+    /// Everything the program printed, lines and log entries together in the order it printed them, each log entry as its
+    /// <see cref="HostLogEntry.LinePrefix"/> line. Read it after <see cref="WaitForExit"/>.
+    /// </summary>
+    public IReadOnlyList<string> Output => _output;
 
     public static HostProcess Start(string scenario)
     {
@@ -32,21 +44,42 @@ internal sealed class HostProcess : IDisposable
             StartInfo = new ProcessStartInfo(HostPath(), scenario)
             {
                 RedirectStandardOutput = true,
+                RedirectStandardInput = true,
                 UseShellExecute = false,
             },
         };
         var host = new HostProcess(process, new DialogWatcher()); // Listening before the program starts, so no message box is missed.
         process.OutputDataReceived += (_, e) =>
         {
-            if (e.Data is not null)
+            if (e.Data is null)
             {
-                lock (host._lines) { host._lines.Add(e.Data); }
+                return;
+            }
+
+            lock (host._lines)
+            {
+                host._output.Add(e.Data);
+                if (e.Data.StartsWith(HostLogEntry.LinePrefix, StringComparison.Ordinal))
+                {
+                    host._entries.Add(HostLogEntry.Parse(e.Data));
+                }
+                else
+                {
+                    host._lines.Add(e.Data);
+                }
             }
         };
         process.Start();
         process.BeginOutputReadLine();
         return host;
     }
+
+    /// <summary>Tells a scenario that keeps the app running to end it, by writing a line to the program's input.</summary>
+    public void TellToEndApp() => _process.StandardInput.WriteLine("end");
+
+    /// <summary>Fails when the program showed a message box nobody closed. Call it after <see cref="WaitForExit"/>.</summary>
+    public void AssertNoOtherMessageBox() =>
+        Assert.Throws<XunitException>(() => _dialogs.WaitForMessageBoxOf(_process, Limit));
 
     /// <summary>Waits for the program to end, failing the test after a limit, and returns its exit code.</summary>
     public int WaitForExit()

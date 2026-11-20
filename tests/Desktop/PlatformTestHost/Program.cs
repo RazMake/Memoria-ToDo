@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.PlatformTestHost;
 
@@ -17,6 +18,7 @@ internal static class Program
             return 2;
         }
 
-        return AppRunner.Run(() => new ScenarioLifetime(scenario.Start, scenario.Stop));
+        var logger = new LoggerConfiguration().MinimumLevel.Verbose().WriteTo.Sink(new ConsoleLogSink()).CreateLogger();
+        return AppRunner.Run(() => new ScenarioLifetime(scenario.Start, scenario.Stop), logger);
     }
 }

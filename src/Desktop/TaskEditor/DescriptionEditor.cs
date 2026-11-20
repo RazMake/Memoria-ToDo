@@ -7,6 +7,7 @@ using Memoria.ToDo.Shared.Editing;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -19,18 +20,18 @@ public sealed class DescriptionEditor : UserControl
     private string _taskId = "";
 
     public DescriptionEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys)
-        : this(tasks, new PickerLists(tasks, contacts, palette), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files)
+        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, ILogger logger)
+                : this(tasks, new PickerLists(tasks, contacts, palette), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files, Argument.Required(logger))
     {
     }
 
     // The lists are made in the first constructor's arguments, so a missing tasks or palette is rejected before any control exists.
     private DescriptionEditor(ITasks tasks, PickerLists lists, SaveKeys saveKeys, ITheme theme, TimeProvider time,
-        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files)
+                IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, ILogger logger)
     {
         var router = new KeyRouter();
         var message = new MessageLine();
-        var images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId, message.Show);
+        var images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId, message.Show, logger);
         var snippets = new SnippetInserter(time, clipboard, lists.TaskReferences.Open, images.InsertClipboardOrChosen);
         _description = new DescriptionField(theme, lists, snippets, images, router);
         var editor = _description.Editor;
@@ -50,7 +51,7 @@ public sealed class DescriptionEditor : UserControl
         Content = panel;
         FocusVisualStyle = null;
         _editing = new SingleFieldEditing(this, editor, lists, message, saveKeys, router,
-            () => SaveRequested?.Invoke(this, EventArgs.Empty), () => CancelRequested?.Invoke(this, EventArgs.Empty));
+            () => SaveRequested?.Invoke(this, EventArgs.Empty), () => CancelRequested?.Invoke(this, EventArgs.Empty), logger);
     }
 
     /// <summary>The task the description belongs to; an added image is kept for it.</summary>

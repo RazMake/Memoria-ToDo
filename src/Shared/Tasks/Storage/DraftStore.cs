@@ -1,9 +1,10 @@
 using Memoria.ToDo.Shared.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
 /// <summary>This device's kept draft and its images, in the device folder.</summary>
-internal sealed class DraftStore(IFileSystem files, string deviceFolder)
+internal sealed class DraftStore(IFileSystem files, string deviceFolder, ILogger logger)
 {
     private readonly HashSet<string> imageIds = [];
 
@@ -27,20 +28,23 @@ internal sealed class DraftStore(IFileSystem files, string deviceFolder)
         return DraftFileFormat.Read(content);
     }
 
-    /// <summary>Replaces the kept draft. A blank draft is discarded instead, and a draft with a new ID drops the old one's images.</summary>
-    public void Keep(TaskDraft draft)
+    /// <summary>
+    /// Replaces the kept draft and returns true. A blank draft is discarded instead, returning false, and a draft with a new ID drops the old one's images.
+    /// </summary>
+    public bool Keep(TaskDraft draft)
     {
         TaskId.ThrowIfInvalid(draft.TaskId, nameof(draft));
         if (IsBlank(draft))
         {
             Discard();
-            return;
+            return false;
         }
 
         var previous = KeptId();
         files.WriteFile(DraftFile, DraftFileFormat.Write(draft));
         if (previous is not null && previous != draft.TaskId)
             files.DeleteFolder(RepositoryLayout.ImagesFolder(deviceFolder, previous));
+        return true;
     }
 
     /// <summary>
@@ -76,8 +80,9 @@ internal sealed class DraftStore(IFileSystem files, string deviceFolder)
         {
             return Load()?.TaskId;
         }
-        catch (InvalidDataException)
+        catch (InvalidDataException e)
         {
+            logger.Warning(e, "The kept draft can't be read, so it's treated as having no images");
             return null;
         }
     }

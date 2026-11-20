@@ -1,5 +1,6 @@
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
@@ -15,7 +16,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, null!, services.Updates, services.SaveKeys));
+            services.Files, null!, services.Updates, services.SaveKeys, Logger.None));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
     }
@@ -27,7 +28,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.CloseWindowKeys, null!, services.SaveKeys));
+            services.Files, services.CloseWindowKeys, null!, services.SaveKeys, Logger.None));
 
         Assert.Equal("updates", failure.ParamName);
     }
@@ -39,9 +40,21 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.CloseWindowKeys, services.Updates, null!));
+            services.Files, services.CloseWindowKeys, services.Updates, null!, Logger.None));
 
         Assert.Equal("saveKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_a_missing_logger()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
+            services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
+            services.Files, services.CloseWindowKeys, services.Updates, services.SaveKeys, null!));
+
+        Assert.Equal("logger", failure.ParamName);
     }
 
     [Fact]
@@ -51,7 +64,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => new TaskEditorControl(
             services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, null!));
+            services.Files, null!, Serilog.Core.Logger.None));
 
         Assert.Equal("saveKeys", failure.ParamName);
     }
@@ -63,7 +76,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, null!, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.CloseWindowKeys, services.Updates, services.SaveKeys));
+            services.Files, services.CloseWindowKeys, services.Updates, services.SaveKeys, Logger.None));
 
         Assert.Equal("contacts", failure.ParamName);
     }
@@ -75,7 +88,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => new TaskEditorControl(
             services.Tasks, services.TagColors, null!, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.SaveKeys));
+            services.Files, services.SaveKeys, Serilog.Core.Logger.None));
 
         Assert.Equal("contacts", failure.ParamName);
     }
@@ -86,7 +99,7 @@ public class AddWindowCreateTests
         var services = new EditorServices();
 
         var failure = Assert.Throws<ArgumentNullException>(() => new TitleEditor(
-            services.Tasks, null!, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.SaveKeys));
+            services.Tasks, null!, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.SaveKeys, Logger.None));
 
         Assert.Equal("contacts", failure.ParamName);
     }
@@ -98,7 +111,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => new DescriptionEditor(
             services.Tasks, null!, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles, services.Files,
-            services.SaveKeys));
+            services.SaveKeys, Logger.None));
 
         Assert.Equal("contacts", failure.ParamName);
     }
@@ -109,7 +122,7 @@ public class AddWindowCreateTests
         var services = new EditorServices();
 
         var failure = Assert.Throws<ArgumentNullException>(() => new TitleEditor(
-            services.Tasks, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, null!));
+            services.Tasks, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, null!, Logger.None));
 
         Assert.Equal("saveKeys", failure.ParamName);
     }
@@ -120,8 +133,31 @@ public class AddWindowCreateTests
         var services = new EditorServices();
 
         var failure = Assert.Throws<ArgumentNullException>(() => new DescriptionEditor(
-            services.Tasks, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles, services.Files, null!));
+            services.Tasks, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles, services.Files, null!, Logger.None));
 
         Assert.Equal("saveKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void Creating_the_TitleEditor_without_a_logger_is_refused()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => new TitleEditor(
+            services.Tasks, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.SaveKeys, null!));
+
+        Assert.Equal("logger", failure.ParamName);
+    }
+
+    [Fact]
+    public void Creating_the_DescriptionEditor_without_a_logger_is_refused()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => new DescriptionEditor(
+            services.Tasks, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles, services.Files,
+            services.SaveKeys, null!));
+
+        Assert.Equal("logger", failure.ParamName);
     }
 }

@@ -19,11 +19,15 @@ internal sealed class TasksFixture
     public TasksFixture()
     {
         Time = new FakeTimeProvider(Start);
-        Tasks = TestTaskStore.Create(Files, Encoder, Time, Device, Repository);
+        Repository = new SyncedRepository(Logs.CreateLogger());
+        Tasks = TestTaskStore.Create(Files, Encoder, Time, Device, Repository, Logs.CreateLogger());
     }
 
+    /// <summary>What the repository and Tasks logged.</summary>
+    public InMemoryLogSink Logs { get; } = new();
+
     /// <summary>The synced repository Tasks joined, as Sync sees it.</summary>
-    public SyncedRepository Repository { get; } = new();
+    public SyncedRepository Repository { get; }
 
     public FakeFileSystem Files { get; } = new();
     public FakeImageEncoder Encoder { get; } = new();
@@ -51,7 +55,7 @@ internal sealed class TasksFixture
     public string CloneImages(string id) => Path.Combine(Clone, "images", id);
 
     /// <summary>Another Tasks over the same files and a fresh repository, as after the app restarts.</summary>
-    public ITasks Restarted() => TestTaskStore.Create(Files, Encoder, Time, Device);
+    public ITasks Restarted() => TestTaskStore.Create(Files, Encoder, Time, Device, logger: Logs.CreateLogger());
 
     public string SettingsFile => Path.Combine(Clone, "settings.json");
 

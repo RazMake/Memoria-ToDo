@@ -5,7 +5,7 @@ namespace Memoria.ToDo.Shared.Platform.Tests;
 
 /// <summary>
 /// A real <see cref="SyncedRepository"/> and the fake parts added to it, with one log of every step the parts see,
-/// and a way to take the lock from another thread.
+/// and a way to take the lock from another thread. The repository logs to the given logger, or to nothing.
 /// </summary>
 internal sealed class RepositoryRig
 {
@@ -13,7 +13,9 @@ internal sealed class RepositoryRig
 
     private readonly List<string> log = [];
 
-    public SyncedRepository Repository { get; } = new();
+    public RepositoryRig(Serilog.ILogger? logger = null) => Repository = new SyncedRepository(logger ?? Serilog.Core.Logger.None);
+
+    public SyncedRepository Repository { get; }
 
     /// <summary>Adds a part named <paramref name="name"/> that logs to the rig's log.</summary>
     public FakeRepositoryPart Add(string name)

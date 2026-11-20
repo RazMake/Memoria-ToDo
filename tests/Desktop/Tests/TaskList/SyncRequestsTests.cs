@@ -19,7 +19,7 @@ public class SyncRequestsTests
 
     public SyncRequestsTests()
     {
-        _requests = new SyncRequests(_service, post => post(), () => _changed++);
+        _requests = new SyncRequests(_service, post => post(), () => _changed++, Serilog.Core.Logger.None);
     }
 
     private static TaskCompletionSource<ISyncStatus> Pass() => new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -252,7 +252,7 @@ public class SyncRequestsTests
     {
         _requests.Dispose();
         var posted = new List<Action>();
-        var requests = new SyncRequests(_service, posted.Add, () => _changed++);
+        var requests = new SyncRequests(_service, posted.Add, () => _changed++, Serilog.Core.Logger.None);
         var before = _changed;
 
         _service.Publish(new FakeSyncStatus { State = SyncState.Working });

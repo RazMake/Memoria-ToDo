@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
+using Serilog;
+using Serilog.Core;
 
 namespace Memoria.ToDo.Shared.Fakes;
 
@@ -21,11 +23,15 @@ public static class TestContactStore
 
     private static readonly ConditionalWeakTable<IContacts, SyncedRepository> Repositories = new();
 
-    /// <summary>Creates Contacts over <paramref name="repository"/>, or over a new repository when none is given.</summary>
-    public static IContactStore Create(IFileSystem files, SyncedRepository? repository = null)
+    /// <summary>
+    /// Creates Contacts over <paramref name="repository"/>, or over a new repository when none is given. Both log to
+    /// <paramref name="logger"/>, or to nothing when none is given.
+    /// </summary>
+    public static IContactStore Create(IFileSystem files, SyncedRepository? repository = null, ILogger? logger = null)
     {
-        repository ??= new SyncedRepository();
-        var store = ContactStore.Create(files, repository);
+        logger ??= Logger.None;
+        repository ??= new SyncedRepository(logger);
+        var store = ContactStore.Create(files, repository, logger);
         Repositories.Add(store.Contacts, repository);
         return store;
     }

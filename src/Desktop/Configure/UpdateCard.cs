@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using Memoria.ToDo.Desktop.Updates;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -14,6 +15,7 @@ namespace Memoria.ToDo.Desktop.Configure;
 internal sealed class UpdateCard : StackPanel
 {
     private readonly IUpdateStatus _updates;
+    private readonly ILogger _logger;
     private readonly TextBlock _current = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _newVersion = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
     private readonly Button _whatIsNew = ConfigureButton.Make("What is new", new Thickness(0, 8, 8, 0));
@@ -30,9 +32,10 @@ internal sealed class UpdateCard : StackPanel
     /// <summary>Raised after each refresh, when <see cref="Cautioned"/> may have changed.</summary>
     public event Action? CautionChanged;
 
-    public UpdateCard(IUpdateStatus updates)
+    public UpdateCard(IUpdateStatus updates, ILogger logger)
     {
         _updates = updates;
+        _logger = logger;
         _whatIsNew.Click += (_, _) => _updates.ShowWhatIsNew(Window.GetWindow(this)!);
         _updateNow.Click += (_, _) => _updates.UpdateNow();
         _autoUpdate.Checked += (_, _) => Switch(true);
@@ -111,6 +114,7 @@ internal sealed class UpdateCard : StackPanel
         }
         catch (Exception error)
         {
+            _logger.Error(error, "Turning Auto update {State} failed", on ? "on" : "off");
             ThemedText.ShowMessage(_problem, error.Message);
             _refreshing = true;
             _autoUpdate.IsChecked = _updates.AutoUpdate;

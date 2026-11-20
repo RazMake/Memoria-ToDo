@@ -30,7 +30,7 @@ internal sealed partial class TaskService
                 var root = clone ?? throw new NoRepositoryFolderException();
                 var cutoff = owner.Now().AddDays(-owner.settings.Require().DeletionDelayDays.Value);
                 foreach (var task in owner.set.Items.Where(task => task.Resolved < cutoff).ToList())
-                    owner.RemoveTask(root, task.Id, committed);
+                    owner.RemoveTask("Automatically deleted", root, task, committed);
             });
     }
 }

@@ -163,10 +163,10 @@ internal sealed class Device : IAsyncDisposable
         CloneFolder = Path.Combine(folder, "clone");
         Time = new FakeTimeProvider();
         Keys = FakeDeviceKeyStore.Signing();
-        Repository = new SyncedRepository();
+        Repository = new SyncedRepository(Serilog.Core.Logger.None);
         Store = TestTaskStore.Create(Files, new FakeImageEncoder(), Time, DeviceFolder, Repository);
-        Contacts = ContactStore.Create(Files, Repository);
-        Sync = SyncService.Create(Repository, Store.Synchronization, Contacts.Files, Files, syncKeys ?? Keys, new StoreSelection(Repository), syncClock ?? Time, DeviceFolder, name, periodicInterval: null);
+        Contacts = ContactStore.Create(Files, Repository, Serilog.Core.Logger.None);
+        Sync = SyncService.Create(Repository, Store.Synchronization, Contacts.Files, Files, syncKeys ?? Keys, new StoreSelection(Repository), syncClock ?? Time, DeviceFolder, name, periodicInterval: null, logger: Serilog.Core.Logger.None);
     }
 
     /// <summary>The synced repository the device's Tasks store, Contacts store, and Sync share.</summary>

@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
@@ -6,13 +7,14 @@ namespace Memoria.ToDo.Shared.Tasks;
 /// The <see cref="ITaskStore"/> an app gets from <see cref="TaskStore"/>, and a part of the synced repository.
 /// Every call runs under the repository's lock.
 /// </summary>
-internal sealed partial class TaskService(IFileSystem files, IImageEncoder encoder, TimeProvider time, string deviceFolder, IRepositoryAccess repository) : ITaskStore, IRepositoryPart
+internal sealed partial class TaskService(IFileSystem files, IImageEncoder encoder, TimeProvider time, string deviceFolder, IRepositoryAccess repository, ILogger logger) : ITaskStore, IRepositoryPart
 {
     private readonly IRepositoryAccess repository = repository;
+    private readonly ILogger logger = logger;
     private readonly TaskFolder folder = new(files);
     private readonly SettingsFolder settingsFolder = new(files);
     private readonly TagColorsFolder tagColorsFolder = new(files);
-    private readonly DraftStore drafts = new(files, deviceFolder);
+    private readonly DraftStore drafts = new(files, deviceFolder, logger);
     private readonly EditImageStore editImages = new(files, deviceFolder);
     private readonly ImageShrinker shrinker = new(encoder);
     private TaskSet set = TaskSet.Empty;
@@ -135,6 +137,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             return added;
         });
 
+        logger.Information("Added task {TaskId} {Title}", task.Id, task.Title);
         Announce(Notice.Tasks | Notice.LocalSaved);
         return task;
     }
@@ -231,7 +234,11 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         });
 
         if (written)
+        {
+            logger.Information("Saved an edit of task {TaskId} {Title}", result.Id, result.Title);
             Announce(Notice.Tasks | Notice.LocalSaved);
+        }
+
         return result;
     }
 
@@ -247,7 +254,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             TaskId.ThrowIfInvalid(previousTaskId, nameof(previousTaskId));
         if (nextTaskId is not null)
             TaskId.ThrowIfInvalid(nextTaskId, nameof(nextTaskId));
-        return Change(taskId, task =>
+        return Change("Moved", taskId, task =>
         {
             var previous = previousTaskId is null ? null : Find(previousTaskId);
             var next = nextTaskId is null ? null : Find(nextTaskId);
@@ -267,34 +274,34 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     }
 
     public TaskItem Resolve(string taskId) =>
-        Change(taskId, task => Now() is var now && task.Resolved is null ? task with { Resolved = now, Updated = now } : task);
+        Change("Resolved", taskId, task => Now() is var now && task.Resolved is null ? task with { Resolved = now, Updated = now } : task);
 
     public TaskItem Reopen(string taskId) =>
-        Change(taskId, task => task.Resolved is null ? task : task with { Resolved = null, Updated = Now() });
+        Change("Reopened", taskId, task => task.Resolved is null ? task : task with { Resolved = null, Updated = Now() });
 
     public void Delete(string taskId)
     {
         TaskId.ThrowIfInvalid(taskId, nameof(taskId));
         // Deleting the task file is the commit: once it succeeded the removal is published, even if the image cleanup threw.
-        RemoveAndAnnounce((clone, committed) =>
-        {
-            Find(taskId);
-            RemoveTask(clone!, taskId, committed);
-        });
+        RemoveAndAnnounce((clone, committed) => RemoveTask("Deleted", clone!, Find(taskId), committed));
     }
 
-    /// <summary>Deletes the task's file, then its images. Call under the lock; <paramref name="committed"/> runs once the file is gone.</summary>
-    private void RemoveTask(string root, string taskId, Action committed)
+    /// <summary>Deletes the task's file, then its images. Call under the lock; <paramref name="committed"/> runs once the file is gone. Logs the removal as <paramref name="how"/>.</summary>
+    private void RemoveTask(string how, string root, TaskItem task, Action committed)
     {
-        folder.Delete(root, taskId);
-        set = set.WithoutTask(taskId);
+        folder.Delete(root, task.Id);
+        set = set.WithoutTask(task.Id);
         committed();
-        files.DeleteFolder(RepositoryLayout.ImagesFolder(root, taskId));
-        editImages.Discard(taskId);
+        logger.Information("{How} task {TaskId} {Title}", how, task.Id, task.Title);
+        files.DeleteFolder(RepositoryLayout.ImagesFolder(root, task.Id));
+        editImages.Discard(task.Id);
     }
 
-    /// <summary>Saves what <paramref name="change"/> makes of the task, unless it returns the task itself. Raises <see cref="Changed"/> after a save.</summary>
-    private TaskItem Change(string taskId, Func<TaskItem, TaskItem> change)
+    /// <summary>
+    /// Saves what <paramref name="change"/> makes of the task, unless it returns the task itself, and logs it as <paramref name="how"/>.
+    /// Raises <see cref="Changed"/> after a save.
+    /// </summary>
+    private TaskItem Change(string how, string taskId, Func<TaskItem, TaskItem> change)
     {
         var written = false;
         var result = repository.LockedChange(clone =>
@@ -310,7 +317,11 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         });
 
         if (written)
+        {
+            logger.Information("{How} task {TaskId} {Title}", how, result.Id, result.Title);
             Announce(Notice.Tasks | Notice.LocalSaved);
+        }
+
         return result;
     }
 
@@ -360,10 +371,20 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     public void KeepDraft(TaskDraft draft)
     {
         ArgumentNullException.ThrowIfNull(draft);
-        repository.Locked(_ => drafts.Keep(draft));
+        repository.Locked(_ =>
+        {
+            if (drafts.Keep(draft))
+                logger.Information("Kept the draft of task {TaskId} {Title}", draft.TaskId, draft.Title);
+            else
+                logger.Information("Discarded the blank draft of task {TaskId}", draft.TaskId);
+        });
     }
 
-    public void DiscardDraft() => repository.Locked(_ => drafts.Discard());
+    public void DiscardDraft()
+    {
+        repository.Locked(_ => drafts.Discard());
+        logger.Information("Discarded the kept draft");
+    }
 
     public void DiscardEditImages(string taskId)
     {
@@ -384,6 +405,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
                 editImages.Save(taskId, fileName, encoded.Bytes);
             else
                 drafts.SaveImage(taskId, fileName, encoded.Bytes);
+            logger.Information("Saved image {FileName} for task {TaskId}", fileName, taskId);
             return ImageMarkdown.Of(altText, taskId, fileName);
         });
     }

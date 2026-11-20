@@ -19,7 +19,7 @@ internal sealed class TestCloseWindowSetting : TestWindowKeysSetting
 
     public override void SettingsChanged() => Setting.SettingsChanged();
 
-    public override void Create() => Setting = new CloseWindowSetting(ReadStored, Save, Apply);
+    public override void Create() => Setting = new CloseWindowSetting(ReadStored, Save, Apply, Serilog.Core.Logger.None);
 
     /// <summary>Makes a Close window shortcut through its rules.</summary>
     public static Shortcut Make(ModifierKeys modifiers, Key key) =>

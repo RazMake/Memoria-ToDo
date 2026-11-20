@@ -74,6 +74,11 @@ internal sealed class ShellHarness
     public FakeViewTasksWindow ViewTasks { get; }
     public FakeContactsWindow Contacts { get; }
     public FakeConfigureWindow Configure { get; }
+    public FakeLogsWindow Logs { get; }
+
+    /// <summary>The entries Shell logged, through the logger it was given.</summary>
+    public InMemoryLogSink Log { get; } = new();
+
     public FakeUpdateLifetime Updates { get; } = new();
     public FakeGlobalShortcut GlobalShortcut { get; } = new();
     public FakeOneInstance OneInstance { get; } = new();
@@ -81,7 +86,7 @@ internal sealed class ShellHarness
     public int EndAppCalls { get; private set; }
     public IAppLifetime Lifetime { get; }
 
-    /// <summary>The window calls, in order: "Add", "Task View", "Contacts", and "Configure" for a Show, "Close Add", "Close Task View", and "Close Contacts" for a Close.</summary>
+    /// <summary>The window calls, in order: "Add", "Task View", "Contacts", and "Configure" for a Show, "Close Add", "Close Task View", and "Close Contacts" for a Close, and "Logs" for a Show of the Logs window.</summary>
     public List<string> Shown { get; } = [];
 
     /// <summary>The UI thread Shell was given: a fake the test drives, unless the test passed a real one.</summary>
@@ -97,9 +102,10 @@ internal sealed class ShellHarness
         ViewTasks = new FakeViewTasksWindow(Shown);
         Contacts = new FakeContactsWindow(Shown);
         Configure = new FakeConfigureWindow(Shown);
+        Logs = new FakeLogsWindow(Shown);
         Lifetime = TrayApp.Create(
-            TrayIcon, Add, ViewTasks, Contacts, Configure, Updates, GlobalShortcut, OneInstance, startedAtSignIn, Sync,
-            realUiThread ?? (() => UiThread));
+            TrayIcon, Add, ViewTasks, Contacts, Configure, Logs, Updates, GlobalShortcut, OneInstance, startedAtSignIn, Sync,
+            Log.CreateLogger(), realUiThread ?? (() => UiThread));
     }
 
     /// <summary>Starts the app, with an end action that counts its calls.</summary>

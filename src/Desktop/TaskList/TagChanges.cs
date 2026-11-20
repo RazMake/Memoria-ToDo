@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
@@ -10,12 +11,12 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// images of a discarded edit, so its save finds none waiting. Starting an edit of the task finishes the task's own bar, keeping
 /// its change, since its Undo would save the old tag over the edit.
 /// </summary>
-internal sealed class TagChanges(ITasks tasks, PendingUndo pending, EditCleanup cleanup, Action<string> report)
+internal sealed class TagChanges(ITasks tasks, PendingUndo pending, EditCleanup cleanup, Action<string> report, ILogger logger)
 {
     private const string ChangedLabel = "Tag changed";
     private const string ClearedLabel = "Tag cleared";
 
-    private readonly UndoableSave _saves = new(tasks, pending, cleanup, report);
+    private readonly UndoableSave _saves = new(tasks, pending, cleanup, report, logger);
 
     /// <summary>Saves the task with the tag as its one tag, replacing what it had. Returns the saved task, or null when it couldn't be saved.</summary>
     public TaskItem? Choose(TaskItem shown, string tag) => Change(shown, ChangedLabel, [tag]);

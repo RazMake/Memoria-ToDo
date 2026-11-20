@@ -1,7 +1,11 @@
 using System.IO;
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
@@ -68,7 +72,7 @@ public class StoreFailuresRunTests
     {
         var calls = 0;
 
-        var done = StoreFailures.Run(() => calls++, StoreFailures.MessageOf, _reports.Add);
+        var done = StoreFailures.Run(() => calls++, StoreFailures.MessageOf, _reports.Add, Logger.None);
 
         Assert.True(done);
         Assert.Equal(1, calls);
@@ -79,7 +83,7 @@ public class StoreFailuresRunTests
     public void A_known_failure_is_reported_once_with_its_message_and_returns_false()
     {
         var done = StoreFailures.Run(
-            () => throw new IOException("The disk is full."), StoreFailures.MessageOf, _reports.Add);
+            () => throw new IOException("The disk is full."), StoreFailures.MessageOf, _reports.Add, Logger.None);
 
         Assert.False(done);
         Assert.Equal(["The disk is full."], _reports);
@@ -89,7 +93,7 @@ public class StoreFailuresRunTests
     public void A_missing_repository_folder_is_reported_with_the_platforms_message()
     {
         var done = StoreFailures.Run(
-            () => throw new NoRepositoryFolderException(), StoreFailures.MessageOf, _reports.Add);
+            () => throw new NoRepositoryFolderException(), StoreFailures.MessageOf, _reports.Add, Logger.None);
 
         Assert.False(done);
         Assert.Equal(["There is no repository folder yet. Open Configure and choose one."], _reports);
@@ -108,7 +112,8 @@ public class StoreFailuresRunTests
                 asked = thrown;
                 return thrown is TaskNotFoundException ? "This task no longer exists." : StoreFailures.MessageOf(thrown);
             },
-            _reports.Add);
+            _reports.Add,
+            Logger.None);
 
         Assert.False(done);
         Assert.Same(failure, asked);
@@ -121,7 +126,7 @@ public class StoreFailuresRunTests
         var failure = new NotSupportedException("Unexpected.");
 
         var thrown = Assert.Throws<NotSupportedException>(
-            () => StoreFailures.Run(() => throw failure, StoreFailures.MessageOf, _reports.Add));
+            () => StoreFailures.Run(() => throw failure, StoreFailures.MessageOf, _reports.Add, Logger.None));
 
         Assert.Same(failure, thrown);
         Assert.Empty(_reports);
@@ -132,7 +137,7 @@ public class StoreFailuresRunTests
     {
         var failure = new IOException("The disk is full.");
 
-        var thrown = Assert.Throws<IOException>(() => StoreFailures.Run(() => throw failure, _ => null, _reports.Add));
+        var thrown = Assert.Throws<IOException>(() => StoreFailures.Run(() => throw failure, _ => null, _reports.Add, Logger.None));
 
         Assert.Same(failure, thrown);
         Assert.Empty(_reports);
@@ -144,11 +149,60 @@ public class StoreFailuresRunTests
         var calls = 0;
 
         Assert.Equal("call", Assert.Throws<ArgumentNullException>(
-            () => StoreFailures.Run(null!, StoreFailures.MessageOf, _reports.Add)).ParamName);
+            () => StoreFailures.Run(null!, StoreFailures.MessageOf, _reports.Add, Logger.None)).ParamName);
         Assert.Equal("messageOf", Assert.Throws<ArgumentNullException>(
-            () => StoreFailures.Run(() => calls++, null!, _reports.Add)).ParamName);
+            () => StoreFailures.Run(() => calls++, null!, _reports.Add, Logger.None)).ParamName);
         Assert.Equal("report", Assert.Throws<ArgumentNullException>(
-            () => StoreFailures.Run(() => calls++, StoreFailures.MessageOf, null!)).ParamName);
+            () => StoreFailures.Run(() => calls++, StoreFailures.MessageOf, null!, Logger.None)).ParamName);
+        Assert.Equal("logger", Assert.Throws<ArgumentNullException>(
+            () => StoreFailures.Run(() => calls++, StoreFailures.MessageOf, _reports.Add, null!)).ParamName);
         Assert.Equal(0, calls);
+    }
+}
+
+/// <summary>What running a store call logs: the failure it turns into a message, once, at Error, so no window needs to.</summary>
+[Unit]
+public class StoreFailuresLoggingTests
+{
+    private readonly InMemoryLogSink _logs = new();
+    private readonly List<string> _reports = [];
+
+    [Fact]
+    public void A_failure_it_reports_is_logged_once_at_Error_with_its_exception()
+    {
+        var failure = new IOException("The disk is full.");
+
+        StoreFailures.Run(() => throw failure, StoreFailures.MessageOf, _reports.Add, _logs.CreateLogger());
+
+        var entry = Assert.Single(_logs.Events);
+        Assert.Equal(LogEventLevel.Error, entry.Level);
+        Assert.True(entry.HasException(failure));
+    }
+
+    [Fact]
+    public void A_failure_a_window_words_itself_is_logged_too_since_the_run_reports_it()
+    {
+        var failure = new TaskNotFoundException();
+
+        StoreFailures.Run(() => throw failure, _ => "This task no longer exists.", _reports.Add, _logs.CreateLogger());
+
+        Assert.True(Assert.Single(_logs.Events, e => e.Level == LogEventLevel.Error).HasException(failure));
+    }
+
+    [Fact]
+    public void A_call_that_succeeds_logs_nothing()
+    {
+        StoreFailures.Run(() => { }, StoreFailures.MessageOf, _reports.Add, _logs.CreateLogger());
+
+        Assert.Empty(_logs.Events);
+    }
+
+    [Fact]
+    public void A_failure_that_passes_on_is_not_logged_since_whoever_ends_it_logs_it()
+    {
+        Assert.Throws<NotSupportedException>(
+            () => StoreFailures.Run(() => throw new NotSupportedException("Unexpected."), StoreFailures.MessageOf, _reports.Add, _logs.CreateLogger()));
+
+        Assert.Empty(_logs.Events);
     }
 }

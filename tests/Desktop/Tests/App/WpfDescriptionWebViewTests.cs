@@ -1,5 +1,8 @@
 using System.IO;
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
+using Serilog.Events;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.App.Tests;
@@ -226,6 +229,44 @@ public class WpfDescriptionWebViewTests
 
     // The browser accepts at most 2 MB of page (its NavigateToString documentation); this is well over that in characters and in bytes.
     private static string PageOverTheBrowsersLimit() => Page(new string('a', 3_000_000));
+
+    [WpfFact]
+    public void Creating_the_view_without_a_logger_is_refused()
+    {
+        var files = new FakeFileSystem();
+        var rules = TestTaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), @"C:\web-view-tests\device").Synchronization.Files;
+
+        var error = Assert.Throws<ArgumentNullException>(
+            () => new WpfDescriptionWebView(null, @"C:\web-view-tests\edit-images", @"C:\web-view-tests\browser-data", files, rules, null!));
+
+        Assert.Equal("logger", error.ParamName);
+    }
+
+    [WpfFact]
+    public async Task Logs_one_problem_entry_with_the_exception_when_a_page_over_the_browsers_size_limit_is_asked_for()
+    {
+        using var harness = new DescriptionWebViewHarness();
+        harness.Port.Show(Page("<p>small</p>"));
+        await harness.NextLoadedPageTitle();
+
+        harness.Port.Show(PageOverTheBrowsersLimit());
+        await harness.NextFailure();
+        harness.Port.Show(PageOverTheBrowsersLimit());
+
+        var problem = Assert.Single(harness.Log.Events, entry => entry.Level >= LogEventLevel.Warning);
+        Assert.NotNull(problem.Exception);
+    }
+
+    [WpfFact]
+    public async Task Logs_no_problem_for_a_page_that_loads()
+    {
+        using var harness = new DescriptionWebViewHarness();
+
+        harness.Port.Show(Page("<p>small</p>"));
+        await harness.NextLoadedPageTitle();
+
+        harness.Log.Events.AssertNoProblems();
+    }
 
     private static void AssertOnlyOneFailureAndStillDisposable(DescriptionWebViewHarness harness)
     {

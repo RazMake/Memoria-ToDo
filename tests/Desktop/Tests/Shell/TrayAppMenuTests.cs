@@ -113,10 +113,9 @@ public class TrayAppMenuTests
     {
         var app = new ShellHarness();
         app.Contacts.IsAvailable = false;
-
         app.Start();
 
-        Assert.Equal(["Add new task", "Task View", "Configure", "Exit"], app.TrayIcon.MenuTexts);
+        Assert.Equal(["Add new task", "Task View", "Configure", "Logs", "Exit"], app.TrayIcon.MenuTexts);
     }
 
     [Fact]
@@ -126,7 +125,7 @@ public class TrayAppMenuTests
 
         app.Contacts.IsAvailable = false;
 
-        Assert.Equal(["Add new task", "Task View", "Configure", "Exit"], app.TrayIcon.MenuTexts);
+        Assert.Equal(["Add new task", "Task View", "Configure", "Logs", "Exit"], app.TrayIcon.MenuTexts);
     }
 
     [Fact]
@@ -138,7 +137,7 @@ public class TrayAppMenuTests
 
         app.Contacts.IsAvailable = true;
 
-        Assert.Equal(["Add new task", "Task View", "Contacts", "Configure", "Exit"], app.TrayIcon.MenuTexts);
+        Assert.Equal(["Add new task", "Task View", "Contacts", "Configure", "Logs", "Exit"], app.TrayIcon.MenuTexts);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -17,11 +18,12 @@ public static class ConfigureWindow
     /// <param name="theme">The app's theme; the section titles show in heading 1's color for it and follow its switches.</param>
     /// <param name="updates">The update status; the Update card in Application shows it and calls it for each control.</param>
     /// <param name="saveKeys">The platform's Save keys; Configure sets them from the stored or default Save shortcut.</param>
+    /// <param name="logger">Where Configure logs each failure it catches and shows, at Error.</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static IConfigureWindow Create(IStartWithWindows startWithWindows, ISharedTaskSettings settings,
         ISyncService sync, ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme,
-        IUpdateStatus updates, SaveKeys saveKeys) =>
-        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys, theme, updates, saveKeys);
+        IUpdateStatus updates, SaveKeys saveKeys, ILogger logger) =>
+        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys, theme, updates, saveKeys, logger);
 }
 
 /// <summary>The Configure window, as Shell uses it.</summary>

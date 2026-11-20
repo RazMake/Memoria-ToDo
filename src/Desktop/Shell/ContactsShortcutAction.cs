@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.Configure;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Shell;
 
@@ -10,10 +11,11 @@ namespace Memoria.ToDo.Desktop.Shell;
 /// <param name="pressed">Runs when the shortcut is pressed.</param>
 /// <param name="isAvailable">Whether contacts are available now.</param>
 /// <param name="taken">Runs when the kept shortcut can't be held because Windows or another app has it.</param>
+/// <param name="logger">Where a taken shortcut is logged.</param>
 internal sealed class ContactsShortcutAction(
-    IGlobalShortcut globalShortcut, Action pressed, Func<bool> isAvailable, Action taken) : IShortcutAction
+    IGlobalShortcut globalShortcut, Action pressed, Func<bool> isAvailable, Action taken, ILogger logger) : IShortcutAction
 {
-    private readonly ActiveShortcut _held = new(globalShortcut, pressed);
+    private readonly ActiveShortcut _held = new(globalShortcut, pressed, "Contacts", logger);
     private Shortcut? _kept;
 
     /// <inheritdoc />

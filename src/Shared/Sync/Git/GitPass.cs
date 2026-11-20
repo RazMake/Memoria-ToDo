@@ -66,39 +66,47 @@ internal sealed class GitPass(ISyncedRepository repository, ITaskSynchronization
         var merge = new DomainMerge(repo, tasks.Files, contacts, time, connection.DeviceName);
         repository.Update(folder, () => commit.Run());
 
+        var fetched = false;
+        var merged = false;
+        var pushed = false;
         for (var attempt = 1; ; attempt++)
         {
             token.ThrowIfCancellationRequested();
             Commit? tip = null;
             if (remoteHasBranch)
             {
+                var tipBefore = knownRemoteTip;
                 Fetch(repo, branch);
                 tip = repo.Branches[$"origin/{branch}"]?.Tip;
+                fetched |= tip is not null && tip.Id != tipBefore?.Id;
                 knownRemoteTip = tip;
                 repository.Update(folder, () =>
                 {
                     commit.Run();
                     if (tip is not null && repo.Head.Tip is { } local)
                     {
+                        merged |= HasDiverged(repo, local, tip);
                         merge.Run(local, tip, branch);
                     }
                 });
             }
 
             var head = repo.Head.Tip;
-            if (head is null || head.Id == tip?.Id)
+            var upToDate = head is null || head.Id == tip?.Id;
+            if (upToDate)
             {
                 // Nothing to push, so a push can't prove the key may write: check it, so a read-only or revoked key shows.
                 WriteAccessCheck.Run(AddressParser.Parse(remote.Url));
             }
 
             string? reason = null;
-            if (head is null || head.Id == tip?.Id || Push(repo, remote, branch, out reason))
+            if (upToDate || Push(repo, remote, branch, out reason))
             {
+                pushed |= !upToDate;
                 // A failure while the transport closes can still end this pass, so the value is kept before returning.
                 var managedChanges = commit.HasManagedChanges();
                 RememberPending(repo, commit, managedChanges);
-                return new GitPassResult(managedChanges) { Skipped = merge.Skipped };
+                return new GitPassResult(managedChanges) { Skipped = merge.Skipped, Fetched = fetched, Merged = merged, Pushed = pushed };
             }
 
             remoteHasBranch = true;
@@ -108,6 +116,15 @@ internal sealed class GitPass(ISyncedRepository repository, ITaskSynchronization
                 throw new GitFailureException(SyncFailure.PushRejected, $"The remote rejected the push {MaxPushAttempts} times.{detail}");
             }
         }
+    }
+
+    // Whether the local and the remote tips each hold commits the other lacks, so combining them takes a merge.
+    private static bool HasDiverged(Repository repo, Commit local, Commit remote)
+    {
+        if (local.Id == remote.Id)
+            return false;
+        var divergence = repo.ObjectDatabase.CalculateHistoryDivergence(local, remote);
+        return divergence.AheadBy > 0 && divergence.BehindBy > 0;
     }
 
     private Repository OpenRepository() =>

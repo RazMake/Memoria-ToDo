@@ -1,5 +1,6 @@
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Contacts;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.ContactList;
 
@@ -28,6 +29,7 @@ internal sealed class ContactsModel
     private readonly IContacts _contacts;
     private readonly IContactPrompts _prompts;
     private readonly LeaveDecision _leave;
+    private readonly ILogger _logger;
     private string _search = "";
     private IReadOnlyList<ContactGroup> _loaded = [];
     private IReadOnlyList<ListedGroup> _groups = [];
@@ -40,12 +42,14 @@ internal sealed class ContactsModel
     private ContactProblems _problems = new(null, []);
     private bool _isOff;
 
-    public ContactsModel(IContacts contacts, IContactPrompts prompts)
+    public ContactsModel(IContacts contacts, IContactPrompts prompts, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(prompts);
+        ArgumentNullException.ThrowIfNull(logger);
         _contacts = contacts;
         _prompts = prompts;
+        _logger = logger;
         _leave = new LeaveDecision(prompts);
         Rebuild();
     }
@@ -237,8 +241,9 @@ internal sealed class ContactsModel
     /// <summary>Whether the window may close: asks about a form with changes. False when cancelled, the save fails, or the question already shows.</summary>
     public bool MayClose() => MayLeaveForm();
 
+    // The window's logger.
     private bool Run(Action call, params string[] groups) =>
-        StoreFailures.Run(call, failure => ContactFailures.MessageOf(failure, _contacts, groups), message => _message = message);
+        StoreFailures.Run(call, failure => ContactFailures.MessageOf(failure, _contacts, groups), message => _message = message, _logger);
 
     private bool MayLeaveForm()
     {

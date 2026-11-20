@@ -1,0 +1,42 @@
+Memoria.ToDo.Desktop.Logs.ILogSource
+Memoria.ToDo.Desktop.Logs.ILogSource.ReadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Memoria.ToDo.Desktop.Logs.LogRead!>!
+Memoria.ToDo.Desktop.Logs.ILogsWindow
+Memoria.ToDo.Desktop.Logs.ILogsWindow.Show() -> void
+Memoria.ToDo.Desktop.Logs.LogEntry
+Memoria.ToDo.Desktop.Logs.LogEntry.<Clone>$() -> Memoria.ToDo.Desktop.Logs.LogEntry!
+Memoria.ToDo.Desktop.Logs.LogEntry.Component.get -> string!
+Memoria.ToDo.Desktop.Logs.LogEntry.Component.init -> void
+Memoria.ToDo.Desktop.Logs.LogEntry.Deconstruct(out System.DateTimeOffset Time, out Serilog.Events.LogEventLevel Level, out string! Component, out string! Message, out string? Error) -> void
+Memoria.ToDo.Desktop.Logs.LogEntry.Equals(Memoria.ToDo.Desktop.Logs.LogEntry? other) -> bool
+Memoria.ToDo.Desktop.Logs.LogEntry.Error.get -> string?
+Memoria.ToDo.Desktop.Logs.LogEntry.Error.init -> void
+Memoria.ToDo.Desktop.Logs.LogEntry.Level.get -> Serilog.Events.LogEventLevel
+Memoria.ToDo.Desktop.Logs.LogEntry.Level.init -> void
+Memoria.ToDo.Desktop.Logs.LogEntry.LogEntry(System.DateTimeOffset Time, Serilog.Events.LogEventLevel Level, string! Component, string! Message, string? Error) -> void
+Memoria.ToDo.Desktop.Logs.LogEntry.Message.get -> string!
+Memoria.ToDo.Desktop.Logs.LogEntry.Message.init -> void
+Memoria.ToDo.Desktop.Logs.LogEntry.Time.get -> System.DateTimeOffset
+Memoria.ToDo.Desktop.Logs.LogEntry.Time.init -> void
+Memoria.ToDo.Desktop.Logs.LogRead
+Memoria.ToDo.Desktop.Logs.LogRead.<Clone>$() -> Memoria.ToDo.Desktop.Logs.LogRead!
+Memoria.ToDo.Desktop.Logs.LogRead.Deconstruct(out System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Logs.LogEntry!>! Entries, out int UnreadableLines, out string? WriteProblem) -> void
+Memoria.ToDo.Desktop.Logs.LogRead.Entries.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Logs.LogEntry!>!
+Memoria.ToDo.Desktop.Logs.LogRead.Entries.init -> void
+Memoria.ToDo.Desktop.Logs.LogRead.Equals(Memoria.ToDo.Desktop.Logs.LogRead? other) -> bool
+Memoria.ToDo.Desktop.Logs.LogRead.LogRead(System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Logs.LogEntry!>! Entries, int UnreadableLines, string? WriteProblem) -> void
+Memoria.ToDo.Desktop.Logs.LogRead.UnreadableLines.get -> int
+Memoria.ToDo.Desktop.Logs.LogRead.UnreadableLines.init -> void
+Memoria.ToDo.Desktop.Logs.LogRead.WriteProblem.get -> string?
+Memoria.ToDo.Desktop.Logs.LogRead.WriteProblem.init -> void
+Memoria.ToDo.Desktop.Logs.LogsWindow
+override Memoria.ToDo.Desktop.Logs.LogEntry.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Logs.LogEntry.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Logs.LogEntry.ToString() -> string!
+override Memoria.ToDo.Desktop.Logs.LogRead.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Logs.LogRead.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Logs.LogRead.ToString() -> string!
+static Memoria.ToDo.Desktop.Logs.LogEntry.operator !=(Memoria.ToDo.Desktop.Logs.LogEntry? left, Memoria.ToDo.Desktop.Logs.LogEntry? right) -> bool
+static Memoria.ToDo.Desktop.Logs.LogEntry.operator ==(Memoria.ToDo.Desktop.Logs.LogEntry? left, Memoria.ToDo.Desktop.Logs.LogEntry? right) -> bool
+static Memoria.ToDo.Desktop.Logs.LogRead.operator !=(Memoria.ToDo.Desktop.Logs.LogRead? left, Memoria.ToDo.Desktop.Logs.LogRead? right) -> bool
+static Memoria.ToDo.Desktop.Logs.LogRead.operator ==(Memoria.ToDo.Desktop.Logs.LogRead? left, Memoria.ToDo.Desktop.Logs.LogRead? right) -> bool
+static Memoria.ToDo.Desktop.Logs.LogsWindow.Create(Memoria.ToDo.Desktop.Logs.ILogSource! source, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys, System.TimeProvider! time, Serilog.ILogger! logger) -> Memoria.ToDo.Desktop.Logs.ILogsWindow!

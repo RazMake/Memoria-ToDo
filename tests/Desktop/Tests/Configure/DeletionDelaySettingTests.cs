@@ -15,7 +15,7 @@ public class DeletionDelaySettingTests
     private static (DeletionDelaySetting Setting, FakeSharedTaskSettings Settings) Open()
     {
         var settings = new FakeSharedTaskSettings();
-        var setting = new DeletionDelaySetting(settings);
+        var setting = new DeletionDelaySetting(settings, Serilog.Core.Logger.None);
         setting.Refresh();
         return (setting, settings);
     }
@@ -138,7 +138,7 @@ public class DeletionDelaySettingTests
     public void Unreadable_settings_at_the_start_show_no_invented_delay_and_say_why()
     {
         var settings = new FakeSharedTaskSettings { ReadFailure = new InvalidDataException("not json") };
-        var setting = new DeletionDelaySetting(settings);
+        var setting = new DeletionDelaySetting(settings, Serilog.Core.Logger.None);
 
         var failure = Record.Exception(setting.Refresh);
 

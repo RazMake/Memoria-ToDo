@@ -2,6 +2,7 @@ using System.Windows.Controls;
 using Memoria.ToDo.Desktop.TaskList.Tests;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
+using Serilog.Events;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.ContactList.Tests;
@@ -119,6 +120,18 @@ public class ContactsWindowFormTests
         Assert.True(screen.View.IsOpen);
         Assert.True(screen.ShowsText("Writing is not allowed here"));
         Assert.Equal("Lead", screen.FieldText("title"));
+    }
+
+    [WpfFact]
+    public void A_save_the_store_refuses_is_logged_as_an_error_with_the_exception_through_the_windows_logger()
+    {
+        using var screen = EditingAna(_services);
+        screen.Type("title", "Lead");
+        _services.Disk.FailWritesUnder(_services.Clone);
+
+        screen.PressSaveKeys();
+
+        Assert.Contains(_services.Log.Events, entry => entry.Level == LogEventLevel.Error && entry.Exception is not null);
     }
 
     [WpfFact]

@@ -20,7 +20,7 @@ internal sealed class TestSaveSetting : TestWindowKeysSetting
 
     public override void SettingsChanged() => Setting.SettingsChanged();
 
-    public override void Create() => Setting = new SaveSetting(ReadStored, Save, Apply);
+    public override void Create() => Setting = new SaveSetting(ReadStored, Save, Apply, Serilog.Core.Logger.None);
 
     /// <summary>Makes a Save shortcut through its rules.</summary>
     public static Shortcut Make(ModifierKeys modifiers, Key key) =>

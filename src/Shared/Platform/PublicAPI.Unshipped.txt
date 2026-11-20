@@ -63,7 +63,7 @@ Memoria.ToDo.Shared.Platform.SyncedRepository.LockedChange<T>(System.Func<string
 Memoria.ToDo.Shared.Platform.SyncedRepository.ReportLocalSave() -> void
 Memoria.ToDo.Shared.Platform.SyncedRepository.Select(string? folder) -> void
 Memoria.ToDo.Shared.Platform.SyncedRepository.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!>!
-Memoria.ToDo.Shared.Platform.SyncedRepository.SyncedRepository() -> void
+Memoria.ToDo.Shared.Platform.SyncedRepository.SyncedRepository(Serilog.ILogger! logger) -> void
 Memoria.ToDo.Shared.Platform.SyncedRepository.Update(string! expectedFolder, System.Action! update) -> void
 override Memoria.ToDo.Shared.Platform.FileLoad<T>.Equals(object? obj) -> bool
 override Memoria.ToDo.Shared.Platform.FileLoad<T>.GetHashCode() -> int

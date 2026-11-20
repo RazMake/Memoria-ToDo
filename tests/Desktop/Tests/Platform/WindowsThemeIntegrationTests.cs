@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using Serilog.Events;
 using Xunit;
 using Memoria.ToDo.Testing;
 
@@ -50,16 +51,20 @@ public class WindowsThemeIntegrationTests
     }
 
     [Fact]
-    public void An_error_in_a_Changed_handler_is_shown_and_the_app_ends_with_non_zero()
+    public void An_error_in_a_Changed_handler_is_logged_and_shown_and_the_app_keeps_running_until_it_is_told_to_end()
     {
         using var host = HostProcess.Start("theme-changed-handler-throws");
 
         var text = host.CloseMessageBox();
+        host.TellToEndApp();
         var exitCode = host.WaitForExit();
 
         Assert.Contains("changed boom", text);
-        Assert.NotEqual(0, exitCode);
+        var entry = Assert.Single(host.LogEntries, e => e.Names("changed boom"));
+        Assert.Equal(LogEventLevel.Error, entry.Level);
+        Assert.Contains("still-running", host.Lines);
         Assert.Equal(1, host.Count("stopped"));
+        Assert.Equal(0, exitCode);
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Contacts;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.ContactList;
 
@@ -23,11 +24,11 @@ internal sealed class ContactsMainWindow : Window
     private readonly HeldModifierKeys _held = new();
     private bool _closed;
 
-    public ContactsMainWindow(IContacts contacts, TimeProvider time, SaveKeys saveKeys, IDragPointer pointer)
+    public ContactsMainWindow(IContacts contacts, TimeProvider time, SaveKeys saveKeys, IDragPointer pointer, ILogger logger)
     {
         _contacts = contacts;
         _saveKeys = saveKeys;
-        _model = new ContactsModel(contacts, new WindowPrompts(this));
+        _model = new ContactsModel(contacts, new WindowPrompts(this), logger);
         _list = new ContactListView(_model, time, pointer, Render);
         _details = new ContactDetailsView(_model, Render);
 

@@ -62,6 +62,7 @@ internal sealed class DeviceActions
         }
         catch (Exception error)
         {
+            _ui.Logger.Error(error, "Copying the public key failed");
             Report(error.Message);
         }
     }

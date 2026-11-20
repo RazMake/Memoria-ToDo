@@ -18,6 +18,7 @@
     <ProjectReference Include="..\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
     <ProjectReference Include="..\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
+    <PackageReference Include="Serilog" />
   </ItemGroup>
 
 </Project>

@@ -25,7 +25,7 @@ public class RepositoryChangeTests : IDisposable
 
     public RepositoryChangeTests()
     {
-        _ui = new SyncUi(_sync, _actions, post => post());
+        _ui = new SyncUi(_sync, _actions, post => post(), Serilog.Core.Logger.None);
         _change = new RepositoryChange(_ui, () => _changed++);
     }
 
@@ -418,7 +418,7 @@ public class RepositoryChangeTests : IDisposable
     public void A_failure_to_read_the_setup_shows_as_the_message()
     {
         var unreadable = new ThrowingSetupSync(new InvalidDataException("Setup file is damaged."));
-        using var ui = new SyncUi(unreadable, new FakeSetupActions(), post => post());
+        using var ui = new SyncUi(unreadable, new FakeSetupActions(), post => post(), Serilog.Core.Logger.None);
         var change = new RepositoryChange(ui, () => { });
 
         var failure = Record.Exception(change.Refresh);

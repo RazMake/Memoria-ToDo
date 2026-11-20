@@ -145,7 +145,7 @@ public class ListSyncTests
         public Host()
         {
             Service = new FakeSyncService();
-            Sync = new ListSync(Service, Palette.Colors, new FakeTheme());
+            Sync = new ListSync(Service, Palette.Colors, new FakeTheme(), Serilog.Core.Logger.None);
             Container = new Grid();
             Container.Resources[SuccessKey] = new SolidColorBrush(Colors.Green);
             Container.Children.Add(Sync);

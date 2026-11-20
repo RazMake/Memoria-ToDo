@@ -21,7 +21,7 @@ public class SyncUiTests : IDisposable
 
     public SyncUiTests()
     {
-        _ui = new SyncUi(_sync, new FakeSetupActions(), _posted.Enqueue);
+        _ui = new SyncUi(_sync, new FakeSetupActions(), _posted.Enqueue, Serilog.Core.Logger.None);
         _ui.Changed += () => _changed++;
     }
 
@@ -61,7 +61,7 @@ public class SyncUiTests : IDisposable
     public void Exposes_the_sync_service_and_setup_actions_it_was_given()
     {
         var actions = new FakeSetupActions();
-        using var ui = new SyncUi(_sync, actions, _ => { });
+        using var ui = new SyncUi(_sync, actions, _ => { }, Serilog.Core.Logger.None);
 
         Assert.Same(_sync, ui.Sync);
         Assert.Same(actions, ui.Actions);

@@ -1,5 +1,6 @@
 using System.IO;
 using Memoria.ToDo.Shared.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Platform;
 
@@ -19,15 +20,17 @@ public static class StoreFailures
     };
 
     /// <summary>
-    /// Runs the call and returns true. When it throws a failure <paramref name="messageOf"/> gives a message for, passes
-    /// the message to <paramref name="report"/> and returns false; any other failure passes on.
+    /// Runs the call and returns true. When it throws a failure <paramref name="messageOf"/> gives a message for, logs
+    /// the failure at Error, passes the message to <paramref name="report"/> and returns false; any other failure passes
+    /// on, unlogged, since whoever ends it logs it.
     /// </summary>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-    public static bool Run(Action call, Func<Exception, string?> messageOf, Action<string> report)
+    public static bool Run(Action call, Func<Exception, string?> messageOf, Action<string> report, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(messageOf);
         ArgumentNullException.ThrowIfNull(report);
+        ArgumentNullException.ThrowIfNull(logger);
         try
         {
             call();
@@ -35,6 +38,7 @@ public static class StoreFailures
         }
         catch (Exception failure) when (messageOf(failure) is { } message)
         {
+            logger.Error(failure, "A store call failed: {Reason}", message);
             report(message);
             return false;
         }

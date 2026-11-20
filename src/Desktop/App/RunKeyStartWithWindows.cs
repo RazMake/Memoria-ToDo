@@ -3,6 +3,7 @@ using System.Security;
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.Platform;
 using Microsoft.Win32;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.App;
 
@@ -11,10 +12,11 @@ internal sealed class RunKeyStartWithWindows : IStartWithWindows
 {
     private readonly string _runKeyPath;
     private readonly string? _installedStarterPath;
+    private readonly ILogger _logger;
 
     /// <param name="runKeyPath">The key's path under HKEY_CURRENT_USER.</param>
     /// <param name="installedStarterPath">The installed starter's path, or null when the app isn't installed, which only lets <see cref="IsOn"/> work.</param>
-    public RunKeyStartWithWindows(string runKeyPath, string? installedStarterPath)
+    public RunKeyStartWithWindows(string runKeyPath, string? installedStarterPath, ILogger logger)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(runKeyPath);
         if (installedStarterPath is not null)
@@ -22,8 +24,10 @@ internal sealed class RunKeyStartWithWindows : IStartWithWindows
             ArgumentException.ThrowIfNullOrWhiteSpace(installedStarterPath);
         }
 
+        ArgumentNullException.ThrowIfNull(logger);
         _runKeyPath = runKeyPath;
         _installedStarterPath = installedStarterPath;
+        _logger = logger;
     }
 
     private static string EntryName => AppName.Value;
@@ -55,5 +59,7 @@ internal sealed class RunKeyStartWithWindows : IStartWithWindows
         {
             throw new InvalidOperationException("Windows refused the change to the Run key.", error);
         }
+
+        _logger.Information("Start with Windows changed: it is now on: {IsOn}", on);
     }
 }

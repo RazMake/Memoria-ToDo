@@ -5,4 +5,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
 </Project>

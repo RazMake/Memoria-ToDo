@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Shared.Contacts;
 
@@ -6,8 +7,9 @@ namespace Memoria.ToDo.Shared.Contacts;
 /// The <see cref="IContacts"/> an app gets from <see cref="ContactStore"/>, and a part of the synced repository.
 /// Every call runs under the repository's lock.
 /// </summary>
-internal sealed partial class ContactService(IFileSystem files, IRepositoryAccess repository) : IContacts, IRepositoryPart
+internal sealed partial class ContactService(IFileSystem files, IRepositoryAccess repository, ILogger logger) : IContacts, IRepositoryPart
 {
+    private readonly ILogger logger = logger;
     private readonly ContactFolder folder = new(files);
     private ContactSnapshot snapshot = ContactSnapshot.Empty;
 

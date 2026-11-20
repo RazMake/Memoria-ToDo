@@ -15,7 +15,7 @@ public class StartWithWindowsSettingTests
     {
         var port = new FakeStartWithWindows { On = on };
 
-        var setting = new StartWithWindowsSetting(port);
+        var setting = new StartWithWindowsSetting(port, Serilog.Core.Logger.None);
 
         Assert.Equal(on, setting.IsOn);
         Assert.Null(setting.Problem);
@@ -28,7 +28,7 @@ public class StartWithWindowsSettingTests
     public void Switching_calls_the_port_once_and_shows_the_new_value(bool on)
     {
         var port = new FakeStartWithWindows { On = !on };
-        var setting = new StartWithWindowsSetting(port);
+        var setting = new StartWithWindowsSetting(port, Serilog.Core.Logger.None);
 
         setting.Set(on);
 
@@ -41,7 +41,7 @@ public class StartWithWindowsSettingTests
     public void A_failed_switch_keeps_the_previous_value_and_shows_the_errors_message()
     {
         var port = new FakeStartWithWindows { On = false, SetFailure = new InvalidOperationException("Not installed.") };
-        var setting = new StartWithWindowsSetting(port);
+        var setting = new StartWithWindowsSetting(port, Serilog.Core.Logger.None);
 
         setting.Set(true);
 
@@ -53,7 +53,7 @@ public class StartWithWindowsSettingTests
     public void A_later_successful_switch_clears_the_problem()
     {
         var port = new FakeStartWithWindows { SetFailure = new InvalidOperationException("Not installed.") };
-        var setting = new StartWithWindowsSetting(port);
+        var setting = new StartWithWindowsSetting(port, Serilog.Core.Logger.None);
         setting.Set(true);
         port.SetFailure = null;
 
@@ -66,6 +66,6 @@ public class StartWithWindowsSettingTests
     [Fact]
     public void Rejects_a_missing_port()
     {
-        Assert.Throws<ArgumentNullException>(() => new StartWithWindowsSetting(null!));
+        Assert.Throws<ArgumentNullException>(() => new StartWithWindowsSetting(null!, Serilog.Core.Logger.None));
     }
 }

@@ -19,7 +19,13 @@ internal sealed class SetupModel(ISyncedRepository repository, IGitOperations gi
     /// <summary>Remembers the public key of an open handle. Call on the worker.</summary>
     public void Observe(IDeviceSigningKey key) => publicKey ??= key.PublicKeyBlob.ToArray();
 
-    public void ForgetKey() => publicKey = null;
+    /// <summary>Forgets the remembered public key and returns its fingerprint, or null when none was remembered.</summary>
+    public string? ForgetKey()
+    {
+        var fingerprint = publicKey is null ? null : DeviceMetadata.Fingerprint(publicKey);
+        publicKey = null;
+        return fingerprint;
+    }
 
     /// <summary>Rebuilds the view and publishes it.</summary>
     public async Task RefreshAsync()

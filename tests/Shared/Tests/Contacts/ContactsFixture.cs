@@ -23,15 +23,16 @@ internal sealed class ContactsFixture
 
     private static readonly string Root = Path.Combine(Path.GetTempPath(), "memoria-contacts-tests");
 
-    private readonly RepositoryRig rig = new();
+    private readonly RepositoryRig rig;
     private readonly List<string> notices = [];
     private readonly List<int> changedThreads = [];
     private readonly List<bool> changedOutsideLock = [];
 
     public ContactsFixture()
     {
+        rig = new RepositoryRig(Logs.CreateLogger());
         Files = new RecordingFileSystem(Disk);
-        Store = TestContactStore.Create(Files, Repository);
+        Store = TestContactStore.Create(Files, Repository, Logs.CreateLogger());
         Contacts.Changed += (_, _) =>
         {
             var outside = rig.AnotherThreadCanLock();
@@ -50,6 +51,9 @@ internal sealed class ContactsFixture
     }
 
     public FakeFileSystem Disk { get; } = new();
+
+    /// <summary>What the repository and Contacts logged.</summary>
+    public InMemoryLogSink Logs { get; } = new();
     public RecordingFileSystem Files { get; }
     public SyncedRepository Repository => rig.Repository;
     public IContactStore Store { get; }

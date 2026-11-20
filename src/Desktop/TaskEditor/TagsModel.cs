@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -11,15 +12,18 @@ internal sealed class TagsModel
 {
     private readonly ITasks _tasks;
     private readonly ITagColors _tagColors;
+    private readonly ILogger _logger;
     private IReadOnlyList<string> _tags = [];
     private string _typedText = "";
 
-    public TagsModel(ITasks tasks, ITagColors tagColors)
+    public TagsModel(ITasks tasks, ITagColors tagColors, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(tagColors);
         _tasks = tasks;
         _tagColors = tagColors;
+        _logger = logger;
     }
 
     /// <summary>Raised when the tags, the typed text, the message, or whether Custom is open changes, or after <see cref="Refresh"/>.</summary>
@@ -200,6 +204,7 @@ internal sealed class TagsModel
         }
         catch (Exception failure) when (TagColorFailures.MessageOf(failure) is not null)
         {
+            _logger.Error(failure, "A tag's color couldn't be kept");
             ColorMessage = TagColorFailures.MessageOf(failure)!;
             Changed?.Invoke();
             return false;

@@ -4,6 +4,7 @@ using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -23,13 +24,14 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly CloseWindowKeys _closeWindowKeys;
     private readonly ITheme _theme;
     private readonly IUpdateStatus _updates;
+    private readonly ILogger _logger;
     private Window? _open;
     private Action? _refreshOpen;
     private bool _disposed;
 
     public ConfigureShow(
         IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions,
-        CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates, SaveKeys saveKeys)
+        CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates, SaveKeys saveKeys, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
         ArgumentNullException.ThrowIfNull(settings);
@@ -39,20 +41,22 @@ internal sealed class ConfigureShow : IConfigureWindow
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(saveKeys);
+        ArgumentNullException.ThrowIfNull(logger);
         _updates = updates;
+        _logger = logger;
         _theme = theme;
         _settings = settings;
         _closeWindowKeys = closeWindowKeys;
-        _closeWindow = new CloseWindowSetting(() => settings.CloseWindowShortcut, settings.SetCloseWindowShortcut, closeWindowKeys.Set);
-        _save = new SaveSetting(() => settings.SaveShortcut, settings.SetSaveShortcut, saveKeys.Set);
+        _closeWindow = new CloseWindowSetting(() => settings.CloseWindowShortcut, settings.SetCloseWindowShortcut, closeWindowKeys.Set, logger);
+        _save = new SaveSetting(() => settings.SaveShortcut, settings.SetSaveShortcut, saveKeys.Set, logger);
         _addNewTask = new("Add new task", Shortcut.AddNewTaskDefault,
-            () => settings.AddNewTaskShortcut, settings.SetAddNewTaskShortcut);
+            () => settings.AddNewTaskShortcut, settings.SetAddNewTaskShortcut, logger);
         _manageTasks = new("Task View", Shortcut.ManageTasksDefault,
-            () => settings.ManageTasksShortcut, settings.SetManageTasksShortcut);
+            () => settings.ManageTasksShortcut, settings.SetManageTasksShortcut, logger);
         _contacts = new("Contacts", Shortcut.ContactsDefault,
-            () => settings.ContactsShortcut, settings.SetContactsShortcut);
+            () => settings.ContactsShortcut, settings.SetContactsShortcut, logger);
         _configure = new("Configure", Shortcut.ConfigureDefault,
-            () => settings.ConfigureShortcut, settings.SetConfigureShortcut);
+            () => settings.ConfigureShortcut, settings.SetConfigureShortcut, logger);
         _globals = [_addNewTask, _manageTasks, _contacts, _configure];
         _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions));
         settings.Changed += OnSettingsChanged;
@@ -117,14 +121,14 @@ internal sealed class ConfigureShow : IConfigureWindow
     private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)
     {
         var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _contacts, _configure, _closeWindow, _save);
-        var application = new ApplicationSection(new UpdateCard(_updates), shortcuts, _theme);
-        var delay = new DeletionDelayRow(_settings);
-        var ui = new SyncUi(sync, setupActions, _notices.Post);
+        var application = new ApplicationSection(new UpdateCard(_updates, _logger), shortcuts, _theme);
+        var delay = new DeletionDelayRow(_settings, _logger);
+        var ui = new SyncUi(sync, setupActions, _notices.Post, _logger);
         var syncSettings = new SyncSettingsSection(ui, delay, _theme);
         var sections = new Accordion(
             _theme,
             ("Application", application),
-            ("Startup", new StartWithWindowsRow(startWithWindows)),
+            ("Startup", new StartWithWindowsRow(startWithWindows, _logger)),
             ("Sync settings", syncSettings))
         { Margin = new Thickness(24, 24, 24, 24) };
         var window = new Window

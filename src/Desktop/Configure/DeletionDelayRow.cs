@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -12,9 +13,9 @@ internal sealed class DeletionDelayRow : StackPanel
     private readonly TextBox _days = new() { Width = 60, Margin = new Thickness(6, 0, 6, 0) };
     private readonly TextBlock _message = ThemedText.Message();
 
-    public DeletionDelayRow(ISharedTaskSettings settings)
+    public DeletionDelayRow(ISharedTaskSettings settings, ILogger logger)
     {
-        _setting = new DeletionDelaySetting(settings);
+        _setting = new DeletionDelaySetting(settings, logger);
         AutomationProperties.SetName(_days, "Deletion delay (days)");
         _days.LostFocus += (_, _) => Commit();
         var line = new StackPanel { Orientation = Orientation.Horizontal };

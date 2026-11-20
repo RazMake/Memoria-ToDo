@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
@@ -80,8 +81,35 @@ internal static class Scenarios
             }
         }), DoNothing),
 
-        // An error nobody handles on the UI thread, after Start finished.
-        ["ui-error"] = (_ => Post(() => throw new InvalidOperationException("ui boom")), DoNothing),
+        // An error nobody handles on the UI thread, after Start finished. The app keeps running until the test says
+        // to end it, so the test can see it didn't end by itself.
+        ["ui-error"] = (endApp =>
+        {
+            Post(() => throw new InvalidOperationException("ui boom"));
+            EndWhenTold(endApp);
+        }, DoNothing),
+
+        // A second error on the UI thread, queued to run while the box for the first one is open.
+        ["ui-error-twice"] = (endApp =>
+        {
+            Post(() =>
+            {
+                Post(() => throw new InvalidOperationException("second boom"));
+                throw new InvalidOperationException("first boom");
+            });
+            EndWhenTold(endApp);
+        }, DoNothing),
+
+        // An error nobody handles on the UI thread while the lifetime is stopping.
+        ["ui-error-during-stop"] = (Post, async () =>
+        {
+            Post(() => throw new InvalidOperationException("stop ui boom"));
+            await Dispatcher.Yield(DispatcherPriority.Background);
+        }),
+
+        // A failed task nobody waited for, which the garbage collector finds. Start ends the app once the platform
+        // and this scenario's own handler, which runs after it, have seen the task's error.
+        ["unobserved-task"] = (UnobservedTask, DoNothing),
 
         // An error nobody handles on another thread.
         ["thread-error"] = (ThreadError, DoNothing),
@@ -91,6 +119,9 @@ internal static class Scenarios
 
         ["stop-throws"] = (Post, StopError),
         ["thread-error-stop-throws"] = (ThreadError, StopError),
+
+        // An error on another thread while the lifetime's stop awaits, so the process may only end once the stop has finished.
+        ["thread-error-async-stop"] = (ThreadError, StopAfterDispatch),
 
         // The theme: read.
         ["theme-read"] = (ThemeScenarios.Read, DoNothing),
@@ -115,6 +146,47 @@ internal static class Scenarios
         await Dispatcher.Yield(DispatcherPriority.Background);
         ScenarioLifetime.Say($"async-stop-completed ui-thread={Application.Current.Dispatcher.CheckAccess()}");
     }
+
+    // Ends the app, on the UI thread, when the test writes a line to this program's standard input.
+    internal static void EndWhenTold(Action endApp)
+    {
+        var dispatcher = Application.Current.Dispatcher;
+        new Thread(() =>
+        {
+            Console.In.ReadLine();
+            dispatcher.InvokeAsync(() =>
+            {
+                ScenarioLifetime.Say("still-running");
+                endApp();
+            });
+        })
+        { IsBackground = true }.Start();
+    }
+
+    private static void UnobservedTask(Action endApp)
+    {
+        var dispatcher = Application.Current.Dispatcher;
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            if (!e.Exception.ToString().Contains("unobserved boom", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            ScenarioLifetime.Say($"unobserved-observed={e.Observed}");
+            dispatcher.InvokeAsync(() =>
+            {
+                ScenarioLifetime.Say("still-running");
+                endApp();
+            });
+        };
+        FailATaskNobodyWaitsFor();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)] // So no local keeps the task alive when the collector runs.
+    private static void FailATaskNobodyWaitsFor() => _ = Task.FromException(new InvalidOperationException("unobserved boom"));
 
     private static void ThreadError(Action _) => new Thread(() => throw new InvalidOperationException("thread boom")).Start();
 

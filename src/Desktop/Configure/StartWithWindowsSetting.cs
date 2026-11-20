@@ -1,14 +1,20 @@
+using Serilog;
+
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>The Start with Windows decision behind its check box: whether it is on, and why a switch failed.</summary>
 internal sealed class StartWithWindowsSetting
 {
     private readonly IStartWithWindows _startWithWindows;
+    private readonly ILogger _logger;
 
-    public StartWithWindowsSetting(IStartWithWindows startWithWindows)
+    /// <param name="logger">Where a failed switch is logged.</param>
+    public StartWithWindowsSetting(IStartWithWindows startWithWindows, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
+        ArgumentNullException.ThrowIfNull(logger);
         _startWithWindows = startWithWindows;
+        _logger = logger;
         IsOn = startWithWindows.IsOn();
     }
 
@@ -29,6 +35,7 @@ internal sealed class StartWithWindowsSetting
         }
         catch (Exception error)
         {
+            _logger.Error(error, "Switching Start with Windows {State} failed", on ? "on" : "off");
             Problem = error.Message;
         }
     }

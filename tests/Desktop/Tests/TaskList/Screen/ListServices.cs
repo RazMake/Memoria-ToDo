@@ -51,5 +51,8 @@ internal sealed class ListServices : ListTasks
             webViews.Add(view);
             return view;
         },
-        Browser, Sync, CloseWindowKeys, Updates, SaveKeys, Pointer);
+        Browser, Sync, CloseWindowKeys, Updates, SaveKeys, Pointer, Log.CreateLogger());
+
+    /// <summary>The entries the window made by <see cref="CreateWindow"/> logged, through the logger it was given.</summary>
+    public InMemoryLogSink Log { get; } = new();
 }

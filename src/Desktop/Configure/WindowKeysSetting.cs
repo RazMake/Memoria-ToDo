@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -14,12 +15,14 @@ internal abstract class WindowKeysSetting : IShortcutSetting
     private readonly Func<string?> _readStored;
     private readonly Action<string?> _save;
     private readonly Action<ModifierKeys, Key> _apply;
+    private readonly ILogger _logger;
     private readonly RowMessage _message = new();
 
     protected WindowKeysSetting(
         string label, Shortcut defaultShortcut, Func<string?> readStored, Action<string?> save,
-        Action<ModifierKeys, Key> apply)
+        Action<ModifierKeys, Key> apply, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(readStored);
         ArgumentNullException.ThrowIfNull(save);
         ArgumentNullException.ThrowIfNull(apply);
@@ -28,6 +31,7 @@ internal abstract class WindowKeysSetting : IShortcutSetting
         _readStored = readStored;
         _save = save;
         _apply = apply;
+        _logger = logger;
         var stored = Read(out var problem) ?? _default;
         _message.SayAboutStoredText(problem);
         Use(stored);
@@ -88,6 +92,7 @@ internal abstract class WindowKeysSetting : IShortcutSetting
         }
         catch (Exception error)
         {
+            _logger.Error(error, "Saving the {Label} shortcut {Shortcut} failed", Label, shortcut!.ToDisplayText());
             _message.Say($"{shortcut!.ToDisplayText()} wasn't saved for {Label}: {error.Message}");
             return;
         }
@@ -97,7 +102,7 @@ internal abstract class WindowKeysSetting : IShortcutSetting
     }
 
     // The stored keys, the default when nothing is stored, or null with the reason when the text is unusable.
-    private Shortcut? Read(out string? problem) => StoredShortcut.Read(Label, _default, _readStored, Parse, out problem);
+    private Shortcut? Read(out string? problem) => StoredShortcut.Read(Label, _default, _readStored, Parse, _logger, out problem);
 
     private void Use(Shortcut shortcut)
     {

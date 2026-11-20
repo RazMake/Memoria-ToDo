@@ -2,6 +2,7 @@ using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.Configure.Tests;
@@ -15,7 +16,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            null!, new FakeTheme(), new FakeUpdateStatus(), new SaveKeys()));
+            null!, new FakeTheme(), new FakeUpdateStatus(), new SaveKeys(), Logger.None));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
     }
@@ -25,7 +26,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), null!, new FakeUpdateStatus(), new SaveKeys()));
+            new CloseWindowKeys(), null!, new FakeUpdateStatus(), new SaveKeys(), Logger.None));
 
         Assert.Equal("theme", failure.ParamName);
     }
@@ -35,7 +36,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), new FakeTheme(), null!, new SaveKeys()));
+            new CloseWindowKeys(), new FakeTheme(), null!, new SaveKeys(), Logger.None));
 
         Assert.Equal("updates", failure.ParamName);
     }
@@ -45,8 +46,18 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), null!));
+            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), null!, Logger.None));
 
         Assert.Equal("saveKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_a_missing_logger()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
+            new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
+            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), new SaveKeys(), null!));
+
+        Assert.Equal("logger", failure.ParamName);
     }
 }

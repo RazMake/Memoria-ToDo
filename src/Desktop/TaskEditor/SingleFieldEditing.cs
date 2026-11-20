@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -12,16 +13,18 @@ internal sealed class SingleFieldEditing
 {
     private readonly StyledTextEditor _field;
     private readonly MessageLine _message;
+    private readonly ILogger _logger;
     private string _baseline = "";
 
     /// <param name="owner">The editor control, which lays out the field, the lists, and the message line.</param>
     /// <param name="requestSave">Raises the owner's SaveRequested.</param>
     /// <param name="requestCancel">Raises the owner's CancelRequested.</param>
     public SingleFieldEditing(UIElement owner, StyledTextEditor field, PickerLists lists, MessageLine message,
-        SaveKeys saveKeys, KeyRouter router, Action requestSave, Action requestCancel)
+        SaveKeys saveKeys, KeyRouter router, Action requestSave, Action requestCancel, ILogger logger)
     {
         _field = field;
         _message = message;
+        _logger = logger;
         var editorKeys = new KeyMap()
             .OnSaveKeys(saveKeys, requestSave)
             // Add's Save and clear has no counterpart here; the key does nothing rather than type a line break.
@@ -55,6 +58,6 @@ internal sealed class SingleFieldEditing
     public bool Save(Action<string> save)
     {
         ArgumentNullException.ThrowIfNull(save);
-        return SaveFailures.Try(save, _field.Text, _message.Show);
+        return SaveFailures.Try(save, _field.Text, _message.Show, _logger);
     }
 }

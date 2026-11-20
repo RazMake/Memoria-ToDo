@@ -155,6 +155,6 @@ static Memoria.ToDo.Shared.Tasks.TaskDraft.operator !=(Memoria.ToDo.Shared.Tasks
 static Memoria.ToDo.Shared.Tasks.TaskDraft.operator ==(Memoria.ToDo.Shared.Tasks.TaskDraft? left, Memoria.ToDo.Shared.Tasks.TaskDraft? right) -> bool
 static Memoria.ToDo.Shared.Tasks.TaskItem.operator !=(Memoria.ToDo.Shared.Tasks.TaskItem? left, Memoria.ToDo.Shared.Tasks.TaskItem? right) -> bool
 static Memoria.ToDo.Shared.Tasks.TaskItem.operator ==(Memoria.ToDo.Shared.Tasks.TaskItem? left, Memoria.ToDo.Shared.Tasks.TaskItem? right) -> bool
-static Memoria.ToDo.Shared.Tasks.TaskStore.Create(Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Tasks.IImageEncoder! images, System.TimeProvider! time, string! deviceFolder, Memoria.ToDo.Shared.Platform.IRepositoryAccess! repository) -> Memoria.ToDo.Shared.Tasks.ITaskStore!
+static Memoria.ToDo.Shared.Tasks.TaskStore.Create(Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Tasks.IImageEncoder! images, System.TimeProvider! time, string! deviceFolder, Memoria.ToDo.Shared.Platform.IRepositoryAccess! repository, Serilog.ILogger! logger) -> Memoria.ToDo.Shared.Tasks.ITaskStore!
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.ContactsShortcut.get -> string?
 Memoria.ToDo.Shared.Tasks.ISharedTaskSettings.SetContactsShortcut(string? shortcut) -> void

@@ -27,7 +27,7 @@ public class ImageInsertionTests
     {
         _taskId = _services.Tasks.StartDraft().TaskId;
         _images = new ImageInsertion(_services.Tasks, _services.Clipboard, _services.ImageFiles, _services.Files,
-            () => _taskId, _reports.Add);
+            () => _taskId, _reports.Add, Serilog.Core.Logger.None);
     }
 
     private static byte[] Png(int size = 0) => FakeImageEncoder.Image(ImageFormat.Png, 100, 80, size);

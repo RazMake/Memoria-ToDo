@@ -11,7 +11,7 @@ internal sealed class TestShortcutSetting
 {
     private TestShortcutSetting(string label, Shortcut defaultShortcut)
     {
-        Setting = new ShortcutSetting(label, defaultShortcut, ReadStored, Save);
+        Setting = new ShortcutSetting(label, defaultShortcut, ReadStored, Save, Serilog.Core.Logger.None);
     }
 
     public ShortcutSetting Setting { get; }

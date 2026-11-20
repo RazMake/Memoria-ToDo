@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Sync;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -14,11 +15,14 @@ internal sealed class SyncUi : IDisposable
     private bool _disposed;
 
     /// <param name="post">Runs an action on the UI thread; it may be called from any thread.</param>
-    public SyncUi(ISyncService sync, ISetupActions actions, Action<Action> post)
+    /// <param name="logger">Where the window's failures are logged.</param>
+    public SyncUi(ISyncService sync, ISetupActions actions, Action<Action> post, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         Sync = sync;
         Actions = actions;
         _post = post;
+        Logger = logger;
         sync.StatusChanged += OnChanged;
         sync.Setup.Changed += OnChanged;
     }
@@ -26,6 +30,9 @@ internal sealed class SyncUi : IDisposable
     public ISyncService Sync { get; }
 
     public ISetupActions Actions { get; }
+
+    /// <summary>Where the sync controls of this window log the failures they catch and show.</summary>
+    public ILogger Logger { get; }
 
     /// <summary>Raised on the UI thread when the setup or the sync status changed, and after an operation ends.</summary>
     public event Action? Changed;
@@ -46,6 +53,7 @@ internal sealed class SyncUi : IDisposable
         }
         catch (Exception error)
         {
+            Logger.Error(error, "A sync setting operation failed");
             if (!_disposed)
             {
                 showError(error.Message);

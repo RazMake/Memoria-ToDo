@@ -22,7 +22,7 @@ public class TagsModelCustomTests
     public TagsModelCustomTests()
     {
         _services.UseRepository();
-        _model = new TagsModel(_services.Tasks, _services.TagColors);
+        _model = new TagsModel(_services.Tasks, _services.TagColors, Serilog.Core.Logger.None);
         _model.TagAdded += _added.Add;
         _model.TagRemoved += _removed.Add;
     }

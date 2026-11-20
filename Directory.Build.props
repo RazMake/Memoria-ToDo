@@ -27,11 +27,11 @@
     <MemoriaTestKindsText>$([System.IO.File]::ReadAllText($(MemoriaTestKindsFile)))</MemoriaTestKindsText>
     <MemoriaTraitName>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'TraitName = "([^"]+)"').Groups[1].Value)</MemoriaTraitName>
     <MemoriaUnitKind>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'UnitKind = "([^"]+)"').Groups[1].Value)</MemoriaUnitKind>
-    <!-- Default: unit tests only. Every run of UX or integration tests passes -p:MemoriaAllTestKinds=true, which drops
-         the unit filter and turns on the hang dump. Design: technology-stack.md, "A hang dump stops a test application…". -->
+    <!-- Default: unit tests only. Every run, of any kind, gets the hang dump. -p:MemoriaAllTestKinds=true drops only the unit filter.
+         Design: technology-stack.md, "A hang dump stops a test application…". -->
     <MemoriaHangDumpArguments>--hangdump --hangdump-timeout 2m</MemoriaHangDumpArguments>
     <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' == 'true'">$(MemoriaHangDumpArguments)</MemoriaTestArguments>
-    <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' != 'true'">--filter-trait "$(MemoriaTraitName)=$(MemoriaUnitKind)"</MemoriaTestArguments>
+    <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' != 'true'">$(MemoriaHangDumpArguments) --filter-trait "$(MemoriaTraitName)=$(MemoriaUnitKind)"</MemoriaTestArguments>
     <TestingPlatformCommandLineArguments>$(MemoriaTestArguments)</TestingPlatformCommandLineArguments>
   </PropertyGroup>
 
@@ -45,9 +45,9 @@
     <Content Include="$(MSBuildThisFileDirectory)tests\xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- A hand-set TestingPlatformCommandLineArguments would silently drop the hang dump. -->
+  <!-- A hand-set TestingPlatformCommandLineArguments would silently drop the unit filter and the hang dump. -->
   <Target Name="MemoriaCheckTestArguments" BeforeTargets="Build" Condition="'$(MemoriaIsTestProject)' == 'true'">
-    <Error Condition="'$(TestingPlatformCommandLineArguments)' != '$(MemoriaTestArguments)'" Text="Don't set TestingPlatformCommandLineArguments. To run UX or integration tests, pass -p:MemoriaAllTestKinds=true, which also turns on the hang dump. See docs/architecture/technology-stack.md." />
+    <Error Condition="'$(TestingPlatformCommandLineArguments)' != '$(MemoriaTestArguments)'" Text="Don't set TestingPlatformCommandLineArguments: it would drop the unit filter and the hang dump. To run UX or integration tests, pass -p:MemoriaAllTestKinds=true. See docs/architecture/technology-stack.md." />
   </Target>
 
   <!-- Every project under src/ lists its public interface in two files. -->

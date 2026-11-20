@@ -131,8 +131,11 @@ internal sealed class ContactServices
     public byte[] Bytes(string relative) => Disk.ReadFile(TestContactStore.PathOf(Clone, relative));
 
     /// <summary>A model on these contacts, which reads them when it is made.</summary>
-    public ContactsModel Model() => new(Contacts, Prompts);
+    public ContactsModel Model() => new(Contacts, Prompts, Serilog.Core.Logger.None);
+
+    /// <summary>The entries the window made by <see cref="CreateWindow"/> logged, through the logger it was given.</summary>
+    public InMemoryLogSink Log { get; } = new();
 
     public IContactsWindow CreateWindow() =>
-        ContactsWindow.Create(Contacts, Theme, Time, CloseWindowKeys, SaveKeys, Pointer);
+        ContactsWindow.Create(Contacts, Theme, Time, CloseWindowKeys, SaveKeys, Pointer, Log.CreateLogger());
 }

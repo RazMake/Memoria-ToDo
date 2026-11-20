@@ -2,16 +2,18 @@ using System.Windows;
 using System.Windows.Controls;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Updates;
 
 /// <summary>The What is new dialog: modal, titled "What is new", with each release's notes under its version, newest first.</summary>
-internal sealed class WhatIsNewDialog(ITheme theme, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, CloseWindowKeys closeWindowKeys)
+internal sealed class WhatIsNewDialog(ITheme theme, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, CloseWindowKeys closeWindowKeys, ILogger logger)
 {
     /// <summary>Shows the notes in a new web view, which it releases when the dialog closes. Returns when the dialog has closed.</summary>
     public void Show(Window owner, NewerVersion newer)
     {
         using var page = new FormattedDescription(createWebView(), theme, browser) { Markdown = MarkdownOf(newer), Margin = new Thickness(12) };
+        page.OpenFailed += (_, failure) => logger.Warning(failure, "A link in the release notes could not be opened");
         var close = new Button { Content = "Close", IsDefault = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(12) };
         var layout = new Grid { RowDefinitions = { new RowDefinition(), new RowDefinition { Height = GridLength.Auto } } };
         Grid.SetRow(close, 1);

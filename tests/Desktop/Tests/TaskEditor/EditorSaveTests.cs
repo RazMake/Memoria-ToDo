@@ -29,7 +29,8 @@ public class EditorSaveTests
             value: () => _draft,
             markTitleMissing: () => _events.Add("mark"),
             focusTitle: () => _events.Add("focus"),
-            showMessage: text => _events.Add("message:" + text));
+            showMessage: text => _events.Add("message:" + text),
+            logger: Serilog.Core.Logger.None);
 
     [Fact]
     public void Adds_the_typed_tags_then_saves_the_value_and_clears_the_message()
@@ -122,7 +123,7 @@ public class EditorSaveTests
     [Fact]
     public void A_missing_message_action_is_rejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new EditorSave(() => true, () => _draft, () => { }, () => { }, null!));
+        Assert.Throws<ArgumentNullException>(() => new EditorSave(() => true, () => _draft, () => { }, () => { }, null!, Serilog.Core.Logger.None));
     }
 
     [Fact]

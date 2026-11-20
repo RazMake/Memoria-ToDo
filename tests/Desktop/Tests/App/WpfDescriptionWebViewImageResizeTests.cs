@@ -204,8 +204,11 @@ public class WpfDescriptionWebViewImageResizeTests
     // The adapter learns of the page's boxes after the page has loaded, and the browser tells of a dragged box's style only once it
     // has. The adapter sets the element's height to the page's own height after that, so the height is the signal that a drag counts.
     // The page's own height is the body's, and the element's is the whole page's: the body's margins make it a little taller.
-    private static Task WaitForBoundPage(DescriptionWebViewHarness harness) =>
-        harness.WaitForHeight((height, content) => content > 0 && height >= content);
+    private static async Task WaitForBoundPage(DescriptionWebViewHarness harness)
+    {
+        await harness.WaitForHeight((height, content) => content > 0 && height >= content);
+        await harness.WaitForRenderedFrame();
+    }
 
     private const string TaskId = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 

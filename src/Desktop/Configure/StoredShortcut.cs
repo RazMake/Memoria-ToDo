@@ -1,3 +1,5 @@
+using Serilog;
+
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>Reads a row's shortcut from its stored text, and checks a pick against the other rows' shortcuts.</summary>
@@ -9,7 +11,7 @@ internal static class StoredShortcut
     /// </summary>
     public static Shortcut? Read(
         string label, Shortcut defaultShortcut, Func<string?> readStored, Func<string?, Shortcut?> parse,
-        out string? problem)
+        ILogger logger, out string? problem)
     {
         problem = null;
         try
@@ -26,6 +28,7 @@ internal static class StoredShortcut
         }
         catch (Exception error)
         {
+            logger.Error(error, "The saved {Label} shortcut couldn't be read", label);
             problem = $"The saved {label} shortcut couldn't be read: {error.Message}";
             return null;
         }

@@ -1,5 +1,6 @@
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.ContactList.Tests;
@@ -11,10 +12,16 @@ public class ContactsWindowCreateTests
     private readonly ContactServices _services = new();
 
     private IContactsWindow Create(
-        bool contacts = true, bool theme = true, bool time = true, bool closeKeys = true, bool saveKeys = true, bool pointer = true) =>
+        bool contacts = true, bool theme = true, bool time = true, bool closeKeys = true, bool saveKeys = true, bool pointer = true,
+        bool logger = true) =>
         ContactsWindow.Create(
             contacts ? _services.Contacts : null!, theme ? _services.Theme : null!, time ? _services.Time : null!,
-            closeKeys ? _services.CloseWindowKeys : null!, saveKeys ? _services.SaveKeys : null!, pointer ? _services.Pointer : null!);
+            closeKeys ? _services.CloseWindowKeys : null!, saveKeys ? _services.SaveKeys : null!, pointer ? _services.Pointer : null!,
+            logger ? Logger.None : null!);
+
+    [Fact]
+    public void Create_rejects_a_missing_logger_by_name() =>
+        Assert.Equal("logger", Assert.Throws<ArgumentNullException>(() => Create(logger: false)).ParamName);
 
     [Fact]
     public void Create_rejects_missing_Contacts_by_name() =>

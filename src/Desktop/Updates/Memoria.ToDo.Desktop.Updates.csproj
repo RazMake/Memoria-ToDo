@@ -13,6 +13,7 @@
     <ProjectReference Include="..\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
     <ProjectReference Include="..\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\..\Shared\Platform\Memoria.ToDo.Shared.Platform.csproj" />
+    <PackageReference Include="Serilog" />
   </ItemGroup>
 
 </Project>

@@ -43,6 +43,8 @@ internal sealed class UpdatesHarness
 
     public CloseWindowKeys CloseWindowKeys { get; } = new();
 
+    /// <summary>The entries Updates logged, through the logger it was given.</summary>
+    public InMemoryLogSink Log { get; } = new();
     /// <summary>When set, each web view made from now on fails when it is asked to show a page.</summary>
     public string? WebViewFailure { get; set; }
 
@@ -53,7 +55,7 @@ internal sealed class UpdatesHarness
 
     /// <summary>Calls <see cref="AppUpdates.Create"/> on these fakes, for a test that changes an argument.</summary>
     public IAppUpdates Create(IAppInstall install, IFileSystem files, string deviceFolder) =>
-        AppUpdates.Create(install, files, deviceFolder, Time, Theme, MakeWebView, Browser, CloseWindowKeys);
+        AppUpdates.Create(install, files, deviceFolder, Time, Theme, MakeWebView, Browser, CloseWindowKeys, Log.CreateLogger());
 
     /// <summary>A newer version whose notes list only itself.</summary>
     public static NewerVersion Newer(string version) => new(version, [new ReleaseNotes(version, $"Notes of {version}.")]);

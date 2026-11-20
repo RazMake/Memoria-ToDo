@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -13,10 +14,12 @@ internal sealed class EditorSave
     private readonly Action _markTitleMissing;
     private readonly Action _focusTitle;
     private readonly Action<string> _showMessage;
+    private readonly ILogger _logger;
 
     public EditorSave(Func<bool> addTypedTags, Func<TaskDraft> value, Action markTitleMissing, Action focusTitle,
-        Action<string> showMessage)
+        Action<string> showMessage, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(addTypedTags);
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(markTitleMissing);
@@ -27,6 +30,7 @@ internal sealed class EditorSave
         _markTitleMissing = markTitleMissing;
         _focusTitle = focusTitle;
         _showMessage = showMessage;
+        _logger = logger;
     }
 
     /// <summary>
@@ -51,6 +55,6 @@ internal sealed class EditorSave
             return false;
         }
 
-        return SaveFailures.Try(save, draft, _showMessage);
+        return SaveFailures.Try(save, draft, _showMessage, _logger);
     }
 }

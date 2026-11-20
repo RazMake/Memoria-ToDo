@@ -28,8 +28,14 @@
     <ProjectReference Include="..\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
+    <ProjectReference Include="..\Logs\Memoria.ToDo.Desktop.Logs.csproj" />
     <PackageReference Include="H.NotifyIcon.Wpf" />
     <PackageReference Include="Velopack" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="Serilog.Sinks.Async" />
+    <PackageReference Include="Serilog.Formatting.Compact" />
+    <PackageReference Include="Serilog.Formatting.Compact.Reader" />
     <!-- The description web view's adapter, as docs/architecture/desktop/formatted-view.md decides. -->
     <PackageReference Include="Microsoft.Web.WebView2" />
   </ItemGroup>

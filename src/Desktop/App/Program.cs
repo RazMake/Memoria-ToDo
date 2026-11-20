@@ -1,6 +1,7 @@
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.Logs;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Shell;
 using Memoria.ToDo.Desktop.TaskEditor;
@@ -35,24 +36,31 @@ internal static class Program
             .OnBeforeUninstallFastCallback(_ => HookSteps().Uninstall())
             .Run();
 
+        // The log is made after Velopack's steps, so an install or uninstall hook, which logs to Velopack's own log, leaves no file here.
+        var log = AppLog.Create(AppLog.Folder);
+        // Raised at the end of Main and by Environment.Exit, so an app ended by an error flushes the log too.
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => log.Dispose();
+
         return AppRunner.Run(() =>
         {
             var files = new WindowsFileSystem();
-            var repository = new SyncedRepository();
-            var tasks = TaskStore.Create(files, new WpfImageEncoder(), TimeProvider.System, DraftFolder(), repository);
-            var contacts = ContactStore.Create(files, repository);
+            var repository = new SyncedRepository(log.ForModule("Platform"));
+            var tasks = TaskStore.Create(files, new WpfImageEncoder(), TimeProvider.System, DraftFolder(), repository, log.ForModule("Tasks"));
+            var contacts = ContactStore.Create(files, repository, log.ForModule("Contacts"));
             var theme = new WindowsTheme(new WindowsThemeSetting());
             var clipboard = new WpfClipboard();
             var imageFiles = new WpfImageFileChooser();
             var browser = new ShellDefaultBrowser();
             var deviceFolder = DeviceFolder();
-            var repositories = new RepositorySelection(files, repository.Select, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"));
+            var appLog = log.ForModule("App");
+            var repositories = new RepositorySelection(files, repository.Select, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"), appLog);
             var closeWindowKeys = new CloseWindowKeys();
             // Each open of a description web view serves the folder the repository is in then.
             Func<IDescriptionWebView> createWebView = () => new WpfDescriptionWebView(
-                repository.Folder, tasks.EditImagesFolder, BrowserDataFolder(), files, tasks.Synchronization.Files);
+                repository.Folder, tasks.EditImagesFolder, BrowserDataFolder(), files, tasks.Synchronization.Files, appLog);
             var updates = AppUpdates.Create(
-                new VelopackUpdates(RepositoryUrl), files, deviceFolder, TimeProvider.System, theme, createWebView, browser, closeWindowKeys);
+                new VelopackUpdates(RepositoryUrl), files, deviceFolder, TimeProvider.System, theme, createWebView, browser, closeWindowKeys,
+                log.ForModule("Updates"));
             var saveKeys = new SaveKeys();
             var sync = SyncService.Create(
                 repository,
@@ -64,7 +72,8 @@ internal static class Program
                 TimeProvider.System,
                 deviceFolder,
                 Environment.MachineName,
-                TimeSpan.FromMinutes(30));
+                TimeSpan.FromMinutes(30),
+                log.ForModule("Sync"));
             var pointer = new MousePointer();
             var (add, viewTasks) = TaskWindows.Create(
                 tasks,
@@ -80,32 +89,39 @@ internal static class Program
                 closeWindowKeys,
                 updates,
                 saveKeys,
-                pointer);
+                pointer,
+                log.ForModule("Task editor"),
+                log.ForModule("Task list"));
+            var logs = LogsWindow.Create(
+                new LogFileSource(AppLog.Folder, () => log.WriteProblem, appLog), theme, closeWindowKeys, TimeProvider.System, log.ForModule("Logs"));
             return TrayApp.Create(
                 new TrayIcon(),
                 add,
                 viewTasks,
-                ContactsWindow.Create(contacts.Contacts, theme, TimeProvider.System, closeWindowKeys, saveKeys, pointer),
+                ContactsWindow.Create(contacts.Contacts, theme, TimeProvider.System, closeWindowKeys, saveKeys, pointer, log.ForModule("Contact list")),
                 ConfigureWindow.Create(
-                    StartWithWindows(),
+                    StartWithWindows(appLog),
                     tasks.Settings,
                     sync,
                     new WindowsSetupActions(browser),
                     closeWindowKeys,
                     theme,
                     updates,
-                    saveKeys),
+                    saveKeys,
+                    log.ForModule("Configure")),
+                logs,
                 updates,
                 new HotKeyShortcut(),
                 // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
                 // every copy must count as the same app.
                 new NamedSignalOneInstance($"{AppName.Value}.OneInstance"),
                 StartArguments.IsStartAtSignIn(args),
-                sync);
-        });
+                sync,
+                log.ForModule("Shell"));
+        }, log.ForModule("Platform"));
     }
 
-    private static RunKeyStartWithWindows StartWithWindows() => new(RunKeyPath, InstalledStarter.Find());
+    private static RunKeyStartWithWindows StartWithWindows(Serilog.ILogger logger) => new(RunKeyPath, InstalledStarter.Find(), logger);
 
     // Under %LocalAppData%, apart from Velopack's install folder, so updating or uninstalling leaves it. The one
     // authority for the device's own files, outside every repository clone; the saved repository folder stays in it.
@@ -120,8 +136,8 @@ internal static class Program
     private static string BrowserDataFolder() => System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName.Value, "WebView2");
 
-    // A hook shows no window, so a failed step goes to Velopack's log file.
+    // A hook shows no window and runs before the log exists, so a failed step goes to Velopack's log file and the step itself logs nothing.
     private static StartWithWindowsSteps HookSteps() => new(
-        StartWithWindows(),
+        StartWithWindows(Serilog.Core.Logger.None),
         failure => VelopackLocator.Current.Log.Log(VelopackLogLevel.Error, "The Start with Windows step failed.", failure));
 }

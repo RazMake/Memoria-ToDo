@@ -6,6 +6,9 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- The app now keeps a log of what it does, such as syncs, added, changed, and deleted tasks and contacts, and every error, with the time to the millisecond. When the app says files can't be loaded, the log names each file and why. The log stays on your computer, never holds passwords or keys, and cleans up after itself: entries older than two weeks are deleted, and it never grows past about 30 MB.
+- Logs, a new item in the tray menu, opens a window that lists the log's entries. Filter them by time range, by the part of the app that wrote them, and by how serious they are, and type in the search box to find entries whose text contains what you typed, in any letter case. Press F5 or Refresh to load new entries.
+- When something goes wrong while the app is running, it now shows the error and keeps running, instead of closing.
 - Typing "@" in a task's title or description lists your contacts; pick one to mention them, and press Tab to switch how the mention is written. A mention shows as one piece with the contact's current details, in the editor and in Task View, and updates when you change the contact.
 - Contacts window, opened with Win+Alt+O (you can change this shortcut in Configure) or from the new Contacts item in the tray menu. Both appear only when your repository has contact files. The window lists your contacts by group, searches as you type, and shows a contact's details. You can edit a contact, add one to a group, delete one, and drag a group's heading to reorder the groups. A line above the list tells you about contact files the app skipped.
 - Sync now carries your contact files between devices. When two devices change the same contact, both changes are kept field by field. A contact file the app can't read is left as it is and listed in the sync status.

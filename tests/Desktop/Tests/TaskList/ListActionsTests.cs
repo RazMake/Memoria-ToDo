@@ -16,7 +16,7 @@ public class ListActionsTests
 
     public ListActionsTests()
     {
-        _actions = new ListActions(_tasks.Tasks, _reports.Add);
+        _actions = new ListActions(_tasks.Tasks, _reports.Add, Serilog.Core.Logger.None);
     }
 
     private string Id(string title) => _tasks.Tasks.All.Single(task => task.Title == title).Id;

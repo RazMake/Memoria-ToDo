@@ -27,7 +27,7 @@ public class EditCleanupTests
     public EditCleanupTests()
     {
         _pending = new PendingUndo(_tasks.Time, post => post(), () => { });
-        _cleanup = new EditCleanup(_tasks.Tasks, _pending, _reports.Add);
+        _cleanup = new EditCleanup(_tasks.Tasks, _pending, _reports.Add, Serilog.Core.Logger.None);
     }
 
     private IReadOnlyList<string> PasteImage(string taskId) => _tasks.PasteImage(taskId);

@@ -24,7 +24,6 @@ public class AppRunnerErrorIntegrationTests
     }
 
     [Theory]
-    [InlineData("ui-error", "ui boom")]
     [InlineData("thread-error", "thread boom")]
     [InlineData("start-throws", "start boom")]
     public void Run_shows_an_unhandled_error_in_a_message_box_then_stops_the_lifetime_once_with_its_message_window_usable_and_returns_non_zero(

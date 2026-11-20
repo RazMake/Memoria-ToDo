@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Sync;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
@@ -12,15 +13,18 @@ internal sealed class SyncRequests : IDisposable
     private readonly ISyncService _service;
     private readonly Action<Action> _post;
     private readonly Action _changed;
+    private readonly ILogger _logger;
     private CancellationTokenSource? _wait;
     private bool _closed;
 
-    public SyncRequests(ISyncService service, Action<Action> post, Action changed)
+    public SyncRequests(ISyncService service, Action<Action> post, Action changed, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(service);
+        ArgumentNullException.ThrowIfNull(logger);
         _service = service;
         _post = post;
         _changed = changed;
+        _logger = logger;
         _service.StatusChanged += OnStatusChanged;
     }
 
@@ -62,6 +66,7 @@ internal sealed class SyncRequests : IDisposable
         }
         catch (Exception failure)
         {
+            _logger.Error(failure, "A sync pass requested from Task View failed");
             if (!_closed)
             {
                 FailureText = failure.Message;

@@ -281,7 +281,7 @@ public sealed class BackendFailureClassificationTests
     {
         f.WriteDeviceFile("device-name.txt", "Desk");
         var files = new UnprobeableFileSystem(f.Files, f.DeviceFile("device-name.txt"));
-        await using var sync = SyncService.Create(f.Repository, f.Tasks, f.Contacts, files, f.Keys, f.Selection, f.Time, f.DeviceFolder, SyncFixture.DefaultDeviceName, null, f.Git);
+        await using var sync = SyncService.Create(f.Repository, f.Tasks, f.Contacts, files, f.Keys, f.Selection, f.Time, f.DeviceFolder, SyncFixture.DefaultDeviceName, null, f.Git, Serilog.Core.Logger.None);
         var firstFailure = new TaskCompletionSource<(SyncFailure? Failure, string DeviceName)>(TaskCreationOptions.RunContinuationsAsynchronously);
         sync.Setup.Changed += (_, _) =>
         {
@@ -303,7 +303,7 @@ public sealed class BackendFailureClassificationTests
     {
         f.WriteDeviceFile("device-name.txt", "Desk");
         var files = new UnprobeableFileSystem(f.Files, f.DeviceFile("device-name.txt"));
-        await using var sync = SyncService.Create(f.Repository, f.Tasks, f.Contacts, files, f.Keys, f.Selection, f.Time, f.DeviceFolder, SyncFixture.DefaultDeviceName, null, f.Git);
+        await using var sync = SyncService.Create(f.Repository, f.Tasks, f.Contacts, files, f.Keys, f.Selection, f.Time, f.DeviceFolder, SyncFixture.DefaultDeviceName, null, f.Git, Serilog.Core.Logger.None);
 
         var failure = await Record.ExceptionAsync(() => sync.Setup.GenerateKeyAsync(CancellationToken.None));
 

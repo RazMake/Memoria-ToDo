@@ -30,6 +30,7 @@ internal sealed partial class TaskService
             if (!TaskText.IsSingleLine(colorName))
                 throw new ArgumentException("Must be one non-empty line.", nameof(colorName));
             var written = false;
+            string? oldColor = null;
             owner.repository.LockedChange(clone =>
             {
                 var root = clone ?? throw new NoRepositoryFolderException();
@@ -41,11 +42,15 @@ internal sealed partial class TaskService
                 var changed = colors.With([entry]);
                 owner.tagColorsFolder.Write(root, changed);
                 owner.tagColors = new FileLoad<TagColorSet>(changed, true, null);
+                oldColor = existing?.Color?.Value;
                 written = true;
             });
 
             if (written)
+            {
+                owner.logger.Information("Changed the color of tag {Tag} from {OldColor} to {NewColor}", tag, oldColor, colorName);
                 owner.Announce(Notice.TagColors | Notice.LocalSaved);
+            }
         }
     }
 }

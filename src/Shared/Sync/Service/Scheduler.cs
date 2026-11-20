@@ -2,9 +2,9 @@ namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>
 /// Decides when the next automatic pass starts, with one timer: a 5 second debounce after edits, a retry backoff
-/// after a failure, or the periodic interval, in that order of priority.
+/// after a failure, or the periodic interval, in that order of priority. The request says which of them ended.
 /// </summary>
-internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, Action requestPass) : IDisposable
+internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, Action<SyncTrigger> requestPass) : IDisposable
 {
     private static readonly TimeSpan Debounce = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan FirstRetry = TimeSpan.FromSeconds(30);
@@ -12,6 +12,7 @@ internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, A
 
     private readonly object gate = new();
     private ITimer? timer;
+    private SyncTrigger armedFor;
     private bool started;
     private bool stopped;
     private bool passRunning;
@@ -31,7 +32,7 @@ internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, A
             started = true;
         }
 
-        requestPass();
+        requestPass(SyncTrigger.Start);
     }
 
     /// <summary>An edit was saved: wait the full debounce again, and run a follow-up if a pass is running.</summary>
@@ -47,7 +48,7 @@ internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, A
             }
 
             dirty = true;
-            Arm(Debounce);
+            Arm(Debounce, SyncTrigger.Edit);
         }
     }
 
@@ -78,7 +79,7 @@ internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, A
 
             if (dirty)
             {
-                Arm(Debounce);
+                Arm(Debounce, SyncTrigger.Edit);
                 return;
             }
 
@@ -90,11 +91,11 @@ internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, A
 
             if (!succeeded)
             {
-                Arm(RetryDelay(failures));
+                Arm(RetryDelay(failures), SyncTrigger.Retry);
             }
             else if (periodicInterval is { } interval)
             {
-                Arm(interval);
+                Arm(interval, SyncTrigger.Periodic);
             }
         }
     }
@@ -112,8 +113,9 @@ internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, A
     private static TimeSpan RetryDelay(int failureCount) =>
         failureCount > 5 ? LongestRetry : TimeSpan.FromTicks(Math.Min(FirstRetry.Ticks << (failureCount - 1), LongestRetry.Ticks));
 
-    private void Arm(TimeSpan delay)
+    private void Arm(TimeSpan delay, SyncTrigger trigger)
     {
+        armedFor = trigger;
         if (timer is null)
         {
             timer = time.CreateTimer(OnTimer, null, delay, Timeout.InfiniteTimeSpan);
@@ -128,6 +130,7 @@ internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, A
 
     private void OnTimer(object? state)
     {
+        SyncTrigger trigger;
         lock (gate)
         {
             // A running pass picks the edit up as a follow-up when it ends.
@@ -135,8 +138,10 @@ internal sealed class Scheduler(TimeProvider time, TimeSpan? periodicInterval, A
             {
                 return;
             }
+
+            trigger = armedFor;
         }
 
-        requestPass();
+        requestPass(trigger);
     }
 }

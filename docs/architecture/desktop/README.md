@@ -1,8 +1,8 @@
 # How the desktop app is built
 
-The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, and Configure. This page lists its seven modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
+The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, Configure, and Logs. This page lists its eight modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
 
-## Seven modules make up the desktop app
+## Eight modules make up the desktop app
 
 Each module is a project of its own, and the [module map](../modules.md#module-map) says which modules each may use. The table lists them in the order a user meets them:
 
@@ -15,6 +15,9 @@ Each module is a project of its own, and the [module map](../modules.md#module-m
 | [Formatted view](formatted-view.md) | A task's title and description as a reader sees them, with no Markdown characters, the web view the description shows in, and which links open in the default browser |
 | [Configure](configure.md) | The settings window: the four global shortcuts, the Close window and Save shortcuts, starting with Windows, the shared deletion delay, and sync status details |
 | [Updates](updates.md) | When the app checks for a new version, the status bar Add and Task View share, What is new, Auto update, and how an update restarts the app |
+| [Logs](logs.md) | The window the tray menu opens to read the app's [log](../logging.md): entries newest first, with filters by time, severity, and component, and a quick search |
+
+Every module logs its operations and failures through Serilog, as [Logging](../logging.md) decides.
 
 Three shared modules serve the desktop app's screens: [Editing](../editing.md) holds the formatting and snippet commands, [Rendering](../rendering.md) turns Markdown into HTML and styled text, and [Contacts](../contacts.md) holds the contacts and each mention's text. [How the apps fit together](../overview.md) picks the main libraries, such as AvalonEdit for the editor and WebView2 for rendered descriptions.
 
@@ -130,7 +133,7 @@ a non-zero exit code, after the remaining cleanup is attempted.
 
 The STA `Main` and [`AppRunner.Run`](../../../src/Desktop/Platform/AppRunner.cs) keep their synchronous signatures:
 WPF's native message pump is not a wait on a Task. An async shutdown handler awaits cleanup while that pump remains
-alive, then calls WPF shutdown. Startup failures and handled UI errors use the same path. There is no `.Wait()`,
+alive, then calls WPF shutdown. Startup failures and UI errors that end the app use the same path. There is no `.Wait()`,
 `.Result`, or `GetAwaiter().GetResult()` bridge, and no async work left to a synchronous `finally` after the pump ends.
 Event handlers may be async only at this event boundary, with their failures observed and reported.
 
@@ -190,7 +193,14 @@ the [approved Windows envelope](../sync.md#the-windows-key-file-is-encrypted-and
 Its constructor does no I/O or crypto; all key operations run on Sync's owned worker. ProtectedData is already in the pinned WindowsDesktop framework's WPF reference and runtime sets, so App needs no
 additional package. The runtime, SDK, and tools are unchanged.
 
-**An error no module handles is shown, then the app ends.** The platform shows the error's message in a message box, then ends the app with a non-zero exit code. This covers errors on the UI thread ([DispatcherUnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.dispatcherunhandledexception)) and on other threads ([UnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.appdomain.unhandledexception)). Each module still reports its own expected failures, such as a sync error. Catching nothing, WPF's default, was ruled out: the app would vanish from the tray with no message.
+**An error no module handles is logged, then shown; once the app has started, an error on the UI thread doesn't end it.** The user decided this, so the app survives one bad click. The platform first [logs the error](../logging.md#errors-no-module-handles-are-logged-before-theyre-shown), then shows its message in a message box:
+
+- **On the UI thread, after the app has started** ([DispatcherUnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.dispatcherunhandledexception)): the platform marks the error handled, and the app keeps running. The box adds that the app keeps running and the details are in the log. Only one such box shows at a time: an error while it's open is only logged.
+- **While the app starts or stops**: the box shows, then the app ends with a non-zero exit code, as before, since there's no tray icon to keep.
+- **On any other thread** ([UnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.appdomain.unhandledexception)): the box shows, then the app ends, since .NET ends the process anyway.
+- **In a task nobody waited for** ([UnobservedTaskException](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.taskscheduler.unobservedtaskexception)): it's only logged, and marked observed, so nothing else changes.
+
+This keeps [fail fast](../../../AGENTS.md#code-design): no error is swallowed or turned into success. Each is logged and shown, and the operation that failed has stopped. Stores save each file whole, so a failed click leaves no half-written file behind. Each module still reports its own expected failures, such as a sync error. Ruled out, by the user: **ending the app after every such error**, which loses the tray app over one bad click; and **catching every error at the start of each background thread and timer** and going on, which would let a background loop, such as Sync's worker, run on in a broken state with no one told. Catching nothing, WPF's default, was ruled out earlier: the app would vanish from the tray with no message.
 
 Proposed, each a decision to confirm:
 
@@ -669,6 +679,7 @@ The table lists each step, what it builds, and its status:
 | 14 | One tag per task | Tasks' [one-tag rule](../tasks.md#a-task-has-at-most-one-tag) in `Add`, saving an edit, the merge, and kept drafts; the Task editor's [tag pill](task-editor.md#a-task-has-one-tag-shown-as-one-pill) and its [menu](task-editor.md#a-click-on-the-pill-opens-the-tag-menu), with the `TagEditor` interface the user decided; and the Task list's [tag changes without Edit](task-list.md#tags-show-as-colored-badges-and-change-without-edit), a [tag that joins an open edit's one save](task-list.md#a-tag-chosen-during-an-edit-saves-with-the-edit), and one group per task. | Next |
 | 15 | Contacts | Built in slices, in this order, each reviewed on its own: (a) the platform's [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), with Tasks, Sync, and App moved onto it and no change users notice; (b) the shared [Contacts](../contacts.md) module, with the platform's [contact address](../modules.md#a-contact-address-has-one-home), and Tasks' JSON style, version check, skip rule, and path check moved into the platform's [shared file rules](../modules.md#stores-share-one-json-style-and-one-set-of-file-rules) with no change users notice; (c) Sync [carrying contact files](../sync.md#sync-manages-contact-files-through-contacts-rules), with App's composition root creating the Contacts store; (d) the platform's [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), with Task View moved onto them unchanged; (e) the [Contact list](contact-list.md), with Shell's and Configure's [Contacts shortcut](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) and tray item; (f) Rendering's [mentions](../rendering.md#a-mention-shows-on-a-colored-background) and Editing's [mention list](../editing.md#typing-an-at-sign-opens-the-mention-list); (g) the [Task editor's "@" list and chips](task-editor.md#typing-an-at-sign-mentions-a-contact), then Task View's [live mention text](task-list.md#mentions-show-each-contacts-current-details). The Android app's mentions come when the Android app is built. | Implemented |
 | 16 | Tasks' notices after a change | Tasks raises its notices one by one after a change: `Changed`, then settings, tag colors, and tag order, then the [local save report](../tasks.md#sync-shares-the-repositorys-lock-never-a-network-wait). When a handler throws, the notices after it and the report are skipped, so Sync doesn't learn of the save. This step makes Tasks attempt every notice and the report, even when one fails, and throw the failures by the platform's [rule for steps that must all run](../modules.md#steps-that-must-all-run-throw-their-failures-together), as [Contacts](../contacts.md#failure-modes) does. Its design is in Tasks' [failure modes](../tasks.md#failure-modes). | Implemented |
+| 17 | Application logs | [Serilog's logger](../logging.md#every-module-logs-through-serilogs-logger) in every module's create method, with every module logging its [operations and failures](../logging.md#every-operation-and-every-failure-is-logged-where-it-happens), including each skipped file by path; the composition root's [log files](../logging.md#the-desktop-app-keeps-two-weeks-of-logs-at-most-30-mb) and [background writer](../logging.md#a-slow-disk-never-holds-up-the-app), with [secrets kept out](../logging.md#passwords-and-keys-never-reach-the-log); the platform's [logging of errors no module handles](../logging.md#errors-no-module-handles-are-logged-before-theyre-shown), after which the app [keeps running](#the-platform-runs-the-app-and-the-composition-root-builds-it) on a UI-thread error; and the [Logs window](logs.md) with Shell's Logs tray item. Waits for [Logging](../logging.md) to be decided. | Not scheduled |
 
 The remaining work follows this order:
 

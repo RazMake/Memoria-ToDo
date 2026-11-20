@@ -1,5 +1,7 @@
 using System.IO;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Platform;
+using Serilog;
 using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
@@ -28,17 +30,12 @@ internal static class SaveFailures
 
     /// <summary>
     /// Calls <paramref name="save"/> with the value and clears the message. Returns false, showing the failure's message,
-    /// when <paramref name="save"/> threw a known failure; other failures propagate.
+    /// when <paramref name="save"/> threw a known failure, which it also logs at Error; other failures propagate.
     /// </summary>
-    public static bool Try<T>(Action<T> save, T value, Action<string> showMessage)
+    public static bool Try<T>(Action<T> save, T value, Action<string> showMessage, ILogger logger)
     {
-        try
+        if (!StoreFailures.Run(() => save(value), MessageOf, showMessage, logger))
         {
-            save(value);
-        }
-        catch (Exception failure) when (MessageOf(failure) is not null)
-        {
-            showMessage(MessageOf(failure)!);
             return false;
         }
 

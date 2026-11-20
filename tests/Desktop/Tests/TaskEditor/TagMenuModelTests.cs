@@ -20,7 +20,7 @@ public class TagMenuModelTests
     public TagMenuModelTests()
     {
         _services.UseRepository();
-        _tags = new TagsModel(_services.Tasks, _services.TagColors);
+        _tags = new TagsModel(_services.Tasks, _services.TagColors, Serilog.Core.Logger.None);
         _tags.TagAdded += _added.Add;
         var (tasks, suggesting) = SuggestingTasks.Over(_services.Tasks);
         _suggesting = suggesting;

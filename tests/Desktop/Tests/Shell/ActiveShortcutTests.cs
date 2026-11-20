@@ -12,7 +12,7 @@ public class ActiveShortcutTests
     private int pressed;
     private readonly ActiveShortcut action;
 
-    public ActiveShortcutTests() => action = new ActiveShortcut(port, () => pressed++);
+    public ActiveShortcutTests() => action = new ActiveShortcut(port, () => pressed++, "Test", Serilog.Core.Logger.None);
 
     [Fact]
     public void Registering_a_new_shortcut_returns_true_and_pressing_it_runs_the_action()

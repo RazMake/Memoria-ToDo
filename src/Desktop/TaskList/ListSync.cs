@@ -6,6 +6,7 @@ using System.Windows.Media;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Sync;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
@@ -31,13 +32,13 @@ internal sealed class ListSync : StackPanel, IDisposable
     private readonly TextBlock _line = new() { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
     private readonly ControlTemplate _workingLook = WorkingLook();
 
-    public ListSync(ISyncService service, IReadOnlyList<PaletteColor> palette, ITheme theme)
+    public ListSync(ISyncService service, IReadOnlyList<PaletteColor> palette, ITheme theme, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(palette);
         ArgumentNullException.ThrowIfNull(theme);
         _palette = palette;
         _theme = theme;
-        _requests = new SyncRequests(service, post => Dispatcher.InvokeAsync(post), Show);
+        _requests = new SyncRequests(service, post => Dispatcher.InvokeAsync(post), Show, logger);
         AutomationProperties.SetName(_button, "Sync");
         _button.Click += async (_, _) => await SyncAsync();
         _theme.Changed += OnThemeChanged;

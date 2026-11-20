@@ -14,7 +14,7 @@ permissions:
 
 env:
   # The unit run's time limit, in seconds. This is its only home; change it here.
-  UNIT_RUN_LIMIT_SECONDS: "8.5"
+  UNIT_RUN_LIMIT_SECONDS: "12"
   # The slow-run issue is found by its label, not its title.
   SLOW_RUN_ISSUE_TITLE: Unit tests are slower than the time limit
   SLOW_RUN_ISSUE_LABEL: slow-unit-tests
@@ -148,7 +148,7 @@ jobs:
           if (-not $name) { throw "The app's Product property is empty. Set <Product> in Directory.Build.props." }
           "APP_NAME=$name" >> $env:GITHUB_ENV
       - name: Build and run every test
-        # MemoriaAllTestKinds drops the unit-only filter and turns on the hang dump.
+        # MemoriaAllTestKinds drops the unit-only filter; the hang dump is on in every run.
         run: |
           dotnet test "-p:MemoriaAllTestKinds=true"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

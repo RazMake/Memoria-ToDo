@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -7,11 +8,12 @@ namespace Memoria.ToDo.Desktop.Configure;
 /// One shortcut row's setting, as Configure knows it: what the row does, its active shortcut, the message about the
 /// last problem, and whether a shortcut field has released the shortcut. It outlives the window, which is made again
 /// after each close, and touches no WPF object. Its text lives in the shared settings: <c>readStored</c> reads it and
-/// <c>save</c> writes it.
+/// <c>save</c> writes it. A failure it catches and shows is logged at Error to <c>logger</c>.
 /// </summary>
 internal sealed class ShortcutSetting(
-    string label, Shortcut defaultShortcut, Func<string?> readStored, Action<string?> save) : IShortcutSetting
+    string label, Shortcut defaultShortcut, Func<string?> readStored, Action<string?> save, ILogger logger) : IShortcutSetting
 {
+    private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private IShortcutAction? _action;
     private readonly RowMessage _message = new();
     private bool _released;
@@ -156,6 +158,7 @@ internal sealed class ShortcutSetting(
         }
         catch (Exception error)
         {
+            _logger.Error(error, "Registering the {Label} shortcut {Shortcut} failed", Label, shortcut.ToDisplayText());
             Message = error.Message;
             Active = null;
         }
@@ -169,7 +172,7 @@ internal sealed class ShortcutSetting(
 
     // The stored shortcut, the default when nothing is stored, or null with the reason when the text is unusable.
     private Shortcut? Stored(out string? problem) =>
-        StoredShortcut.Read(Label, defaultShortcut, readStored, Shortcut.Parse, out problem);
+        StoredShortcut.Read(Label, defaultShortcut, readStored, Shortcut.Parse, _logger, out problem);
 
     // Saves a registered pick. When saving fails, the row goes back to its previous shortcut and says what failed,
     // including a failure to register the previous one again.
@@ -181,6 +184,7 @@ internal sealed class ShortcutSetting(
         }
         catch (Exception error)
         {
+            _logger.Error(error, "Saving the {Label} shortcut {Shortcut} failed", Label, shortcut.ToDisplayText());
             Active = previous;
             Message = $"{shortcut.ToDisplayText()} wasn't saved for {Label}: {error.Message}";
             if (!_released)
@@ -206,6 +210,7 @@ internal sealed class ShortcutSetting(
         }
         catch (Exception error)
         {
+            _logger.Error(error, "Restoring the previous {Label} shortcut failed", Label);
             Message += $" {Label}'s previous shortcut couldn't be restored: {error.Message}";
             Active = null;
         }
@@ -223,6 +228,7 @@ internal sealed class ShortcutSetting(
         }
         catch (Exception error)
         {
+            _logger.Error(error, "Registering the {Label} shortcut {Shortcut} failed", Label, shortcut.ToDisplayText());
             Message = error.Message;
             return false;
         }
@@ -245,6 +251,7 @@ internal sealed class ShortcutSetting(
         }
         catch (Exception error)
         {
+            _logger.Error(error, "Releasing the {Label} shortcut failed", Label);
             Message = error.Message;
         }
     }

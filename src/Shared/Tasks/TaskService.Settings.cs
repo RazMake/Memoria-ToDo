@@ -33,60 +33,70 @@ internal sealed partial class TaskService
         {
             if (days is < SharedSettings.MinDeletionDelayDays or > SharedSettings.MaxDeletionDelayDays)
                 throw new ArgumentOutOfRangeException(nameof(days), days, "Must be from 1 to 365.");
-            owner.ChangeSettings(settings => settings.DeletionDelayDays.Value == days
+            owner.ChangeSettings("deletion delay in days", settings => settings.DeletionDelayDays.Value, settings => settings.DeletionDelayDays.Value == days
                 ? settings
                 : settings with { DeletionDelayDays = new Setting<int>(days, owner.Now()) });
         }
 
         public void SetAddNewTaskShortcut(string? shortcut) =>
-            owner.ChangeSettings(settings => settings.AddNewTaskShortcut.Value == shortcut
+            owner.ChangeSettings("add new task shortcut", settings => settings.AddNewTaskShortcut.Value, settings => settings.AddNewTaskShortcut.Value == shortcut
                 ? settings
                 : settings with { AddNewTaskShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
         public void SetManageTasksShortcut(string? shortcut) =>
-            owner.ChangeSettings(settings => settings.ManageTasksShortcut.Value == shortcut
+            owner.ChangeSettings("manage tasks shortcut", settings => settings.ManageTasksShortcut.Value, settings => settings.ManageTasksShortcut.Value == shortcut
                 ? settings
                 : settings with { ManageTasksShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
         public void SetCloseWindowShortcut(string? shortcut) =>
-            owner.ChangeSettings(settings => settings.CloseWindowShortcut.Value == shortcut
+            owner.ChangeSettings("close window shortcut", settings => settings.CloseWindowShortcut.Value, settings => settings.CloseWindowShortcut.Value == shortcut
                 ? settings
                 : settings with { CloseWindowShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
         public void SetSaveShortcut(string? shortcut) =>
-            owner.ChangeSettings(settings => settings.SaveShortcut.Value == shortcut
+            owner.ChangeSettings("save shortcut", settings => settings.SaveShortcut.Value, settings => settings.SaveShortcut.Value == shortcut
                 ? settings
                 : settings with { SaveShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
         public void SetConfigureShortcut(string? shortcut) =>
-            owner.ChangeSettings(settings => settings.ConfigureShortcut.Value == shortcut
+            owner.ChangeSettings("configure shortcut", settings => settings.ConfigureShortcut.Value, settings => settings.ConfigureShortcut.Value == shortcut
                 ? settings
                 : settings with { ConfigureShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
         public void SetContactsShortcut(string? shortcut) =>
-            owner.ChangeSettings(settings => settings.ContactsShortcut.Value == shortcut
+            owner.ChangeSettings("contacts shortcut", settings => settings.ContactsShortcut.Value, settings => settings.ContactsShortcut.Value == shortcut
                 ? settings
                 : settings with { ContactsShortcut = new Setting<string?>(shortcut, owner.Now()) });
 
         private T Read<T>(Func<SharedSettings, T> read) => owner.repository.Locked(_ => read(owner.settings.Require()));
     }
 
-    /// <summary>Writes what <paramref name="edit"/> makes of the settings, unless it returns them unchanged.</summary>
-    private void ChangeSettings(Func<SharedSettings, SharedSettings> edit)
+    /// <summary>
+    /// Writes what <paramref name="edit"/> makes of the settings, unless it returns them unchanged, and logs the
+    /// setting called <paramref name="name"/> with the value <paramref name="valueOf"/> reads before and after.
+    /// </summary>
+    private void ChangeSettings(string name, Func<SharedSettings, object?> valueOf, Func<SharedSettings, SharedSettings> edit)
     {
+        object? before = null, after = null;
         var written = false;
         repository.LockedChange(clone =>
         {
             var root = clone ?? throw new NoRepositoryFolderException();
-            var changed = edit(settings.Require());
+            var current = settings.Require();
+            var changed = edit(current);
             if (changed == settings.Value)
                 return;
             settingsFolder.Write(root, changed);
             settings = new FileLoad<SharedSettings>(changed, true, null);
+            before = valueOf(current);
+            after = valueOf(changed);
             written = true;
         });
 
         if (written)
+        {
+            logger.Information("Changed the {Setting} from {OldValue} to {NewValue}", name, before, after);
             Announce(Notice.Settings | Notice.LocalSaved);
+        }
     }
 }

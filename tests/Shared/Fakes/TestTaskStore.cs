@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
+using Serilog.Core;
 
 namespace Memoria.ToDo.Shared.Fakes;
 
@@ -13,11 +15,15 @@ public static class TestTaskStore
 {
     private static readonly ConditionalWeakTable<ITasks, SyncedRepository> Repositories = new();
 
-    /// <summary>Creates Tasks over <paramref name="repository"/>, or over a new repository when none is given.</summary>
-    public static ITaskStore Create(IFileSystem files, IImageEncoder images, TimeProvider time, string deviceFolder, SyncedRepository? repository = null)
+    /// <summary>
+    /// Creates Tasks over <paramref name="repository"/>, or over a new repository when none is given. Both log to
+    /// <paramref name="logger"/>, or to nothing when none is given.
+    /// </summary>
+    public static ITaskStore Create(IFileSystem files, IImageEncoder images, TimeProvider time, string deviceFolder, SyncedRepository? repository = null, ILogger? logger = null)
     {
-        repository ??= new SyncedRepository();
-        var store = TaskStore.Create(files, images, time, deviceFolder, repository);
+        logger ??= Logger.None;
+        repository ??= new SyncedRepository(logger);
+        var store = TaskStore.Create(files, images, time, deviceFolder, repository, logger);
         Repositories.Add(store, repository);
         return store;
     }

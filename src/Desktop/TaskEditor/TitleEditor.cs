@@ -5,6 +5,7 @@ using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Editing;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -15,13 +16,13 @@ public sealed class TitleEditor : UserControl
     private readonly SingleFieldEditing _editing;
 
     public TitleEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, SaveKeys saveKeys)
-        : this(new PickerLists(tasks, contacts, palette), Argument.Required(saveKeys), theme, time, clipboard)
+        IClipboard clipboard, SaveKeys saveKeys, ILogger logger)
+        : this(new PickerLists(tasks, contacts, palette), Argument.Required(saveKeys), theme, time, clipboard, Argument.Required(logger))
     {
     }
 
     // The lists are made in the first constructor's arguments, so a missing tasks or palette is rejected before any control exists.
-    private TitleEditor(PickerLists lists, SaveKeys saveKeys, ITheme theme, TimeProvider time, IClipboard clipboard)
+    private TitleEditor(PickerLists lists, SaveKeys saveKeys, ITheme theme, TimeProvider time, IClipboard clipboard, ILogger logger)
     {
         var router = new KeyRouter();
         var message = new MessageLine();
@@ -34,7 +35,7 @@ public sealed class TitleEditor : UserControl
         panel.Children.Add(message);
         Content = panel;
         _editing = new SingleFieldEditing(this, _title.Editor, lists, message, saveKeys, router, RequestSave,
-            () => CancelRequested?.Invoke(this, EventArgs.Empty));
+            () => CancelRequested?.Invoke(this, EventArgs.Empty), logger);
     }
 
     /// <summary>The title's Markdown. Setting it replaces the text and starts <see cref="HasChanges"/> over.</summary>

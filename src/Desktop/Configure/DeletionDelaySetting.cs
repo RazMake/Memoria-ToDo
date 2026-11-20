@@ -1,5 +1,6 @@
 using System.Globalization;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
 
@@ -10,12 +11,16 @@ namespace Memoria.ToDo.Desktop.Configure;
 internal sealed class DeletionDelaySetting
 {
     private readonly ISharedTaskSettings _settings;
+    private readonly ILogger _logger;
     private bool _readFailed;
 
-    public DeletionDelaySetting(ISharedTaskSettings settings)
+    /// <param name="logger">Where a failed read or save is logged.</param>
+    public DeletionDelaySetting(ISharedTaskSettings settings, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(logger);
         _settings = settings;
+        _logger = logger;
     }
 
     /// <summary>The delay to show: the last one read or saved, empty until a read succeeds.</summary>
@@ -42,6 +47,7 @@ internal sealed class DeletionDelaySetting
         catch (Exception error)
         {
             _readFailed = true;
+            _logger.Error(error, "The deletion delay couldn't be read");
             Message = $"The deletion delay couldn't be read: {error.Message}";
         }
     }
@@ -69,6 +75,7 @@ internal sealed class DeletionDelaySetting
         }
         catch (Exception error)
         {
+            _logger.Error(error, "The deletion delay couldn't be saved");
             problem = $"The deletion delay wasn't saved: {error.Message}";
         }
 

@@ -1,3 +1,5 @@
+using Serilog;
+
 namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>The setup actions: device name, key, host trust, and choosing the repository clone.</summary>
@@ -12,7 +14,8 @@ internal sealed class SyncSetup(
     SetupModel model,
     DeviceMetadata metadata,
     HostTrust trust,
-    Published<StatusSnapshot> status) : ISyncSetup
+    Published<StatusSnapshot> status,
+    ILogger logger) : ISyncSetup
 {
     public ISyncSetupState State => model.Snapshot.Current;
 
@@ -28,6 +31,7 @@ internal sealed class SyncSetup(
         return RunSetupAsync(async _ =>
         {
             await worker.Run(() => Backend(() => metadata.SaveName(valid))).ConfigureAwait(false);
+            logger.Information("Changed the device name to {DeviceName}", valid);
             await RefreshAsync().ConfigureAwait(false);
         }, cancellationToken);
     }
@@ -42,6 +46,7 @@ internal sealed class SyncSetup(
                     return;
                 using var key = Backend(() => keys.Generate());
                 model.Observe(key);
+                logger.Information("Generated the device key {Fingerprint}", DeviceMetadata.Fingerprint(key.PublicKeyBlob.Span));
             }).ConfigureAwait(false);
             await RefreshAsync().ConfigureAwait(false);
         }, cancellationToken);
@@ -57,6 +62,7 @@ internal sealed class SyncSetup(
                 Backend(() => git.UseExisting(folder, parsed));
                 Backend(() => repositories.Select(folder));
             }).ConfigureAwait(false);
+            logger.Information("Using the existing clone of {Address} in {Folder}", address, folder);
             await RefreshAsync().ConfigureAwait(false);
         }, cancellationToken);
     }
@@ -75,23 +81,51 @@ internal sealed class SyncSetup(
                 return 0;
             })).ConfigureAwait(false);
             await worker.Run(() => Backend(() => repositories.Select(folder))).ConfigureAwait(false);
+            logger.Information("Cloned {Address} into {Folder}", address, folder);
             await RefreshAsync().ConfigureAwait(false);
         }, cancellationToken);
     }
 
     public Task AcceptHostKeyAsync(string fingerprint, CancellationToken cancellationToken) =>
-        TrustChangeAsync(() => trust.Accept(fingerprint), cancellationToken);
+        TrustChangeAsync(() =>
+        {
+            var host = trust.Offered?.Host;
+            trust.Accept(fingerprint);
+            logger.Information("Accepted the host key {Fingerprint} of {Host}", fingerprint, host);
+        }, cancellationToken);
 
     public Task ForgetKeyAsync(CancellationToken cancellationToken) =>
         RunSetupAsync(async _ =>
         {
             await worker.Run(() =>
             {
+                RememberKeyForLog();
                 Backend(() => keys.Delete());
-                model.ForgetKey();
+                var fingerprint = model.ForgetKey();
+                if (fingerprint is null)
+                    logger.Information("Forgot the device key");
+                else
+                    logger.Information("Forgot the device key {Fingerprint}", fingerprint);
             }).ConfigureAwait(false);
             await RefreshAsync().ConfigureAwait(false);
         }, cancellationToken);
+
+    // Forgetting must always delete the key, so the fingerprint for the log is best effort: when the key can't be
+    // opened (or its presence can't be read) the Warning says why and the forget is logged without a fingerprint.
+    private void RememberKeyForLog()
+    {
+        try
+        {
+            if (!Backend(() => keys.HasKey))
+                return;
+            using var key = Backend(() => keys.Open());
+            model.Observe(key);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            logger.Warning(ex is BackendFault fault ? fault.InnerException : ex, "The device key could not be opened to log its fingerprint; forgetting it anyway");
+        }
+    }
 
     public bool CheckAddress(string address, out Uri? addKeyPage)
     {
@@ -186,7 +220,9 @@ internal sealed class SyncSetup(
         }
         catch (Exception ex) when (IsOperationalFailure(ex, token))
         {
-            var problem = FailureReport.Describe(ex is BackendFault fault ? fault.InnerException! : ex);
+            var cause = ex is BackendFault fault ? fault.InnerException! : ex;
+            logger.Warning(cause, "The setup could not be refreshed after a failed step");
+            var problem = FailureReport.Describe(cause);
             status.Update(s => s.Failure is { } kind
                 ? s.Failed(kind, $"{s.Details} The setup could not be refreshed: {problem}", s.SkippedFiles)
                 : s);

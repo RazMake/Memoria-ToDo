@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\Shared\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
     <ProjectReference Include="..\..\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
     <ProjectReference Include="..\..\Shared\Editing\Memoria.ToDo.Shared.Editing.csproj" />
+    <PackageReference Include="Serilog" />
   </ItemGroup>
 
 </Project>

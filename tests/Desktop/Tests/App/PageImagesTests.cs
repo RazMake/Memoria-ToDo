@@ -3,6 +3,7 @@ using System.Text;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
+using Serilog.Events;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.App.Tests;
@@ -22,6 +23,7 @@ public class PageImagesTests
     private readonly FakeFileSystem _files = new();
     private readonly string _clone = Path.GetFullPath("clone");
     private readonly string _waiting = Path.GetFullPath("edit-images");
+    private readonly InMemoryLogSink _log = new();
     private readonly IRepositoryFileRules _rules;
 
     public PageImagesTests()
@@ -30,7 +32,7 @@ public class PageImagesTests
         _rules = store.Synchronization.Files;
     }
 
-    private PageImages Images(string? clone = "") => new(_files, _rules, clone == "" ? _clone : clone, _waiting);
+    private PageImages Images(string? clone = "") => new(_files, _rules, clone == "" ? _clone : clone, _waiting, _log.CreateLogger());
 
     private void InClone(string link, byte[]? bytes = null) => _files.WriteFile(Path.Combine(_clone, link.Replace('/', Path.DirectorySeparatorChar)), bytes ?? CloneBytes);
 
@@ -193,5 +195,28 @@ public class PageImagesTests
         _files.FailReadsUnder(_waiting);
 
         Assert.Equal(500, Images().Find("GET", "/" + Link("a.png")).Status);
+    }
+
+    [Fact]
+    public void A_read_that_fails_logs_a_Warning_with_the_path_and_the_exception()
+    {
+        InClone(Link("a.png"));
+        _files.FailReadsUnder(_clone);
+
+        Images().Find("GET", "/" + Link("a.png"));
+
+        var entry = Assert.Single(_log.Events, e => e.Level >= LogEventLevel.Warning);
+        Assert.Equal(LogEventLevel.Warning, entry.Level);
+        Assert.NotNull(entry.Exception);
+        Assert.Contains(TaskId, entry.EverythingIn());
+        Assert.Contains("a.png", entry.EverythingIn());
+    }
+
+    [Fact]
+    public void An_image_that_is_not_found_logs_no_Warning_or_Error()
+    {
+        Images().Find("GET", "/" + Link("missing.png"));
+
+        _log.Events.AssertNoProblems();
     }
 }

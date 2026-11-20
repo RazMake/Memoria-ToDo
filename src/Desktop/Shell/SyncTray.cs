@@ -1,5 +1,6 @@
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Sync;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Shell;
 
@@ -7,7 +8,7 @@ namespace Memoria.ToDo.Desktop.Shell;
 /// Shows sync status on the tray icon: a badge and tooltip for every status change, and one notification for each new
 /// kind of error until a clean success. Status changes arrive on any thread; the icon's adapter owns UI dispatch.
 /// </summary>
-internal sealed class SyncTray(ISyncService sync, ITrayIcon trayIcon, Action openConfigure)
+internal sealed class SyncTray(ISyncService sync, ITrayIcon trayIcon, Action openConfigure, ILogger logger)
 {
     private readonly object gate = new();
     private readonly HashSet<SyncFailure> notified = [];
@@ -68,7 +69,9 @@ internal sealed class SyncTray(ISyncService sync, ITrayIcon trayIcon, Action ope
 
         if (notify)
         {
-            trayIcon.NotifySyncError(ErrorText(status), openConfigure);
+            var text = ErrorText(status);
+            logger.Information("Showing the sync notification: {Notification}", text);
+            trayIcon.NotifySyncError(text, openConfigure);
         }
     }
 

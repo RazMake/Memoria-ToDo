@@ -20,7 +20,7 @@ All our code is C#; the Android app also ships libgit2, git's C library, which w
 
 The shared library is a set of C# projects, one per module plus the shared platform, as [Modules](modules.md#a-module-is-one-capability-behind-a-small-interface) decides; both apps reference them.
 
-Each app also implements the library's interfaces for the secure key store, the file system, and image shrinking, and gives every module the system's time through .NET's TimeProvider, as [Modules](modules.md#the-platform-serves-every-module-and-knows-none) decides. Images are shrunk with each platform's own image tools, with no extra image library, as [Tasks](tasks.md#images-are-at-most-1-mb-and-live-beside-their-task) decides.
+Each app also implements the library's interfaces for the secure key store, the file system, and image shrinking, and gives every module the system's time through .NET's TimeProvider, as [Modules](modules.md#the-platform-serves-every-module-and-knows-none) decides. Images are shrunk with each platform's own image tools, with no extra image library, as [Tasks](tasks.md#images-are-at-most-1-mb-and-live-beside-their-task) decides. Every part logs through [Serilog](https://serilog.net), as [Logging](logging.md) decides.
 
 ### Each app edits in its own text box, with shared commands
 

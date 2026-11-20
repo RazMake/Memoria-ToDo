@@ -4,6 +4,7 @@ using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Shell;
 
@@ -26,9 +27,11 @@ internal sealed class ShellLifetime(
     StartupNavigation startup,
     IUpdateLifetime updates,
     Func<Action, IAppExit> createExit,
-    ISyncService sync) : IAppLifetime
+    ISyncService sync,
+    Action showLogs,
+    ILogger logger) : IAppLifetime
 {
-    private readonly SyncTray syncTray = new SyncTray(sync, trayIcon, startup.ByUser(configure.Show));
+    private readonly SyncTray syncTray = new SyncTray(sync, trayIcon, startup.ByUser(configure.Show), logger);
     private readonly object stopGate = new();
     private Task? stopping;
     private bool claimed;
@@ -41,7 +44,7 @@ internal sealed class ShellLifetime(
         var viewTasksByUser = startup.ByUser(showViewTasks);
         var contactsByUser = startup.ByUser(showContacts);
         var configureByUser = startup.ByUser(configure.Show);
-        if (!oneInstance.Claim(viewTasksByUser))
+        if (!oneInstance.Claim(Logged("A later start handed over to this app", viewTasksByUser)))
         {
             endApp();
             return;
@@ -50,19 +53,20 @@ internal sealed class ShellLifetime(
         // The Contacts item shows only while contacts are available, so the menu is built again when that changes.
         IReadOnlyList<TrayMenuItem> Menu()
         {
-            List<TrayMenuItem> items = [new("Add new task", addByUser), new("Task View", viewTasksByUser)];
+            List<TrayMenuItem> items = [Item("Add new task", addByUser), Item("Task View", viewTasksByUser)];
             if (contacts.IsAvailable)
             {
-                items.Add(new("Contacts", contactsByUser));
+                items.Add(Item("Contacts", contactsByUser));
             }
 
-            items.Add(new("Configure", configureByUser));
-            items.Add(new("Exit", endApp));
+            items.Add(Item("Configure", configureByUser));
+            items.Add(Item("Logs", showLogs));
+            items.Add(Item("Exit", endApp));
             return items;
         }
 
         claimed = true;
-        trayIcon.Show(AppName.Value, Menu(), viewTasksByUser);
+        trayIcon.Show(AppName.Value, Menu(), Logged("The tray icon was clicked", viewTasksByUser));
         syncTray.Attach();
         bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut, configureShortcut, contactsShortcut);
 
@@ -70,6 +74,7 @@ internal sealed class ShellLifetime(
         startup.Begin(!shortcutsReady);
         followAvailability = (_, _) =>
         {
+            logger.Information("Contacts became {Availability}", contacts.IsAvailable ? "available" : "unavailable");
             trayIcon.UpdateMenu(Menu());
             contactsShortcut.AvailabilityChanged();
         };
@@ -123,6 +128,10 @@ internal sealed class ShellLifetime(
             throw new AggregateException(failures);
         }
     }
+
+    private TrayMenuItem Item(string text, Action choose) => new(text, Logged($"Tray menu item {text} chosen", choose));
+
+    private Action Logged(string use, Action action) => LoggedUse.Of(logger, use, action);
 
     private void StopFollowingAvailability()
     {

@@ -6,6 +6,7 @@ using System.Windows.Media;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -19,10 +20,10 @@ internal sealed class AddWindowView : Window, IAddWindow
     private readonly TaskEditorControl _editor;
     private readonly AddDraft _draft;
 
-    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates, SaveKeys saveKeys)
+    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates, SaveKeys saveKeys, ILogger logger)
     {
         _editor = editor;
-        _draft = new AddDraft(tasks, editor);
+        _draft = new AddDraft(tasks, editor, logger);
         Title = "Add new Task";
         Width = 480;
         MinHeight = 240;

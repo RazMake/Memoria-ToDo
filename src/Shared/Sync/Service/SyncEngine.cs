@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Shared.Sync;
 
@@ -6,6 +7,9 @@ namespace Memoria.ToDo.Shared.Sync;
 internal sealed class SyncEngine : ISyncService
 {
     private readonly object gate = new();
+    private readonly ILogger logger;
+    private readonly object statusLogGate = new();
+    private (SyncState State, SyncFailure? Failure) lastLoggedStatus = (StatusSnapshot.Initial.State, StatusSnapshot.Initial.Failure);
     private readonly ISyncedRepository repository;
     private readonly IGitOperations git;
     private readonly IDeviceKeyStore keys;
@@ -35,8 +39,10 @@ internal sealed class SyncEngine : ISyncService
         Published<StatusSnapshot> status,
         ISyncSetup setup,
         DeviceFolderBoundary boundary,
-        IRepositorySelection repositories)
+        IRepositorySelection repositories,
+        ILogger logger)
     {
+        this.logger = logger;
         this.repositories = repositories;
         this.boundary = boundary;
         this.repository = repository;
@@ -50,7 +56,21 @@ internal sealed class SyncEngine : ISyncService
         this.status = status;
         Setup = setup;
         scheduler = new Scheduler(time, periodicInterval, RequestPass);
+        status.Changed += OnStatusChanged;
         repository.LocalSaved += OnLocalSaved;
+    }
+
+    // Each change of the state or failure is logged once, however many updates published it.
+    private void OnStatusChanged(object? sender, EventArgs e)
+    {
+        var current = status.Current;
+        lock (statusLogGate)
+        {
+            if (lastLoggedStatus == (current.State, current.Failure))
+                return;
+            lastLoggedStatus = (current.State, current.Failure);
+            logger.Information("Sync status is now {State}", current.State);
+        }
     }
 
     public ISyncStatus Status => status.Current;
@@ -98,6 +118,7 @@ internal sealed class SyncEngine : ISyncService
                 catch (Exception ex) when (!IsStopping(token))
                 {
                     var (kind, details) = FailureReport.OfLocal(ex);
+                    logger.LogFailure(kind, details, ex);
                     status.Update(s => s.Failed(kind, details, s.SkippedFiles));
                     setupModel.PublishFailed();
                 }
@@ -112,7 +133,7 @@ internal sealed class SyncEngine : ISyncService
     }
 
     public Task<ISyncStatus> SyncNowAsync(CancellationToken cancellationToken) =>
-        StartOrJoin().WaitAsync(cancellationToken);
+        StartOrJoin(SyncTrigger.Manual).WaitAsync(cancellationToken);
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
@@ -133,13 +154,13 @@ internal sealed class SyncEngine : ISyncService
 
     private void OnLocalSaved(object? sender, EventArgs e) => scheduler.LocalSaved();
 
-    private void RequestPass() => _ = RunScheduledAsync();
+    private void RequestPass(SyncTrigger trigger) => _ = RunScheduledAsync(trigger);
 
-    private async Task RunScheduledAsync()
+    private async Task RunScheduledAsync(SyncTrigger trigger)
     {
         try
         {
-            await StartOrJoin(false).ConfigureAwait(false);
+            await StartOrJoin(trigger).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is InvalidOperationException and not ObjectDisposedException || IsStopping(default))
         {
@@ -148,19 +169,20 @@ internal sealed class SyncEngine : ISyncService
     }
 
     // A user sync joins the newest pass that hasn't finished. A scheduled request during a pass queues one follow-up.
-    private Task<ISyncStatus> StartOrJoin(bool user = true)
+    private Task<ISyncStatus> StartOrJoin(SyncTrigger trigger)
     {
+        var user = trigger == SyncTrigger.Manual;
         lock (gate)
         {
             if (operations.IsStopped)
                 return Task.FromException<ISyncStatus>(new ObjectDisposedException(nameof(SyncEngine)));
             if (runningPass is null)
-                return runningPass = Task.Run(TrackedPassAsync);
-            return user ? queuedPass ?? runningPass : queuedPass ??= Task.Run(TrackedPassAsync);
+                return runningPass = Task.Run(() => TrackedPassAsync(trigger));
+            return user ? queuedPass ?? runningPass : queuedPass ??= Task.Run(() => TrackedPassAsync(trigger));
         }
     }
 
-    private async Task<ISyncStatus> TrackedPassAsync()
+    private async Task<ISyncStatus> TrackedPassAsync(SyncTrigger trigger)
     {
         var released = 0;
         void Release()
@@ -177,7 +199,7 @@ internal sealed class SyncEngine : ISyncService
 
         try
         {
-            return await operations.RunAsync(token => PassAsync(token, Release), CancellationToken.None).ConfigureAwait(false);
+            return await operations.RunAsync(token => PassAsync(token, Release, trigger), CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {
@@ -187,12 +209,12 @@ internal sealed class SyncEngine : ISyncService
 
     // The one restore point: whatever ends the pass once stopping began, including its setup refresh, is part of the
     // stop. The status from before the pass comes back, and Operations ends the caller as a stopped service.
-    private async Task<ISyncStatus> PassAsync(CancellationToken token, Action release)
+    private async Task<ISyncStatus> PassAsync(CancellationToken token, Action release, SyncTrigger trigger)
     {
         var before = status.Current;
         try
         {
-            var result = await RunOnePassAsync(token, release).ConfigureAwait(false);
+            var result = await RunOnePassAsync(token, release, trigger).ConfigureAwait(false);
             // Stopping can begin between a stop check and publishing a failure; the failure is still part of the stop.
             if (result.Failure is not null && IsStopping(token))
                 throw new OperationCanceledException(token);
@@ -207,7 +229,7 @@ internal sealed class SyncEngine : ISyncService
         }
     }
 
-    private async Task<ISyncStatus> RunOnePassAsync(CancellationToken token, Action release)
+    private async Task<ISyncStatus> RunOnePassAsync(CancellationToken token, Action release, SyncTrigger trigger)
     {
         string folder;
         try
@@ -216,11 +238,11 @@ internal sealed class SyncEngine : ISyncService
         }
         catch (ArgumentException ex) when (!IsStopping(token))
         {
-            Fail(release, SyncFailure.LocalStorage, "The saved repository folder is not usable: " + FailureReport.Describe(ex));
+            Fail(release, SyncFailure.LocalStorage, "The saved repository folder is not usable: " + FailureReport.Describe(ex), ex);
             return status.Current;
         }
 
-        if (await RejectDeviceFolderAsync(folder, release, token).ConfigureAwait(false) is { } rejected)
+        if (await RejectDeviceFolderAsync(folder, release, token, trigger).ConfigureAwait(false) is { } rejected)
             return rejected;
 
         bool hasKey;
@@ -231,7 +253,7 @@ internal sealed class SyncEngine : ISyncService
         catch (Exception ex) when (!IsStopping(token))
         {
             var (kind, details) = FailureReport.OfLocal(ex);
-            Fail(release, kind, details);
+            Fail(release, kind, details, ex);
             return status.Current;
         }
 
@@ -239,6 +261,8 @@ internal sealed class SyncEngine : ISyncService
             throw new InvalidOperationException("The device has no key yet.");
 
         scheduler.PassStarting();
+        logger.Information("Sync pass started by {Trigger}", trigger);
+        var startedAt = time.GetTimestamp();
         status.Update(s => s.Working());
         Func<StatusSnapshot, StatusSnapshot> outcome;
         var clean = false;
@@ -248,11 +272,14 @@ internal sealed class SyncEngine : ISyncService
             if (operations.IsStopped)
                 throw new OperationCanceledException(token);
             token.ThrowIfCancellationRequested();
-            (outcome, clean) = await RunPassAsync(folder, token).ConfigureAwait(false);
+            (outcome, clean) = await RunPassAsync(folder, startedAt, token).ConfigureAwait(false);
         }
         catch (Exception ex) when (!IsStopping(token))
         {
-            var (kind, details) = FailureReport.OfLocal(ex is PassFailedException { InnerException: { } failure } ? failure : ex);
+            var failure = ex is PassFailedException { InnerException: { } inner } ? inner : ex;
+            var (kind, details) = FailureReport.OfLocal(failure);
+            logger.LogFailure(kind, details, failure);
+            logger.Information("Sync pass ended after a failure in {DurationMs} ms", time.GetElapsedTime(startedAt).TotalMilliseconds);
             var pending = (ex as PassFailedException)?.HasPendingChanges;
             outcome = s => s.Failed(kind, details, []) with { HasPendingChanges = pending ?? s.HasPendingChanges };
         }
@@ -283,8 +310,10 @@ internal sealed class SyncEngine : ISyncService
         return status.Current;
     }
 
-    // The check can fail when the real location is unreadable; that is a returned status and no pass starts.
-    private async Task<ISyncStatus?> RejectDeviceFolderAsync(string folder, Action release, CancellationToken token)
+    // The check can fail when the real location is unreadable; that is a returned status and no pass starts. A selected
+    // folder that contains the device folder is thrown on to a manual sync, whose caller shows it; a scheduled pass
+    // swallows it, so only that one logs it.
+    private async Task<ISyncStatus?> RejectDeviceFolderAsync(string folder, Action release, CancellationToken token, SyncTrigger trigger)
     {
         bool contains;
         try
@@ -294,13 +323,13 @@ internal sealed class SyncEngine : ISyncService
         catch (ArgumentException ex) when (!IsStopping(token))
         {
             // The saved folder, which came from the repository selection, is malformed.
-            Fail(release, SyncFailure.LocalStorage, "The saved repository folder is not usable: " + FailureReport.Describe(ex));
+            Fail(release, SyncFailure.LocalStorage, "The saved repository folder is not usable: " + FailureReport.Describe(ex), ex);
             return status.Current;
         }
         catch (Exception ex) when (!IsStopping(token))
         {
             var (kind, details) = FailureReport.OfLocal(ex);
-            Fail(release, kind, details);
+            Fail(release, kind, details, ex);
             return status.Current;
         }
 
@@ -309,11 +338,14 @@ internal sealed class SyncEngine : ISyncService
         if (IsStopping(token))
             throw new OperationCanceledException(token);
         const string problem = "The selected repository folder contains the device folder.";
+        var failure = new InvalidOperationException(problem);
+        if (trigger != SyncTrigger.Manual)
+            logger.LogFailure(SyncFailure.Repository, problem, failure);
         status.Update(s => s.Failed(SyncFailure.Repository, problem, s.SkippedFiles));
-        throw new InvalidOperationException(problem);
+        throw failure;
     }
 
-    private async Task<(Func<StatusSnapshot, StatusSnapshot> Outcome, bool Clean)> RunPassAsync(string folder, CancellationToken token)
+    private async Task<(Func<StatusSnapshot, StatusSnapshot> Outcome, bool Clean)> RunPassAsync(string folder, long startedAt, CancellationToken token)
     {
         // Once the Git work has ended knowing the pending changes, a later failure (closing the session, writing the
         // receipt) still shows what it found.
@@ -349,10 +381,22 @@ internal sealed class SyncEngine : ISyncService
         }
 
         var skipped = MergedSkippedFile.Combine(merge: result.Skipped, reload: repository.SkippedFiles);
+        foreach (var file in result.Skipped)
+        {
+            logger.Warning(
+                "The merge skipped {Path}: {Reason} (needs a newer app: {RequiresUpdate})",
+                file.RelativePath, file.Reason, file.RequiresUpdate);
+        }
+
+        logger.Information(
+            "Sync pass ended: fetched {Fetched}, merged {Merged}, pushed {Pushed}, merge skipped {Skipped} file(s) in {DurationMs} ms",
+            result.Fetched, result.Merged, result.Pushed, result.Skipped.Count, time.GetElapsedTime(startedAt).TotalMilliseconds);
         if (skipped.Count > 0)
         {
+            var details = $"{skipped.Count} file(s) in the repository can't be read.";
+            logger.LogFailure(SyncFailure.InvalidFile, details, null);
             return (s => s.Succeeded(now, result.HasPendingChanges)
-                .Failed(SyncFailure.InvalidFile, $"{skipped.Count} file(s) in the repository can't be read.", skipped), false);
+                .Failed(SyncFailure.InvalidFile, details, skipped), false);
         }
 
         return (s => s.Succeeded(now, result.HasPendingChanges), true);
@@ -368,12 +412,15 @@ internal sealed class SyncEngine : ISyncService
         }
         catch (Exception ex) when (!IsStopping(token))
         {
-            return FailureReport.OfLocal(ex);
+            var (kind, details) = FailureReport.OfLocal(ex);
+            logger.LogFailure(kind, "The setup could not be refreshed: " + details, ex);
+            return (kind, details);
         }
     }
 
-    private void Fail(Action release, SyncFailure kind, string details)
+    private void Fail(Action release, SyncFailure kind, string details, Exception failure)
     {
+        logger.LogFailure(kind, details, failure);
         status.Update(s => s.Failed(kind, details, s.SkippedFiles));
         release();
         scheduler.PassFinished(false);

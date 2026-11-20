@@ -314,6 +314,8 @@ public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyLis
 
 With the [mention list and chips](#typing-an-at-sign-mentions-a-contact), the user decided that the Task editor uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own). Proposed, a decision to confirm: Contacts' [`IContacts contacts`](../contacts.md#public-interface) joins `AddWindow.Create` right after `tagColors`, and the Title and Description editors' constructors right after `tasks`, so the "@" list searches them and the chips show live text. No other member changes. This is not implemented.
 
+The user decided that `TitleEditor`, `DescriptionEditor`, and `TagEditor` each take a required `ILogger logger` as their last constructor argument, as every module's create method does, and null is refused with an `ArgumentNullException`. The editor that catches a failure it shows logs it, so a host such as the Task list doesn't log the same failure again.
+
 ```csharp
 /// The Add window, as Shell uses it.
 public interface IAddWindow
@@ -332,7 +334,7 @@ public interface IAddWindow
 public sealed class TitleEditor : UserControl
 {
     public TitleEditor(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, SaveKeys saveKeys);
+        IClipboard clipboard, SaveKeys saveKeys, ILogger logger);
 
     /// The title's Markdown. Setting it replaces the text and starts HasChanges over.
     public string Value { get; set; }
@@ -355,7 +357,7 @@ public sealed class TitleEditor : UserControl
 public sealed class DescriptionEditor : UserControl
 {
     public DescriptionEditor(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys);
+        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, ILogger logger);
 
     /// The task the description belongs to; an added image is kept for it.
     public string TaskId { get; set; }
@@ -391,7 +393,7 @@ public sealed class TagEditor : UserControl
     /// The words the pill shows when the task has no tag, and the Task list's "No tag" group heading.
     public const string NoTagText = "No tag";
 
-    public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme);
+    public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme, ILogger logger);
 
     /// The tag the pill shows, or null for "No tag". Setting it changes the pill, raises nothing, and leaves an
     /// open menu or Custom as it is.

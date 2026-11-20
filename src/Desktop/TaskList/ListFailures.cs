@@ -1,5 +1,6 @@
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
@@ -14,8 +15,8 @@ internal static class ListFailures
     };
 
     /// <summary>
-    /// Runs the call. A known failure is passed to <paramref name="report"/> with its message and answered with false; any
-    /// other failure is not swallowed.
+    /// Runs the call. A known failure is logged at Error, passed to <paramref name="report"/> with its message and answered
+    /// with false; any other failure is not swallowed.
     /// </summary>
-    public static bool Run(Action call, Action<string> report) => StoreFailures.Run(call, MessageOf, report);
+    public static bool Run(Action call, Action<string> report, ILogger logger) => StoreFailures.Run(call, MessageOf, report, logger);
 }

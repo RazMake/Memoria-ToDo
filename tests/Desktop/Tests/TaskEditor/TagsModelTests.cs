@@ -12,7 +12,7 @@ public class TagsModelTests
     public TagsModelTests()
     {
         _services.UseRepository();
-        _model = new TagsModel(_services.Tasks, _services.TagColors);
+        _model = new TagsModel(_services.Tasks, _services.TagColors, Serilog.Core.Logger.None);
     }
 
     [Fact]
@@ -97,13 +97,13 @@ public class TagsModelTests
     [Fact]
     public void A_model_without_Tasks_is_rejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new TagsModel(null!, _services.TagColors));
+        Assert.Throws<ArgumentNullException>(() => new TagsModel(null!, _services.TagColors, Serilog.Core.Logger.None));
     }
 
     [Fact]
     public void A_model_without_tag_colors_is_rejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new TagsModel(_services.Tasks, null!));
+        Assert.Throws<ArgumentNullException>(() => new TagsModel(_services.Tasks, null!, Serilog.Core.Logger.None));
     }
 
     [Fact]

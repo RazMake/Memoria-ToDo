@@ -2,6 +2,7 @@ using System.Text;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.App;
 
@@ -14,17 +15,20 @@ internal sealed class RepositorySelection : IRepositorySelection
     private readonly IFileSystem _files;
     private readonly Action<string?> _useRepositoryFolder;
     private readonly string _settingFile;
+    private readonly ILogger _logger;
 
     /// <param name="useRepositoryFolder">Makes Tasks read this folder; null for none.</param>
     /// <param name="settingFile">The file that keeps the folder's path; created by the first selection.</param>
-    public RepositorySelection(IFileSystem files, Action<string?> useRepositoryFolder, string settingFile)
+    public RepositorySelection(IFileSystem files, Action<string?> useRepositoryFolder, string settingFile, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(useRepositoryFolder);
         ArgumentException.ThrowIfNullOrWhiteSpace(settingFile);
+        ArgumentNullException.ThrowIfNull(logger);
         _files = files;
         _useRepositoryFolder = useRepositoryFolder;
         _settingFile = settingFile;
+        _logger = logger;
     }
 
     public void Load()
@@ -53,6 +57,8 @@ internal sealed class RepositorySelection : IRepositorySelection
             Restore(previous, adoption);
             throw;
         }
+
+        _logger.Information("The repository folder {Folder} was selected", folder);
     }
 
     // Puts the setting back exactly as it was; a failed restore reports both failures.

@@ -1,13 +1,15 @@
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// Deleting a task from the list: it hides at once, waits on the Undo bar, and is deleted for good when the bar ends.
-/// A failure the list knows is reported with its reason.
+/// A failure the list knows is logged and reported with its reason.
 /// </summary>
-internal sealed class TaskDeletion(ITasks tasks, ListContent content, PendingUndo pending, Action<string> report, Action changed)
+internal sealed class TaskDeletion(ITasks tasks, ListContent content, PendingUndo pending, Action<string> report, Action changed, ILogger logger)
 {
+    private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     public void Start(string taskId)
     {
         content.HiddenId = taskId;
@@ -30,6 +32,7 @@ internal sealed class TaskDeletion(ITasks tasks, ListContent content, PendingUnd
         }
         catch (Exception failure) when (ListFailures.MessageOf(failure) is { } why)
         {
+            _logger.Error(failure, "A task couldn't be deleted: {Reason}", why);
             var removed = tasks.All.All(task => task.Id != id);
             report(removed ? "The task was deleted, but some of its images couldn't be removed: " + why : why);
         }

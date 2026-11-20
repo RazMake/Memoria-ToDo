@@ -18,7 +18,7 @@ public class AddDraftTests
     public AddDraftTests()
     {
         _services.UseRepository();
-        _draft = new AddDraft(_services.Tasks, _editor);
+        _draft = new AddDraft(_services.Tasks, _editor, Serilog.Core.Logger.None);
     }
 
     private void Type(string title, string description = "") =>

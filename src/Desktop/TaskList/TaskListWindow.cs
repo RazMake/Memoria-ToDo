@@ -9,6 +9,7 @@ using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
@@ -30,6 +31,7 @@ internal sealed class TaskListWindow : Window
     private readonly TimeProvider _time;
     private readonly IDefaultBrowser _browser;
     private readonly Action<string> _carry;
+    private readonly ILogger _logger;
     private readonly FormattedDescription _description;
     private readonly DetailsPane _details;
     private readonly GroupedRows _rows;
@@ -64,7 +66,7 @@ internal sealed class TaskListWindow : Window
 
     public TaskListWindow(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
-        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer, string? message, Action<string> carry)
+        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer, string? message, Action<string> carry, ILogger logger)
     {
         _sync = sync;
         _contacts = contacts;
@@ -79,6 +81,7 @@ internal sealed class TaskListWindow : Window
         _time = time;
         _browser = browser;
         _carry = carry;
+        _logger = logger;
         _rowActions = new()
         {
             [RowAction.Toggle] = (task, _) => SelectTask(task.Id),
@@ -97,7 +100,11 @@ internal sealed class TaskListWindow : Window
 
         _description = new FormattedDescription(webView, theme, browser);
         _description.OtherLinkClicked += (_, address) => FollowLink(address);
-        _description.OpenFailed += (_, failure) => Report(failure.Message);
+        _description.OpenFailed += (_, failure) =>
+        {
+            logger.Error(failure, "A link couldn't be opened");
+            Report(failure.Message);
+        };
         _description.ImageResized += (_, resize) => ResizeImage(resize);
         _details = new DetailsPane(_description);
         _details.TabChosen += (_, preview) => SwitchTab(preview);
@@ -105,14 +112,14 @@ internal sealed class TaskListWindow : Window
         _header = new ListHeader(_filter);
         _content = new ListContent(tasks, _filter);
         _links = new ListLinks(tasks, _filter, _content);
-        _actions = new ListActions(tasks, Report);
+        _actions = new ListActions(tasks, Report, logger);
         _pending = new PendingUndo(time, post => Dispatcher.BeginInvoke(post), () => _header.ShowUndo(_pending!.IsPending ? _pending.Label : null));
-        _deletion = new TaskDeletion(tasks, _content, _pending, Report, Refresh);
-        _cleanup = new EditCleanup(tasks, _pending, Report);
-        _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report);
-        _editing = new ListEditing(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit);
+        _deletion = new TaskDeletion(tasks, _content, _pending, Report, Refresh, logger);
+        _cleanup = new EditCleanup(tasks, _pending, Report, logger);
+        _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report, logger);
+        _editing = new ListEditing(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit, logger);
         _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow, task => LiveMentions.Of(contacts, task.Title, title: true), pointer);
-        _groupActions = new GroupActions(tagOrder, Report);
+        _groupActions = new GroupActions(tagOrder, Report, logger);
         _header.ShowMessage(message);
         _filter.Changed += (_, _) => Refresh();
         _header.UndoClicked += (_, _) => _pending.Undo();
@@ -174,7 +181,8 @@ internal sealed class TaskListWindow : Window
         _tasks.Changed -= OnChanged;
         _tagOrder.Changed -= OnChanged;
         _contacts.Changed -= OnChanged;
-        try        {
+        try
+        {
             _pending.Commit();
             if (_editing.Forget() is { } edit)
             {
@@ -317,7 +325,7 @@ internal sealed class TaskListWindow : Window
 
     private TagEditor NewTagControl(TaskItem task)
     {
-        var control = new TagEditor(_tasks, _tagColors, _theme) { TaskTag = PillTagOf(task) };
+        var control = new TagEditor(_tasks, _tagColors, _theme, _logger) { TaskTag = PillTagOf(task) };
         control.TagChanged += (_, tag) => ChangeTag(control, tag);
         return control;
     }

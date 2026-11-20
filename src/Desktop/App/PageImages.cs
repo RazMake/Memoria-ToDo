@@ -1,6 +1,7 @@
 using System.IO;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.App;
 
@@ -17,13 +18,16 @@ internal sealed class PageImages
     /// <param name="rules">Tasks' file rules, which say which paths are images.</param>
     /// <param name="cloneFolder">The clone, looked in first, or null when there is no clone yet.</param>
     /// <param name="editImagesFolder">The folder of the images that wait for an open edit.</param>
-    public PageImages(IFileSystem files, IRepositoryFileRules rules, string? cloneFolder, string editImagesFolder)
+    /// <param name="logger">Gets a Warning for each failed read.</param>
+    public PageImages(IFileSystem files, IRepositoryFileRules rules, string? cloneFolder, string editImagesFolder, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentException.ThrowIfNullOrWhiteSpace(editImagesFolder);
+        ArgumentNullException.ThrowIfNull(logger);
         _files = files;
         _rules = rules;
+        _logger = logger;
         _folders = cloneFolder is null ? [editImagesFolder] : [cloneFolder, editImagesFolder];
     }
 
@@ -32,6 +36,7 @@ internal sealed class PageImages
 
     private readonly IFileSystem _files;
     private readonly IRepositoryFileRules _rules;
+    private readonly ILogger _logger;
     private readonly string[] _folders;
 
     /// <summary>The answer to a request with this method for this path, such as <c>/images/&lt;task-id&gt;/&lt;file&gt;.png</c>, as the request's address spells it.</summary>
@@ -57,6 +62,9 @@ internal sealed class PageImages
             }
             catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
             {
+                // The link is images/<task id>/<file>, as the image rules checked.
+                var parts = path[1..].Split('/');
+                _logger.Warning(failure, "Reading the image {File} of task {TaskId} failed", parts[^1], parts[^2]);
                 return ServerError;
             }
         }

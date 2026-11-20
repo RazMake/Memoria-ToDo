@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
     <ProjectReference Include="..\..\Shared\Contacts\Memoria.ToDo.Shared.Contacts.csproj" />
+    <PackageReference Include="Serilog" />
   </ItemGroup>
 
 </Project>

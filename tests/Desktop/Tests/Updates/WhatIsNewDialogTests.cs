@@ -1,6 +1,8 @@
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
+using Serilog.Events;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.Updates.Tests;
@@ -104,6 +106,21 @@ public class WhatIsNewDialogTests
         screen.ShowWhatIsNew(dialog => { });
 
         Assert.Contains(screen.Texts, text => text.Contains(ReleasesPage));
+    }
+
+    [WpfFact]
+    public async Task A_link_the_default_browser_cannot_open_logs_a_Warning_in_Updates_with_the_exception()
+    {
+        var app = await AppFoundAsync(ThreeReleases with { OlderNotesPage = new Uri(ReleasesPage) });
+        var failure = new InvalidOperationException("There is no default browser.");
+        app.Browser.Failure = failure;
+        using var screen = new WhatIsNewScreen(app);
+
+        screen.ShowWhatIsNew(dialog => app.WebViews[0].ClickLink(ReleasesPage));
+
+        var entry = Assert.Single(app.Log.Events, e => e.Level >= LogEventLevel.Warning);
+        Assert.Equal(LogEventLevel.Warning, entry.Level);
+        Assert.True(entry.HasException(failure));
     }
 
     [WpfFact]

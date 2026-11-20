@@ -4,6 +4,7 @@ using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -13,14 +14,15 @@ public static class AddWindow
     /// <summary>Creates the Add window. It opens only on <see cref="IAddWindow.Show"/>.</summary>
     public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys)
+        CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(tagColors);
         ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(saveKeys);
-        var window = new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys), updates, saveKeys);
+        ArgumentNullException.ThrowIfNull(logger);
+        var window = new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, logger), updates, saveKeys, logger);
         closeWindowKeys.Attach(window);
         return window;
     }

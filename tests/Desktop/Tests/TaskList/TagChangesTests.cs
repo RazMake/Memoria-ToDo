@@ -27,8 +27,8 @@ public class TagChangesTests
     public TagChangesTests()
     {
         _pending = new PendingUndo(_tasks.Time, post => post(), () => { });
-        _cleanup = new EditCleanup(_tasks.Tasks, _pending, _reports.Add);
-        _changes = new TagChanges(_tasks.Tasks, _pending, _cleanup, _reports.Add);
+        _cleanup = new EditCleanup(_tasks.Tasks, _pending, _reports.Add, Serilog.Core.Logger.None);
+        _changes = new TagChanges(_tasks.Tasks, _pending, _cleanup, _reports.Add, Serilog.Core.Logger.None);
     }
 
     private TaskItem Stored(TaskItem task) => _tasks.Tasks.All.Single(t => t.Id == task.Id);
@@ -339,7 +339,7 @@ public class TagChangesTests
         var shown = _tasks.Add("Buy milk");
         var doomed = _tasks.Add("Call Ana");
         _changes.Choose(shown, "home");
-        var deletion = new TaskDeletion(_tasks.Tasks, new ListContent(_tasks.Tasks, new ListFilter()), _pending, _reports.Add, () => { });
+        var deletion = new TaskDeletion(_tasks.Tasks, new ListContent(_tasks.Tasks, new ListFilter()), _pending, _reports.Add, () => { }, Serilog.Core.Logger.None);
 
         deletion.Start(doomed.Id);
         _pending.Undo();

@@ -1,5 +1,6 @@
 using System.IO;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -13,12 +14,15 @@ internal sealed class AddDraft
 
     private readonly ITasks _tasks;
     private readonly IDraftEditor _editor;
+    private readonly ILogger _logger;
     private bool _unreadableDraftOnDisk;
 
-    public AddDraft(ITasks tasks, IDraftEditor editor)
+    public AddDraft(ITasks tasks, IDraftEditor editor, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _tasks = tasks;
         _editor = editor;
+        _logger = logger;
     }
 
     /// <summary>Fills the editor with the kept draft, or a new one when there is none or it can't be read.</summary>
@@ -32,8 +36,9 @@ internal sealed class AddDraft
             _unreadableDraftOnDisk = false;
             _editor.ShowMessage("");
         }
-        catch (InvalidDataException)
+        catch (InvalidDataException failure)
         {
+            _logger.Error(failure, "The kept draft couldn't be read, so Add opened empty");
             _editor.Value = _tasks.StartDraft();
             _unreadableDraftOnDisk = true;
             _editor.ShowMessage(UnreadableMessage);

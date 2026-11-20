@@ -1,10 +1,12 @@
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
+using Memoria.ToDo.Desktop.Logs;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Shell;
 
@@ -14,7 +16,8 @@ public static class TrayApp
     /// <summary>
     /// Creates the app's lifetime. Start first claims the sign-in session; when another instance runs, it ends the app
     /// and does nothing else. Otherwise it adds the tray icon with its menu (Add new task, Task View, Contacts while
-    /// contacts are available, Configure, Exit; a left click shows Task View), connects Configure's four shortcuts (a press
+    /// contacts are available, Configure, Logs, Exit; a left click shows Task View; Logs shows the Logs window at once,
+    /// whatever the setup), connects Configure's four shortcuts (a press
     /// shows Add, Task View, Contacts, or Configure, and does nothing while Configure is open), begins Updates with the
     /// app's exit, and starts the shared sync
     /// service. Startup and later actions open Configure until setup is complete;
@@ -31,12 +34,14 @@ public static class TrayApp
         IViewTasksWindow viewTasks,
         IContactsWindow contacts,
         IConfigureWindow configure,
+        ILogsWindow logs,
         IUpdateLifetime updates,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
-        ISyncService sync) =>
-        Create(trayIcon, add, viewTasks, contacts, configure, updates, shortcut, oneInstance, startedAtSignIn, sync, () => new WpfUiThread());
+        ISyncService sync,
+        ILogger logger) =>
+        Create(trayIcon, add, viewTasks, contacts, configure, logs, updates, shortcut, oneInstance, startedAtSignIn, sync, logger, () => new WpfUiThread());
 
     internal static IAppLifetime Create(
         ITrayIcon trayIcon,
@@ -44,11 +49,13 @@ public static class TrayApp
         IViewTasksWindow viewTasks,
         IContactsWindow contacts,
         IConfigureWindow configure,
+        ILogsWindow logs,
         IUpdateLifetime updates,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
         ISyncService sync,
+        ILogger logger,
         Func<IUiThread> uiThread)
     {
         ArgumentNullException.ThrowIfNull(trayIcon);
@@ -56,10 +63,12 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(viewTasks);
         ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(configure);
+        ArgumentNullException.ThrowIfNull(logs);
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(shortcut);
         ArgumentNullException.ThrowIfNull(oneInstance);
         ArgumentNullException.ThrowIfNull(sync);
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(uiThread);
 
         bool ConfigureOpen() => configure.IsOpen;
@@ -94,17 +103,22 @@ public static class TrayApp
             contacts,
             configure,
             oneInstance,
-            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, AddOpen, [viewTasksWindow, contactsWindow], addByUser).Press),
-            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, [addWindow, contactsWindow], viewTasksByUser).Press),
-            new ActiveShortcut(shortcut, new ShortcutSwitch(ConfigureOpen, ConfigureOpen, [addWindow, viewTasksWindow, contactsWindow], configureByUser).Press),
+            new ActiveShortcut(shortcut, Press("Add new task", new ShortcutSwitch(ConfigureOpen, AddOpen, [viewTasksWindow, contactsWindow], addByUser)), "Add new task", logger),
+            new ActiveShortcut(shortcut, Press("Task View", new ShortcutSwitch(ConfigureOpen, ViewTasksOpen, [addWindow, contactsWindow], viewTasksByUser)), "Task View", logger),
+            new ActiveShortcut(shortcut, Press("Configure", new ShortcutSwitch(ConfigureOpen, ConfigureOpen, [addWindow, viewTasksWindow, contactsWindow], configureByUser)), "Configure", logger),
             new ContactsShortcutAction(
                 shortcut,
-                new ShortcutSwitch(ConfigureOpen, ContactsOpen, [addWindow, viewTasksWindow], contactsByUser).Press,
+                Press("Contacts", new ShortcutSwitch(ConfigureOpen, ContactsOpen, [addWindow, viewTasksWindow], contactsByUser)),
                 () => contacts.IsAvailable,
-                startup.ShortcutFailed),
+                startup.ShortcutFailed,
+                logger),
             startup,
             updates,
             endApp => new ShellExit(add, viewTasks, contacts, configure, endApp),
-            sync);
+            sync,
+            logs.Show,
+            logger);
+
+        Action Press(string name, ShortcutSwitch switcher) => LoggedUse.Of(logger, $"Shortcut for {name} used", switcher.Press);
     }
 }

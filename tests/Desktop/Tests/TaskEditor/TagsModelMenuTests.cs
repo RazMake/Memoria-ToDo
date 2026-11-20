@@ -16,7 +16,7 @@ public class TagsModelMenuTests
     public TagsModelMenuTests()
     {
         _services.UseRepository();
-        _model = new TagsModel(_services.Tasks, _services.TagColors);
+        _model = new TagsModel(_services.Tasks, _services.TagColors, Serilog.Core.Logger.None);
     }
 
     [Fact]

@@ -53,11 +53,18 @@ internal interface ITransportCleanup
 
 /// <summary>
 /// What a pass did. <see cref="Skipped"/> lists files the merge kept the local copy of because it couldn't merge them,
-/// which Sync reports with the files Tasks couldn't read.
+/// which Sync reports with the files Tasks couldn't read. <see cref="Fetched"/>: the remote had new commits.
+/// <see cref="Merged"/>: they were combined with local ones. <see cref="Pushed"/>: local commits went up.
 /// </summary>
 internal sealed record GitPassResult(bool HasPendingChanges)
 {
     public IReadOnlyList<ISkippedRepositoryFile> Skipped { get; init; } = [];
+
+    public bool Fetched { get; init; }
+
+    public bool Merged { get; init; }
+
+    public bool Pushed { get; init; }
 }
 
 internal delegate HostKeyVerdict HostKeyVerifier(string host, int port, string algorithm, string fingerprint);

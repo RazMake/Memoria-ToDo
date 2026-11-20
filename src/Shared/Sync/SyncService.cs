@@ -1,6 +1,7 @@
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Shared.Sync;
 
@@ -14,6 +15,7 @@ public static class SyncService
     /// <param name="deviceFolder">A full path outside every repository clone, for the device name and trusted hosts.</param>
     /// <param name="defaultDeviceName">The device name used until the user saves another.</param>
     /// <param name="periodicInterval">How often to sync when idle, or null for no periodic sync.</param>
+    /// <param name="logger">Where the service writes its log entries.</param>
     public static ISyncService Create(
         ISyncedRepository repository,
         ITaskSynchronization tasks,
@@ -24,10 +26,11 @@ public static class SyncService
         TimeProvider time,
         string deviceFolder,
         string defaultDeviceName,
-        TimeSpan? periodicInterval)
+        TimeSpan? periodicInterval,
+        ILogger logger)
     {
         var worker = new OwnedWorker();
-        return Create(repository, tasks, contacts, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, new NativeGitOperations(repository, tasks, contacts, time, worker), worker);
+        return Create(repository, tasks, contacts, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, new NativeGitOperations(repository, tasks, contacts, time, worker), worker, logger);
     }
 
     internal static ISyncService Create(
@@ -41,8 +44,9 @@ public static class SyncService
         string deviceFolder,
         string defaultDeviceName,
         TimeSpan? periodicInterval,
-        IGitOperations git) =>
-        Create(repository, tasks, contacts, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, git, new OwnedWorker());
+        IGitOperations git,
+        ILogger logger) =>
+        Create(repository, tasks, contacts, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, git, new OwnedWorker(), logger);
 
     private static ISyncService Create(
         ISyncedRepository repository,
@@ -56,7 +60,8 @@ public static class SyncService
         string defaultDeviceName,
         TimeSpan? periodicInterval,
         IGitOperations git,
-        OwnedWorker worker)
+        OwnedWorker worker,
+        ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(tasks);
@@ -66,6 +71,7 @@ public static class SyncService
         ArgumentNullException.ThrowIfNull(repositories);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(git);
+        ArgumentNullException.ThrowIfNull(logger);
         if (string.IsNullOrWhiteSpace(defaultDeviceName))
             throw new ArgumentException("The default device name is blank.", nameof(defaultDeviceName));
         if (string.IsNullOrWhiteSpace(deviceFolder) || !Path.IsPathFullyQualified(deviceFolder))
@@ -80,7 +86,7 @@ public static class SyncService
         var session = new GitSession(worker, keys, metadata, trust, model);
         var status = new Published<StatusSnapshot>(StatusSnapshot.Initial);
         var boundary = new DeviceFolderBoundary(files, deviceFolder);
-        var setup = new SyncSetup(git, keys, repositories, boundary, worker, operations, session, model, metadata, trust, status);
-        return new SyncEngine(repository, git, keys, time, periodicInterval, worker, operations, session, model, status, setup, boundary, repositories);
+        var setup = new SyncSetup(git, keys, repositories, boundary, worker, operations, session, model, metadata, trust, status, logger);
+        return new SyncEngine(repository, git, keys, time, periodicInterval, worker, operations, session, model, status, setup, boundary, repositories, logger);
     }
 }

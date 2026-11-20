@@ -21,7 +21,7 @@ public class DeviceActionsTests : IDisposable
 
     public DeviceActionsTests()
     {
-        _ui = new SyncUi(_sync, _actions, post => post());
+        _ui = new SyncUi(_sync, _actions, post => post(), Serilog.Core.Logger.None);
         _device = new DeviceActions(_ui, () => _changed++);
     }
 

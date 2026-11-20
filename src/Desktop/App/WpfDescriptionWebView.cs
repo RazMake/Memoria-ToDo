@@ -7,6 +7,7 @@ using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Serilog;
 using static Memoria.ToDo.Desktop.App.DevTools;
 
 namespace Memoria.ToDo.Desktop.App;
@@ -33,6 +34,7 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
     private CoreWebView2DevToolsProtocolEventReceiver? _styleChanged;
     private readonly IDragPause _dragPause;
     private readonly IImageMeasure _measure;
+    private readonly ILogger _logger;
     private HashSet<int> _boxes = [];
     private Task<int>? _root;
     private int _page;
@@ -46,22 +48,24 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
     /// <param name="browserDataFolder">The folder the browser keeps its data in.</param>
     /// <param name="files">Reads the images.</param>
     /// <param name="rules">Tasks' file rules, which say which paths are images.</param>
-    public WpfDescriptionWebView(string? cloneFolder, string editImagesFolder, string browserDataFolder, IFileSystem files, IRepositoryFileRules rules)
-        : this(cloneFolder, editImagesFolder, browserDataFolder, files, rules,         new DispatcherDragPause(), new DevToolsImageMeasure())
+    public WpfDescriptionWebView(string? cloneFolder, string editImagesFolder, string browserDataFolder, IFileSystem files, IRepositoryFileRules rules, ILogger logger)
+        : this(cloneFolder, editImagesFolder, browserDataFolder, files, rules, new DispatcherDragPause(), new DevToolsImageMeasure(), logger)
     {
     }
 
     /// <param name="dragPause">Tells when a drag has ended, in place of the dispatcher's clock.</param>
-            /// <param name="measure">Reads a dragged image box's width, in place of the DevTools calls.</param>
+    /// <param name="measure">Reads a dragged image box's width, in place of the DevTools calls.</param>
     internal WpfDescriptionWebView(
-                string? cloneFolder, string editImagesFolder, string browserDataFolder, IFileSystem files, IRepositoryFileRules rules,
-                IDragPause dragPause, IImageMeasure measure)
+        string? cloneFolder, string editImagesFolder, string browserDataFolder, IFileSystem files, IRepositoryFileRules rules,
+        IDragPause dragPause, IImageMeasure measure, ILogger logger)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(browserDataFolder);
         ArgumentNullException.ThrowIfNull(dragPause);
-                ArgumentNullException.ThrowIfNull(measure);
-                _measure = measure;
-        _images = new PageImages(files, rules, cloneFolder, editImagesFolder);
+        ArgumentNullException.ThrowIfNull(measure);
+        ArgumentNullException.ThrowIfNull(logger);
+        _measure = measure;
+        _logger = logger;
+        _images = new PageImages(files, rules, cloneFolder, editImagesFolder, logger);
         _dragPause = dragPause;
         _control = new WebView2CompositionControl
         {
@@ -433,6 +437,7 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
         }
 
         _failed = true;
+        _logger.Error(failure, "The description view failed");
         Failed?.Invoke(this, failure.Message);
     }
 }

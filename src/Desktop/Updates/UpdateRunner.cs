@@ -1,10 +1,13 @@
+using Serilog;
+
 namespace Memoria.ToDo.Desktop.Updates;
 
 /// <summary>
 /// Runs the checks and the updates: a check at start and each night, an update when asked or, with Auto update on, at night
 /// once no window is open, and the stop that cancels what is under way and starts Velopack's updater last.
+/// Logs each check and its result, each download's start and end, the restart, and the failure of any of them.
 /// </summary>
-internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, NightSchedule night, UiThread ui)
+internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, NightSchedule night, UiThread ui, ILogger logger)
 {
     private readonly CancellationTokenSource _stop = new();
     private IAppExit? _exit;
@@ -53,6 +56,8 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
         await _nightInstall;
         if (_applyOnStop is { } apply)
         {
+            logger.Information("Restarting into version {Version}", apply.Version.Version);
+            // A failure to restart goes on to AppRunner, which logs it as Fatal.
             install.ApplyAfterExit(apply.Version, apply.Quiet);
         }
     }
@@ -130,7 +135,7 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
         }
     }
 
-    // A failed check changes nothing and shows nothing. Velopack's check can't be cancelled, so a stop stops waiting for it.
+    // A failed check changes nothing and shows nothing, but is logged. Velopack's check can't be cancelled, so a stop stops waiting for it.
     private async Task CheckAsync(CancellationToken cancellationToken)
     {
         if (model.Stage == UpdateStage.Updating)
@@ -143,9 +148,19 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
         {
             found = await install.CheckAsync(cancellationToken).WaitAsync(cancellationToken);
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested)
         {
+            logger.Warning(e, "The check for a newer version failed");
             return;
+        }
+
+        if (found is null)
+        {
+            logger.Information("The check found no newer version");
+        }
+        else
+        {
+            logger.Information("The check found version {Version}", found.Version);
         }
 
         model.CheckFound(found);
@@ -154,6 +169,7 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
     /// <returns>Whether the app was ended, so the updater starts at the stop.</returns>
     private async Task<bool> UpdateAsync(NewerVersion version, bool quiet, CancellationToken cancellationToken)
     {
+        logger.Information("Downloading version {Version}", version.Version);
         try
         {
             await install.DownloadAsync(version, cancellationToken);
@@ -165,10 +181,12 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
         }
         catch (Exception e)
         {
+            logger.Error(e, "The download of version {Version} failed", version.Version);
             model.EndUpdate($"The update to {version.Version} failed: {e.Message}");
             return false;
         }
 
+        logger.Information("Downloaded version {Version}", version.Version);
         try
         {
             // A window may have opened during a quiet download; the restart waits until every window is closed again.

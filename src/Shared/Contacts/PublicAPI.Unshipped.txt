@@ -115,7 +115,7 @@ static Memoria.ToDo.Shared.Contacts.Contact.operator !=(Memoria.ToDo.Shared.Cont
 static Memoria.ToDo.Shared.Contacts.Contact.operator ==(Memoria.ToDo.Shared.Contacts.Contact? left, Memoria.ToDo.Shared.Contacts.Contact? right) -> bool
 static Memoria.ToDo.Shared.Contacts.ContactGroup.operator !=(Memoria.ToDo.Shared.Contacts.ContactGroup? left, Memoria.ToDo.Shared.Contacts.ContactGroup? right) -> bool
 static Memoria.ToDo.Shared.Contacts.ContactGroup.operator ==(Memoria.ToDo.Shared.Contacts.ContactGroup? left, Memoria.ToDo.Shared.Contacts.ContactGroup? right) -> bool
-static Memoria.ToDo.Shared.Contacts.ContactStore.Create(Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Platform.IRepositoryAccess! repository) -> Memoria.ToDo.Shared.Contacts.IContactStore!
+static Memoria.ToDo.Shared.Contacts.ContactStore.Create(Memoria.ToDo.Shared.Platform.IFileSystem! files, Memoria.ToDo.Shared.Platform.IRepositoryAccess! repository, Serilog.ILogger! logger) -> Memoria.ToDo.Shared.Contacts.IContactStore!
 static Memoria.ToDo.Shared.Contacts.DataType.operator !=(Memoria.ToDo.Shared.Contacts.DataType? left, Memoria.ToDo.Shared.Contacts.DataType? right) -> bool
 static Memoria.ToDo.Shared.Contacts.DataType.operator ==(Memoria.ToDo.Shared.Contacts.DataType? left, Memoria.ToDo.Shared.Contacts.DataType? right) -> bool
 static Memoria.ToDo.Shared.Contacts.DataTypeEntry.operator !=(Memoria.ToDo.Shared.Contacts.DataTypeEntry? left, Memoria.ToDo.Shared.Contacts.DataTypeEntry? right) -> bool
