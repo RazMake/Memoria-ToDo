@@ -12,6 +12,7 @@ internal sealed class LogsModel
 {
     private static readonly IReadOnlyList<LevelChoice> LevelChoices =
     [
+        new("Debug and up", LogEventLevel.Debug),
         new("Information and up", LogEventLevel.Information),
         new("Warning and up", LogEventLevel.Warning),
         new("Error and up", LogEventLevel.Error),

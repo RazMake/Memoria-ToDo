@@ -17,20 +17,26 @@ public static class WindowPlacement
     /// <summary>
     /// A hidden window: shown centered on the work area of the screen with the mouse pointer, then activated.
     /// A window shown for the first time stays invisible on the screen until WPF has drawn it, which happens after
-    /// this call returns. A visible window stays where it is: restored if minimized, then activated.
+    /// this call returns. A visible window stays where it is: restored if minimized, then activated. Logs its
+    /// choices at Debug through <paramref name="logger"/>, the caller's own.
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="logger"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Called off the window's UI thread.</exception>
     /// <exception cref="Win32Exception">Windows can't give the pointer's position, or its screen's work area or scale, or move, restore, or cloak the window.</exception>
-    public static void ShowOnPointerScreen(Window window)
+    public static void ShowOnPointerScreen(Window window, Serilog.ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         window.VerifyAccess();
 
         if (window.IsVisible)
         {
-            if (window.WindowState == WindowState.Minimized)
+            var restored = window.WindowState == WindowState.Minimized;
+            if (restored)
             {
                 window.WindowState = WindowState.Normal;
             }
+
+            logger.Debug("Showed the visible window {Window}; Restored {Restored}", window.GetType().Name, restored);
         }
         else
         {
@@ -43,10 +49,15 @@ public static class WindowPlacement
             var shownBefore = !FirstShowCloak.IsFirstShow(window);
             var handle = new WindowInteropHelper(window).EnsureHandle();
 
-            if (IsIconic(handle))
+            var restoredWhileCloaked = IsIconic(handle);
+            if (restoredWhileCloaked)
             {
                 RestoreWhileHidden(handle);
             }
+
+            logger.Debug(
+                "Showing the hidden window {Window} on the pointer's screen; FirstShow {FirstShow}, RestoredWhileCloaked {RestoredWhileCloaked}, WorkArea {WorkArea}",
+                window.GetType().Name, !shownBefore, restoredWhileCloaked, work);
 
             // Move the handle to the pointer's screen first, in pixels: WPF converts Left and Top at the scale of the
             // screen the handle is on, and picks a new window's screen from Left and Top in WPF units, which can
@@ -78,7 +89,7 @@ public static class WindowPlacement
                 try
                 {
                     // After RestoreWhileHidden, which uncloaks the window when it's done.
-                    FirstShowCloak.Start(window);
+                    FirstShowCloak.Start(window, logger);
                     window.Show();
                 }
                 finally

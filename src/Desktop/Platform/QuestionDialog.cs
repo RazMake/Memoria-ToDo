@@ -10,11 +10,13 @@ public static class QuestionDialog
     /// <summary>
     /// Shows the text with one button per answer, in order, and returns the answer picked.
     /// Enter picks <paramref name="defaultAnswer"/>; Esc and the close button pick <paramref name="cancelAnswer"/>.
+    /// <paramref name="logger"/>, the caller's own, is passed on to <see cref="ModalDialog.Show"/>.
     /// </summary>
     public static T Ask<T>(
         Window owner, string title, string text,
-        IReadOnlyList<(string Label, T Answer)> answers, T defaultAnswer, T cancelAnswer)
+        IReadOnlyList<(string Label, T Answer)> answers, T defaultAnswer, T cancelAnswer, Serilog.ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(title);
         ArgumentNullException.ThrowIfNull(text);
@@ -89,7 +91,7 @@ public static class QuestionDialog
                 Choose(key == Key.Enter ? defaultAnswer : cancelAnswer);
             }
         };
-        ModalDialog.Show(dialog);
+        ModalDialog.Show(dialog, logger);
         return answer;
     }
 }

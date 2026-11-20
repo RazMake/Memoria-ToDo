@@ -26,6 +26,7 @@ Work in three steps: learn what the change must do, check it against the rules, 
 
 - **Audit tests as executable claims.** Could a broken contract still pass, or a behavior-preserving refactor make them fail? Inspect assertions, fixtures, mocks, expected-value sources, and asynchronous and error paths. Check the evidence that new tests can fail; missing evidence is unverified, not proof that a test is useless.
 - **Trace invalid input**, configuration, dependency failures, and impossible states. Find the earliest boundary that can reliably reject each one, before side effects. Flag missing fail-fast checks, swallowed failures, and success-shaped fallbacks. Don't demand redundant checks for invariants already guaranteed upstream.
+- **Trace a problem through the log.** For each changed behavior, ask whether a failure or a wrong result could be explained from the entries it writes alone, as [Logging](../../docs/architecture/logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. Flag missing operation, failure, and Debug choice entries, failures logged twice or not at all, Debug entries made per item, and entries that could carry a secret.
 - **Try to refute each suspected finding** with surrounding code, documented guarantees, and existing tests. Support surviving findings with a concrete counterexample, reproduction, or trace from input to observable failure. Passing checks alone don't prove the specification is met.
 
 ## When interfaces change

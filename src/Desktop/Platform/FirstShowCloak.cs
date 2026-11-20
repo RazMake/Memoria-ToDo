@@ -19,7 +19,7 @@ internal static class FirstShowCloak
     /// ContentRendered. Call it just before showing a window for which <see cref="IsFirstShow"/> was true.
     /// </summary>
     /// <exception cref="Win32Exception">Windows can't cloak the window.</exception>
-    public static void Start(Window window)
+    public static void Start(Window window, Serilog.ILogger logger)
     {
         var handle = new WindowInteropHelper(window).EnsureHandle();
         WindowCloak.Set(handle, true);
@@ -39,6 +39,8 @@ internal static class FirstShowCloak
                 {
                     WindowCloak.Set(handle, false);
                 }
+
+                logger.Debug("Finished the first show of the window {Window}; Uncloaked {Uncloaked}", window.GetType().Name, !closed);
             }));
         }
 

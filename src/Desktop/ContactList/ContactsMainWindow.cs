@@ -28,7 +28,7 @@ internal sealed class ContactsMainWindow : Window
     {
         _contacts = contacts;
         _saveKeys = saveKeys;
-        _model = new ContactsModel(contacts, new WindowPrompts(this), logger);
+        _model = new ContactsModel(contacts, new WindowPrompts(this, logger), logger);
         _list = new ContactListView(_model, time, pointer, Render, () => _search.FocusText());
         _details = new ContactDetailsView(_model, Render);
 

@@ -195,16 +195,20 @@ public sealed class AppLogFilesTests : IDisposable
     }
 
     [Fact]
-    public void Does_not_write_Verbose_or_Debug_entries()
+    public void Writes_Debug_entries_but_not_Verbose_ones()
     {
         using (var log = AppLog.Create(_folder.Path))
         {
             log.ForModule("App").Verbose("A detail");
-            log.ForModule("App").Debug("Another detail");
+            log.ForModule("App").Debug("A choice");
             log.ForModule("App").Information("Kept");
         }
 
-        Assert.Contains("Kept", Assert.Single(_folder.Lines()));
+        var lines = _folder.Lines();
+        Assert.Equal(2, lines.Length);
+        Assert.Contains("A choice", lines[0]);
+        Assert.Contains("Kept", lines[1]);
+        Assert.DoesNotContain(lines, line => line.Contains("A detail", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -37,7 +37,7 @@ public static class ContactsWindow
                 _current = window;
                 window.Closed += (_, _) => _current = null;
                 return window;
-            });
+            }, logger);
         }
 
         public event EventHandler? AvailableChanged

@@ -1,6 +1,6 @@
 # Memoria-ToDo
 
-Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) and design are decided. The desktop app adds, views, and syncs tasks from its tray icon. Its installer and automatic updates are next, then the Android app. The repository also holds the rules every change follows and the AI agents that design, build, test, and review it.
+Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) and design are decided. The desktop app adds, views, and syncs tasks from its tray icon. The [delivery backlog](docs/architecture/desktop/README.md#delivery-backlog) tracks the remaining desktop work and the Android app. The repository also holds the rules every change follows and the AI agents that design, build, test, and review it.
 
 | If you want to | Read |
 | --- | --- |

@@ -2,7 +2,7 @@
 
 Status: Decided
 
-The app writes a log so anyone can find out later what it did and what went wrong, such as which files a "3 file(s) in the repository can't be read" notice means. Every module writes its entries through [Serilog](https://serilog.net)'s logger, and the desktop app keeps them in files on this PC for two weeks. This page owns how modules log, what each module logs, the desktop's log files and their limits, keeping secrets out, how errors no module handles reach the log, and the Serilog packages. The [Logs window](desktop/logs.md) shows the entries.
+The app writes a log so anyone can find out later what it did, why, and what went wrong, such as which files a "3 file(s) in the repository can't be read" notice means. Every module writes its entries through [Serilog](https://serilog.net)'s logger, and the desktop app keeps them in files on this PC for two weeks. This page owns how modules log, what every change must log, the desktop's log files and their limits, keeping secrets out, how errors no module handles reach the log, and the Serilog packages. The [Logs window](desktop/logs.md) shows the entries.
 
 ## Behavior
 
@@ -16,29 +16,39 @@ Every module, shared and desktop, and later Android, logs through Serilog's `ILo
 - **Serilog stamps each entry's time when the module writes it**, from the system clock, and the file keeps it in UTC to a ten-millionth of a second. This is the one time no module takes from the [TimeProvider](modules.md#the-platform-serves-every-module-and-knows-none): Serilog can't take a clock, and an entry's time can't be changed after it's made. So tests never check an entry's time. A recorded exception, a decision to confirm.
 - **Writing an entry never throws, never waits for the disk, and works from any thread.** Serilog keeps its own failures away from the caller, and the desktop's writer works on a background thread, as [below](#a-slow-disk-never-holds-up-the-app). So logging can't slow the UI thread, Sync's worker, or a store's lock, and can't break the operation it describes.
 
-### Four levels say how bad an entry is
+### Five levels say what an entry records
 
-Serilog has six levels. The app uses four of them:
+Serilog has six levels. The app uses five of them:
 
+- **Debug**: a choice the code made, with the values it chose from, such as whether Sync started a pass or waited, which side of a merge a task kept, or which screen a window opened on. It explains a result that's wrong but threw nothing.
 - **Information**: an operation finished, or the app started or stopped.
 - **Warning**: something was skipped, or will be tried again, and the app keeps working: a file that can't be read, a sync while offline, a shortcut another app holds, an update check that failed.
 - **Error**: an operation the user or the app started didn't finish, or an error no module handled after which the app keeps running.
 - **Fatal**: an error no module handled that [ends the app](#errors-no-module-handles-are-logged-before-theyre-shown).
 
-Verbose and Debug aren't used, since the user asked for operations and errors, not internals. The logger the composition root makes keeps Information and up, so an entry below it is dropped before it's written. Proposed, a decision to confirm.
+The logger the composition root makes keeps Debug and up, as the user decided. So Debug entries are written to the files beside the others, and count toward the same [30 MB and two weeks](#the-desktop-app-keeps-two-weeks-of-logs-at-most-30-mb). Verbose isn't used, and the logger drops a Verbose entry before it's written: Debug already holds every choice the [third rule](#every-operation-failure-and-decision-is-logged-where-it-happens) asks for, and a finer level would invite the per-item detail that rule keeps out. Proposed, a decision to confirm.
 
-### Every operation and every failure is logged where it happens
+### Every operation, failure, and decision is logged where it happens
 
-The user asked for every operation, with sync, add, update, and remove first, and every error. Two rules cover them, so no module needs a list of its own:
+The user asked for every operation, with sync, add, update, and remove first, and every error. The user also decided that every change keeps its feature traceable from the log, even when a result is wrong and nothing throws. Three rules cover this, so no module needs a list of its own:
 
 - **The module that owns an operation logs it when it finishes**, at Information, naming what it changed, such as a task's ID and title.
 - **The code that ends a failure's journey logs it**: a catch that turns it into a message, a status, a skipped file, a retry, or nothing at all. It logs the exception at Warning or Error, then does what it did before. A catch that wraps a failure and throws it on doesn't log, so each failure is logged once. A catch that treats an expected outcome as normal, such as a missing file meaning "none yet", a cancel while the app stops, or a commit with nothing in it, isn't a failure and doesn't log.
+- **The code that makes a choice behind a result logs it at Debug**, naming the outcome it took and the values it chose from. So a reader can tell from the log alone why the app did what it did. The user decided this.
 
-Messages are written for a person reading the log: they name the files, IDs, and counts involved. Task titles and contact names may appear, since the log never leaves the PC; descriptions and file contents don't, because they're long. Proposed, a decision to confirm.
+A choice is behind a result when it picks between outcomes a user could see, such as the examples under [Debug](#five-levels-say-what-an-entry-records). Proposed, a decision to confirm: a choice gets no Debug entry of its own when:
 
-Logging is the requirement here, so each module's tests check the entries it writes, through the [in-memory sink](#tests-read-entries-from-one-in-memory-sink): their level, their component, and the values they must name, such as a file's path, not their exact wording.
+- **another entry already explains it**, such as an operation's Information entry that names the same values, or a failure's entry;
+- **it's made per item, per frame, or per keystroke**: a choice made over many items logs once per operation, with counts, never once per task, per drawn frame, per key typed, or per timer tick that changes nothing;
+- **no user could see its outcome**, such as a null check or the end of a loop.
 
-What each part logs, beyond the failures the second rule covers:
+Every change that adds or changes the app's behavior follows the three rules in the code it adds or changes, as [AGENTS.md](../../AGENTS.md#code-design) requires, and the reviewer checks it. Code no change touches isn't reworked to catch up. Proposed, a decision to confirm.
+
+Messages are written for a person reading the log: they name the files, IDs, and counts involved. Task titles and contact names may appear, since the log never leaves the PC; descriptions and file contents don't, because they're long. Debug entries follow the same rules. Proposed, a decision to confirm.
+
+Logging is the requirement here, so each module's tests check the entries it writes, through the [in-memory sink](#tests-read-entries-from-one-in-memory-sink): their level, their component, and the values they must name, such as a file's path, not their exact wording. They don't check whether code writes a Debug entry, as the user decided: a test per choice would add many tests for little benefit. The reviewer checks Debug entries by reading the code. The log's own tests still check that the log files keep Debug entries and that the Logs window shows them.
+
+The table lists what each part logs at Information, Warning, and Error, beyond the failures the second rule covers. Debug entries have no list: each change logs the choices its own code makes.
 
 | Part | Logs at Information | Logs at Warning or Error |
 | --- | --- | --- |
@@ -66,7 +76,7 @@ The composition root writes the log files through [Serilog.Sinks.File](https://g
 
 - **The folder is `logs` in the app's folder under `%LocalAppData%`**, beside the draft and the browser data that [Program.cs](../../src/Desktop/App/Program.cs) places there. It isn't in the clone, so logs never sync. It's apart from Velopack's install folder, so updating or uninstalling leaves it, as it leaves the [device folder](sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one).
 - **A new file starts each day, and when a file reaches 1 MB.** The file's name holds its local date and, after the first, a number, such as `memoria-20261119.log` and `memoria-20261119_001.log`. Serilog checks the size before each entry, so the entry that crosses 1 MB still goes into the file whole; the limit is approximate, and an ordinary entry passes it by a few KB. The user decided this.
-- **Files are kept while both limits hold: at most 30 files, and none from a day more than 14 days ago.** So the folder holds at most 30 files of about 1 MB, about 30 MB, and two weeks fit when a day writes at most 2 MB. By our estimate, not yet measured, a busy day writes about a megabyte. Serilog judges a file's age by the date in its name, and deletes old files only when it starts a new one: at start, each day, and at each 1 MB. The file being written is never deleted.
+- **Files are kept while both limits hold: at most 30 files, and none from a day more than 14 days ago.** So the folder holds at most 30 files of about 1 MB, about 30 MB, and two weeks fit when a day writes at most 2 MB. By our estimate, not yet measured, a busy day writes about a megabyte. Serilog judges a file's age by the date in its name, and deletes old files only when it starts a new one: at start, each day, and at each 1 MB. The file being written is never deleted. Debug entries count toward both limits, as the user decided, so a day that writes more than about 2 MB leaves fewer than 14 days in the folder. The third rule's one entry per choice per operation keeps Debug's share small; not measured.
 - **Each line is one entry, as one JSON object, in Serilog's compact format** ([CompactJsonFormatter](https://github.com/serilog/serilog-formatting-compact)): the UTC time, the level, the message template and its named values, the component, and the exception's full text with its stack trace, when there is one. JSON keeps a message or a stack trace that spans lines inside one entry, and the file still opens in any text editor. The line holds the template and its values, not the rendered text as well, so the files hold more entries.
 - **The format has one home: the composition root.** It names the folder, the file names, and the formatter once, and its log source reads the same files back with Serilog's own reader for that format ([LogEventReader](https://github.com/serilog/serilog-formatting-compact-reader)), for the [Logs window](desktop/logs.md#public-interface).
 - **A second instance writes its own file.** A later start [hands over to the running one and ends](desktop/shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view), but it logs its start first. The running instance holds today's file open, so Serilog's file sink moves the second one to the next numbered file, as it does for any file another program holds. So two processes never write one file, and Serilog's `shared` option, which lets them, isn't used. Found in the sink's source, not confirmed by a run.
@@ -145,6 +155,7 @@ No new type: modules use Serilog's `ILogger`. Each create method below takes the
 - [Sync](sync.md): `SyncService.Create(..., TimeSpan? periodicInterval, ILogger logger)`.
 - The desktop platform's [Run the app](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it): `AppRunner.Run(Func<IAppLifetime> createLifetime, ILogger logger)`.
 - The desktop platform's [store failures](desktop/README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them): `StoreFailures.Run(Action call, Func<Exception, string?> messageOf, Action<string> report, ILogger logger)`, which logs the failure at Error when it reports a message.
+- The desktop platform's [window parts](desktop/README.md#windows-open-on-the-screen-with-the-mouse-pointer): `WindowPlacement.ShowOnPointerScreen(Window window, ILogger logger)`, `ModalDialog.Show(Window dialog, ILogger logger)`, `new SingleWindow(Func<Window> createWindow, ILogger logger)`, and `QuestionDialog.Ask<T>(..., T cancelAnswer, ILogger logger)`. The caller passes its own logger, as the user decided, so each Debug entry they write names the module whose window it is.
 - [Shell](desktop/shell.md#public-interface): `TrayApp.Create`, which also takes the [Logs window](desktop/logs.md#public-interface).
 - [Task editor](desktop/task-editor.md#public-interface): `AddWindow.Create`.
 - [Task list](desktop/task-list.md#public-interface): `ViewTasksWindow.Create`.
@@ -180,6 +191,7 @@ public sealed class InMemoryLogSink : Serilog.Core.ILogEventSink
 - **A file is cut off mid-line by a crash or a full disk**: the [Logs window](desktop/logs.md#failure-modes) skips the broken line and counts it.
 - **A secret reaches a message anyway**, in a shape the safety net doesn't know: it's on this PC only, in the user's own folder, for at most 14 days.
 - **The logger's settings are wrong**, such as a missing folder name: making the logger throws at start, before the app does anything else, as [fail fast](../../AGENTS.md#code-design) asks.
+- **A change logs a Debug entry per item**, against the [third rule](#every-operation-failure-and-decision-is-logged-where-it-happens): the files fill faster, and the folder keeps fewer days, down to the newest 30 MB. The reviewer flags it; nothing at run time limits it.
 
 ## Ruled out
 
@@ -191,6 +203,10 @@ public sealed class InMemoryLogSink : Serilog.Core.ILogEventSink
   - **Serilog's static `Log.Logger`**, decided by the user: no create method would change, but every test would share one logger, tests running at once would see each other's entries, and the composition root would no longer choose the implementation, as [AGENTS.md](../../AGENTS.md#code-design) requires.
   - **Wrappers in the composition root around each module's interface**, logging each call: no module would change, but the wrappers can't see what happens inside, such as a merge, an automatic deletion, or the exception behind a failed sync. Every interface would need a wrapper kept in step with it.
   - **Logging every exception when it's thrown**, through .NET's [FirstChanceException](https://learn.microsoft.com/en-us/dotnet/api/system.appdomain.firstchanceexception): it logs failures that are handled as normal, such as a missing file, and logs one failure many times.
+- How much each change logs, decided by the user:
+  - **Operations and failures only**, the first two rules with no Debug level: a wrong result that throws nothing would leave no trace.
+  - **Debug entries written only when a new Configure setting turns them on**: a problem would have to happen again with the setting on before it could be traced, and it needs a new setting.
+- **Verbose, for detail finer than Debug**: it would invite an entry per item, which would crowd two weeks out of 30 MB.
 - The file format, decided by the user:
   - **Plain text lines through an output template, read back by a parser of ours**: a stack trace spans lines, so the parser would have to guess where an entry ends.
   - **Compact JSON read back by a reader of ours**: Serilog's reader already reads the format its formatter writes, so the format keeps one home.
@@ -204,3 +220,9 @@ public sealed class InMemoryLogSink : Serilog.Core.ILogEventSink
 - How Newtonsoft.Json comes in, decided by the user:
   - **Pinning it in Directory.Packages.props at 13.0.4**, so a version change shows in review: one more line to keep in step, for a package no project of ours names.
   - **Reading the files with .NET's own System.Text.Json instead**: no new package, but it brings back the reader of ours the user ruled out.
+- Whether tests check Debug entries, decided by the user:
+  - **Yes, the same way as other entries: level, component, and values**: a refactor couldn't quietly drop an entry, but every choice would add tests, for little benefit.
+  - **Only that each choice writes a Debug entry, not its values**: the same number of added tests, for even less.
+- How the platform's static window parts log, decided by the user:
+  - **One window shower, made by the composition root with the `Platform` logger and passed to each window module**: entries would log as `Platform`, but six create methods would change, and a static part would become an object to wire.
+  - **Leaving them as they are, with a backlog row to make them log later**: until that row was built, a window that never appears would leave no trace.

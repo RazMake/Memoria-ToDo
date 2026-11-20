@@ -38,7 +38,7 @@ A bar above the list holds four filters, as the user decided. Each change applie
   - Each bound is a date picker and a time box, as the user decided, so the user can look at the exact minute an error happened. WPF has no time picker, so the time box is an editable list of every half hour that also takes any time typed, such as `10:43`, checked as the user types. No date sets no bound, and the time box is off until a date is picked. Picking a date while the time is empty fills in 00:00 for From and 23:59 for To, so a To date includes its whole day. Proposed, a decision to confirm. A To of `9999-12-31 23:59` sets no bound either. Each bound includes its own minute.
   - Editing a bound changes the preset list to Custom. Choosing Custom in the list fills an empty To with the current minute, as the user decided. A time that isn't a time shows red, a From later than To shows both bounds red, and the time range doesn't filter until it's fixed.
   - Refresh and F5 work a preset out again from the current time, so Last hour still means the last hour. The user decided this.
-- **Severity: a minimum level.** The list holds Information and up, the default, Warning and up, Error and up, and Fatal only: the four [levels the app uses](../logging.md#four-levels-say-how-bad-an-entry-is). Proposed, a decision to confirm: Fatal gets its own item, for the errors that ended the app.
+- **Severity: a minimum level.** The list holds Debug and up, Information and up, the default, Warning and up, Error and up, and Fatal only: the five [levels the app uses](../logging.md#five-levels-say-what-an-entry-records). Proposed, each a decision to confirm: Debug and up is first in the list but not the default, since most looks are for operations and errors, and the user picks it to see the [choices behind a result](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens); and Fatal gets its own item, for the errors that ended the app.
 - **Component**: a list of the components found in the loaded entries, in name order ignoring case, as the user decided, such as `Sync` or `Tasks`, each with a check box, all checked by default, with one box to check or clear them all. The component is each entry's `SourceContext`, which the [log](../logging.md#every-module-logs-through-serilogs-logger) names after each module. An entry without one shows as `Unknown`. Proposed, a decision to confirm.
 - **Quick search**: a text box, through the platform's [search band](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them). A row shows when its rendered message or its exception's text contains the typed text anywhere, ignoring case. So a search for `IOException` or a file named only in a stack trace finds the entry. An empty box matches every row.
 
@@ -95,7 +95,7 @@ public static class LogsWindow
 }
 ```
 
-`TimeProvider` gives "now" for the time presets. The window logs its own failures through `logger`, as the [log](../logging.md#every-operation-and-every-failure-is-logged-where-it-happens) requires. The window's filtering lives in an internal view model, so unit tests check every filter with a fake log source and no window, as [the desktop app](README.md#eight-modules-make-up-the-desktop-app) does for every window module. The `ILogSource` fake, for Logs' tests, and the `ILogsWindow` fake, for Shell's, live in the desktop fakes project beside the other window fakes.
+`TimeProvider` gives "now" for the time presets. The window logs its own failures through `logger`, as the [log](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. The window's filtering lives in an internal view model, so unit tests check every filter with a fake log source and no window, as [the desktop app](README.md#eight-modules-make-up-the-desktop-app) does for every window module. The `ILogSource` fake, for Logs' tests, and the `ILogsWindow` fake, for Shell's, live in the desktop fakes project beside the other window fakes.
 
 ## Failure modes
 
@@ -115,6 +115,7 @@ public static class LogsWindow
   - **Presets only**: no way to look at, say, 10:40 to 10:45 three days ago, except by scrolling.
   - **From and To boxes only**: exact, but every look needs typing.
 - **A check box per severity level**, decided by the user: it also allows "Information only", which is rarely useful.
+- **Debug and up as the default**: every look would start among the choices behind results, which crowd the operations and errors most looks are for.
 - **A quick search of the message only**, decided by the user: a search for an exception's type, or a file named only in its stack trace, would find nothing.
 - **A list that follows new entries as they're written**: the list would move while the user reads, and the writer would need to tell the window about each entry. Ruled out by the user.
 

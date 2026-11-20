@@ -81,7 +81,7 @@ public static class ViewTasksWindow
                     webView.Dispose();
                     throw;
                 }
-            });
+            }, logger);
         }
 
         public void Show()

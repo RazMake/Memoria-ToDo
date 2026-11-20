@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
@@ -23,7 +24,7 @@ public class ModalDialogTests
         dialog.Loaded += (_, _) => cloakedWhenLoaded = Win32.IsCloaked(Handle(dialog));
         CloseWhenDrawn(dialog, () => { });
 
-        ModalDialog.Show(dialog);
+        ModalDialog.Show(dialog, Logger.None);
 
         Assert.True(cloakedWhenLoaded);
     }
@@ -40,7 +41,7 @@ public class ModalDialogTests
             openWhenDrawn = dialog.IsVisible;
         });
 
-        ModalDialog.Show(dialog);
+        ModalDialog.Show(dialog, Logger.None);
 
         Assert.False(cloakedWhenDrawn);
         Assert.True(openWhenDrawn);
@@ -53,7 +54,7 @@ public class ModalDialogTests
         bool? cloakedWhenDrawn = null;
         CloseWhenDrawn(dialog, () => cloakedWhenDrawn = Win32.IsCloaked(Handle(dialog)));
 
-        ModalDialog.Show(dialog);
+        ModalDialog.Show(dialog, Logger.None);
 
         Assert.False(cloakedWhenDrawn);
     }
@@ -66,7 +67,7 @@ public class ModalDialogTests
         dialog.Closed += (_, _) => closed = true;
         CloseWhenDrawn(dialog, () => { });
 
-        ModalDialog.Show(dialog);
+        ModalDialog.Show(dialog, Logger.None);
 
         Assert.True(closed);
     }
@@ -77,7 +78,7 @@ public class ModalDialogTests
         var dialog = NewDialog();
         try
         {
-            var call = Task.Run(() => ModalDialog.Show(dialog));
+            var call = Task.Run(() => ModalDialog.Show(dialog, Logger.None));
 
             var failure = Assert.Throws<AggregateException>(() => call.Wait(TestWait.ForSignal));
             Assert.IsType<InvalidOperationException>(failure.InnerException);
@@ -86,6 +87,23 @@ public class ModalDialogTests
         {
             dialog.Close();
         }
+    }
+
+    [WpfFact]
+    public void Show_refuses_a_null_logger_before_showing_the_dialog()
+    {
+        var dialog = NewDialog();
+        var loaded = false;
+        dialog.Loaded += (_, _) =>
+        {
+            loaded = true;
+            dialog.Close();
+        };
+
+        Assert.Throws<ArgumentNullException>(() => ModalDialog.Show(dialog, null!));
+
+        Assert.False(loaded);
+        Assert.False(dialog.IsVisible);
     }
 
     private static Window NewDialog() => new() { Width = 300, Height = 200, Content = new Border() };

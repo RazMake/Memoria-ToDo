@@ -47,17 +47,18 @@ public sealed class LogPipelineTests
     }
 
     [Fact]
-    public void Drops_Verbose_and_Debug_entries_before_they_are_written()
+    public void Writes_Debug_entries_and_drops_Verbose_ones_before_they_are_written()
     {
         using (var pipeline = Pipeline())
         {
             var log = pipeline.ForModule("App");
             log.Verbose("A detail");
-            log.Debug("Another detail");
+            log.Debug("A choice");
             log.Information("Kept");
         }
 
-        Assert.Equal(["Kept"], _destination.Written.Select(e => e.RenderMessage()));
+        Assert.Equal(["A choice", "Kept"], _destination.Written.Select(e => e.RenderMessage()));
+        Assert.Equal(LogEventLevel.Debug, _destination.Written[0].Level);
     }
 
     [Fact]

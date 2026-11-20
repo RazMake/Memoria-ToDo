@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
 
@@ -30,7 +31,7 @@ public class WindowPlacementTests
                 var window = new Window { Width = 300, Height = 200 };
                 try
                 {
-                    WindowPlacement.ShowOnPointerScreen(window);
+                    WindowPlacement.ShowOnPointerScreen(window, Logger.None);
 
                     var rect = Win32.WindowRect(Handle(window));
                     Assert.InRange(rect.Left + rect.Width / 2 - (work.Left + work.Width / 2), -RoundingPixels, RoundingPixels);
@@ -54,7 +55,7 @@ public class WindowPlacementTests
         var window = new Window { Width = 300, Height = 200 };
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.            ShowOnPointerScreen(window, Logger.None);
 
             Assert.True(window.IsVisible);
             Assert.True(window.IsActive);
@@ -71,7 +72,7 @@ public class WindowPlacementTests
         var window = new Window { SizeToContent = SizeToContent.WidthAndHeight, Content = new Border { Width = 400, Height = 250 } };
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.            ShowOnPointerScreen(window, Logger.None);
 
             AssertCenteredOnWorkAreaOfPointerScreen(window);
         }
@@ -97,7 +98,7 @@ public class WindowPlacementTests
             window.Show();
             var before = Win32.WindowRect(Handle(window));
 
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.            ShowOnPointerScreen(window, Logger.None);
 
             var after = Win32.WindowRect(Handle(window));
             Assert.Equal((before.Left, before.Top, before.Width, before.Height), (after.Left, after.Top, after.Width, after.Height));
@@ -117,7 +118,7 @@ public class WindowPlacementTests
             window.Show();
             window.WindowState = WindowState.Minimized;
 
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.            ShowOnPointerScreen(window, Logger.None);
 
             Assert.Equal(WindowState.Normal, window.WindowState);
         }
@@ -137,7 +138,7 @@ public class WindowPlacementTests
             window.WindowState = WindowState.Minimized;
             window.Hide(); // As the Add window hides when closed from its taskbar button.
 
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.            ShowOnPointerScreen(window, Logger.None);
 
             Assert.True(window.IsVisible);
             Assert.Equal(WindowState.Normal, window.WindowState);
@@ -155,7 +156,7 @@ public class WindowPlacementTests
         var window = new Window { Width = 300, Height = 200, Content = new Border() };
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.            ShowOnPointerScreen(window, Logger.None);
 
             Assert.True(Win32.IsCloaked(Handle(window)));
             Assert.True(window.IsVisible);
@@ -174,7 +175,7 @@ public class WindowPlacementTests
         var window = new Window { Width = 300, Height = 200, Content = new Border() };
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.            ShowOnPointerScreen(window, Logger.None);
 
             AfterFirstDraw.Wait(window.Dispatcher);
 
@@ -193,7 +194,7 @@ public class WindowPlacementTests
         var window = new Window { Width = 300, Height = 200 };
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+                    WindowPlacement.ShowOnPointerScreen(window, Logger.None);
 
             AfterFirstDraw.Wait(window.Dispatcher);
 
@@ -212,7 +213,7 @@ public class WindowPlacementTests
         window.Loaded += (_, e) => e.Handled = true;
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+                    WindowPlacement.ShowOnPointerScreen(window, Logger.None);
 
             AfterFirstDraw.Wait(window.Dispatcher);
 
@@ -231,7 +232,7 @@ public class WindowPlacementTests
         window.Loaded += (_, _) => window.Close();
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+                    WindowPlacement.ShowOnPointerScreen(window, Logger.None);
 
             Assert.Null(Record.Exception(() => AfterFirstDraw.Wait(window.Dispatcher)));
         }
@@ -247,11 +248,11 @@ public class WindowPlacementTests
         var window = new Window { Width = 300, Height = 200, Content = new Border() };
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.            ShowOnPointerScreen(window, Logger.None);
             AfterFirstDraw.Wait(window.Dispatcher);
             window.Hide();
 
-            WindowPlacement.ShowOnPointerScreen(window);
+                        WindowPlacement.ShowOnPointerScreen(window, Logger.None);
 
             Assert.False(Win32.IsCloaked(Handle(window)));
             Assert.True(window.IsVisible);
@@ -272,10 +273,26 @@ public class WindowPlacementTests
             window.WindowState = WindowState.Minimized;
             window.Hide();
 
-            WindowPlacement.ShowOnPointerScreen(window);
+                        WindowPlacement.ShowOnPointerScreen(window, Logger.None);
             AfterFirstDraw.Wait(window.Dispatcher);
 
             Assert.False(Win32.IsCloaked(Handle(window)));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [WpfFact]
+    public void A_null_logger_is_refused_before_the_window_is_shown()
+    {
+        var window = new Window { Width = 300, Height = 200 };
+        try
+        {
+            Assert.Throws<ArgumentNullException>(() => WindowPlacement.ShowOnPointerScreen(window, null!));
+
+            Assert.False(window.IsVisible);
         }
         finally
         {
@@ -287,13 +304,13 @@ public class WindowPlacementTests
     {
         try
         {
-            WindowPlacement.ShowOnPointerScreen(window);
+            WindowPlacement.ShowOnPointerScreen(window, Logger.None);
             var work = Win32.WorkAreaOfScreenWith(Win32.CursorPosition());
             window.Left = work.Left; // Moved away from the center, as when the user dragged it.
             window.Top = work.Top;
             window.Hide();
 
-            WindowPlacement.ShowOnPointerScreen(window);
+                        WindowPlacement.ShowOnPointerScreen(window, Logger.None);
 
             AssertCenteredOnWorkAreaOfPointerScreen(window);
         }

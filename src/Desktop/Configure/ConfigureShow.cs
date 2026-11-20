@@ -58,7 +58,7 @@ internal sealed class ConfigureShow : IConfigureWindow
         _configure = new("Configure", Shortcut.ConfigureDefault,
             () => settings.ConfigureShortcut, settings.SetConfigureShortcut, logger);
         _globals = [_addNewTask, _manageTasks, _contacts, _configure];
-        _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions));
+        _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions), logger);
         settings.Changed += OnSettingsChanged;
     }
 

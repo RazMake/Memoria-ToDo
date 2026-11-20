@@ -29,16 +29,28 @@ public class LogsFilterTests
     // Severity
 
     [Fact]
-    public async Task Offers_the_four_minimum_levels_Information_and_up_first()
+    public async Task Offers_the_five_minimum_levels_Debug_and_up_first()
     {
         var model = await LoadedOneOfEachLevelAsync();
 
         Assert.Equal(
-            ["Information and up", "Warning and up", "Error and up", "Fatal only"],
+            ["Debug and up", "Information and up", "Warning and up", "Error and up", "Fatal only"],
             model.Levels.Select(choice => choice.Label));
         Assert.Equal(
-            [LogEventLevel.Information, LogEventLevel.Warning, LogEventLevel.Error, LogEventLevel.Fatal],
+            [LogEventLevel.Debug, LogEventLevel.Information, LogEventLevel.Warning, LogEventLevel.Error, LogEventLevel.Fatal],
             model.Levels.Select(choice => choice.Level));
+    }
+
+    [Fact]
+    public async Task Debug_and_up_shows_the_Debug_entries_and_the_status_counts_them()
+    {
+        var model = await LoadedOneOfEachLevelAsync();
+        Assert.Contains("Showing 4 of 5 entries", model.StatusText);
+
+        model.MinimumLevel = LogEventLevel.Debug;
+
+        Assert.Equal(["debug", "info", "warning", "error", "fatal"], Messages(model));
+        Assert.Contains("Showing 5 of 5 entries", model.StatusText);
     }
 
     [Fact]
