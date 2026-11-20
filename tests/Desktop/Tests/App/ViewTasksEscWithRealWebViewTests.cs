@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.Platform.Tests;
 using Memoria.ToDo.Testing;
 using Microsoft.Web.WebView2.Wpf;
 using Xunit;

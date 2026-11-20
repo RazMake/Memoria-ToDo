@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Channels;
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.Platform.Tests;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
 using Microsoft.Web.WebView2.Core;

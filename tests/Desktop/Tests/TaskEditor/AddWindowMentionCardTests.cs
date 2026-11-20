@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Threading;
 using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.Fakes;
@@ -108,14 +107,7 @@ public class AddWindowMentionCardTests
         screen.Edit(EditorFields.Description, $"Ask {Ana} now", 0);
         var editor = EditorOf(screen, EditorFields.Description);
         LoadedCards.Clear();
-        var onScreen = editor.PointToScreen(InsideAt(screen, EditorFields.Description, 5));
-        Win32.MoveCursor(new Win32.Point { X = (int)onScreen.X, Y = (int)onScreen.Y });
-
-        editor.TextArea.TextView.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount)
-        {
-            RoutedEvent = Mouse.PreviewMouseMoveEvent,
-            Source = editor.TextArea.TextView,
-        });
+        RealPointer.MoveOver(screen.Window, editor, InsideAt(screen, EditorFields.Description, 5));
 
         Assert.True(WaitForACard(editor.Dispatcher), "The card didn't show.");
     }

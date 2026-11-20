@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Memoria.ToDo.Desktop.App.Tests;
+namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>Sends real key presses to Windows, as a keyboard does, so a registered shortcut can be pressed.</summary>
 internal static class KeyboardInput
@@ -31,15 +31,21 @@ internal static class KeyboardInput
     }
 
     /// <summary>
-    /// Makes the window the one that gets the key presses. Windows lets a process take the foreground only when it got the last
-    /// input, so a key no app uses is pressed first; a window that still isn't in front fails at once, before any key goes elsewhere.
+    /// Makes the window the one in front, which gets the key presses and the pointer's moves. Windows lets a process take the
+    /// foreground only when it got the last input, so a key no app uses is pressed first, unless the window is already in front;
+    /// a window that still isn't in front fails at once, before any key or move goes elsewhere.
     /// </summary>
     public static void BringToFront(nint window)
     {
+        if (GetForegroundWindow() == window)
+        {
+            return;
+        }
+
         Chord(Unassigned);
         if (!SetForegroundWindow(window) || GetForegroundWindow() != window)
         {
-            throw new InvalidOperationException("Windows kept another window in front, so the key presses wouldn't reach the window.");
+            throw new InvalidOperationException("Windows kept another window in front, so key presses and pointer moves wouldn't reach the window.");
         }
     }
 

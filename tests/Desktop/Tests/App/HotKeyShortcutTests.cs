@@ -1,6 +1,7 @@
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.Platform.Tests;
 using Memoria.ToDo.Desktop.Shell;
 using Memoria.ToDo.Testing;
 using Xunit;

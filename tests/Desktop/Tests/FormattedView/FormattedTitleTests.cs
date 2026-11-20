@@ -647,17 +647,8 @@ public class FormattedTitleTests
             return Title.ChipBox(text);
         }
 
-        /// <summary>Puts the real pointer at the title's point and raises the mouse move a pointer there raises, as a pointer arriving does.</summary>
-        public void RestOn(Point inTitle)
-        {
-            var onScreen = Title.PointToScreen(inTitle);
-            Win32.MoveCursor(new Win32.Point { X = (int)onScreen.X, Y = (int)onScreen.Y });
-            Title.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount)
-            {
-                RoutedEvent = Mouse.PreviewMouseMoveEvent,
-                Source = Title,
-            });
-        }
+        /// <summary>Puts the real pointer at the title's point and waits until WPF observes it there.</summary>
+        public void RestOn(Point inTitle) => RealPointer.MoveOver(window, Title, inTitle);
 
         /// <summary>Lets the dispatcher work until the card is on screen, or ten seconds pass; says whether it showed.</summary>
         public bool WaitForShown(FrameworkElement card)
