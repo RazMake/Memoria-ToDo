@@ -1,4 +1,3 @@
-using System.Windows;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -62,23 +61,6 @@ public class AddWindowDraftTests
         screen.CloseWindow();
 
         AssertKept(screen, "Buy milk", "Two litres", ["home"]);
-    }
-
-    [WpfFact]
-    public void Another_window_becoming_active_keeps_what_was_typed_as_a_draft()
-    {
-        using var screen = new AddScreen();
-        screen.Show();
-        screen.Fill("Buy milk", "Two litres", "home");
-        var window = screen.Window;
-        var other = new Window { Width = 100, Height = 100 };
-
-        other.Show();
-        other.Activate();
-
-        Assert.False(window.IsVisible);
-        AssertKept(screen, "Buy milk", "Two litres", ["home"]);
-        other.Close();
     }
 
     [WpfFact]

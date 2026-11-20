@@ -76,10 +76,11 @@ The user asked that resting the mouse pointer on a mention, anywhere one shows, 
 Proposed, each a decision to confirm:
 
 - **Its heading is the full name**, with the group's heading under it, as the details show them.
-- **While Ctrl is held, it shows every field the details show**, in the details' order, with their labels: the common fields, plus ID, First name, Nickname, and Direct reports, and, for a contact in a [team group](../contacts.md#team-groups-show-more-fields), Location, Level, Working type, Day start time, Level start date, Team member since, and Exit date.
+- **While Ctrl is held, it shows every field the details show**, in the details' order: the common fields, plus ID, First name, Nickname, and Direct reports, and, for a contact in a [team group](../contacts.md#team-groups-show-more-fields), Location, Level, Working type, Day start time, Level start date, Team member since, and Exit date.
+- **Each field shows on one line, as in the details**: its label in the help style, then its values beside it, each on a background just a little different from the card's.
 - **Each value shows as in the details**: a key field as its entry's name, a date in the user's short date format, "Reports to" as the manager's full name or the name as written, and Direct reports as a list of full names. The card and the details share one way of turning a field into its label and text, so the two can't differ.
 - **A field with no value doesn't show**, in either view. A contact with none of the common fields shows only its heading.
-- **The last line, in the help style, says "Ctrl: all details"** while some field shows only with Ctrl, and "Release Ctrl: fewer details" while Ctrl is held.
+- **The card shows no line about Ctrl**, the user decided; holding Ctrl still shows every field.
 - **Pressing Ctrl while the card shows switches it to every field at once, and releasing Ctrl switches it back**, without closing it; the card grows or shrinks in place, up to the [hover card's height limit](README.md#a-tall-card-scrolls-and-the-pointer-can-reach-it), past which it scrolls. Ctrl already held when the card opens opens it with every field. Ctrl is the only key that changes the card; the other modifiers do nothing to it.
 - **Nothing on the card acts on a click or takes the focus**, so "Reports to" and Direct reports aren't links there, unlike in the details. The pointer can still move onto the card, and the wheel scrolls it, as the platform's [hover card](README.md#a-tall-card-scrolls-and-the-pointer-can-reach-it) decides; the card sets no height limit of its own.
 - **It shows the contact as it was when the card opened**; a change to contacts while it shows reaches the next card.
@@ -88,7 +89,7 @@ The user decided how the card uses the theme:
 
 - **The heading, the contact's full name, shows in the theme's heading color**: [Rendering's text look](../rendering.md#public-interface) for the light or dark theme, at heading level 1, the color of a description's top heading. Only its color changes; its size stays the details'.
 - **The heading's color follows a switch between light and dark while the card shows**, through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
-- **The card's surface keeps the Windows theme's colors**, its background, border, and text, as today, so it looks like the app's other popups.
+- **The card's surface stands out from the window behind it**, the user decided: the Windows theme's popup background, a shade lighter than a window's in both light and dark, with the theme's popup outline and rounded corners. Its text keeps the theme's colors.
 
 The user decided the Contact list may use Rendering, as the [module map](../modules.md#module-map) says, so the heading color keeps its one home in Rendering's text look. Rendering uses no module, so no loop forms. The user also decided only the card shows the name in the heading color; the Contacts window's details pane keeps the normal text color.
 

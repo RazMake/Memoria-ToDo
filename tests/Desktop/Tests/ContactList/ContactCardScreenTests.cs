@@ -12,7 +12,7 @@ public class ContactCardScreenTests
     private readonly ContactServices _services = ContactServices.Typical();
 
     [WpfFact]
-    public void Shows_the_full_name_the_groups_heading_the_common_fields_and_the_help_line()
+    public void Shows_the_full_name_the_groups_heading_and_the_common_fields()
     {
         using var screen = new ContactCardScreen(_services, "ana");
 
@@ -22,7 +22,7 @@ public class ContactCardScreenTests
         Assert.Equal("Team", texts[1]);
         Assert.Contains("Engineer", texts);
         Assert.Contains("Software Engineer", texts);
-        Assert.Equal("Ctrl: all details", texts[^1]);
+        Assert.DoesNotContain("Ctrl: all details", texts);
     }
 
     [WpfFact]
@@ -44,7 +44,6 @@ public class ContactCardScreenTests
 
         Assert.Contains("Cluj", screen.Texts);
         Assert.Contains("Bob Stan", screen.Texts);
-        Assert.Equal("Release Ctrl: fewer details", screen.Texts[^1]);
         Assert.True(screen.Height > before);
     }
 
@@ -57,7 +56,6 @@ public class ContactCardScreenTests
         screen.ReleaseCtrl();
 
         Assert.DoesNotContain("Cluj", screen.Texts);
-        Assert.Equal("Ctrl: all details", screen.Texts[^1]);
     }
 
     [WpfFact]
@@ -66,15 +64,14 @@ public class ContactCardScreenTests
         using var screen = new ContactCardScreen(_services, "ana", ctrlHeld: true);
 
         Assert.Contains("Cluj", screen.Texts);
-        Assert.Equal("Release Ctrl: fewer details", screen.Texts[^1]);
     }
 
     [WpfFact]
-    public void Shows_only_the_heading_and_the_help_line_for_a_contact_with_no_common_field()
+    public void Shows_only_the_heading_for_a_contact_with_no_common_field()
     {
         using var screen = new ContactCardScreen(_services, "cris");
 
-        Assert.Equal(["Cris Ilie", "Ex-Team", "Ctrl: all details"], screen.Texts);
+        Assert.Equal(["Cris Ilie", "Ex-Team"], screen.Texts);
     }
 
     [WpfFact]
@@ -83,14 +80,6 @@ public class ContactCardScreenTests
         using var screen = new ContactCardScreen(_services, "ana", ctrlHeld: true);
 
         Assert.False(screen.TakesAClickOrTheFocus);
-    }
-
-    [WpfFact]
-    public void Shows_the_help_line_in_the_themes_secondary_text_color()
-    {
-        using var screen = new ContactCardScreen(_services, "ana");
-
-        Assert.Equal(screen.ThemeColor("TextFillColorSecondaryBrush"), ContactCardScreen.ColorOf(screen.Block("Ctrl: all details")));
     }
 
     [WpfTheory]

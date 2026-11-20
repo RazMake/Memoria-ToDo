@@ -131,9 +131,6 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
     /// <summary>Shows the text under the Tags line, or hides the line when the text is empty.</summary>
     void IDraftEditor.ShowMessage(string text) => _message.Show(text);
 
-    /// <summary>Whether the image file dialog is open.</summary>
-    internal bool IsChoosingImageFile => _images.IsChoosingFile;
-
     /// <summary>Closes the open list or tag part: colors, snippets, tasks, the tag suggestions, the + menu, or Custom. Returns false, doing nothing, when none was open.</summary>
     internal bool CloseOpenList() => _lists.Popups.CloseOpen() || _tags.CloseEdit();
 

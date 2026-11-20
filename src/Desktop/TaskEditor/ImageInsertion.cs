@@ -47,9 +47,6 @@ internal sealed class ImageInsertion
         _logger = logger;
     }
 
-    /// <summary>Whether the file dialog is open, so a window that deactivates because of it isn't one the user clicked away from.</summary>
-    public bool IsChoosingFile { get; private set; }
-
     /// <summary>Inserts the clipboard's image, or else the file the user chooses; nothing when the user cancels. <paramref name="replaceFrom"/> is as for <see cref="SnippetInsertion.Apply"/>.</summary>
     public void InsertClipboardOrChosen(ITextField field, ISnippet snippet, int? replaceFrom)
     {
@@ -86,17 +83,7 @@ internal sealed class ImageInsertion
     // The link of the file the user chooses, or null when the user cancels.
     private string? KeepChosen()
     {
-        IsChoosingFile = true;
-        string? path;
-        try
-        {
-            path = _chooser.Choose();
-        }
-        finally
-        {
-            IsChoosingFile = false;
-        }
-
+        var path = _chooser.Choose();
         return path is null ? null : Keep(path);
     }
 

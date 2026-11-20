@@ -11,14 +11,10 @@ public sealed class FakeImageFileChooser : IImageFileChooser
     /// <summary>How many times the dialog was opened.</summary>
     public int Opened { get; private set; }
 
-    /// <summary>What the user does while the dialog is open, such as another window becoming active. Runs inside <see cref="Choose"/>.</summary>
-    public Action? WhileOpen { get; set; }
-
     /// <inheritdoc />
     public string? Choose()
     {
         Opened++;
-        WhileOpen?.Invoke();
         return Path;
     }
 }

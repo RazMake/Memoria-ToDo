@@ -167,6 +167,9 @@ internal sealed partial class TaskListScreen : IDisposable
     public Cursor? TitleCursor(string title, string? group = null) =>
         Visuals(Row(title, group)).OfType<FormattedTitle>().Single().Cursor;
 
+    public Cursor? CheckBoxCursor(string title, string? group = null) =>
+        Visuals(Row(title, group)).OfType<CheckBox>().Single().Cursor;
+
     public bool ShowsText(string words, DependencyObject? within = null) =>
         TextsWithin(within ?? Window).Any(text => text.Contains(words, StringComparison.OrdinalIgnoreCase));
 

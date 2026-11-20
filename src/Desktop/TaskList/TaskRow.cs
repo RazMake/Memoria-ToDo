@@ -24,6 +24,7 @@ internal sealed class TaskRow : Border
     private readonly CheckBox _resolved = new()
     {
         Focusable = false,
+        Cursor = Cursors.Hand,
         VerticalAlignment = VerticalAlignment.Top,
         Margin = new Thickness(0, 0, CheckBoxGap, 0),
         Padding = new Thickness(0),
@@ -51,7 +52,7 @@ internal sealed class TaskRow : Border
         SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
         AutomationProperties.SetAutomationId(this, "Row");
 
-        _title = new FormattedTitle(theme, browser) { TextWrapping = TextWrapping.Wrap, Cursor = Cursors.Hand };
+        _title = new FormattedTitle(theme, browser) { TextWrapping = TextWrapping.Wrap };
         _alignment = new FirstLineAlignment(_title, _resolved, CheckBoxGap);
         // The row is named by the title's own name, which it sets as it renders.
         SetBinding(AutomationProperties.NameProperty,

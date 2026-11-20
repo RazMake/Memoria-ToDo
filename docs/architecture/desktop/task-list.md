@@ -11,7 +11,7 @@ The Task list is the desktop app's Task View window. Its left side lists the tas
 The user asked for Task View in two sides, and for these rules:
 
 - **The left side groups the tasks by tag.** Each tag is a group. The user decided that [a task has at most one tag](../tasks.md#a-task-has-at-most-one-tag), so a task shows in one group; only a task saved with two or more tags before that rule shows in more, since it keeps them. Each row shows a checkbox and the task's title, and takes the [title's name](formatted-view.md#a-titles-name-is-the-text-it-shows) as its own.
-- **A click on the title selects the task, and only the checkbox checks or unchecks it.** The title shows the hand pointer. The user asked first for a title click that checks the task, then chose this so the right side has a clear way to pick its task.
+- **A click on the title selects the task, and only the checkbox checks or unchecks it.** Only the checkbox shows the hand pointer, the user decided; the title keeps the normal pointer. The user asked first for a title click that checks the task, then chose this so the right side has a clear way to pick its task.
 - **Each row's checkbox lines up with the first line of its title**, however many lines the title wraps to.
 - **Drag and drop sorts the tasks within a group.**
 - **The right side shows the selected task's description**, formatted.

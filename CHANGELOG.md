@@ -17,6 +17,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - In the status bar at the bottom of Add and Task View, clicking "Update available" now opens What is new instead of starting the update. To update, use Update Now in Configure. A small gap now separates "Update available" from the version.
 - Fixed: in Task View, the window that lists your tasks, the Close window shortcut now asks before dropping an edit you changed, as the close button does.
 - In the dark theme, windows and dialogs no longer flash white for a moment when they open.
+- In Task View, the pointer now turns into a hand only over a task's checkbox, not over its title.
+- The Add new task window no longer disappears when you click another window. It stays open behind it, like Task View and the app's other windows, so Alt+Tab or the taskbar brings it back with what you typed.
 - In Logs, the Severity list now offers "Debug and up", which also shows the app's detailed entries that explain its choices, such as where a window opened. The log files now keep these entries too.
 
 ## 1.1.1

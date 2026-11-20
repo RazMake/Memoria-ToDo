@@ -8,7 +8,7 @@ namespace Memoria.ToDo.Desktop.ContactList.Tests;
 
 /// <summary>
 /// What a contact card says for a mention's address: which fields show by default and while Ctrl is held, for each kind of contact,
-/// how each value reads, the heading and the help line, and what the card keeps from the moment it opened. The card's content is
+/// how each value reads, the heading, and what the card keeps from the moment it opened. The card's content is
 /// <see cref="ContactCardContent"/>, which <see cref="ContactCard"/> shows; the details' fields are the same <see cref="DetailField"/>s.
 /// </summary>
 [Unit]
@@ -36,7 +36,7 @@ public class ContactCardContentTests
             TeamMemberSince = new DateOnly(2023, 6, 1), ExitDate = new DateOnly(2026, 1, 31),
         });
 
-    // The heading and the help line
+    // The heading
 
     [Fact]
     public void The_heading_is_the_full_name_with_the_groups_heading_under_it()
@@ -58,24 +58,6 @@ public class ContactCardContentTests
     public void The_full_name_is_the_heading_and_not_a_field()
     {
         Assert.DoesNotContain("Full name", Labels(Open("ana", ctrl: true)));
-    }
-
-    [Fact]
-    public void The_help_line_offers_all_details_by_default()
-    {
-        Assert.Equal("Ctrl: all details", Open("ana").Help);
-    }
-
-    [Fact]
-    public void The_help_line_offers_fewer_details_while_Ctrl_is_held()
-    {
-        Assert.Equal("Release Ctrl: fewer details", Open("ana", ctrl: true).Help);
-    }
-
-    [Fact]
-    public void The_help_line_offers_all_details_even_for_a_contact_with_no_common_field()
-    {
-        Assert.Equal("Ctrl: all details", Open("cris").Help);
     }
 
     // The default fields
@@ -387,25 +369,23 @@ public class ContactCardContentTests
     }
 
     [Fact]
-    public void Pressing_Ctrl_switches_the_card_to_every_field_and_the_help_line()
+    public void Pressing_Ctrl_switches_the_card_to_every_field()
     {
         var card = Open("ana");
 
         card.AllDetails = true;
 
         Assert.Contains("ID", Labels(card));
-        Assert.Equal("Release Ctrl: fewer details", card.Help);
     }
 
     [Fact]
-    public void Releasing_Ctrl_switches_the_card_back_to_the_common_fields_and_the_help_line()
+    public void Releasing_Ctrl_switches_the_card_back_to_the_common_fields()
     {
         var card = Open("ana", ctrl: true);
 
         card.AllDetails = false;
 
         Assert.Equal(CommonOfAna, Labels(card));
-        Assert.Equal("Ctrl: all details", card.Help);
     }
 
     [Fact]

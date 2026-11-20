@@ -10,7 +10,7 @@ using Memoria.ToDo.Shared.Rendering;
 namespace Memoria.ToDo.Desktop.ContactList;
 
 /// <summary>
-/// The card's element: the content's heading in the theme's first heading color, then its fields and help line. Nothing on it takes a click or the focus.
+/// The card's element: the content's heading in the theme's first heading color, then its fields, each label beside its values. Nothing on it takes a click or the focus.
 /// The card shows in a popup that never takes the focus, so keys go to the window that holds the card's owner; the card watches that
 /// window's Ctrl, from when it loads into the popup to when it unloads.
 /// </summary>
@@ -30,10 +30,12 @@ internal sealed class ContactCardView : Border
         MaxWidth = 360;
         Padding = new Thickness(12);
         BorderThickness = new Thickness(1);
+        CornerRadius = new CornerRadius(8);
         Child = _panel;
         // A popup isn't in its owner's visual tree, so these come from the application's theme, which follows Windows' setting.
-        SetResourceReference(BackgroundProperty, "SolidBackgroundFillColorBaseBrush");
-        SetResourceReference(BorderBrushProperty, "ControlStrokeColorDefaultBrush");
+        // The surface stands apart from the window behind it, as the app's other popups do.
+        SetResourceReference(BackgroundProperty, "SolidBackgroundFillColorQuarternaryBrush");
+        SetResourceReference(BorderBrushProperty, "SurfaceStrokeColorDefaultBrush");
         SetResourceReference(TextElement.ForegroundProperty, "TextFillColorPrimaryBrush");
         UpdateHeadingBrush();
         Render();
@@ -122,17 +124,6 @@ internal sealed class ContactCardView : Border
         _heading.Foreground = _headingBrush;
         _panel.Children.Add(_heading);
         _panel.Children.Add(DetailBlocks.GroupHeading(_content.GroupHeading));
-        foreach (var field in _content.Fields)
-        {
-            _panel.Children.Add(DetailBlocks.Label(field.Label));
-            foreach (var value in field.Values)
-            {
-                _panel.Children.Add(DetailBlocks.Value(value.Text));
-            }
-        }
-
-        var help = DetailBlocks.Label(_content.Help);
-        help.Margin = new Thickness(0, 12, 0, 0);
-        _panel.Children.Add(help);
+        _panel.Children.Add(DetailBlocks.Fields(_content.Fields, follow: null));
     }
 }

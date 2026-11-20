@@ -60,7 +60,7 @@ public class AddWindowTests
     }
 
     [WpfFact]
-    public void Hides_when_another_window_becomes_active()
+    public void Stays_open_behind_another_window_that_becomes_active_and_Show_brings_it_back_to_the_front()
     {
         using var screen = new AddScreen();
         screen.Show();
@@ -70,6 +70,13 @@ public class AddWindowTests
         other.Show();
         other.Activate();
 
-        Assert.False(window.IsVisible);
+        Assert.True(window.IsVisible);
+        Assert.False(window.IsActive);
+
+        screen.Show();
+
+        Assert.Same(window, screen.Window);
+        Assert.True(window.IsActive);
+        other.Close();
     }
 }

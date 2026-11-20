@@ -22,6 +22,8 @@ Title and Description look like the tag box in both the light and the dark [them
 
 Proposed: Add accepts typing within 100 ms of the Add new task shortcut, measured from the key press to the first typed character showing. This is a decision to confirm.
 
+The user decided that a click on another window leaves Add open behind it, as Task View and the app's other windows stay, so Alt+Tab, the taskbar, or the Add new task shortcut brings it back with its text as it was.
+
 Proposed, each a decision to confirm:
 
 - Show Add opens Add with the desktop platform's [Show on the pointer's screen](README.md#windows-open-on-the-screen-with-the-mouse-pointer), which says what the active screen and on top mean. The pointer is also where a click on the tray icon happens.
@@ -62,7 +64,6 @@ Proposed, each a decision to confirm:
 - A chosen or dropped file's alt text is its name without the extension, and `image` when that is empty, as is an image from the clipboard's. A drop inserts at the cursor, in place of the selection, and uses only the first dropped file. A dropped file that isn't an image shows an error. Drops that carry no file, such as dragged text, keep their usual meaning in the editor.
 - The snippet list's Image entry does what Ctrl+Shift+I does, in place of the "/" and what was typed after it. When the dialog is cancelled, the typed text stays.
 - An image that can't be read, isn't an image, can't be shrunk to 1 MB, or can't be kept shows an error on the [editor's message line](#add-and-task-view-save-the-same-way-through-the-editor). The error mentions the image, nothing is inserted, and the text, cursor, and focus stay as they were. The next image that is added clears the message.
-- Opening the file dialog doesn't hide Add, though the dialog takes the focus.
 - **No focus outline frames the editors or their fields.** WPF draws a control's focus outline only when the keyboard moves the focus to it ([focus visual style](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/styling-for-focus-in-controls-and-focusvisualstyle)), so a key such as Ctrl+Tab can frame a field or a whole editor in a light outline. The user asked that it never show. The fields show the focus with their own focused border and caret, as the tag box does. Buttons and badges keep their outline, so keyboard users still see which one has the focus. Proposed: in Add, Ctrl+Tab keeps WPF's move to the next control; in Task View's edit, it switches the [Edit and Preview tabs](task-list.md#edit-description-has-an-edit-tab-and-a-preview-tab). This is a decision to confirm.
 
 ### Every formatting command and snippet has a key
@@ -175,9 +176,9 @@ The user asked that resting the mouse pointer on any mention show a card with th
 
 ### Closing without saving keeps a draft on this device
 
-Closing Add without saving, with Esc or by clicking elsewhere, keeps its text as a draft. The next Add opens with the draft, and the Clear button clears it. Drafts stay on this device and never sync. Add never asks before it closes, since the draft keeps the text; Task View [asks](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) only before it drops a changed edit, which has no draft.
+Closing Add without saving, with Esc or its close button, keeps its text as a draft. The next Add opens with the draft, and the Clear button clears it. Drafts stay on this device and never sync. Add never asks before it closes, since the draft keeps the text; Task View [asks](task-list.md#closing-task-view-asks-before-it-drops-a-changed-edit) only before it drops a changed edit, which has no draft.
 
-[Tasks keeps the draft](../tasks.md#a-draft-waits-on-this-device-until-its-saved), with its images, in `%LocalAppData%\Memoria-ToDo\draft\`, a folder the composition root gives it. Add keeps the draft when it hides and when the app exits, and saving the task clears it. Clicking Add's own buttons, its lists, or its file dialog isn't clicking elsewhere.
+[Tasks keeps the draft](../tasks.md#a-draft-waits-on-this-device-until-its-saved), with its images, in `%LocalAppData%\Memoria-ToDo\draft\`, a folder the composition root gives it. Add keeps the draft when it hides and when the app exits, and saving the task clears it.
 
 Add keeps the draft each time it hides, with every field empty meaning no draft: the kept draft is removed. Show restores the kept draft into all three fields with the cursor in the Title, and a draft whose task ID is already a task is deleted and Add opens empty. Clear empties the fields, deletes the kept draft and its images with [Tasks' `DiscardDraft`](../tasks.md#public-interface), starts a new task ID, and leaves Add open with the cursor in the Title. Clear is only the button's name: Tasks calls that step discard, so no public interface changes. A save that fails leaves the text, so Esc keeps it as the draft.
 
@@ -254,7 +255,7 @@ Proposed, each a decision to confirm:
 - **The submenu lists every match**, and scrolls when it's taller than the screen allows. With an empty Search box, no submenu shows. When nothing matches, it shows one dimmed line, "No matching tags", that can't be clicked.
 - **Custom… closes the menu and opens [Custom](#custom-adds-a-new-tag-in-the-color-clicked).**
 - **Choosing a tag from the menu or its submenu replaces the task's tag and closes both**, and the focus goes back to the pill. Search's text is never part of the task, the draft, or the editor's changes, and closing the menu drops it.
-- **A click outside the menu closes it**, as Esc does. Opening the menu doesn't take the window's focus away, so it never counts as [clicking elsewhere](#closing-without-saving-keeps-a-draft-on-this-device).
+- **A click outside the menu closes it**, as Esc does.
 - **Choosing a tag from the menu while Custom shows leaves Custom as it is**, with its typed text, so no typing is lost.
 
 Keys in the menu, proposed, each a decision to confirm:

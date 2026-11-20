@@ -11,9 +11,9 @@ using Serilog;
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
 /// <summary>
-/// The Add window. Esc, the close button, and a click on another window hide it and keep its text as a draft, so the
-/// next Show reopens it at once with that draft. Application shutdown still closes it: WPF ignores a cancelled
-/// Closing then, so the draft is kept by the same hide.
+/// The Add window. Esc and the close button hide it and keep its text as a draft, so the next Show reopens it at once
+/// with that draft. A click on another window leaves it open behind that window, as every window of the app does.
+/// Application shutdown still closes it: WPF ignores a cancelled Closing then, so the draft is kept by the same hide.
 /// </summary>
 internal sealed class AddWindowView : Window, IAddWindow
 {
@@ -56,14 +56,6 @@ internal sealed class AddWindowView : Window, IAddWindow
         editor.SaveRequested += (_, _) => Save(keepOpen: false);
         editor.SaveAndClearRequested += (_, _) => Save(keepOpen: true);
         editor.CancelRequested += (_, _) => HideAndKeepDraft();
-        Deactivated += (_, _) =>
-        {
-            // The file dialog takes the focus, and that isn't clicking elsewhere.
-            if (!editor.IsChoosingImageFile)
-            {
-                HideAndKeepDraft();
-            }
-        };
     }
 
     void IAddWindow.Show()
@@ -108,7 +100,7 @@ internal sealed class AddWindowView : Window, IAddWindow
         HideAndKeepDraft();
     }
 
-    // Does nothing once hidden, so the hide's own Deactivated, and a close of the hidden window at exit, keep nothing twice.
+    // Does nothing once hidden, so a close of the hidden window at exit keeps nothing twice.
     private void HideAndKeepDraft()
     {
         if (!IsVisible)

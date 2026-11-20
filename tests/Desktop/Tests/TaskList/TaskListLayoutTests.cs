@@ -82,13 +82,14 @@ public class TaskListLayoutTests
     }
 
     [WpfFact]
-    public void The_cursor_is_a_hand_over_a_title()
+    public void The_cursor_is_a_hand_over_a_checkbox_but_not_over_a_title()
     {
         var services = new ListServices();
         services.Add("Buy milk");
         using var screen = new TaskListScreen(services);
 
-        Assert.Equal(Cursors.Hand, screen.TitleCursor("Buy milk"));
+        Assert.Equal(Cursors.Hand, screen.CheckBoxCursor("Buy milk"));
+        Assert.NotEqual(Cursors.Hand, screen.TitleCursor("Buy milk"));
     }
 
     [WpfFact]

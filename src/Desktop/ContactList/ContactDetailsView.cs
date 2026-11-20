@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Input;
 
 namespace Memoria.ToDo.Desktop.ContactList;
 
@@ -79,38 +78,12 @@ internal sealed class ContactDetailsView : ScrollViewer
         }
 
         panel.Children.Add(buttons);
-        panel.Children.Add(FieldsOf(details));
-        return panel;
-    }
-
-    // One row per field: its label, then its values, each on a subtle background a little larger than the text.
-    private Grid FieldsOf(ContactDetails details)
-    {
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        foreach (var field in details.Fields)
+        panel.Children.Add(DetailBlocks.Fields(details.Fields, target =>
         {
-            var row = grid.RowDefinitions.Count;
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            var label = new TextBlock { Text = field.Label, Margin = new Thickness(0, 6 + ValuePadding.Top, 12, 0) };
-            ContactHelpStyle.Apply(label);
-            Grid.SetRow(label, row);
-            grid.Children.Add(label);
-
-            var values = new StackPanel { Margin = new Thickness(0, 6, 0, 0) };
-            foreach (var value in field.Values)
-            {
-                values.Children.Add(ValueOf(value));
-            }
-
-            Grid.SetRow(values, row);
-            Grid.SetColumn(values, 1);
-            grid.Children.Add(values);
-        }
-
-        return grid;
+            _model.Select(target.GroupName, target.Id);
+            _changed();
+        }));
+        return panel;
     }
 
     private Button ButtonOf(string label, Func<bool> action)
@@ -122,34 +95,5 @@ internal sealed class ContactDetailsView : ScrollViewer
             _changed();
         };
         return button;
-    }
-
-    private static readonly Thickness ValuePadding = new(6, 2, 6, 2);
-
-    // A value a click goes from, to the contact it names, looks like a link.
-    private Border ValueOf(DetailValue value)
-    {
-        var block = DetailBlocks.Value(value.Text);
-        var box = new Border
-        {
-            Child = block,
-            Padding = ValuePadding,
-            CornerRadius = new CornerRadius(4),
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 0, 0, 2),
-        };
-        box.SetResourceReference(Border.BackgroundProperty, "SubtleFillColorSecondaryBrush");
-        if (value.Target is { } target)
-        {
-            block.TextDecorations = TextDecorations.Underline;
-            block.Cursor = Cursors.Hand;
-            block.MouseLeftButtonUp += (_, _) =>
-            {
-                _model.Select(target.GroupName, target.Id);
-                _changed();
-            };
-        }
-
-        return box;
     }
 }

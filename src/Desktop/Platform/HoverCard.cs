@@ -27,7 +27,8 @@ public sealed class HoverCard
         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
         Focusable = false,
     };
-    private readonly Popup _popup = new() { StaysOpen = true, Placement = PlacementMode.Bottom };
+    // Transparent around the card, so a card with rounded corners shows no square edges.
+    private readonly Popup _popup = new() { StaysOpen = true, Placement = PlacementMode.Bottom, AllowsTransparency = true };
     private (int Token, HoverPart? Part) _answer;
     private Window? _window;
 

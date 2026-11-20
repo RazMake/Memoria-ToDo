@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using System.Windows;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Shared.Fakes;
@@ -11,7 +10,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
 /// <summary>
 /// Adding images to the Add window's Description, on the common path: Ctrl+V, Ctrl+Shift+I with a chosen file, a dropped
-/// file, an error, and the file dialog taking the focus. How an image is fetched, kept, and linked, and every failure,
+/// file, and an error. How an image is fetched, kept, and linked, and every failure,
 /// are in the unit tests of the image insertion.
 /// </summary>
 [UX]
@@ -80,25 +79,5 @@ public class AddWindowImageTests
         Assert.Contains(screen.Texts.Except(before), text => text.Contains("image", StringComparison.OrdinalIgnoreCase));
         Assert.Equal("ab", screen.TextOf(EditorFields.Description));
         Assert.True(screen.IsShowing);
-    }
-
-    [WpfFact]
-    public void Another_window_becoming_active_while_the_file_dialog_is_open_does_not_hide_Add_or_keep_a_draft()
-    {
-        using var screen = Open("ab", 1);
-        var window = screen.Window;
-        var dialog = new Window { Width = 100, Height = 100, Owner = window };
-        screen.Services.ImageFiles.Path = screen.Services.PutImageFile("cat.png", Png());
-        screen.Services.ImageFiles.WhileOpen = () =>
-        {
-            dialog.Show();
-            dialog.Activate();
-        };
-
-        screen.PressCtrl(true, Key.I);
-        dialog.Close();
-
-        Assert.True(window.IsVisible);
-        Assert.Null(screen.KeptDraft);
     }
 }

@@ -183,30 +183,6 @@ public class ImageInsertionTests
     }
 
     [Fact]
-    public void The_file_dialog_counts_as_open_only_while_it_is_open()
-    {
-        var field = new FakeTextField();
-        var openDuring = false;
-        _services.ImageFiles.WhileOpen = () => openDuring = _images.IsChoosingFile;
-
-        _images.InsertClipboardOrChosen(field, Snippets.Image, null);
-
-        Assert.True(openDuring);
-        Assert.False(_images.IsChoosingFile);
-    }
-
-    [Fact]
-    public void The_file_dialog_no_longer_counts_as_open_when_it_fails()
-    {
-        var field = new FakeTextField();
-        _services.ImageFiles.WhileOpen = () => throw new InvalidOperationException("boom");
-
-        Assert.Throws<InvalidOperationException>(() => _images.InsertClipboardOrChosen(field, Snippets.Image, null));
-
-        Assert.False(_images.IsChoosingFile);
-    }
-
-    [Fact]
     public void A_dropped_file_is_inserted_with_its_name_as_alt_text()
     {
         var field = new FakeTextField("ab", 1);
