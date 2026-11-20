@@ -9,7 +9,7 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>
 /// Down and Up in the search box pick the top or bottom row. It is a screen test, not a unit test, because a key event needs a
-/// showing window to come from. A held modifier is put in this thread's keyboard-state table by <see cref="HeldAlt"/>, which
+/// showing window to come from. A held modifier is put in this thread's keyboard-state table by <see cref="HeldModifiers"/>, which
 /// never touches the real keyboard.
 /// </summary>
 [UX]
@@ -33,16 +33,7 @@ public class SearchBandKeysTests : IDisposable
 
     // Only the preview event is raised: the box handles the following KeyDown itself, which would make a key look taken
     // even when the band let it go on.
-    private bool PressAndSeeIfTheBandTookIt(Key key)
-    {
-        var source = PresentationSource.FromVisual(Box)!;
-        var args = new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, key)
-        {
-            RoutedEvent = Keyboard.PreviewKeyDownEvent,
-        };
-        Box.RaiseEvent(args);
-        return args.Handled;
-    }
+    private bool PressAndSeeIfTheBandTookIt(Key key) => SimulatedKey.RaiseOne(Box, key, Keyboard.PreviewKeyDownEvent);
 
     [WpfFact]
     public void Down_in_the_box_asks_for_the_top_row_and_the_key_goes_no_further()
@@ -66,7 +57,7 @@ public class SearchBandKeysTests : IDisposable
     public void Down_with_a_modifier_held_asks_for_nothing_and_goes_on()
     {
         var handled = false;
-        HeldAlt.While(() => handled = Press(Key.Down));
+        HeldModifiers.While(ModifierKeys.Alt, () => handled = Press(Key.Down));
 
         Assert.Empty(_requests);
         Assert.False(handled);
@@ -76,7 +67,7 @@ public class SearchBandKeysTests : IDisposable
     public void Up_with_a_modifier_held_asks_for_nothing_and_goes_on()
     {
         var handled = false;
-        HeldAlt.While(() => handled = Press(Key.Up));
+        HeldModifiers.While(ModifierKeys.Alt, () => handled = Press(Key.Up));
 
         Assert.Empty(_requests);
         Assert.False(handled);

@@ -83,10 +83,10 @@ public static class TestContactStore
     /// <summary>Pronouns "he" and "she" and career paths "em" (Engineering Manager) and "se", with invented properties.</summary>
     public static void SeedDataTypes(this IFileSystem files, string clone)
     {
-        files.Seed(clone, PronounsFile, ContactFiles.ArrayOf(
+        files.Seed(clone,         PronounsFile, ContactFiles.DataType("pronouns",
             ContactFiles.Object(("id", "he"), ("subject", "he"), ("object", "him")),
             ContactFiles.Object(("id", "she"), ("subject", "she"), ("object", "her"))));
-        files.Seed(clone, CareerPathsFile, ContactFiles.ArrayOf(
+        files.Seed(clone, CareerPathsFile, ContactFiles.DataType("careerPaths",
             ContactFiles.Object(("id", "em"), ("name", "Engineering Manager"), ("short", "EM")),
             ContactFiles.Object(("id", "se"), ("name", "Software Engineer"), ("short", "SE"))));
     }

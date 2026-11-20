@@ -12,8 +12,10 @@ internal sealed class LogFilterBar : Border
 {
     private readonly LogsModel _model;
     private readonly ComboBox _preset = new() { MinWidth = 110 };
-    private readonly TextBox _from = new() { Width = 130 };
-    private readonly TextBox _to = new() { Width = 130 };
+    private readonly DateTimeField _from = new("From", "00:00");
+    private readonly DateTimeField _to = new("To", "23:59");
+    private readonly TextBlock _fromLabel = new() { Text = "From:" };
+    private readonly TextBlock _toLabel = new() { Text = "To:" };
     private readonly ComboBox _level = new() { MinWidth = 130 };
     private readonly MenuItem _components = new() { Header = "Components" };
     private IReadOnlyList<ComponentChoice>? _shownComponents;
@@ -23,8 +25,6 @@ internal sealed class LogFilterBar : Border
     {
         _model = model;
         Describe(_preset, "Time range");
-        Describe(_from, "From");
-        Describe(_to, "To");
         Describe(_level, "Minimum severity");
         foreach (var preset in Enum.GetValues<TimePreset>())
         {
@@ -36,16 +36,15 @@ internal sealed class LogFilterBar : Border
             _level.Items.Add(choice.Label);
         }
 
-        _from.ToolTip = _to.ToolTip = $"A date and time such as {TimeRange.Format(new DateTime(2025, 3, 14, 10, 40, 0))}. Empty sets no limit.";
         var refresh = new Button { Content = "Refresh", ToolTip = "Read the log again (F5)", Padding = new Thickness(12, 2, 12, 2) };
         refresh.Click += (_, _) => RefreshRequested?.Invoke(this, EventArgs.Empty);
 
         var bar = new WrapPanel { Orientation = Orientation.Horizontal };
         Add(bar, new TextBlock { Text = "Time:" });
         Add(bar, _preset);
-        Add(bar, new TextBlock { Text = "From:" });
+        Add(bar, _fromLabel);
         Add(bar, _from);
-        Add(bar, new TextBlock { Text = "To:" });
+        Add(bar, _toLabel);
         Add(bar, _to);
         Add(bar, _level);
         Add(bar, new Menu { Background = System.Windows.Media.Brushes.Transparent, Items = { _components } });
@@ -54,8 +53,8 @@ internal sealed class LogFilterBar : Border
         Child = bar;
 
         _preset.SelectionChanged += (_, _) => Apply(() => _model.Preset = Enum.GetValues<TimePreset>()[_preset.SelectedIndex]);
-        _from.TextChanged += (_, _) => Apply(() => _model.From = _from.Text);
-        _to.TextChanged += (_, _) => Apply(() => _model.To = _to.Text);
+        _from.Changed += (_, _) => Apply(() => _model.From = _from.Text);
+        _to.Changed += (_, _) => Apply(() => _model.To = _to.Text);
         _level.SelectionChanged += (_, _) => Apply(() => _model.MinimumLevel = _model.Levels[_level.SelectedIndex].Level);
     }
 
@@ -72,8 +71,11 @@ internal sealed class LogFilterBar : Border
         try
         {
             _preset.SelectedIndex = (int)_model.Preset;
-            Set(_from, _model.From, _model.FromIsInvalid);
-            Set(_to, _model.To, _model.ToIsInvalid);
+            _from.Show(_model.From, _model.FromIsInvalid);
+            _to.Show(_model.To, _model.ToIsInvalid);
+            // All needs no bound, the other presets only a start; Custom shows both.
+            ShowIf(_model.Preset != TimePreset.All, _fromLabel, _from);
+            ShowIf(_model.Preset == TimePreset.Custom, _toLabel, _to);
             _level.SelectedIndex = _model.Levels.ToList().FindIndex(choice => choice.Level == _model.MinimumLevel);
             ShowComponents();
         }
@@ -85,28 +87,19 @@ internal sealed class LogFilterBar : Border
 
     private static void Describe(DependencyObject control, string name) => AutomationProperties.SetName(control, name);
 
+    private static void ShowIf(bool shown, params ReadOnlySpan<UIElement> controls)
+    {
+        foreach (var control in controls)
+        {
+            control.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
     private static void Add(Panel bar, FrameworkElement control)
     {
         control.Margin = new Thickness(0, 2, 8, 2);
         control.VerticalAlignment = VerticalAlignment.Center;
         bar.Children.Add(control);
-    }
-
-    private static void Set(TextBox box, string text, bool isInvalid)
-    {
-        if (box.Text != text)
-        {
-            box.Text = text;
-        }
-
-        if (isInvalid)
-        {
-            box.SetResourceReference(Control.BorderBrushProperty, "SystemFillColorCriticalBrush");
-        }
-        else
-        {
-            box.ClearValue(Control.BorderBrushProperty);
-        }
     }
 
     private void Apply(Action change)

@@ -12,6 +12,7 @@ internal sealed class LogsModel
 {
     private static readonly IReadOnlyList<LevelChoice> LevelChoices =
     [
+        new("Debug and up", LogEventLevel.Debug),
         new("Information and up", LogEventLevel.Information),
         new("Warning and up", LogEventLevel.Warning),
         new("Error and up", LogEventLevel.Error),
@@ -62,6 +63,11 @@ internal sealed class LogsModel
             if (value != TimePreset.Custom)
             {
                 FillBoxes();
+            }
+            else if (_to.Length == 0)
+            {
+                // Choosing Custom shows the To bound, so it starts at now rather than empty.
+                _to = TimeRange.Format(TimeZoneInfo.ConvertTime(_time.GetUtcNow(), _time.LocalTimeZone).DateTime);
             }
 
             Refilter();

@@ -36,7 +36,7 @@ internal sealed class ContactCardScreen : IDisposable
 
         if (ctrlHeld)
         {
-            HeldModifier.While(ModifierKeys.Control, Open);
+            HeldModifiers.While(ModifierKeys.Control, Open);
         }
         else
         {
@@ -95,7 +95,7 @@ internal sealed class ContactCardScreen : IDisposable
     /// <summary>Presses Ctrl: the key goes down while the keyboard state says Ctrl is held.</summary>
     public void PressCtrl()
     {
-        HeldModifier.While(ModifierKeys.Control, () => SimulatedKey.Raise(Window, Key.LeftCtrl, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent));
+        HeldModifiers.While(ModifierKeys.Control, () => SimulatedKey.Raise(Window, Key.LeftCtrl, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent));
         Refresh();
     }
 

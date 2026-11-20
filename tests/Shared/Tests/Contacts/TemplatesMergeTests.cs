@@ -93,7 +93,7 @@ public sealed class TemplatesMergeTests
 public sealed class MergeFailureTests
 {
     private static readonly byte[] GoodGroup = ContactFiles.Utf8(ContactFiles.Group(1000, ContactFiles.Person("1", "Ana")));
-    private static readonly byte[] GoodDataType = ContactFiles.Utf8(ContactFiles.ArrayOf(ContactFiles.Object(("id", "a"))));
+    private static readonly byte[] GoodDataType = ContactFiles.Utf8(ContactFiles.DataType("careerPaths", ContactFiles.Object(("id", "a"))));
     private static readonly byte[] GoodTemplates = ContactFiles.Utf8(ContactFiles.Templates("{fullName}"));
 
     private readonly ContactsFixture f = new();
@@ -116,10 +116,10 @@ public sealed class MergeFailureTests
     {
         "group" => ContactFiles.Utf8("""{ "version": 2, "position": 1000, "members": [] }"""),
         "templates" => ContactFiles.Utf8("""{ "version": 2, "templates": [] }"""),
-        _ => ContactFiles.Utf8("{ not json"),
+        _ => ContactFiles.Utf8("""{ "version": 2, "careerPaths": [] }"""),
     };
 
-    private static byte[] Broken(string kind) => ContactFiles.Utf8(kind == "dataType" ? """[ { "name": "no id" } ]""" : "{ not json");
+    private static byte[] Broken(string kind) => ContactFiles.Utf8(kind == "dataType" ? ContactFiles.DataType("careerPaths", """{ "name": "no id" }""") : "{ not json");
 
     [Theory]
     [MemberData(nameof(Kinds))]
@@ -135,6 +135,7 @@ public sealed class MergeFailureTests
 
     [Theory]
     [InlineData(ContactsFixture.TeamFile, "group")]
+    [InlineData(ContactsFixture.CareerPathsFile, "dataType")]
     [InlineData(ContactsFixture.TemplatesFile, "templates")]
     public void Throws_for_a_present_side_from_a_newer_version(string path, string kind)
     {

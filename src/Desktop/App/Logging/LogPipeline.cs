@@ -5,7 +5,7 @@ using Serilog.Core;
 namespace Memoria.ToDo.Desktop.App;
 
 /// <summary>
-/// The logger the composition root makes: it keeps Information and up, hands each module a logger carrying the
+/// The logger the composition root makes: it keeps Debug and up (and drops Verbose), hands each module a logger carrying the
 /// module's name as its component, and writes through a queue of 10,000 entries on a background thread, so a caller
 /// never waits for the writer. Entries the writer loses are counted and reported by <see cref="LostEntries"/>.
 /// </summary>
@@ -22,7 +22,7 @@ internal sealed class LogPipeline : IDisposable
     {
         _lost = new LostEntries(time);
         _logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
+            .MinimumLevel.Debug()
             .WriteTo.Fallible(
                 sinks => sinks.Async(
                     queue => queue.Sink(LoggerSinkConfiguration.Wrap(_lost.Watch, writeTo)),

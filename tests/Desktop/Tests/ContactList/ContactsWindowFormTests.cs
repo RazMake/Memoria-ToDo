@@ -87,24 +87,70 @@ public class ContactsWindowFormTests
         _services.Load();
 
         var field = Assert.IsType<ComboBox>(screen.Field("careerPathKey"));
-        Assert.Equal(["", "Engineering Manager", "Software Engineer"], field.Items.Cast<string>());
+        Assert.Equal(["Engineering Manager", "Software Engineer"], field.Items.Cast<string>());
         Assert.Equal("Software Engineer", field.SelectedItem);
         Assert.False(screen.ShowsText("careerPaths.json"));
     }
 
     [WpfFact]
-    public void A_picked_key_that_a_reload_of_its_file_no_longer_lists_stays_selected_in_the_rebuilt_drop_down_marked_Not_in_the_list()
+    public void A_key_field_with_no_stored_key_lists_only_the_entries_and_selects_none()
+    {
+        using var screen = new ContactsScreen(_services);
+        screen.ClickRow("Bob Stan");
+        screen.ClickButton("Edit");
+
+        var field = Assert.IsType<ComboBox>(screen.Field("careerPathKey"));
+
+        Assert.Equal(["Engineering Manager", "Software Engineer"], field.Items.Cast<string>());
+        Assert.Null(field.SelectedItem);
+    }
+
+    [WpfFact]
+    public void Picking_an_entry_of_a_key_field_and_saving_stores_its_key()
     {
         using var screen = EditingAna(_services);
         ((ComboBox)screen.Field("careerPathKey")).SelectedItem = "Engineering Manager";
 
-        _services.Disk.Seed(_services.Clone, TestContactStore.CareerPathsFile, ContactFiles.ArrayOf(
+        screen.PressSaveKeys();
+
+        Assert.Equal("em", _services.Member("team", "ana").CareerPathKey);
+    }
+
+    [WpfFact]
+    public void A_picked_key_that_a_reload_of_its_file_no_longer_lists_leaves_the_rebuilt_drop_down_with_nothing_selected_and_the_save_is_rejected()
+    {
+        using var screen = EditingAna(_services);
+        ((ComboBox)screen.Field("careerPathKey")).SelectedItem = "Engineering Manager";
+
+        _services.Disk.Seed(_services.Clone, TestContactStore.CareerPathsFile, ContactFiles.DataType("careerPaths",
             ContactFiles.Object(("id", "se"), ("name", "Software Engineer"))));
         _services.Load();
 
         var field = Assert.IsType<ComboBox>(screen.Field("careerPathKey"));
-        Assert.Equal("em (Not in the list)", field.SelectedItem);
-        Assert.Contains("em (Not in the list)", field.Items.Cast<string>());
+        Assert.Equal(["Software Engineer"], field.Items.Cast<string>());
+        Assert.Null(field.SelectedItem);
+
+        screen.PressSaveKeys();
+
+        Assert.True(screen.HasButton("Save"));
+        Assert.True(screen.ShowsText("'em' isn't listed"));
+        Assert.Equal("se", _services.Member("team", "ana").CareerPathKey);
+    }
+
+    [WpfFact]
+    public void A_stored_key_the_file_does_not_list_shows_nothing_selected_and_saves_unchanged_with_another_edit()
+    {
+        using var screen = EditingAna(_services);
+        _services.Disk.Seed(_services.Clone, TestContactStore.CareerPathsFile, ContactFiles.DataType("careerPaths",
+            ContactFiles.Object(("id", "em"), ("name", "Engineering Manager"))));
+        _services.Load();
+        screen.Type("title", "Lead");
+
+        Assert.Null(((ComboBox)screen.Field("careerPathKey")).SelectedItem);
+        screen.PressSaveKeys();
+
+        Assert.Equal("Lead", _services.Member("team", "ana").Title);
+        Assert.Equal("se", _services.Member("team", "ana").CareerPathKey);
     }
 
     [WpfFact]

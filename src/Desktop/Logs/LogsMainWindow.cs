@@ -14,13 +14,16 @@ namespace Memoria.ToDo.Desktop.Logs;
 /// </summary>
 internal sealed class LogsMainWindow : Window
 {
+    // The details pane opens at its smallest; the user drags the splitter to grow it.
+    private const double DetailsMinHeight = 65;
+
     private readonly LogsModel _model;
     private readonly ILogger _logger;
     private readonly CancellationTokenSource _closing = new();
     private readonly SearchBand _search = new();
     private readonly LogFilterBar _filters;
     private readonly MessageLine _message = new() { Margin = new Thickness(8, 4, 8, 0) };
-    private readonly LogListView _list = new();
+    private readonly LogListView _list;
     private readonly TextBox _details = new()
     {
         IsReadOnly = true,
@@ -32,11 +35,12 @@ internal sealed class LogsMainWindow : Window
     };
     private readonly TextBlock _status = new() { Margin = new Thickness(8, 4, 8, 4), TextTrimming = TextTrimming.CharacterEllipsis };
 
-    public LogsMainWindow(ILogSource source, TimeProvider time, ILogger logger)
+    public LogsMainWindow(ILogSource source, ITheme theme, TimeProvider time, ILogger logger)
     {
         _logger = logger;
         _model = new LogsModel(source, time, logger);
         _filters = new LogFilterBar(_model);
+        _list = new LogListView(theme);
 
         Title = "Logs";
         Width = 1100;
@@ -79,8 +83,11 @@ internal sealed class LogsMainWindow : Window
             }
         };
         EscCloses.Attach(this);
+        EventHandler themeChanged = (_, _) => _list.ShowThemeColors();
+        theme.Changed += themeChanged;
         Closed += (_, _) =>
         {
+            theme.Changed -= themeChanged;
             _closing.Cancel();
             _closing.Dispose();
         };
@@ -111,9 +118,9 @@ internal sealed class LogsMainWindow : Window
     private Grid ListAndDetails()
     {
         var grid = new Grid();
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3, GridUnitType.Star), MinHeight = 120 });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 120 });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 80 });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(DetailsMinHeight), MinHeight = DetailsMinHeight });
         var splitter = new GridSplitter
         {
             Height = 6,

@@ -14,10 +14,19 @@ public sealed class DataTypeMergeTests
     private static string Entry(string id, params (string Key, string Value)[] properties) =>
         ContactFiles.Object([("id", id), .. properties]);
 
-    private static byte[] File(params string[] entries) => ContactFiles.Utf8(ContactFiles.ArrayOf(entries));
+    private static byte[] File(params string[] entries) => ContactFiles.Utf8(ContactFiles.DataType("careerPaths", entries));
 
     private ContactFiles.Parsed Merge(byte[]? basis, byte[]? local, byte[]? remote) =>
         ContactFiles.Read(f.Rules.Merge(Path, basis, local, remote)!);
+
+    [Fact]
+    public void Writes_the_merged_file_in_the_versioned_shape_with_the_list_named_after_the_file()
+    {
+        var merged = Merge(File(Entry("a")), File(Entry("a"), Entry("b")), File(Entry("a")));
+
+        Assert.Equal(["a", "b"], merged.Ids);
+        Assert.Equal(new Dictionary<string, string> { ["version"] = "1" }, merged.Top);
+    }
 
     [Fact]
     public void Takes_a_property_changed_on_one_side_only()
@@ -119,8 +128,8 @@ public sealed class DataTypeMergeTests
     [Fact]
     public void Merges_the_pronouns_file_the_same_way()
     {
-        var basis = File(Entry("he", ("subject", "he")));
-        var local = File(Entry("he", ("subject", "he")), Entry("xe", ("subject", "xe")));
+        var basis = ContactFiles.Utf8(ContactFiles.DataType("pronouns", Entry("he", ("subject", "he"))));
+        var local = ContactFiles.Utf8(ContactFiles.DataType("pronouns", Entry("he", ("subject", "he")), Entry("xe", ("subject", "xe"))));
 
         var merged = ContactFiles.Read(f.Rules.Merge(ContactsFixture.PronounsFile, basis, local, basis)!);
 

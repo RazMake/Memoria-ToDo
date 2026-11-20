@@ -31,7 +31,7 @@ internal sealed class ShellLifetime(
     Action showLogs,
     ILogger logger) : IAppLifetime
 {
-    private readonly SyncTray syncTray = new SyncTray(sync, trayIcon, startup.ByUser(configure.Show), logger);
+    private readonly SyncTray syncTray = new SyncTray(sync, trayIcon, startup.ByUser(showLogs), logger);
     private readonly object stopGate = new();
     private Task? stopping;
     private bool claimed;
@@ -44,6 +44,7 @@ internal sealed class ShellLifetime(
         var viewTasksByUser = startup.ByUser(showViewTasks);
         var contactsByUser = startup.ByUser(showContacts);
         var configureByUser = startup.ByUser(configure.Show);
+        var logsByUser = startup.ByUser(showLogs);
         if (!oneInstance.Claim(Logged("A later start handed over to this app", viewTasksByUser)))
         {
             endApp();
@@ -60,7 +61,7 @@ internal sealed class ShellLifetime(
             }
 
             items.Add(Item("Configure", configureByUser));
-            items.Add(Item("Logs", showLogs));
+            items.Add(Item("Logs", logsByUser));
             items.Add(Item("Exit", endApp));
             return items;
         }

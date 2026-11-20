@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.TaskList.Tests;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
@@ -33,7 +34,7 @@ public class QuestionDialogTests : IDisposable
     public void Dispose() => _windows.Dispose();
 
     private Pick Ask(Action<Window> answer, Pick defaultAnswer = Pick.First, Pick cancelAnswer = Pick.Cancel) =>
-        _prompt.Run(() => QuestionDialog.Ask(_owner, Title, Text, Answers, defaultAnswer, cancelAnswer), answer);
+        _prompt.Run(() => QuestionDialog.Ask(_owner, Title, Text, Answers, defaultAnswer, cancelAnswer, Logger.None), answer);
 
     [WpfFact]
     public void Shows_its_title_and_text_and_one_button_per_answer_in_order()
@@ -128,6 +129,16 @@ public class QuestionDialogTests : IDisposable
         }, defaultAnswer: Pick.Second);
 
         Assert.Equal(["Second"], defaults);
+    }
+
+    [WpfFact]
+    public void Refuses_a_null_logger_before_showing_the_dialog()
+    {
+        Assert.Throws<ArgumentNullException>(() => _prompt.Run(
+            () => QuestionDialog.Ask(_owner, Title, Text, Answers, Pick.First, Pick.Cancel, null!),
+            ClosePrompt.Click("Cancel")));
+
+        Assert.Equal(0, _prompt.Shown);
     }
 
     [WpfFact]

@@ -1,16 +1,18 @@
 Memoria.ToDo.Desktop.Platform.AppRunner
 Memoria.ToDo.Desktop.Platform.QuestionDialog
-static Memoria.ToDo.Desktop.Platform.QuestionDialog.Ask<T>(System.Windows.Window! owner, string! title, string! text, System.Collections.Generic.IReadOnlyList<(string! Label, T Answer)>! answers, T defaultAnswer, T cancelAnswer) -> T
+static Memoria.ToDo.Desktop.Platform.QuestionDialog.Ask<T>(System.Windows.Window! owner, string! title, string! text, System.Collections.Generic.IReadOnlyList<(string! Label, T Answer)>! answers, T defaultAnswer, T cancelAnswer, Serilog.ILogger! logger) -> T
+Memoria.ToDo.Desktop.Platform.ModalDialog
+static Memoria.ToDo.Desktop.Platform.ModalDialog.Show(System.Windows.Window! dialog, Serilog.ILogger! logger) -> void
 Memoria.ToDo.Desktop.Platform.AppName
 static Memoria.ToDo.Desktop.Platform.AppName.Value.get -> string!
 Memoria.ToDo.Desktop.Platform.IAppLifetime
 Memoria.ToDo.Desktop.Platform.IAppLifetime.Start(System.Action! endApp) -> void
 Memoria.ToDo.Desktop.Platform.IAppLifetime.StopAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Memoria.ToDo.Desktop.Platform.SingleWindow
-Memoria.ToDo.Desktop.Platform.SingleWindow.SingleWindow(System.Func<System.Windows.Window!>! createWindow) -> void
+Memoria.ToDo.Desktop.Platform.SingleWindow.SingleWindow(System.Func<System.Windows.Window!>! createWindow, Serilog.ILogger! logger) -> void
 Memoria.ToDo.Desktop.Platform.SingleWindow.Show() -> void
 Memoria.ToDo.Desktop.Platform.WindowPlacement
-static Memoria.ToDo.Desktop.Platform.WindowPlacement.ShowOnPointerScreen(System.Windows.Window! window) -> void
+static Memoria.ToDo.Desktop.Platform.WindowPlacement.ShowOnPointerScreen(System.Windows.Window! window, Serilog.ILogger! logger) -> void
 static Memoria.ToDo.Desktop.Platform.AppRunner.Run(System.Func<Memoria.ToDo.Desktop.Platform.IAppLifetime!>! createLifetime, Serilog.ILogger! logger) -> int
 Memoria.ToDo.Desktop.Platform.SingleWindow.IsOpen.get -> bool
 Memoria.ToDo.Desktop.Platform.ITheme

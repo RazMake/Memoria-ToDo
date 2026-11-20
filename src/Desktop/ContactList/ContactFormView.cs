@@ -13,8 +13,6 @@ namespace Memoria.ToDo.Desktop.ContactList;
 /// </summary>
 internal sealed class ContactFormView : StackPanel
 {
-    private const string NotChosen = "";
-
     private readonly Dictionary<string, TextBlock> _problems = [];
     private readonly Dictionary<string, (StackPanel Slot, string Shape)> _keySlots = [];
     private readonly HashSet<string> _touched = [];
@@ -115,7 +113,7 @@ internal sealed class ContactFormView : StackPanel
 
     // What decides a key field's editor: whether it can be picked, which file is wrong, and the choices.
     private string ShapeOf(string name) =>
-        string.Join('\n', [Form.IsReadOnly(name).ToString(), Form.DataTypeProblem(name) ?? "", .. Form.ChoicesOf(name).Select(choice => $"{choice.Key}|{choice.Text}|{choice.Mark}")]);
+        string.Join('\n', [Form.IsReadOnly(name).ToString(), Form.DataTypeProblem(name) ?? "", .. Form.ChoicesOf(name).Select(choice => $"{choice.Key}|{choice.Text}")]);
 
     // A key field's editor, and under it which file is wrong when its data type isn't loaded.
     private void Fill(StackPanel slot, ContactField field)
@@ -167,23 +165,25 @@ internal sealed class ContactFormView : StackPanel
         }
     }
 
-    // A key field's drop-down: no typing, a blank first entry to clear the key, then the choices.
+    // A key field's drop-down: no typing and only the file's entries. A key that's missing or unlisted shows nothing selected,
+    // and stays stored until the user picks an entry; once one is picked, the drop-down can't be emptied again.
     private ComboBox ChoiceBox(ContactForm form, string name)
     {
         var choices = form.ChoicesOf(name);
         var box = new ComboBox { IsEditable = false };
-        box.Items.Add(NotChosen);
         foreach (var choice in choices)
         {
-            box.Items.Add(choice.Mark is null ? choice.Text : $"{choice.Text} ({choice.Mark})");
+            box.Items.Add(choice.Text);
         }
 
-        var at = choices.ToList().FindIndex(choice => string.Equals(choice.Key, form[name], StringComparison.OrdinalIgnoreCase));
-        box.SelectedIndex = at + 1;
+        box.SelectedIndex = choices.ToList().FindIndex(choice => string.Equals(choice.Key, form[name], StringComparison.OrdinalIgnoreCase));
         box.SelectionChanged += (_, _) =>
         {
-            form[name] = box.SelectedIndex > 0 ? choices[box.SelectedIndex - 1].Key : "";
-            Touched(name);
+            if (box.SelectedIndex >= 0)
+            {
+                form[name] = choices[box.SelectedIndex].Key;
+                Touched(name);
+            }
         };
         return box;
     }

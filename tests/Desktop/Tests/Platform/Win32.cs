@@ -58,6 +58,17 @@ internal static class Win32
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(nint window, StringBuilder text, int max);
     [DllImport("user32.dll")] private static extern bool PostMessage(nint window, uint message, nint wParam, nint lParam);
 
+    private const int DwmwaCloaked = 14;
+
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(nint window, int attribute, out int value, int size);
+
+    /// <summary>Whether Windows hides the window from the screen although WPF may count it as visible.</summary>
+    public static bool IsCloaked(nint window)
+    {
+        var result = DwmGetWindowAttribute(window, DwmwaCloaked, out var cloaked, sizeof(int));
+        return result == 0 ? cloaked != 0 : throw new System.ComponentModel.Win32Exception(result);
+    }
+
     public static Point CursorPosition() => GetCursorPos(out var point) ? point : throw new InvalidOperationException("No pointer position.");
 
     public static void MoveCursor(Point point) => SetCursorPos(point.X, point.Y);

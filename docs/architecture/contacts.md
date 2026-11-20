@@ -28,12 +28,12 @@ These modules use it:
 | --- | --- |
 | `autocomplete/contacts/<group>.json` | One group of contacts: `{ "version": 1, "position": 1000, "members": [ ... ] }` |
 | `autocomplete/contacts/me.json` | The user's own contact: `{ "version": 1, "position": 100, "details": { ... } }` |
-| `autocomplete/contacts/dataTypes/careerPaths.json`, `pronouns.json` | One [data type](#key-fields-choose-from-the-users-data-type-files): a JSON array of the entries a key field chooses from, with no version |
+| `autocomplete/contacts/dataTypes/careerPaths.json`, `pronouns.json` | One [data type](#key-fields-choose-from-the-users-data-type-files): the entries a key field chooses from, `{ "version": 1, "pronouns": [ ... ] }` with the list named after the file |
 | `autocomplete/contacts/dataTypes/mentionTemplates.json` | The [mention templates](#mention-templates-come-from-a-synced-file): `{ "version": 1, "templates": [ ... ] }` |
 
 - **Every `.json` file directly in `autocomplete/contacts/` is a group**, named by its file name without `.json`. Files in its subfolders, such as `dataTypes/`, aren't groups. `me.json` is the user's own group, named "me", with one contact.
 - **The user decided a group's name is its file name exactly, case included.** On a file system that tells case apart, `team.json` and `Team.json` load as two groups, though their headings may look alike. Every call that names a group, such as Save, Delete, and MoveGroup, finds only the group with exactly that name. Only the [team check](#team-groups-show-more-fields) and the check for the user's own group ignore case. The user decided `Me.json` is the user's own group too, named "Me". Proposed, a decision to confirm: when more than one file is the user's own group, such as `me.json` and `Me.json`, each is skipped and reported as another file that differs only in case, so the user has no own contact until one is renamed.
-- **Group files and the templates file hold a required `version`, starting at 1**, the user's choice, as task files do. A newer app reads every older version. A file with a newer version is skipped, left unchanged, and reported as needing a newer app. A file with no version, or one that isn't a whole number from 1 up, is skipped. The platform's [version rule](modules.md#stores-share-one-json-style-and-one-set-of-file-rules) checks it. Data type files stay plain JSON arrays, with no version.
+- **Group files, data type files, and the templates file hold a required `version`, starting at 1**, the user's choice, as task files do. A newer app reads every older version. A file with a newer version is skipped, left unchanged, and reported as needing a newer app. A file with no version, or one that isn't a whole number from 1 up, is skipped. The platform's [version rule](modules.md#stores-share-one-json-style-and-one-set-of-file-rules) checks it.
 - **The clone has contacts when at least one group file exists**, the user's choice: the desktop app [offers Contacts](desktop/shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) only then. Proposed, a decision to confirm: a group file that's skipped still counts, so the window can say why it's skipped; data type and templates files alone don't count. Contacts checks again whenever it loads, and raises Changed when the answer changes.
 - **A contact is a JSON object of text fields.** The table lists the known fields, in the order the app writes them. The For column marks the [team fields](#team-groups-show-more-fields), which the Contact list shows only in team groups:
 
@@ -133,7 +133,7 @@ Proposed, each a decision to confirm:
 
 ### Key fields choose from the user's data type files
 
-The user decided that a key field's choices come from synced files the user writes by hand, with no editor for now, and the user already made them in `autocomplete/contacts/dataTypes/`. Each file a key field reads, listed below, is one data type; the folder also holds the [templates file](#mention-templates-come-from-a-synced-file), which isn't. A data type is a JSON array of objects, each with a unique `id` and any other properties that describe it, such as a career path's `name` and `short`, or a pronoun's `subject` and `object`. A key field stores an entry's `id`.
+The user decided that a key field's choices come from synced files the user writes by hand, with no editor for now, and the user already made them in `autocomplete/contacts/dataTypes/`. Each file a key field reads, listed below, is one data type; the folder also holds the [templates file](#mention-templates-come-from-a-synced-file), which isn't. A data type file is an object with a `version` and one list named after the file without `.json`, such as `{ "version": 1, "careerPaths": [ ... ] }`; the user chose this shape. The list holds objects, each with a unique `id` and any other properties that describe it, such as a career path's `name` and `short`, or a pronoun's `subject` and `object`. A key field stores an entry's `id`.
 
 Today two fields are key fields: `careerPathKey` chooses from `careerPaths.json`, and `pronounsKey` from `pronouns.json`. `levelId` and `workingType` have no data type file, so they're plain text.
 
@@ -147,7 +147,7 @@ Proposed, each a decision to confirm:
 - **Entry IDs are unique ignoring case, and a stored key finds its entry ignoring case.** With no clone, `DataTypes` is empty and `MentionTemplates` is the default list. A missing data type file is reported with the reason "The file is missing."
 - **A key field takes only an entry from its file**, so every stored key finds its entry. The user adds a new choice to the file first.
 - **A contact's key that its file doesn't list is kept and shown as written**, and Save keeps it until the user picks an entry. It's never dropped or changed.
-- **A data type file can't be read when it isn't a JSON array of objects, or has an entry with no `id`, a repeated `id`, or a property of another kind.** Missing or unreadable, it's listed in the skipped files as above, and its field takes no new choice: the form shows the stored key as written and says which file is wrong, as the [Contact list](desktop/contact-list.md#the-details-show-every-field-and-edit-in-place) decides. Contacts that use it still load.
+- **A data type file can't be read when its version is missing or invalid, its list is missing or isn't a list of objects, it has any other top-level property, or it has an entry with no `id`, a repeated `id`, or a property of another kind.** Another top-level property is refused rather than ignored, since a merge writes only the version and the list and would drop it. Missing or unreadable, it's listed in the skipped files as above, and its field takes no new choice: the form shows the stored key as written and says which file is wrong, as the [Contact list](desktop/contact-list.md#the-details-show-every-field-and-edit-in-place) decides. Contacts that use it still load.
 
 ### A mention is a link that names its contact and its template
 
@@ -205,7 +205,7 @@ The user decided that a merged group or data type file is always written in this
 Proposed, each a decision to confirm:
 
 - `position`, `me.json`'s `details`, and unknown fields merge the same way, field by field.
-- A merged group file is written as Save writes it, with this app's `version`.
+- A merged group or data type file is written as Save writes a group file, with this app's `version`.
 - A merge applies the load rules to every present side and to the result, so an unreadable side stops it with `InvalidDataException`. A merged data type entry keeps the remote's property order, then the properties only the local side has.
 - A whole file deleted on one side and changed on the other is kept, with the changes, as a contact edit beats a deletion.
 - With no common version, such as a file both sides added, every contact is kept, and a field that differs takes the remote's value.
@@ -419,7 +419,8 @@ public interface IContactFileRules
 - **Merging a data type file as a whole file**: one device's new entry would be lost when the other device changed any entry.
 - **Keeping each contact's own field order when writing, adding new fields at its end**: the merge would have to pick one side's order, and the code would remember every contact's order. The user chose [one fixed order](#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts).
 - **Always reporting a missing data type file**: every user without contacts would see two problems in Sync's status. **Never reporting a missing one**: Sync's status would never say the file is missing.
-- **Contact files with no `version`, so none ever needs a newer app, or with an optional one**: the user chose a required version, as task files have, so a newer format is skipped unchanged rather than misread. Data type files stay plain arrays, since the user writes them by hand and no format change is planned.
+- **Contact files with no `version`, so none ever needs a newer app, or with an optional one**: the user chose a required version, as task files have, so a newer format is skipped unchanged rather than misread.
+- **Data type files as plain arrays with no version**: the first design, since the user writes them by hand. The user later chose a versioned object, as the other contact files have, and the app no longer reads the plain array.
 - **Reading only `H:mm` for `dayStartTime`, or writing `H:mm`**: a hand-written `09:30` would be skipped, and the two forms would mix. The user chose to read both and write `HH:mm`.
 - **Letting a templates file deletion beat an edit**, as "the changed side wins" alone would: a merge would drop templates the user wrote.
 - **Keeping a one-side change's bytes unchanged in a group or data type file merge**, in Contacts or in Sync for every file kind: the user chose to write every merged file in this app's layout, as task files are.

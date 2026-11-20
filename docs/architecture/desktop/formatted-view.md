@@ -108,7 +108,7 @@ Proposed, each a decision to confirm:
 The user decided that a failed lookup never stops descriptions showing formatted:
 
 - **A failed lookup shows no card, and the page stays formatted.** The next rest on a mention looks again.
-- **A point with no node under it, or a lookup the page outran, is no card, not a failure.** The page outran it when a newer page replaced it, or the node it found is gone; neither is logged, as [Logging](../logging.md#every-operation-and-every-failure-is-logged-where-it-happens) treats an expected outcome.
+- **A point with no node under it, or a lookup the page outran, is no card, not a failure.** The page outran it when a newer page replaced it, or the node it found is gone; neither is logged, as [Logging](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) treats an expected outcome.
 - **Any other lookup error is logged**, at Warning, by the web view, and doesn't raise `Failed`.
 - **Only these make the web view fail**, so descriptions show as Markdown source: its browser can't start, or the shown page can't load or be measured. Measuring covers the page's height and a [resized image's width](#a-resized-image-is-reported-not-saved).
 

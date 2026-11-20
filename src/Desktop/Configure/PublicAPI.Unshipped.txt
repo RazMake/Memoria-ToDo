@@ -21,6 +21,7 @@ static Memoria.ToDo.Desktop.Configure.Shortcut.TryCreate(System.Windows.Input.Mo
 static Memoria.ToDo.Desktop.Configure.Shortcut.operator !=(Memoria.ToDo.Desktop.Configure.Shortcut? left, Memoria.ToDo.Desktop.Configure.Shortcut? right) -> bool
 static Memoria.ToDo.Desktop.Configure.Shortcut.operator ==(Memoria.ToDo.Desktop.Configure.Shortcut? left, Memoria.ToDo.Desktop.Configure.Shortcut? right) -> bool
 Memoria.ToDo.Desktop.Configure.IConfigureWindow.IsOpen.get -> bool
+Memoria.ToDo.Desktop.Configure.IConfigureWindow.Close() -> void
 Memoria.ToDo.Desktop.Configure.ISetupActions
 Memoria.ToDo.Desktop.Configure.ISetupActions.CopyPublicKey(string! publicKey) -> void
 Memoria.ToDo.Desktop.Configure.ISetupActions.OpenKeyPage(System.Uri! address) -> void

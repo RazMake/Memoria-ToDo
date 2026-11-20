@@ -58,7 +58,7 @@ internal sealed class ConfigureShow : IConfigureWindow
         _configure = new("Configure", Shortcut.ConfigureDefault,
             () => settings.ConfigureShortcut, settings.SetConfigureShortcut, logger);
         _globals = [_addNewTask, _manageTasks, _contacts, _configure];
-        _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions));
+        _window = new SingleWindow(() => NewWindow(startWithWindows, sync, setupActions), logger);
         settings.Changed += OnSettingsChanged;
     }
 
@@ -88,6 +88,8 @@ internal sealed class ConfigureShow : IConfigureWindow
     }
 
     public bool IsOpen => _window.IsOpen;
+
+    public void Close() => _open?.Close();
 
     public bool ConnectShortcuts(IShortcutAction addNewTask, IShortcutAction manageTasks, IShortcutAction configure, IShortcutAction contacts)
     {

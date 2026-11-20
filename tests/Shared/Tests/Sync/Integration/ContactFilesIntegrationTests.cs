@@ -24,8 +24,8 @@ public sealed class ContactFilesIntegrationTests
         new[]
         {
             (Team, Ana(("title", "Dev"))),
-            ("autocomplete/contacts/dataTypes/pronouns.json", ContactFiles.ArrayOf()),
-            ("autocomplete/contacts/dataTypes/careerPaths.json", ContactFiles.ArrayOf()),
+            ("autocomplete/contacts/dataTypes/pronouns.json", ContactFiles.DataType("pronouns")),
+            ("autocomplete/contacts/dataTypes/careerPaths.json", ContactFiles.DataType("careerPaths")),
         }.Concat(files).ToDictionary(file => file.Item1, file => file.Item2);
 
     private static void Write(Device device, string path, string text)

@@ -9,17 +9,21 @@ public sealed class SingleWindow
 {
     private readonly Func<Window> _createWindow;
     private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
+    private readonly Serilog.ILogger _logger;
     private Window? _window;
 
     /// <summary>
     /// Makes no window yet. <paramref name="createWindow"/> makes a new, hidden window each time it's called.
+    /// <paramref name="logger"/>, the caller's own, is passed on to <see cref="WindowPlacement.ShowOnPointerScreen"/>.
     /// Create this object on the UI thread.
     /// </summary>
-    /// <exception cref="ArgumentNullException"><paramref name="createWindow"/> is null.</exception>
-    public SingleWindow(Func<Window> createWindow)
+    /// <exception cref="ArgumentNullException"><paramref name="createWindow"/> or <paramref name="logger"/> is null.</exception>
+    public SingleWindow(Func<Window> createWindow, Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(createWindow);
+        ArgumentNullException.ThrowIfNull(logger);
         _createWindow = createWindow;
+        _logger = logger;
     }
 
     /// <summary>
@@ -46,7 +50,7 @@ public sealed class SingleWindow
             _window = window;
         }
 
-        WindowPlacement.ShowOnPointerScreen(_window);
+        WindowPlacement.ShowOnPointerScreen(_window, _logger);
     }
 
     /// <summary>Whether a window this object made is showing now.</summary>

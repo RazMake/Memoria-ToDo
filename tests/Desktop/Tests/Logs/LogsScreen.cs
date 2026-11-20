@@ -69,6 +69,21 @@ internal sealed class LogsScreen : IDisposable
         Refresh();
     }
 
+    /// <summary>Chooses the time range in the list named "Time range" by its label, such as "Custom".</summary>
+    public void ChoosePreset(string label)
+    {
+        Refresh();
+        Visuals(Window).OfType<ComboBox>().Single(box => AutomationProperties.GetName(box) == "Time range").SelectedItem = label;
+        Refresh();
+    }
+
+    /// <summary>Whether a date picker of the bound, "From" or "To", shows.</summary>
+    public bool ShowsBound(string bound)
+    {
+        Refresh();
+        return Visuals(Window).OfType<DatePicker>().Any(picker => picker.IsVisible && AutomationProperties.GetName(picker) == $"{bound} date");
+    }
+
     /// <summary>Clicks the Refresh button and waits for the second read, or the <paramref name="reads"/>th, to show.</summary>
     public void ClickRefresh(int reads)
     {

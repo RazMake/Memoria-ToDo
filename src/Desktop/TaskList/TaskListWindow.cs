@@ -77,7 +77,7 @@ internal sealed class TaskListWindow : Window
         _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync));
         _saveKeys = saveKeys;
         _tagColors = tagColors;
-        _decision = new LeaveDecision(new CloseDialog(this));
+        _decision = new LeaveDecision(new CloseDialog(this, logger));
         _tasks = tasks;
         _theme = theme;
         _time = time;

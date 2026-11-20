@@ -40,24 +40,6 @@ public class ContactListContentTests
     }
 
     [Fact]
-    public void A_row_carries_the_full_name_and_the_title_shown_after_it()
-    {
-        var model = _services.Model();
-
-        var row = model.Groups.Single(group => group.Name == "team").Contacts[0];
-
-        Assert.Equal(("Ana Pop", "Engineer"), (row.Contact.FullName, row.Title));
-    }
-
-    [Fact]
-    public void A_contact_with_no_title_has_none_to_show()
-    {
-        var model = _services.Model();
-
-        Assert.Null(model.Groups.Single(group => group.Name == "ex-team").Contacts.Single().Title);
-    }
-
-    [Fact]
     public void An_empty_group_still_shows_its_heading()
     {
         var model = _services.Model();
@@ -171,7 +153,7 @@ public class ContactListContentTests
         _services.Contacts.Save("team", _services.Member("team", "bob") with { Title = "Lead" });
         model.Refresh();
 
-        Assert.Equal("Lead", model.Selected!.Title);
+        Assert.Equal("Lead", model.Selected!.Contact.Title);
     }
 
     [Fact]

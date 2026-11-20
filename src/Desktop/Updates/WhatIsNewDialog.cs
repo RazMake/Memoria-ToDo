@@ -33,7 +33,7 @@ internal sealed class WhatIsNewDialog(ITheme theme, Func<IDescriptionWebView> cr
         close.Click += (_, _) => window.Close();
         closeWindowKeys.Attach(window);
         EscCloses.Attach(window);
-        window.ShowDialog();
+        ModalDialog.Show(window, logger);
     }
 
     private static string MarkdownOf(NewerVersion newer)

@@ -20,15 +20,18 @@ internal sealed class ContactListView : ScrollViewer
     private readonly TextBlock _text = new() { Margin = new Thickness(8), TextWrapping = TextWrapping.Wrap };
     private readonly DropLine _dropLine;
     private readonly List<(string Group, StackPanel Panel)> _groups = [];
+    private readonly List<StackPanel> _rowLists = [];
     private readonly List<ContactRow> _rows = [];
+    private readonly Action _pastEdgeRow;
     private IReadOnlyList<object> _shown = [];
     private IDataObject? _dragged;
 
-    public ContactListView(ContactsModel model, TimeProvider time, IDragPointer pointer, Action changed)
+    public ContactListView(ContactsModel model, TimeProvider time, IDragPointer pointer, Action changed, Action pastEdgeRow)
     {
         _model = model;
         _pointer = pointer;
         _changed = changed;
+        _pastEdgeRow = pastEdgeRow;
         _dropLine = new DropLine(_panel);
         VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         Content = _panel;
@@ -57,9 +60,22 @@ internal sealed class ContactListView : ScrollViewer
 
         foreach (var row in _rows)
         {
-            row.MarkSelected(_model.Selected is { } selected && selected.GroupName == row.Listed.GroupName && selected.Contact.Id == row.Listed.Contact.Id);
+            row.MarkSelected(IsSelected(row));
+        }
+
+        // Tab stops once in each group's rows: at its selected row, or its first.
+        foreach (var rows in _rowLists)
+        {
+            var listed = rows.Children.OfType<ContactRow>().ToList();
+            var landing = listed.FirstOrDefault(IsSelected) ?? listed.FirstOrDefault();
+            foreach (var row in listed)
+            {
+                KeyboardNavigation.SetIsTabStop(row, ReferenceEquals(row, landing));
+            }
         }
     }
+
+    private bool IsSelected(ContactRow row) => _model.Selected is { } selected && Same(selected, row.Listed);
 
     /// <summary>Selects the first row, or the last, and puts the focus on it. Does nothing when no row shows.</summary>
     public void SelectEdgeRow(bool last)
@@ -82,6 +98,7 @@ internal sealed class ContactListView : ScrollViewer
         var focused = Keyboard.FocusedElement as ContactRow;
         _panel.Children.Clear();
         _groups.Clear();
+        _rowLists.Clear();
         _rows.Clear();
         _text.Text = _model.ListText ?? "";
         if (_model.ListText is not null)
@@ -94,18 +111,22 @@ internal sealed class ContactListView : ScrollViewer
         {
             var panel = new StackPanel();
             panel.Children.Add(new ContactGroupHeading(group, _pointer, () => _model.CanReorder, AddTo));
+            var rows = new StackPanel();
             foreach (var listed in group.Contacts)
             {
                 var row = NewRow(listed);
                 _rows.Add(row);
-                panel.Children.Add(row);
+                rows.Children.Add(row);
             }
 
+            panel.Children.Add(rows);
+            _rowLists.Add(rows);
             _groups.Add((group.Name, panel));
             _panel.Children.Add(panel);
         }
 
-        if (focused is not null && _rows.FirstOrDefault(row => Same(row.Listed, focused.Listed)) is { } again)
+        // Only a focused row that is still selected keeps the focus: giving it back to one the selection left would select it again.
+        if (focused is not null && IsSelected(focused) && ShownRowOf(focused.Listed) is { } again)
         {
             Keyboard.Focus(again);
         }
@@ -137,12 +158,28 @@ internal sealed class ContactListView : ScrollViewer
         row.MouseLeftButtonDown += (_, e) =>
         {
             SelectAndFocus(row);
+            // Handled, so the list, a ScrollViewer, doesn't take the focus from the row and scroll on the arrow keys.
+            e.Handled = true;
             if (e.ClickCount == 2)
             {
                 Run(() => _model.BeginEdit());
             }
         };
         row.MouseRightButtonDown += (_, _) => SelectAndFocus(row);
+        // Tab landing on a row the selection isn't on selects it, after the focus settles, so the focus always shows.
+        // When the user keeps an open form instead, the focus goes to the row still selected, so it doesn't ask again.
+        row.GotKeyboardFocus += (_, _) => Dispatcher.BeginInvoke(() =>
+        {
+            if (row.IsKeyboardFocused && !IsSelected(row))
+            {
+                var moved = _model.Select(row.Listed.GroupName, row.Listed.Contact.Id);
+                _changed();
+                if (!moved && _model.Selected is { } kept && ShownRowOf(kept) is { } keptRow)
+                {
+                    Keyboard.Focus(keptRow);
+                }
+            }
+        });
         return row;
     }
 
@@ -154,15 +191,18 @@ internal sealed class ContactListView : ScrollViewer
         _changed();
     }
 
+    // Focuses the row only when the selection moved to it: a cancelled leave-form prompt keeps the focus where it was.
     private void SelectAndFocus(ContactRow row)
     {
-        _model.Select(row.Listed.GroupName, row.Listed.Contact.Id);
+        var moved = _model.Select(row.Listed.GroupName, row.Listed.Contact.Id);
         _changed();
-        if (_rows.FirstOrDefault(candidate => Same(candidate.Listed, row.Listed)) is { } shown)
+        if (moved && ShownRowOf(row.Listed) is { } shown)
         {
             Keyboard.Focus(shown);
         }
     }
+
+    private ContactRow? ShownRowOf(ListedContact listed) => _rows.FirstOrDefault(candidate => Same(candidate.Listed, listed));
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
@@ -187,6 +227,10 @@ internal sealed class ContactListView : ScrollViewer
                 if (next >= 0 && next < _rows.Count)
                 {
                     SelectAndFocus(_rows[next]);
+                }
+                else
+                {
+                    _pastEdgeRow();
                 }
 
                 break;

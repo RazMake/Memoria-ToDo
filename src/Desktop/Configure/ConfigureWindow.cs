@@ -35,6 +35,9 @@ public interface IConfigureWindow : IDisposable
     /// <summary>Whether the window is open now.</summary>
     bool IsOpen { get; }
 
+    /// <summary>Closes the window when it is open; does nothing otherwise.</summary>
+    void Close();
+
     /// <summary>
     /// Connects the four shortcut settings. Configure applies each stored shortcut, or its default, then each
     /// valid pick on that row, on the UI thread. Returns true only when all initial shortcuts registered; an action that

@@ -1,10 +1,11 @@
 using System.Windows;
 using Memoria.ToDo.Desktop.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.ContactList;
 
 /// <summary>Asks the Contacts window's questions in the platform's question dialog, owned by the window.</summary>
-internal sealed class WindowPrompts(Window owner) : IContactPrompts
+internal sealed class WindowPrompts(Window owner, ILogger logger) : IContactPrompts
 {
     public LeaveAnswer Ask() => QuestionDialog.Ask(
         owner,
@@ -12,7 +13,8 @@ internal sealed class WindowPrompts(Window owner) : IContactPrompts
         "Save your changes to this contact?",
         [("Save", LeaveAnswer.Save), ("Discard", LeaveAnswer.Discard), ("Cancel", LeaveAnswer.Cancel)],
         LeaveAnswer.Save,
-        LeaveAnswer.Cancel);
+        LeaveAnswer.Cancel,
+        logger);
 
     public bool ConfirmDelete(string fullName) => QuestionDialog.Ask(
         owner,
@@ -20,5 +22,6 @@ internal sealed class WindowPrompts(Window owner) : IContactPrompts
         $"Delete {fullName}?",
         [("Delete", true), ("Cancel", false)],
         defaultAnswer: false,
-        cancelAnswer: false);
+        cancelAnswer: false,
+        logger);
 }

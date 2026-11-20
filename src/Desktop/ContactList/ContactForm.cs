@@ -3,8 +3,8 @@ using Memoria.ToDo.Shared.Contacts;
 
 namespace Memoria.ToDo.Desktop.ContactList;
 
-/// <summary>One choice of a key field's drop-down. <see cref="Mark"/> is "Not in the list" for a stored key the data type file doesn't list, else null.</summary>
-internal sealed record FormChoice(string Key, string Text, string? Mark);
+/// <summary>One choice of a key field's drop-down: an entry's ID and the text it shows as.</summary>
+internal sealed record FormChoice(string Key, string Text);
 
 /// <summary>
 /// The state of the form that edits or adds one contact, with the checks its own fields can make. Fields are named as in the
@@ -100,25 +100,11 @@ internal sealed class ContactForm
         return shown.Name == "id" ? !IsNew : shown.Kind == ContactFieldKind.Key && DataTypeOf(field) is not { Loaded: true };
     }
 
-    /// <summary>A key field's choices: its data type's entries, with the stored key and the form's current key first and marked when the file doesn't list them.</summary>
+    /// <summary>A key field's choices: only its data type's entries, in file order.</summary>
     public IReadOnlyList<FormChoice> ChoicesOf(string keyField)
     {
-        var entries = DataTypeOf(keyField)?.Entries ?? [];
-        List<FormChoice> choices = [.. entries.Select(entry => new FormChoice(entry.Id, entry.Shown, null))];
-        var name = Shown(keyField).Name;
-        var orphans = new List<string>(2);
-        foreach (var key in (string[])[_initial[name], _current[name]])
-        {
-            if (key.Length > 0
-                && !entries.Any(entry => string.Equals(entry.Id, key, StringComparison.OrdinalIgnoreCase))
-                && !orphans.Contains(key, StringComparer.OrdinalIgnoreCase))
-            {
-                orphans.Add(key);
-            }
-        }
-
-        choices.InsertRange(0, orphans.Select(key => new FormChoice(key, key, "Not in the list")));
-        return choices;
+        _ = Shown(keyField);
+        return [.. (DataTypeOf(keyField)?.Entries ?? []).Select(entry => new FormChoice(entry.Id, entry.Shown))];
     }
 
     /// <summary>For a key field whose data type isn't loaded, text that says which file is wrong; else null.</summary>

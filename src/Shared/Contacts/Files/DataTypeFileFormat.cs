@@ -3,19 +3,32 @@ using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Contacts;
 
-/// <summary>Reads and writes a data type file: a JSON array of entries, each an object with a unique text "id".</summary>
+/// <summary>
+/// Reads and writes a data type file: <c>{ "version": 1, "&lt;list&gt;": [ entries ] }</c>, the list named after the file,
+/// each entry an object with a unique text "id".
+/// </summary>
 internal static class DataTypeFileFormat
 {
-    /// <summary>Throws <see cref="InvalidDataException"/> when the file isn't a list of valid entries.</summary>
-    public static IReadOnlyList<ObjectFields> Read(byte[] bytes)
+    private const int Version = 1;
+
+    /// <summary>
+    /// The entries of the list named <paramref name="listName"/>. Throws <see cref="InvalidDataException"/> when the file can't be read,
+    /// needs a newer app, has another top-level property, or isn't a list of valid entries.
+    /// </summary>
+    public static IReadOnlyList<ObjectFields> Read(string listName, byte[] bytes)
     {
         using var document = JsonFile.Parse(bytes);
-        if (document.RootElement.ValueKind != JsonValueKind.Array)
-            throw new InvalidDataException("Not a JSON array.");
+        var root = document.RootElement;
+        JsonFile.RequireVersion(root, Version);
+        if (!root.TryGetProperty(listName, out var list) || list.ValueKind != JsonValueKind.Array)
+            throw new InvalidDataException($"'{listName}' must be a list.");
+        foreach (var property in root.EnumerateObject())
+            if (property.Name != "version" && property.Name != listName)
+                throw new InvalidDataException($"'{property.Name}' isn't allowed here; the file holds only 'version' and '{listName}'.");
 
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var entries = new List<ObjectFields>();
-        foreach (var element in document.RootElement.EnumerateArray())
+        foreach (var element in list.EnumerateArray())
         {
             if (element.ValueKind != JsonValueKind.Object)
                 throw new InvalidDataException("An entry must be an object.");
@@ -33,13 +46,16 @@ internal static class DataTypeFileFormat
         return entries;
     }
 
-    public static byte[] Write(IEnumerable<ObjectFields> entries) =>
+    public static byte[] Write(string listName, IEnumerable<ObjectFields> entries) =>
         JsonFile.Write(writer =>
         {
-            writer.WriteStartArray();
+            writer.WriteStartObject();
+            writer.WriteNumber("version", Version);
+            writer.WriteStartArray(listName);
             foreach (var entry in entries)
                 entry.WriteTo(writer);
             writer.WriteEndArray();
+            writer.WriteEndObject();
         });
 
     /// <summary>The entries as screens see them: shown as the "name" or else the ID, with every text property but "id".</summary>

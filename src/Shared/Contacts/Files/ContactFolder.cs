@@ -67,7 +67,8 @@ internal sealed class ContactFolder(IFileSystem files)
 
     private DataType ReadDataType(string clone, KeyField key, bool hasContactFiles, List<ISkippedRepositoryFile> skipped)
     {
-        var load = FileLoad<IReadOnlyList<ObjectFields>>.Read(files, ContactLayout.File(clone, key.RelativePath), DataTypeFileFormat.Read, []);
+        var load = FileLoad<IReadOnlyList<ObjectFields>>.Read(files, ContactLayout.File(clone, key.RelativePath),
+            bytes => DataTypeFileFormat.Read(key.ListName, bytes), []);
         if (load.Failure is not null)
             skipped.Add(SkippedFile.Of(key.RelativePath, load.Failure));
         else if (!load.Present && hasContactFiles)

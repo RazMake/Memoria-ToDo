@@ -220,7 +220,7 @@ public class FormattedTitleTests
         screen.Title.Markdown = $"Ask {Mention} now";
 
         var expected = Parse(TextLooks.Of(dark).MentionBackground);
-        var background = Assert.IsType<SolidColorBrush>(screen.Run("Ana").Background);
+        var background = Assert.IsType<SolidColorBrush>(screen.Chip("Ana").Background);
         Assert.Equal(expected.R, background.Color.R);
         Assert.Equal(expected.G, background.Color.G);
         Assert.Equal(expected.B, background.Color.B);
@@ -237,11 +237,11 @@ public class FormattedTitleTests
 
         screen.Theme.Switch(true);
 
-        Assert.Equal(Parse(TextLooks.Dark.MentionBackground), Assert.IsType<SolidColorBrush>(screen.Run("Ana").Background).Color);
+        Assert.Equal(Parse(TextLooks.Dark.MentionBackground), Assert.IsType<SolidColorBrush>(screen.Chip("Ana").Background).Color);
 
         screen.Theme.Switch(false);
 
-        Assert.Equal(Parse(TextLooks.Light.MentionBackground), Assert.IsType<SolidColorBrush>(screen.Run("Ana").Background).Color);
+        Assert.Equal(Parse(TextLooks.Light.MentionBackground), Assert.IsType<SolidColorBrush>(screen.Chip("Ana").Background).Color);
     }
 
     [WpfFact]
@@ -546,7 +546,7 @@ public class FormattedTitleTests
         /// <summary>How many mouse-up events reached the element around the title.</summary>
         public int ParentClicks { get; private set; }
 
-        public string Text => OpenWindows.TextOf(Title);
+        public string Text => string.Concat(Runs().Select(run => run.Text));
 
         /// <summary>Whether the text's own run, or the link around it, sets a color of its own.</summary>
         public bool HasOwnColor(string text) =>
@@ -703,6 +703,12 @@ public class FormattedTitleTests
 
         private IEnumerable<Run> Runs() => Walk(Title.Inlines).OfType<Run>();
 
+        /// <summary>The chip a mention shows as: the border around the mention's text.</summary>
+        public Border Chip(string text) =>
+            Walk(Title.Inlines).OfType<InlineUIContainer>().Select(container => container.Child).OfType<Border>()
+                .First(border => border.Child is TextBlock block && block.Inlines.OfType<Run>().Any(run => run.Text.Contains(text)));
+
+        // A mention is a chip inside the title: the walk goes into the chip's own text too.
         private static IEnumerable<Inline> Walk(InlineCollection inlines)
         {
             foreach (var inline in inlines)
@@ -711,6 +717,13 @@ public class FormattedTitleTests
                 if (inline is Span span)
                 {
                     foreach (var inner in Walk(span.Inlines))
+                    {
+                        yield return inner;
+                    }
+                }
+                else if (inline is InlineUIContainer { Child: Border { Child: TextBlock chipText } })
+                {
+                    foreach (var inner in Walk(chipText.Inlines))
                     {
                         yield return inner;
                     }

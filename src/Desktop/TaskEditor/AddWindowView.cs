@@ -19,10 +19,12 @@ internal sealed class AddWindowView : Window, IAddWindow
 {
     private readonly TaskEditorControl _editor;
     private readonly AddDraft _draft;
+    private readonly ILogger _logger;
 
     public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates, SaveKeys saveKeys, ILogger logger)
     {
         _editor = editor;
+        _logger = logger;
         _draft = new AddDraft(tasks, editor, logger);
         Title = "Add new Task";
         Width = 480;
@@ -71,7 +73,7 @@ internal sealed class AddWindowView : Window, IAddWindow
             _draft.Restore();
         }
 
-        WindowPlacement.ShowOnPointerScreen(this);
+        WindowPlacement.ShowOnPointerScreen(this, _logger);
         _editor.FocusTitle();
     }
 

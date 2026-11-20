@@ -11,7 +11,7 @@ The Contact list is the desktop window where the user browses, searches, edits, 
 The user decided the window shows the list on the left and the details on the right, split by the platform's [split panes](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), as Task View is.
 
 - **The left side lists every group in [Contacts' order](../contacts.md#groups-keep-the-order-of-their-positions)**, each under its heading, which Contacts names, such as "Ex-Team". The user's own group shows like the others.
-- **Each row shows the contact's full name, and its title after it in the help style.**
+- **Each row shows the contact's full name, then its alias in italics between brackets when it has one**, as "Diego Carretero Alvarez (*diegocarr*)", the user's choice; the title shows only in the details.
 - **A click selects a contact, and the right side shows its details.**
 
 Proposed, each a decision to confirm:
@@ -23,7 +23,8 @@ Proposed, each a decision to confirm:
 - **The window's title is "Contacts".** Its size is Task View's, 1100 by 720 with a minimum width of 680, as the window's own numbers, since the two windows' sizes change for different reasons.
 - **The list takes 40 parts of the width and the details 60**, at least 260 and 340 pixels wide, since a contact's form has more fields than a task's details.
 - **The top of the window holds, in order: the search band, the [message line](#messages-and-problems-show-at-the-top), and the problems line.** They span the window above both sides, as Task View's header does. The window has no status bar.
-- **Selecting moves with the keyboard too**: Down and Up in the search box select the first or last contact shown, through the search band's edge-row event, and Down and Up in the list move the selection.
+- **Selecting moves with the keyboard too**: Down and Up in the search box select the first or last contact shown, through the search band's edge-row event, and Down and Up in the list move the selection. Down on the last contact shown, or Up on the first, goes back to the search box with its text selected, so typing replaces it. The user decided these.
+- **Tab stops once in each group's rows**, at its selected contact or else its first, so Tab goes from a group's rows to the next group's Add, then its rows. Landing on a contact selects it, so the focus always shows as the selection, and a row shows no separate focus frame. The user decided this. When selecting would leave a changed form and the user cancels, a click leaves the focus where it was, and Tab moves it to the contact still selected, so the question isn't asked twice.
 - **When the clone has no contact files, or no clone is selected**, the list says "There are no contact files in this repository.", and Add, Delete, Edit, and the drag are off. `IContacts.HasContactFiles` tells the two cases apart from a clone whose groups are all skipped, which still shows its problems line.
 
 ### Search filters the list
@@ -38,13 +39,13 @@ The user decided that the form shows [team fields](../contacts.md#team-groups-sh
 
 Proposed, each a decision to confirm:
 
-- **The details show every known field, named in plain words**, such as "Full name" and "Reports to", and leave out missing ones while not editing. The heading is the full name, with the group's heading under it.
+- **The details show every known field, named in plain words**, such as "Full name" and "Reports to", and leave out missing ones while not editing. The heading is the full name, with the group's heading under it. Each field is one row: its label, then its value on a subtle background a few pixels larger than the text, the user's choice, with corners rounded by 4 pixels, as mentions have; a field with several values, such as "Direct reports", stacks them in its row.
 - **The details hide team fields outside team groups too, while not editing**, so the view and the form agree. A save keeps the hidden fields' values unchanged, since Contacts allows them in every group.
 - **"Reports to" shows the manager's full name**, from Contacts, or the name as written when it finds nobody. **"Direct reports" lists the contacts who report to this one.** A click on either selects that contact.
 - **A key field shows its entry**: the entry's name, or its ID when it has none, as [Contacts](../contacts.md#key-fields-choose-from-the-users-data-type-files) decides.
 - **F2, a double click, or the Edit button turns the details into a form**, with every field the group shows. Save, on the platform's [Save keys](README.md#the-save-shortcut-saves-in-any-window-that-edits) or the Save button, saves through Contacts and leaves the form. Esc leaves without saving, asking Save, Discard, or Cancel when there are changes.
 - **A date field is a date picker**, and the time field accepts the forms [Contacts reads](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts), checked as it's typed.
-- **A key field is a drop-down list of its data type's entries**, as the user decided, each shown as its name, or its ID when it has none. No typing in it is allowed. A stored key the file doesn't list shows first, as written, marked "Not in the list", and stays until the user picks another.
+- **A key field is a drop-down list of only its data type's entries**, as the user decided, each shown as its name, or its ID when it has none. No typing in it is allowed, and it has no empty choice, so the user can't set a key the file doesn't list or clear a listed one. A stored key that's missing or that the file doesn't list shows the drop-down empty, as the user decided, and stays stored until the user picks an entry.
 - **When the key field's data type file is missing or can't be read**, the field shows its stored key, read-only, and says under it which file is wrong. Saving keeps the key.
 - **The ID can be typed only when adding.** It's read-only for an existing contact.
 - **A save Contacts rejects keeps the form**, with the reason under the field it names, or at the top.
@@ -60,7 +61,7 @@ Proposed for building, each a decision to confirm:
 - **The fields come from [Contacts' `ContactFields`](../contacts.md#public-interface)**, the user's choice: their order, kinds, and which are team fields. The window keeps only their labels.
 - **The fields' names** are ID, Alias, Full name, First name, Title, Location, Level, Working type, Pronouns, Career path, Reports to, Direct reports, Day start time, Level start date, Team member since, and Exit date. The details and the form show them in the order of [Contacts' field table](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts), with Direct reports after Reports to; the form leaves out Direct reports, which isn't a stored field.
 - **An empty ID says "Write an ID."** and an empty full name "Write the full name.", under the field.
-- **A stored key marked "Not in the list" stays in the drop-down while the form is open**, also after the user picks another, so the user can pick it back. A key the user picked that a reload of its file no longer lists shows the same way, marked "Not in the list", so the drop-down always shows the form's value; Contacts then rejects the save, and the message line says why.
+- **An unlisted stored key is kept, not cleared, while the drop-down shows empty**, so opening and saving a form never changes a key the user didn't touch. A key the user picked that a reload of its file no longer lists also shows empty; Contacts then rejects the save, and the message line says why.
 - **Clicking "Reports to" or a direct report that the search hides empties the search first**, so the selected contact shows in the list. With a changed form open, it asks first, and empties the search only once the form leaves; Cancel keeps both.
 
 ### A contact card shows a mentioned contact's details

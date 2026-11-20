@@ -1,5 +1,6 @@
 using System.Windows;
 using Memoria.ToDo.Testing;
+using Serilog.Core;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
@@ -13,7 +14,7 @@ public class SingleWindowTests
     public void The_first_Show_makes_one_window_and_shows_it()
     {
         using var made = new MadeWindows();
-        var single = new SingleWindow(made.Make);
+        var single = new SingleWindow(made.Make, Logger.None);
         Assert.Empty(made.All);
 
         single.Show();
@@ -26,7 +27,7 @@ public class SingleWindowTests
     public void Show_while_the_window_is_open_makes_no_new_window_and_keeps_it_shown()
     {
         using var made = new MadeWindows();
-        var single = new SingleWindow(made.Make);
+        var single = new SingleWindow(made.Make, Logger.None);
         single.Show();
 
         single.Show();
@@ -39,7 +40,7 @@ public class SingleWindowTests
     public void Show_after_the_user_closed_the_window_makes_a_new_window_and_shows_it()
     {
         using var made = new MadeWindows();
-        var single = new SingleWindow(made.Make);
+        var single = new SingleWindow(made.Make, Logger.None);
         single.Show();
         made.All[0].Close();
 
@@ -55,7 +56,7 @@ public class SingleWindowTests
         using var made = new MadeWindows();
         var failure = new InvalidOperationException("no window");
         var calls = 0;
-        var single = new SingleWindow(() => ++calls == 1 ? throw failure : made.Make());
+        var single = new SingleWindow(() => ++calls == 1 ? throw failure :         made.Make(), Logger.None);
 
         var thrown = Assert.Throws<InvalidOperationException>(single.Show);
         single.Show();
@@ -63,6 +64,14 @@ public class SingleWindowTests
         Assert.Same(failure, thrown);
         Assert.Equal(2, calls);
         Assert.True(Assert.Single(made.All).IsVisible);
+    }
+
+    [WpfFact]
+    public void Refuses_a_null_logger()
+    {
+        using var made = new MadeWindows();
+
+        Assert.Throws<ArgumentNullException>(() => new SingleWindow(made.Make, null!));
     }
 
     /// <summary>The windows a test's function made, in order, closed when the test ends.</summary>

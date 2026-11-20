@@ -14,8 +14,8 @@ internal interface IContactPrompts : ILeavePrompt
 /// <summary>A contact's place: its group's file name and its ID.</summary>
 internal sealed record ContactRef(string GroupName, string Id);
 
-/// <summary>One row of the list: the contact, and its title shown after the full name.</summary>
-internal sealed record ListedContact(string GroupName, Contact Contact, string? Title);
+/// <summary>One row of the list: the contact, in its group.</summary>
+internal sealed record ListedContact(string GroupName, Contact Contact);
 
 /// <summary>One group of the list: its heading, whether Add shows on it, and the contacts it shows.</summary>
 internal sealed record ListedGroup(string Name, string Heading, bool CanAdd, IReadOnlyList<ListedContact> Contacts);
@@ -286,7 +286,7 @@ internal sealed class ContactsModel
                     group.Name,
                     group.Heading,
                     CanAddTo(group.Name),
-                    [.. group.Members.Where(member => matches is null || matches.Contains(member)).Select(member => new ListedContact(group.Name, member, member.Title))]))
+                    [.. group.Members.Where(member => matches is null || matches.Contains(member)).Select(member => new ListedContact(group.Name, member))]))
                 .Where(group => !searching || group.Contacts.Count > 0),
         ];
         _listText = _isOff ? "There are no contact files in this repository."
@@ -304,7 +304,7 @@ internal sealed class ContactsModel
             {
                 var group = _loaded.FirstOrDefault(g => g.Name == selected.GroupName);
                 var member = group?.Members.FirstOrDefault(m => m.Id == selected.Id);
-                _selected = member is null ? null : new ListedContact(selected.GroupName, member, member.Title);
+                _selected = member is null ? null : new ListedContact(selected.GroupName, member);
                 visible = _selected is null;
             }
 

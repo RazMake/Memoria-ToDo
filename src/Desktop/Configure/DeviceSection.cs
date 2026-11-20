@@ -110,7 +110,7 @@ internal sealed class DeviceSection : StackPanel
     {
         var forget = QuestionDialog.Ask(
             Window.GetWindow(this)!, "Forget key", ForgetKeyText,
-            [("Forget key", true), ("Cancel", false)], false, false);
+            [("Forget key", true), ("Cancel", false)], false, false, _ui.Logger);
         if (forget)
         {
             await _actions.ForgetKeyAsync();

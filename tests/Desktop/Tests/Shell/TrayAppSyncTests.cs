@@ -158,7 +158,7 @@ public class TrayAppSyncTests
     }
 
     [Fact]
-    public async Task A_sync_error_notification_opening_Configure_suppresses_the_later_automatic_window()
+    public async Task A_sync_error_notification_opening_Logs_suppresses_the_later_automatic_window()
     {
         var app = new ShellHarness(startedAtSignIn: false);
         app.Sync.HoldStartupPublication = true;
@@ -167,10 +167,9 @@ public class TrayAppSyncTests
         Assert.Empty(app.Shown);
 
         app.TrayIcon.ClickNotification();
-        app.Configure.IsOpen = false;
         app.Sync.SetupControl.Publish(new FakeSyncSetupState { IsConfigured = true });
 
-        Assert.Equal(["Configure"], app.Shown);
+        Assert.Equal(ShellHarness.LogsShown, app.Shown);
         await app.Lifetime.StopAsync(CancellationToken.None);
     }
 
@@ -246,7 +245,7 @@ public class TrayAppSyncTests
     }
 
     [Fact]
-    public async Task Clicking_an_error_notification_opens_Configure()
+    public async Task Clicking_an_error_notification_opens_Logs_and_not_Configure()
     {
         var app = new ShellHarness();
         app.Start();
@@ -258,7 +257,8 @@ public class TrayAppSyncTests
 
         app.TrayIcon.ClickNotification();
 
-        Assert.Equal(1, app.Configure.ShowCount);
+        Assert.Equal(1, app.Logs.ShowCount);
+        Assert.Equal(0, app.Configure.ShowCount);
         await app.Lifetime.StopAsync(CancellationToken.None);
     }
 
