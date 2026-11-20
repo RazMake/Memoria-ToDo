@@ -149,6 +149,140 @@ public class WindowPlacementTests
         }
     }
 
+    [WpfFact]
+    public void A_window_shown_for_the_first_time_is_cloaked_centered_visible_and_active_when_the_call_returns()
+    {
+        var window = new Window { Width = 300, Height = 200, Content = new Border() };
+        try
+        {
+            WindowPlacement.ShowOnPointerScreen(window);
+
+            Assert.True(Win32.IsCloaked(Handle(window)));
+            Assert.True(window.IsVisible);
+            Assert.True(window.IsActive);
+            AssertCenteredOnWorkAreaOfPointerScreen(window);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [WpfFact]
+    public void A_window_shown_for_the_first_time_is_uncloaked_once_WPF_has_drawn_it()
+    {
+        var window = new Window { Width = 300, Height = 200, Content = new Border() };
+        try
+        {
+            WindowPlacement.ShowOnPointerScreen(window);
+
+            AfterFirstDraw.Wait(window.Dispatcher);
+
+            Assert.False(Win32.IsCloaked(Handle(window)));
+            Assert.True(window.IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [WpfFact]
+    public void A_window_with_no_content_is_uncloaked_once_WPF_has_drawn_it()
+    {
+        var window = new Window { Width = 300, Height = 200 };
+        try
+        {
+            WindowPlacement.ShowOnPointerScreen(window);
+
+            AfterFirstDraw.Wait(window.Dispatcher);
+
+            Assert.False(Win32.IsCloaked(Handle(window)));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [WpfFact]
+    public void A_window_is_uncloaked_even_when_a_Loaded_handler_marks_the_event_handled()
+    {
+        var window = new Window { Width = 300, Height = 200, Content = new Border() };
+        window.Loaded += (_, e) => e.Handled = true;
+        try
+        {
+            WindowPlacement.ShowOnPointerScreen(window);
+
+            AfterFirstDraw.Wait(window.Dispatcher);
+
+            Assert.False(Win32.IsCloaked(Handle(window)));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [WpfFact]
+    public void A_window_closed_while_it_loads_is_left_alone()
+    {
+        var window = new Window { Width = 300, Height = 200, Content = new Border() };
+        window.Loaded += (_, _) => window.Close();
+        try
+        {
+            WindowPlacement.ShowOnPointerScreen(window);
+
+            Assert.Null(Record.Exception(() => AfterFirstDraw.Wait(window.Dispatcher)));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [WpfFact]
+    public void A_window_hidden_after_it_was_shown_is_not_cloaked_when_the_call_returns()
+    {
+        var window = new Window { Width = 300, Height = 200, Content = new Border() };
+        try
+        {
+            WindowPlacement.ShowOnPointerScreen(window);
+            AfterFirstDraw.Wait(window.Dispatcher);
+            window.Hide();
+
+            WindowPlacement.ShowOnPointerScreen(window);
+
+            Assert.False(Win32.IsCloaked(Handle(window)));
+            Assert.True(window.IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [WpfFact]
+    public void A_window_hidden_while_minimized_is_not_cloaked_once_it_opens()
+    {
+        var window = new Window { Width = 300, Height = 200 };
+        try
+        {
+            window.Show();
+            window.WindowState = WindowState.Minimized;
+            window.Hide();
+
+            WindowPlacement.ShowOnPointerScreen(window);
+            AfterFirstDraw.Wait(window.Dispatcher);
+
+            Assert.False(Win32.IsCloaked(Handle(window)));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     private static void AssertOpensCenteredAgainAfterHide(Window window)
     {
         try

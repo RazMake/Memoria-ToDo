@@ -253,7 +253,7 @@ Proposed, each a decision to confirm:
 
 Add, Task View, and Configure open the same way, so the rule has one home: the platform, since [code shared by two modules moves to the platform](../modules.md#the-platform-serves-every-module-and-knows-none). Proposed, each a decision to confirm:
 
-- **A third part of the platform's public interface, Show on the pointer's screen, opens a module's window.** The [Task editor](task-editor.md#public-interface) calls it with its Add window. The [Task list](task-list.md#public-interface) and [Configure](configure.md#public-interface) reach it through the [fourth part](#a-closed-window-is-made-again-on-the-next-show). These two, the [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it), the [keyboard parts](#window-modules-read-keys-through-the-platform), the [question dialog](#later-designs-answer-what-these-files-leave-open), and the [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them) are the platform parts the window modules use:
+- **A third part of the platform's public interface, Show on the pointer's screen, opens a module's window.** The [Task editor](task-editor.md#public-interface) calls it with its Add window. The [Task list](task-list.md#public-interface) and [Configure](configure.md#public-interface) reach it through the [fourth part](#a-closed-window-is-made-again-on-the-next-show). These two, the [theme](#the-platform-runs-the-app-and-the-composition-root-builds-it), the [keyboard parts](#window-modules-read-keys-through-the-platform), the [question dialog](#later-designs-answer-what-these-files-leave-open), the [modal dialog](#windows-open-on-the-screen-with-the-mouse-pointer), and the [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them) are the platform parts the window modules use:
 
   ```csharp
   namespace Memoria.ToDo.Desktop.Platform;
@@ -261,10 +261,12 @@ Add, Task View, and Configure open the same way, so the rule has one home: the p
   public static class WindowPlacement
   {
       /// A hidden window: shown centered on the work area of the screen with the mouse pointer,
-      /// then activated. A visible window stays where it is: restored if minimized, then activated.
+      /// then activated. A window shown for the first time stays invisible on the screen until WPF
+      /// has drawn it, which happens after this call returns. A visible window stays where it is:
+      /// restored if minimized, then activated.
       /// Throws InvalidOperationException off the window's UI thread, and Win32Exception when
-      /// Windows can't give the pointer's position, or its screen's work area or scale, or move or
-      /// restore the window.
+      /// Windows can't give the pointer's position, or its screen's work area or scale, or move,
+      /// restore, or cloak the window.
       public static void ShowOnPointerScreen(System.Windows.Window window);
   }
   ```
@@ -272,8 +274,27 @@ Add, Task View, and Configure open the same way, so the rule has one home: the p
 - **The work area is the screen minus the taskbar**, so a window never opens under it. A window wider or taller than the work area starts at the work area's left or top edge, so its title bar stays on the screen, and stays centered in the other direction.
 - **Activated means in front of other windows, with the keyboard focus, but not always on top.** Windows may refuse to bring a window to the front while the user works in another app, and flashes its taskbar button instead ([SetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow)). Not confirmed by a run: that a click on the tray icon, or a global shortcut, lets the app come to the front.
 - **A window hidden while minimized opens in the normal state**, centered like any hidden window. This happens when the user closes the minimized Add window from its taskbar button. Windows can't restore a window without showing it, so the platform restores it while it's cloaked, invisible to the user, and hides it again before placing it ([DWMWA_CLOAK](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute)). Proposed, a decision to confirm. Not confirmed by eye: that nothing flashes on the screen or the taskbar.
+- **A window shown for the first time stays invisible until WPF has drawn it**, so it never shows a white frame before the theme's colors. Windows puts a new window on the screen before WPF has drawn into it, and that first frame is white, even in the dark theme. So the platform cloaks the window before it shows it, as it does to restore a minimized one. It uncloaks the window once the window has loaded and WPF has drawn it: at the step where WPF raises the window's [ContentRendered](https://learn.microsoft.com/en-us/dotnet/api/system.windows.window.contentrendered) event, which comes after the first frame ([WPF's source](https://github.com/dotnet/wpf/blob/v11.0.0-rc.3.26522.148/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Window.cs#L3506-L3535)). That step comes for every window, with content or not, so no window waits for good and no timer is needed. The call returns before that: the window is placed and active, and WPF counts it as visible, but the user sees it a few frames later. A window hidden and shown again isn't cloaked: it never showed white. The user decided this rule covers every window drawn by WPF that the app shows: the windows Show on the pointer's screen opens, and the dialogs the modal dialog part below opens.
+  - **Measured outside the repository, not by a test.** On Windows build 26300 in the dark theme, a tool read one pixel of a WPF window on every frame Windows drew. The first window a fresh app showed was white for 32 to 92 milliseconds in 4 of 4 runs. A window hidden and shown again was white in none of 8 runs. A cloaked window became the active window, in front of other windows, while still cloaked. Then the tool called the platform's own Show on the pointer's screen and Modal dialog. Their first window or dialog was white in none of 11 runs, against 6 of 6 for WPF's plain Show and ShowDialog. It showed the theme's colors about 35 milliseconds later than a plain window: 277 to 312 milliseconds after the call, against 246 to 277. It was active, in front, and uncloaked in every run.
+  - **Failures.** When Windows can't cloak the window, the call throws Win32Exception and the window doesn't show. When Windows can't uncloak it, the call has already returned, so the failure is an [error no module handles](#the-platform-runs-the-app-and-the-composition-root-builds-it): it's logged and shown, the app keeps running, and the window stays invisible. Not confirmed by a test: no test can make Windows refuse. A window closed before that step is left alone: it's already gone from the screen. When WPF's own Show throws after the cloak, the window stays cloaked, and the failure reaches the caller as it would without the cloak. Proposed, a decision to confirm.
+  - **Not confirmed by a run**: what the window's taskbar button shows while it's cloaked.
+  - **Ruled out.** Waiting for ContentRendered itself: WPF raises it only for a window with content, so an empty window would stay invisible, or need a rule against it. Uncloaking anyway after a time limit: the window could still show white, and each open would start a timer. Covering only the windows Show on the pointer's screen opens, or those and the question dialog: the other dialogs would still show white. Showing the window see-through until drawn: WPF makes a window see-through only when it allows transparency, which needs a window with no system frame ([AllowsTransparency](https://learn.microsoft.com/en-us/dotnet/api/system.windows.window.allowstransparency)). Showing each window once, cloaked, when it's made, then hiding it: every window would be drawn twice, and Task View, Configure, Logs, and Contacts are made only when they open.
+- **A part of the platform's public interface, Modal dialog, opens a WPF dialog** under the same rule. The platform's question dialog and Updates' [What is new](updates.md#what-is-new-shows-each-newer-releases-notes) open through it instead of WPF's own ShowDialog. The file and folder pickers and the message boxes are drawn by Windows, not WPF, so they don't need it. The user decided this part:
+
+  ```csharp
+  namespace Memoria.ToDo.Desktop.Platform;
+
+  public static class ModalDialog
+  {
+      /// Shows the window as a modal dialog and returns when it closes. A window shown for the
+      /// first time stays invisible on the screen until WPF has drawn it.
+      /// Throws InvalidOperationException off the window's UI thread, and Win32Exception when
+      /// Windows can't cloak the window.
+      public static void Show(System.Windows.Window dialog);
+  }
+  ```
 - **The app is aware of each screen's own scale**, declared in the composition root's app manifest, so windows stay sharp on a screen whose scale differs from the main one. WPF apps use one scale for every screen unless they declare this ([per-monitor DPI](https://github.com/microsoft/WPF-Samples/tree/main/PerMonitorDPI)). Not confirmed by a run: that a window opens centered on a screen whose scale differs from the main one, since WPF may place a window that isn't shown yet at the main screen's scale.
-- **Its tests are the platform's integration tests**, each showing a plain test window on the real screen. The window modules' UX tests check that Show shows and activates their window, not where it opens.
+- **Its tests are the platform's integration tests**, each showing a plain test window on the real screen. They ask Windows whether the window is cloaked right after the call returns, and again once WPF has drawn it. Modal dialog's tests do the same with a plain dialog. The window modules' UX tests check that Show shows and activates their window, not where it opens or whether it's cloaked.
 
 Windows Forms' `Screen` class, which finds the pointer's screen, was ruled out: it would load Windows Forms into the app for one lookup, and Windows' own functions give the same answer.
 
@@ -632,7 +653,7 @@ public static class CloseCommandHook
 
 ## Later designs answer what these files leave open
 
-The platform's shared [question dialog](../../../src/Desktop/Platform/QuestionDialog.cs) asks modal questions for Task View, Contacts, and Configure. It follows the theme, centers on its owner, and shows ordered answer buttons. Enter picks the default answer; Esc and closing pick Cancel. Its text wraps at 420 device-independent pixels, proposed for confirmation.
+The platform's shared [question dialog](../../../src/Desktop/Platform/QuestionDialog.cs) asks modal questions for Task View, Contacts, and Configure. It follows the theme, centers on its owner, and shows ordered answer buttons. It opens through the [Modal dialog](#windows-open-on-the-screen-with-the-mouse-pointer), so it never shows a white frame first. Enter picks the default answer; Esc and closing pick Cancel. Its text wraps at 420 device-independent pixels, proposed for confirmation.
 
 The desktop design relies on rules that belong to the shared Tasks and Sync modules and to the technology stack, a later row of the [design backlog](../README.md#design-backlog). The table lists each, the desktop modules that need it, and the design that answers it:
 

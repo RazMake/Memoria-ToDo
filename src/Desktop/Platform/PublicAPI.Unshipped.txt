@@ -1,6 +1,8 @@
 Memoria.ToDo.Desktop.Platform.AppRunner
 Memoria.ToDo.Desktop.Platform.QuestionDialog
 static Memoria.ToDo.Desktop.Platform.QuestionDialog.Ask<T>(System.Windows.Window! owner, string! title, string! text, System.Collections.Generic.IReadOnlyList<(string! Label, T Answer)>! answers, T defaultAnswer, T cancelAnswer) -> T
+Memoria.ToDo.Desktop.Platform.ModalDialog
+static Memoria.ToDo.Desktop.Platform.ModalDialog.Show(System.Windows.Window! dialog) -> void
 Memoria.ToDo.Desktop.Platform.AppName
 static Memoria.ToDo.Desktop.Platform.AppName.Value.get -> string!
 Memoria.ToDo.Desktop.Platform.IAppLifetime

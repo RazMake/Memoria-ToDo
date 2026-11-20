@@ -89,7 +89,7 @@ public static class QuestionDialog
                 Choose(key == Key.Enter ? defaultAnswer : cancelAnswer);
             }
         };
-        dialog.ShowDialog();
+        ModalDialog.Show(dialog);
         return answer;
     }
 }

@@ -13,14 +13,14 @@ public static class WindowPlacement
     private const uint NoActivate = 0x10;
     private const int Hide = 0;
     private const int ShowNoActivate = 4;
-    private const int Cloak = 13;
 
     /// <summary>
     /// A hidden window: shown centered on the work area of the screen with the mouse pointer, then activated.
-    /// A visible window stays where it is: restored if minimized, then activated.
+    /// A window shown for the first time stays invisible on the screen until WPF has drawn it, which happens after
+    /// this call returns. A visible window stays where it is: restored if minimized, then activated.
     /// </summary>
     /// <exception cref="InvalidOperationException">Called off the window's UI thread.</exception>
-    /// <exception cref="Win32Exception">Windows can't give the pointer's position, or its screen's work area or scale, or move or restore the window.</exception>
+    /// <exception cref="Win32Exception">Windows can't give the pointer's position, or its screen's work area or scale, or move, restore, or cloak the window.</exception>
     public static void ShowOnPointerScreen(Window window)
     {
         window.VerifyAccess();
@@ -40,7 +40,7 @@ public static class WindowPlacement
             // Covers a window whose WPF state is Minimized but whose native window never was (state set while hidden).
             window.WindowState = WindowState.Normal;
 
-            var shownBefore = PresentationSource.FromVisual(window) is not null;
+            var shownBefore = !FirstShowCloak.IsFirstShow(window);
             var handle = new WindowInteropHelper(window).EnsureHandle();
 
             if (IsIconic(handle))
@@ -77,6 +77,8 @@ public static class WindowPlacement
                 window.SizeChanged += CenterBySize;
                 try
                 {
+                    // After RestoreWhileHidden, which uncloaks the window when it's done.
+                    FirstShowCloak.Start(window);
                     window.Show();
                 }
                 finally
@@ -93,7 +95,7 @@ public static class WindowPlacement
     // hidden. So the window is restored while cloaked (invisible to the user), then hidden again.
     private static void RestoreWhileHidden(nint handle)
     {
-        SetCloaked(handle, true);
+        WindowCloak.Set(handle, true);
         try
         {
             ShowWindow(handle, ShowNoActivate);
@@ -101,17 +103,7 @@ public static class WindowPlacement
         }
         finally
         {
-            SetCloaked(handle, false);
-        }
-    }
-
-    private static void SetCloaked(nint handle, bool cloaked)
-    {
-        var value = cloaked ? 1 : 0;
-        var result = DwmSetWindowAttribute(handle, Cloak, ref value, sizeof(int));
-        if (result != 0)
-        {
-            throw new Win32Exception(result);
+            WindowCloak.Set(handle, false);
         }
     }
 
@@ -131,7 +123,4 @@ public static class WindowPlacement
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(nint window, int command);
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(nint window, int attribute, ref int value, int size);
 }
