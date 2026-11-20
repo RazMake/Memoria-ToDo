@@ -100,10 +100,7 @@ public class AddWindowLookTests
     private static void MovePointerToCorner()
     {
         var work = Win32.WorkAreaOfScreenWith(Win32.CursorPosition());
-        var corner = new Win32.Point { X = work.Left, Y = work.Top };
-        Win32.MoveCursor(corner);
-        var moved = Win32.CursorPosition();
-        Assert.True(moved.X == corner.X && moved.Y == corner.Y, "Windows didn't move the pointer to the corner.");
+        Win32.MoveCursor(new Win32.Point { X = work.Left, Y = work.Top });
     }
 
     /// <summary>What a reader sees of a field: its own properties and those of the border its template draws.</summary>

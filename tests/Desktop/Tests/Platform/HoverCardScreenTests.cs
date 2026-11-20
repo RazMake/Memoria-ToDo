@@ -10,7 +10,7 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 /// <summary>
 /// The hover card of <see cref="HoverCard"/> on screen, driven through its public surface: the pointer rests on a part of an owner and
 /// its card shows in a popup. These cover how the card behaves once it shows: its height, the wheel, a press, and the pointer on it.
-/// The real pointer is put on the owner and the mouse move a pointer there raises is raised, as a pointer arriving does.
+/// The real pointer is put on the owner, and the tests wait until WPF observes it there.
 /// </summary>
 [UX]
 [Collection(ScreenTests.Collection)]
@@ -117,10 +117,11 @@ public class HoverCardScreenTests
         {
             Owner = new Border { Width = 300, Height = 100, Background = System.Windows.Media.Brushes.White };
             Card = new Border { Width = 120, Height = cardHeight, Background = System.Windows.Media.Brushes.LightYellow };
-            _ = new HoverCard(Owner, _ =>
+            _ = new HoverCard(Owner, point =>
             {
                 Asked++;
-                return Task.FromResult<HoverPart?>(new HoverPart(new Rect(10, 10, 60, 20), Card));
+                var box = new Rect(10, 10, 60, 20);
+                return Task.FromResult<HoverPart?>(box.Contains(point) ? new HoverPart(box, Card) : null);
             });
             _window = new Window { Content = Owner, Width = 400, Height = 300, WindowStartupLocation = WindowStartupLocation.Manual, Left = 50, Top = 50 };
             _window.Show();
@@ -139,9 +140,7 @@ public class HoverCardScreenTests
         public void MoveOver(FrameworkElement element, Point? at = null)
         {
             var inElement = at ?? new Point(element.ActualWidth / 2, element.ActualHeight / 2);
-            var onScreen = element.PointToScreen(inElement);
-            Win32.MoveCursor(new Win32.Point { X = (int)onScreen.X, Y = (int)onScreen.Y });
-            element.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.PreviewMouseMoveEvent, Source = element });
+            RealPointer.MoveOver(_window, element, inElement);
         }
 
         public void Wheel(FrameworkElement element)

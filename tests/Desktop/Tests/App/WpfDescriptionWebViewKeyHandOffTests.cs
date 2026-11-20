@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.Platform.Tests;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
 using Xunit;

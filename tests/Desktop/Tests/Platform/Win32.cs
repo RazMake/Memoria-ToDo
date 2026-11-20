@@ -7,6 +7,7 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 internal static class Win32
 {
     public const int MonitorDefaultToNearest = 2;
+    private const int MonitorDefaultToNull = 0;
     public const uint WmClose = 0x0010;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -47,8 +48,9 @@ internal static class Win32
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point point);
-    [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern nint MonitorFromPoint(Point point, int flags);
+    [DllImport("user32.dll")] private static extern nint WindowFromPoint(Point point);
     [DllImport("user32.dll")] private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
     [DllImport("user32.dll")] private static extern bool EnumDisplayMonitors(nint dc, nint clip, EnumMonitorsProc callback, nint lParam);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(nint window, out Rect rect);
@@ -71,7 +73,29 @@ internal static class Win32
 
     public static Point CursorPosition() => GetCursorPos(out var point) ? point : throw new InvalidOperationException("No pointer position.");
 
-    public static void MoveCursor(Point point) => SetCursorPos(point.X, point.Y);
+    /// <summary>
+    /// Puts the pointer at the point. Throws when Windows refuses, or puts the pointer more than a pixel away, as it does past a
+    /// screen's edge. A pixel is allowed because this process isn't per-monitor DPI aware, so Windows rounds the point on a screen
+    /// scaled unlike the main one.
+    /// </summary>
+    public static void MoveCursor(Point point)
+    {
+        if (!SetCursorPos(point.X, point.Y))
+        {
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        }
+
+        var moved = CursorPosition();
+        if (Math.Abs(moved.X - point.X) > 1 || Math.Abs(moved.Y - point.Y) > 1)
+        {
+            throw new InvalidOperationException($"Windows put the pointer at ({moved.X}, {moved.Y}), not at ({point.X}, {point.Y}).");
+        }
+    }
+
+    public static bool IsOnScreen(Point point) => MonitorFromPoint(point, MonitorDefaultToNull) != 0;
+
+    /// <summary>The window on top at the point, which gets the pointer's moves there.</summary>
+    public static nint WindowAt(Point point) => WindowFromPoint(point);
 
     public static Rect WindowRect(nint window) => GetWindowRect(window, out var rect) ? rect : throw new InvalidOperationException("No window rectangle.");
 

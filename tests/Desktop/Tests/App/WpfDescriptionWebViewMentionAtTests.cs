@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Media;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Rendering;
@@ -170,14 +172,16 @@ public class WpfDescriptionWebViewMentionAtTests
         using var harness = new DescriptionWebViewHarness();
         var core = await ShowPage(harness, $"Ask {Ana} and {Bo} now");
         harness.Control.ZoomFactor = 2;
-        // The browser tells the page its new zoom a moment later; the page's own pixel ratio says when it has it.
+        // The browser tells the page its new zoom a moment later; the page's own pixel ratio, the zoom times the screen's
+        // scale, says when it has it.
+        var ratio = 2 * VisualTreeHelper.GetDpi(harness.Control).DpiScaleX;
         var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (await core.ExecuteScriptAsync("window.devicePixelRatio") is not ("2" or "2.0") && DateTime.UtcNow < deadline)
+        while (Math.Abs(await PixelRatio(core) - ratio) > 0.001 && DateTime.UtcNow < deadline)
         {
             await Task.Yield();
         }
 
-        Assert.Equal("2", await core.ExecuteScriptAsync("window.devicePixelRatio"));
+        Assert.Equal(ratio, await PixelRatio(core), 3);
         await PageSettled(harness);
         // The test's own script reads the span's box in CSS pixels, as laid out at this zoom; the screen shows each of them twice as big.
         var css = await BoxOf(core, 1);
@@ -192,6 +196,9 @@ public class WpfDescriptionWebViewMentionAtTests
         Assert.InRange(found.Box.Width, onScreen.Width - 8, onScreen.Width + 8);
         Assert.InRange(found.Box.Height, onScreen.Height - 8, onScreen.Height + 8);
     }
+
+    private static async Task<double> PixelRatio(CoreWebView2 core) =>
+        double.Parse(await core.ExecuteScriptAsync("window.devicePixelRatio"), CultureInfo.InvariantCulture);
 
     private static async Task<CoreWebView2> ShowPage(DescriptionWebViewHarness harness, string markdown)
     {
