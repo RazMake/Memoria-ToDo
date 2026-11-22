@@ -1,4 +1,5 @@
 using System.Windows;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Platform;
 
@@ -32,6 +33,8 @@ internal sealed class HoverRest
     private readonly ITimer _timer;
     private readonly ITimer _graceTimer;
     private readonly Action _replaced;
+    private readonly string _owner;
+    private readonly ILogger _logger;
     private bool _active;
     private bool _onCard;
     private bool _graceRunning;
@@ -42,14 +45,18 @@ internal sealed class HoverRest
     private int _token;
     private Rect? _shown;
 
-    public HoverRest(TimeProvider time, TimeSpan hoverTime, HoverCardSlot slot, IHoverRestOutput output, bool windowActive)
+    public HoverRest(TimeProvider time, TimeSpan hoverTime, HoverCardSlot slot, IHoverRestOutput output, bool windowActive, string owner, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(slot);
         ArgumentNullException.ThrowIfNull(output);
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(logger);
         _hoverTime = hoverTime;
         _slot = slot;
         _output = output;
+        _owner = owner;
+        _logger = logger;
         _active = windowActive;
         _replaced = Replaced;
         _timer = time.CreateTimer(_ => Rested(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
@@ -63,43 +70,57 @@ internal sealed class HoverRest
     /// </summary>
     public void PointerMoved(Point at)
     {
+        bool graceCancelled;
         lock (_gate)
         {
-            if (!_active || _onCard)
-            {
-                return;
-            }
-
-            if (_shown is { } box)
-            {
-                if (box.Contains(at))
-                {
-                    CancelGrace();
-                    CancelRest();
-                    return;
-                }
-
-                if (!_graceRunning)
-                {
-                    StartGrace();
-                }
-            }
-
-            if (_point == at)
-            {
-                return;
-            }
-
-            CancelRest();
-            _point = at;
-            _resting = true;
-            _timer.Change(_hoverTime, Timeout.InfiniteTimeSpan);
+            graceCancelled = Moved(at);
         }
+
+        if (graceCancelled)
+        {
+            LogGraceCancelled("Part");
+        }
+    }
+
+    private bool Moved(Point at)
+    {
+        if (!_active || _onCard)
+        {
+            return false;
+        }
+
+        if (_shown is { } box)
+        {
+            if (box.Contains(at))
+            {
+                var graceRunning = _graceRunning;
+                CancelGrace();
+                CancelRest();
+                return graceRunning;
+            }
+
+            if (!_graceRunning)
+            {
+                StartGrace();
+            }
+        }
+
+        if (_point == at)
+        {
+            return false;
+        }
+
+        CancelRest();
+        _point = at;
+        _resting = true;
+        _timer.Change(_hoverTime, Timeout.InfiniteTimeSpan);
+        return false;
     }
 
     /// <summary>The pointer is on the shown card. Ends a grace period and any wait for another part; the card stays until the pointer leaves it.</summary>
     public void CardEntered()
     {
+        bool graceCancelled;
         lock (_gate)
         {
             if (_shown is null)
@@ -108,8 +129,14 @@ internal sealed class HoverRest
             }
 
             _onCard = true;
+            graceCancelled = _graceRunning;
             CancelGrace();
             CancelRest();
+        }
+
+        if (graceCancelled)
+        {
+            LogGraceCancelled("Card");
         }
     }
 
@@ -129,6 +156,44 @@ internal sealed class HoverRest
     }
 
     public void PointerLeft() => StopAndClose();
+
+    /// <summary>Leaving the owner allows the same crossing time as leaving a part, regardless of the card's enter-event order.</summary>
+    public void OwnerLeft()
+    {
+        string? outcome = null;
+        var waitCancelled = false;
+        lock (_gate)
+        {
+            if (_shown is not null)
+            {
+                if (_onCard)
+                {
+                    outcome = "OnCard";
+                }
+                else
+                {
+                    waitCancelled = _resting || _awaiting;
+                    CancelRest();
+                    outcome = _graceRunning ? "GraceRunning" : "GraceStarted";
+                    if (!_graceRunning)
+                    {
+                        StartGrace();
+                    }
+                }
+
+            }
+        }
+
+        if (outcome is null)
+        {
+            PointerLeft();
+            return;
+        }
+
+        _logger.Debug(
+            "The pointer left {Owner} with a card shown; Outcome {Outcome}, GraceMs {GraceMs}, WaitCancelled {WaitCancelled}",
+            _owner, outcome, _hoverTime.TotalMilliseconds, waitCancelled);
+    }
 
     /// <summary>A mouse button went down, on the card or elsewhere. A press on the card changes nothing.</summary>
     public void ButtonPressed(bool onCard)
@@ -256,6 +321,7 @@ internal sealed class HoverRest
     private void GraceClosed(int grace)
     {
         bool wasShowing;
+        bool waitPending;
         lock (_gate)
         {
             if (!_graceRunning || _onCard || grace != _grace)
@@ -265,8 +331,16 @@ internal sealed class HoverRest
 
             // Only the card goes; a rest still pending on another part goes on to open its card.
             CancelGrace();
+            waitPending = _resting || _awaiting;
             wasShowing = _shown is not null;
             _shown = null;
+        }
+
+        if (wasShowing)
+        {
+            _logger.Debug(
+                "The grace period of the card of {Owner} ended and closed it; GraceMs {GraceMs}, WaitPending {WaitPending}",
+                _owner, _hoverTime.TotalMilliseconds, waitPending);
         }
 
         Closed(wasShowing);
@@ -278,6 +352,11 @@ internal sealed class HoverRest
         _grace++;
         _graceTimer.Change(_hoverTime, Timeout.InfiniteTimeSpan);
     }
+
+    private void LogGraceCancelled(string reached) =>
+        _logger.Debug(
+            "The pointer reached the {Reached} of {Owner} within the grace period, which ended without closing the card",
+            reached, _owner);
 
     private void CancelGrace()
     {

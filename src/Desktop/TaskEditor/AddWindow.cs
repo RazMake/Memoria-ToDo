@@ -14,15 +14,16 @@ public static class AddWindow
     /// <summary>Creates the Add window. It opens only on <see cref="IAddWindow.Show"/>.</summary>
     public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, ILogger logger)
+        CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IPointerPosition pointer, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(tagColors);
         ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(saveKeys);
+        ArgumentNullException.ThrowIfNull(pointer);
         ArgumentNullException.ThrowIfNull(logger);
-        var window = new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, logger), updates, saveKeys, logger);
+        var window = new AddWindowView(tasks, new TaskEditorControl(tasks, tagColors, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, pointer, logger), updates, saveKeys, logger);
         closeWindowKeys.Attach(window);
         return window;
     }

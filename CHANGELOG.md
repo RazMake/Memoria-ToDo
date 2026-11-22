@@ -4,6 +4,10 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 <!-- How to write entries, and when: docs/contributing/changelog.md -->
 
+## Unreleased
+
+- A contact card no longer closes immediately when you move the pointer out of the text toward the card. It gives you the same short time to cross as when you leave the mention itself.
+
 ## 1.2.0
 
 - The app now keeps a log of what it does, such as syncs, added, changed, and deleted tasks and contacts, and every error, with the time to the millisecond. When the app says files can't be loaded, the log names each file and why. The log stays on your computer, never holds passwords or keys, and cleans up after itself: entries older than two weeks are deleted, and it never grows past about 30 MB.

@@ -64,7 +64,7 @@ The table lists what each part logs at Information, Warning, and Error, beyond t
 | App: the composition root and its adapters | Start with Windows turned on or off; the repository folder chosen | Each failure an adapter catches, such as the web view's, the clipboard's, or the key file's; a log file the log source can't read, at Warning; entries the writer lost, at Warning, as [below](#a-log-that-cant-be-written-never-stops-the-app) |
 | [Logs window](desktop/logs.md) | | A log folder it can't list, at Error |
 
-The [Formatted view](desktop/formatted-view.md) logs nothing: it passes each failure to the window that shows it, which logs it.
+The [Formatted view](desktop/formatted-view.md) passes each failure to the window that shows it, which logs it. Its [hover cards](desktop/README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) use the caller's logger for their Debug entries.
 
 The user decided that a sync pass's start and end are entries of their own, apart from the status changes. The start carries a `Trigger` value: `Start`, `Manual`, `Edit`, `Retry`, or `Periodic`. The end carries `Fetched` (the remote had new commits), `Merged` (they were combined with local ones), and `Pushed` (local commits went up), each true or false. It also carries `Skipped`, the count of files the merge skipped, and `DurationMs`. A pass that fails still logs its end, after its failure entry, with `DurationMs` only: what Git did before the failure isn't known. Git reports no finer counts without extra work on every pass. A skipped file's Warning carries `RequiresUpdate`, true or false. A tag-order change names the tag only, since its old and new places are internal ranks. A group move names the group's file.
 
@@ -156,6 +156,7 @@ No new type: modules use Serilog's `ILogger`. Each create method below takes the
 - The desktop platform's [Run the app](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it): `AppRunner.Run(Func<IAppLifetime> createLifetime, ILogger logger)`.
 - The desktop platform's [store failures](desktop/README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them): `StoreFailures.Run(Action call, Func<Exception, string?> messageOf, Action<string> report, ILogger logger)`, which logs the failure at Error when it reports a message.
 - The desktop platform's [window parts](desktop/README.md#windows-open-on-the-screen-with-the-mouse-pointer): `WindowPlacement.ShowOnPointerScreen(Window window, ILogger logger)`, `ModalDialog.Show(Window dialog, ILogger logger)`, `new SingleWindow(Func<Window> createWindow, ILogger logger)`, and `QuestionDialog.Ask<T>(..., T cancelAnswer, ILogger logger)`. The caller passes its own logger, as the user decided, so each Debug entry they write names the module whose window it is.
+- The desktop platform's [hover card](desktop/README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) and the [Formatted view's constructors](desktop/formatted-view.md#public-interface) also take the caller's logger, under the same rule as the window parts.
 - [Shell](desktop/shell.md#public-interface): `TrayApp.Create`, which also takes the [Logs window](desktop/logs.md#public-interface).
 - [Task editor](desktop/task-editor.md#public-interface): `AddWindow.Create`.
 - [Task list](desktop/task-list.md#public-interface): `ViewTasksWindow.Create`.

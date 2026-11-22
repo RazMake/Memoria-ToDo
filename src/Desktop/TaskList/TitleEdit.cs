@@ -18,12 +18,12 @@ internal sealed class TitleEdit : IFieldEdit
     private readonly TitleEditor _editor;
 
     public TitleEdit(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
-        SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested, ILogger logger)
+        SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested, IPointerPosition pointer, ILogger logger)
     {
         _tasks = tasks;
         Started = task;
         Tag = task.Tags.FirstOrDefault();
-        _editor = new TitleEditor(tasks, contacts, palette, theme, time, clipboard, saveKeys, logger) { Value = task.Title };
+        _editor = new TitleEditor(tasks, contacts, palette, theme, time, clipboard, saveKeys, pointer, logger) { Value = task.Title };
         _editor.SaveRequested += (_, _) => saveRequested();
         _editor.CancelRequested += (_, _) => cancelRequested();
     }

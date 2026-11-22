@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using Memoria.ToDo.Testing;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
 
@@ -48,7 +49,11 @@ internal static class Win32
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point point);
-    [DllImport("user32.dll", SetLastError = true)] private static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] private static extern nint GetMessageExtraInfo();
+    [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll")] private static extern bool IsChild(nint parent, nint window);
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
     [DllImport("user32.dll")] private static extern nint MonitorFromPoint(Point point, int flags);
     [DllImport("user32.dll")] private static extern nint WindowFromPoint(Point point);
     [DllImport("user32.dll")] private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
@@ -61,6 +66,10 @@ internal static class Win32
     [DllImport("user32.dll")] private static extern bool PostMessage(nint window, uint message, nint wParam, nint lParam);
 
     private const int DwmwaCloaked = 14;
+    private const int SmXVirtualScreen = 76;
+    private const int SmYVirtualScreen = 77;
+    private const int SmCxVirtualScreen = 78;
+    private const int SmCyVirtualScreen = 79;
 
     [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(nint window, int attribute, out int value, int size);
 
@@ -73,11 +82,14 @@ internal static class Win32
 
     public static Point CursorPosition() => GetCursorPos(out var point) ? point : throw new InvalidOperationException("No pointer position.");
 
+    public static nint MessageExtraInfo() => GetMessageExtraInfo();
+
     /// <summary>
     /// Puts the pointer at the point. Throws when Windows refuses, or puts the pointer more than a pixel away, as it does past a
     /// screen's edge. A pixel is allowed because this process isn't per-monitor DPI aware, so Windows rounds the point on a screen
     /// scaled unlike the main one.
     /// </summary>
+    [RealInput]
     public static void MoveCursor(Point point)
     {
         if (!SetCursorPos(point.X, point.Y))
@@ -93,6 +105,23 @@ internal static class Win32
     }
 
     public static bool IsOnScreen(Point point) => MonitorFromPoint(point, MonitorDefaultToNull) != 0;
+
+    public static Rect VirtualScreen()
+    {
+        var left = GetSystemMetrics(SmXVirtualScreen);
+        var top = GetSystemMetrics(SmYVirtualScreen);
+        return new Rect
+        {
+            Left = left,
+            Top = top,
+            Right = left + GetSystemMetrics(SmCxVirtualScreen),
+            Bottom = top + GetSystemMetrics(SmCyVirtualScreen),
+        };
+    }
+
+    public static nint ForegroundWindow() => GetForegroundWindow();
+
+    public static bool IsChildOf(nint window, nint parent) => IsChild(parent, window);
 
     /// <summary>The window on top at the point, which gets the pointer's moves there.</summary>
     public static nint WindowAt(Point point) => WindowFromPoint(point);

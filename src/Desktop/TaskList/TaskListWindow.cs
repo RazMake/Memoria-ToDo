@@ -100,7 +100,7 @@ internal sealed class TaskListWindow : Window
         Height = 720;
         MinWidth = 680;
 
-        _description = new FormattedDescription(webView, theme, browser) { MentionCard = CardOf };
+        _description = new FormattedDescription(webView, theme, browser, pointer, logger) { MentionCard = CardOf };
         _description.OtherLinkClicked += (_, address) => FollowLink(address);
         _description.OpenFailed += (_, failure) =>
         {
@@ -120,7 +120,7 @@ internal sealed class TaskListWindow : Window
         _deletion = new TaskDeletion(tasks, _content, _pending, Report, Refresh, logger);
         _cleanup = new EditCleanup(tasks, _pending, Report, logger);
         _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report, logger);
-        _editing = new ListEditing(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit, logger);
+        _editing = new ListEditing(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit, pointer, logger);
         _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow, task => LiveMentions.Of(contacts, task.Title, title: true), pointer);
         _groupActions = new GroupActions(tagOrder, Report, logger);
         _header.ShowMessage(message);
@@ -361,7 +361,7 @@ internal sealed class TaskListWindow : Window
 
     private TaskRow CreateRow(TaskItem task)
     {
-        var row = new TaskRow(task, _theme, _browser, _pointer);
+        var row = new TaskRow(task, _theme, _browser, _pointer, _logger);
         row.SelectRequested += (_, _) => SelectTask(row.Task.Id);
         row.EditRequested += (_, _) => BeginEditOf(row.Task, row);
         row.EditTitleRequested += (_, _) => BeginTitleEditOf(row.Task, row);

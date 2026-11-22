@@ -1,6 +1,6 @@
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Dispose() -> void
-Memoria.ToDo.Desktop.FormattedView.FormattedDescription.FormattedDescription(Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView! webView, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser) -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedDescription.FormattedDescription(Memoria.ToDo.Desktop.FormattedView.IDescriptionWebView! webView, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser, Memoria.ToDo.Desktop.Platform.IPointerPosition! pointer, Serilog.ILogger! logger) -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.ImageResized -> System.EventHandler<Memoria.ToDo.Desktop.FormattedView.ImageResize!>?
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.IsPreview.get -> bool
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.IsPreview.set -> void
@@ -26,7 +26,7 @@ Memoria.ToDo.Desktop.FormattedView.FormattedDescription.Markdown.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.OpenFailed -> System.EventHandler<System.Exception!>?
 Memoria.ToDo.Desktop.FormattedView.FormattedDescription.OtherLinkClicked -> System.EventHandler<string!>?
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle
-Memoria.ToDo.Desktop.FormattedView.FormattedTitle.FormattedTitle(Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser) -> void
+Memoria.ToDo.Desktop.FormattedView.FormattedTitle.FormattedTitle(Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.FormattedView.IDefaultBrowser! browser, Memoria.ToDo.Desktop.Platform.IPointerPosition! pointer, Serilog.ILogger! logger) -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.get -> string!
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.Markdown.set -> void
 Memoria.ToDo.Desktop.FormattedView.FormattedTitle.MentionCard.get -> System.Func<Memoria.ToDo.Shared.Rendering.Mention!, System.Windows.FrameworkElement?>?

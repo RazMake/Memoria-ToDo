@@ -107,7 +107,8 @@ public class AddWindowMentionCardTests
         screen.Edit(EditorFields.Description, $"Ask {Ana} now", 0);
         var editor = EditorOf(screen, EditorFields.Description);
         LoadedCards.Clear();
-        RealPointer.MoveOver(screen.Window, editor, InsideAt(screen, EditorFields.Description, 5));
+        SimulatedPointer.RequireActiveWindow(editor);
+        SimulatedPointer.Move(editor, screen.Services.Pointer, InsideAt(screen, EditorFields.Description, 5));
 
         Assert.True(WaitForACard(editor.Dispatcher), "The card didn't show.");
     }

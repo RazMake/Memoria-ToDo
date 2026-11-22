@@ -3,6 +3,7 @@
 name: Build, test, and release
 
 on:
+  workflow_dispatch:
   push:
     # A branch push checks the code. A tag push (not a branch push) runs the release job only.
     branches: ["**"]
@@ -32,7 +33,7 @@ jobs:
   # Every branch push builds the code and runs the unit tests. A push to the default branch also saves the
   # run's files for the timing job.
   unit-tests:
-    if: github.ref_type == 'branch'
+    if: github.event_name == 'push' && github.ref_type == 'branch'
     runs-on: windows-2025
     env:
       TIMED: ${{ github.ref_name == github.event.repository.default_branch }}
@@ -64,7 +65,7 @@ jobs:
   # each other, and GitHub keeps only the newest waiting one, so two runs can't each open an issue.
   time-unit-run:
     needs: unit-tests
-    if: github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch
+    if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch
     runs-on: windows-2025
     concurrency:
       group: time-unit-run
@@ -107,10 +108,25 @@ jobs:
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+  full-tests:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Build and run every test
+        run: &all-tests |
+          node .agents/desktop-check.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet test "-p:MemoriaAllTestKinds=true"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   # A version tag runs every test, then packs and publishes the release. Any failure before the last step
   # publishes nothing.
   release:
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: windows-2025
     permissions:
       contents: write
@@ -149,9 +165,7 @@ jobs:
           "APP_NAME=$name" >> $env:GITHUB_ENV
       - name: Build and run every test
         # MemoriaAllTestKinds drops the unit-only filter; the hang dump is on in every run.
-        run: |
-          dotnet test "-p:MemoriaAllTestKinds=true"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: *all-tests
       - name: Publish the desktop app, self-contained for x64
         run: dotnet publish $env:APP_PROJECT -c Release -r win-x64 --self-contained true -o publish "-p:Version=$env:VERSION"
       - name: Restore the pinned vpk

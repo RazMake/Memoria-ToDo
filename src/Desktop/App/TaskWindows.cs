@@ -26,7 +26,7 @@ internal static class TaskWindows
         ArgumentNullException.ThrowIfNull(addLogger);
         ArgumentNullException.ThrowIfNull(viewLogger);
         return (AddWindow.Create(tasks, tasks.TagColors, contacts, Palette.Colors, theme, time, clipboard, imageFiles, files, closeWindowKeys, updates, saveKeys,
-                     addLogger),
+                     pointer, addLogger),
          ViewTasksWindow.Create(tasks, tasks.TagColors, tasks.TagOrder, contacts, Palette.Colors, theme, time, clipboard, imageFiles, files,
                      createWebView, browser, sync, closeWindowKeys, updates, saveKeys, pointer, viewLogger));
     }

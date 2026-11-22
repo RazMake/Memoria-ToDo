@@ -18,11 +18,13 @@ public sealed class FormattedDescription : ContentControl, IDisposable
     private bool _disposed;
 
     /// <summary>Takes ownership of <paramref name="webView"/>: releasing the description releases it.</summary>
-    public FormattedDescription(IDescriptionWebView webView, ITheme theme, IDefaultBrowser browser)
+    public FormattedDescription(IDescriptionWebView webView, ITheme theme, IDefaultBrowser browser, IPointerPosition pointer, Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(webView);
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(browser);
+        ArgumentNullException.ThrowIfNull(pointer);
+        ArgumentNullException.ThrowIfNull(logger);
         _webView = webView;
         _shown = new ShownDescription(theme, () => webView.CloneAddress, webView.Show);
         _links = new LinkOpener(
@@ -34,7 +36,7 @@ public sealed class FormattedDescription : ContentControl, IDisposable
         webView.Failed += OnFailed;
         webView.ImageResized += OnImageResized;
         _themeFollower = new ThemeFollower(this, theme, OnThemeChanged);
-        _ = new HoverCard(this, PartAt);
+        _ = new HoverCard(this, PartAt, pointer, logger);
     }
 
     /// <summary>

@@ -353,12 +353,12 @@ The user decided that the Task editor may use [Updates](updates.md), for Add's [
 ```csharp
 public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette,
     ITheme theme, TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-    CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys);
+    CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IPointerPosition pointer);
 ```
 
 With the [mention list and chips](#typing-an-at-sign-mentions-a-contact), the user decided that the Task editor uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own). Proposed, a decision to confirm: Contacts' [`IContacts contacts`](../contacts.md#public-interface) joins `AddWindow.Create` right after `tagColors`, and the Title and Description editors' constructors right after `tasks`, so the "@" list searches them and the chips show live text. No other member changes. This is not implemented.
 
-For the [chips' cards](#resting-the-pointer-on-a-chip-shows-the-contacts-card), the user decided that the Task editor may use the [Contact list](contact-list.md#public-interface), for its contact card, as the [module map](../modules.md#module-map) says. No constructor changes: the editors already take Contacts and the theme, which the card needs.
+For the [chips' cards](#resting-the-pointer-on-a-chip-shows-the-contacts-card), the user decided that the Task editor may use the [Contact list](contact-list.md#public-interface), for its contact card, as the [module map](../modules.md#module-map) says. The editors already take Contacts and the theme, which the card needs. The user also decided that `AddWindow.Create`, `TitleEditor`, and `DescriptionEditor` take the platform's [pointer position](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part), immediately before their logger, and pass it to each hover card. They reject a null pointer before wiring events.
 
 Proposed, a decision to confirm, for the [popup "@" list](#typing-an-at-sign-mentions-a-contact) and the [alias list](#a-plain-text-box-can-offer-contacts-by-alias): the Task editor publishes the alias list, which the Task list attaches to its search box:
 
@@ -397,7 +397,7 @@ public interface IAddWindow
 public sealed class TitleEditor : UserControl
 {
     public TitleEditor(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, SaveKeys saveKeys, ILogger logger);
+        IClipboard clipboard, SaveKeys saveKeys, IPointerPosition pointer, ILogger logger);
 
     /// The title's Markdown. Setting it replaces the text and starts HasChanges over.
     public string Value { get; set; }
@@ -420,7 +420,8 @@ public sealed class TitleEditor : UserControl
 public sealed class DescriptionEditor : UserControl
 {
     public DescriptionEditor(ITasks tasks, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, ILogger logger);
+        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys,
+        IPointerPosition pointer, ILogger logger);
 
     /// The task the description belongs to; an added image is kept for it.
     public string TaskId { get; set; }

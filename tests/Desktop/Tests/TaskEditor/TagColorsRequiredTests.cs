@@ -17,7 +17,7 @@ public class TagColorsRequiredTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             _services.Tasks, null!, _services.Contacts, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
-            _services.ImageFiles, _services.Files, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys, Logger.None));
+            _services.ImageFiles, _services.Files, _services.CloseWindowKeys, _services.Updates, _services.SaveKeys, _services.Pointer, Logger.None));
 
         Assert.Equal("tagColors", failure.ParamName);
     }
@@ -27,7 +27,7 @@ public class TagColorsRequiredTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => new TaskEditorControl(
             _services.Tasks, null!, _services.Contacts, Palette.Colors, _services.Theme, _services.Time, _services.Clipboard,
-            _services.ImageFiles, _services.Files, _services.SaveKeys, Serilog.Core.Logger.None));
+            _services.ImageFiles, _services.Files, _services.SaveKeys, _services.Pointer, Serilog.Core.Logger.None));
 
         Assert.Equal("tagColors", failure.ParamName);
     }

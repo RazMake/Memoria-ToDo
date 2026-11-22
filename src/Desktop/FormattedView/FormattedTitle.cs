@@ -20,10 +20,12 @@ public sealed class FormattedTitle : TextBlock
     private string? _shownMarkdown;
     private bool _shownDark;
 
-    public FormattedTitle(ITheme theme, IDefaultBrowser browser)
+    public FormattedTitle(ITheme theme, IDefaultBrowser browser, IPointerPosition pointer, Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(browser);
+        ArgumentNullException.ThrowIfNull(pointer);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _theme = theme;
         _links = new LinkOpener(
@@ -31,7 +33,7 @@ public sealed class FormattedTitle : TextBlock
             address => OtherLinkClicked?.Invoke(this, address),
             failure => OpenFailed?.Invoke(this, failure));
         _ = new ThemeFollower(this, theme, Show);
-        _ = new HoverCard(this, PartAt);
+        _ = new HoverCard(this, PartAt, pointer, logger);
     }
 
     /// <summary>

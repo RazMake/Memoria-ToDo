@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -10,13 +11,26 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 /// <summary>
 /// The hover card of <see cref="HoverCard"/> on screen, driven through its public surface: the pointer rests on a part of an owner and
 /// its card shows in a popup. These cover how the card behaves once it shows: its height, the wheel, a press, and the pointer on it.
-/// The real pointer is put on the owner, and the tests wait until WPF observes it there.
+/// The pointer is a shared fake, driven by routed events without moving the Windows cursor.
 /// </summary>
 [UX]
 [Collection(ScreenTests.Collection)]
 public class HoverCardScreenTests
 {
     private static readonly TimeSpan Bound = TimeSpan.FromSeconds(10);
+
+    [WpfFact]
+    public async Task The_part_is_asked_for_where_the_pointer_reports_it_in_the_owner_whatever_the_real_cursor_does()
+    {
+        using var screen = new CardScreen();
+        var shown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        screen.Card.Loaded += (_, _) => shown.TrySetResult();
+
+        screen.RestOnPart();
+
+        await shown.Task.WaitAsync(Bound);
+        Assert.Equal(new Point(30, 20), Assert.Single(screen.AskedAt));
+    }
 
     [WpfFact]
     public void A_card_taller_than_the_work_area_of_its_screen_is_cut_to_it_and_scrolls_inside()
@@ -90,7 +104,7 @@ public class HoverCardScreenTests
         Assert.True(screen.WaitUntil(() => screen.Card.IsLoaded), "The card didn't show.");
         var asked = screen.Asked;
 
-        screen.MoveOver(screen.Card);
+        screen.MoveOntoCard();
 
         Assert.False(screen.WaitUntil(() => !screen.Card.IsLoaded, TimeSpan.FromMilliseconds(2 * SystemParameters.MouseHoverTime.TotalMilliseconds)), "The pointer on the card closed it.");
         Assert.Equal(asked, screen.Asked);
@@ -119,10 +133,10 @@ public class HoverCardScreenTests
             Card = new Border { Width = 120, Height = cardHeight, Background = System.Windows.Media.Brushes.LightYellow };
             _ = new HoverCard(Owner, point =>
             {
-                Asked++;
+                AskedAt.Add(point);
                 var box = new Rect(10, 10, 60, 20);
                 return Task.FromResult<HoverPart?>(box.Contains(point) ? new HoverPart(box, Card) : null);
-            });
+            }, Pointer, Serilog.Core.Logger.None);
             _window = new Window { Content = Owner, Width = 400, Height = 300, WindowStartupLocation = WindowStartupLocation.Manual, Left = 50, Top = 50 };
             _window.Show();
             _window.UpdateLayout();
@@ -133,14 +147,22 @@ public class HoverCardScreenTests
         public Border Card { get; }
 
         /// <summary>How many times the owner was asked for the part at a point.</summary>
-        public int Asked { get; private set; }
+        public int Asked => AskedAt.Count;
 
-        public void RestOnPart() => MoveOver(Owner, new Point(30, 20));
+        public List<Point> AskedAt { get; } = [];
 
-        public void MoveOver(FrameworkElement element, Point? at = null)
+        public FakeDragPointer Pointer { get; } = new();
+
+        public void RestOnPart()
         {
-            var inElement = at ?? new Point(element.ActualWidth / 2, element.ActualHeight / 2);
-            RealPointer.MoveOver(_window, element, inElement);
+            SimulatedPointer.RequireActiveWindow(Owner);
+            SimulatedPointer.Move(Owner, Pointer, new Point(30, 20));
+        }
+
+        public void MoveOntoCard()
+        {
+            SimulatedPointer.Leave(Owner);
+            SimulatedPointer.Enter(Ancestor<ScrollViewer>(Card)!);
         }
 
         public void Wheel(FrameworkElement element)

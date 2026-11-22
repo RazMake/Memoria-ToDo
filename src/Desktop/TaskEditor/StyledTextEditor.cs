@@ -30,9 +30,11 @@ internal sealed class StyledTextEditor : TextEditor, ITextField, IPopupPlace
     private readonly MarkdownStyler _styler;
     private bool _stylingQueued;
 
-    public StyledTextEditor(string automationId, MarkdownField field, ITheme theme, IContacts contacts)
+    public StyledTextEditor(string automationId, MarkdownField field, ITheme theme, IContacts contacts, IPointerPosition pointer, Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(contacts);
+        ArgumentNullException.ThrowIfNull(pointer);
+        ArgumentNullException.ThrowIfNull(logger);
         _contacts = contacts;
         _theme = theme;
         _field = field;
@@ -69,7 +71,7 @@ internal sealed class StyledTextEditor : TextEditor, ITextField, IPopupPlace
         TextArea.LostKeyboardFocus += (_, _) => FocusLost?.Invoke();
         TextArea.TextView.ScrollOffsetChanged += (_, _) => Scrolled?.Invoke();
         _ = new ThemeFollower(this, theme, QueueStyling);
-        _ = new HoverCard(this, PartAt);
+        _ = new HoverCard(this, PartAt, pointer, logger);
     }
 
     /// <summary>The field's mentions, shown as chips.</summary>

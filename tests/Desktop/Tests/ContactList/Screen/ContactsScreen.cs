@@ -289,7 +289,7 @@ internal sealed class ContactsScreen : IDisposable
         source.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
         { RoutedEvent = UIElement.PreviewMouseDownEvent, Source = source });
         _services.Pointer.Position = new Point(5 + far, 5);
-        source.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseMoveEvent, Source = source });
+        SimulatedPointer.Raise(source, Mouse.MouseMoveEvent);
         _services.Pointer.IsLeftButtonDown = false;
 
         if (_services.Pointer.Drags.Count == 0)

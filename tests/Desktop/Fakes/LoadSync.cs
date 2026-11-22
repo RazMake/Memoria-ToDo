@@ -36,9 +36,31 @@ public static class LoadSync
     public static void Put(Window window, FrameworkElement control)
     {
         Wait(control, unloaded: false, () => window.Content = control);
+        RequireLoaded(control);
+    }
+
+    /// <summary>Waits for a showing control's Loaded event; returns immediately if it has already loaded.</summary>
+    public static void Loaded(FrameworkElement control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        if (PresentationSource.FromVisual(control) is null)
+        {
+            throw new InvalidOperationException("The control has no showing window to load in.");
+        }
+
         if (!control.IsLoaded)
         {
-            throw new InvalidOperationException("The control isn't loaded after it was put in the window.");
+            Wait(control, unloaded: false, () => { });
+        }
+
+        RequireLoaded(control);
+    }
+
+    private static void RequireLoaded(FrameworkElement control)
+    {
+        if (!control.IsLoaded)
+        {
+            throw new InvalidOperationException("The control didn't load in its window.");
         }
     }
 

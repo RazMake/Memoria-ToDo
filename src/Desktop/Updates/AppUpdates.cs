@@ -13,7 +13,7 @@ public static class AppUpdates
     /// each time What is new opens. Fails when an argument is null or <paramref name="deviceFolder"/> isn't a full path.
     /// </summary>
     public static IAppUpdates Create(IAppInstall install, IFileSystem files, string deviceFolder, TimeProvider time,
-        ITheme theme, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, CloseWindowKeys closeWindowKeys, ILogger logger)
+        ITheme theme, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, CloseWindowKeys closeWindowKeys, IPointerPosition pointer, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(install);
         ArgumentNullException.ThrowIfNull(files);
@@ -23,6 +23,7 @@ public static class AppUpdates
         ArgumentNullException.ThrowIfNull(createWebView);
         ArgumentNullException.ThrowIfNull(browser);
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
+        ArgumentNullException.ThrowIfNull(pointer);
         ArgumentNullException.ThrowIfNull(logger);
         if (!Path.IsPathFullyQualified(deviceFolder))
         {
@@ -32,6 +33,6 @@ public static class AppUpdates
         var ui = new UiThread();
         var model = new UpdateModel(install, new AutoUpdateSetting(files, deviceFolder, logger), ui, logger);
         var runner = new UpdateRunner(install, model, new NightSchedule(time), ui, logger);
-        return new UpdatesService(model, runner, new WhatIsNewDialog(theme, createWebView, browser, closeWindowKeys, logger));
+        return new UpdatesService(model, runner, new WhatIsNewDialog(theme, createWebView, browser, closeWindowKeys, pointer, logger));
     }
 }

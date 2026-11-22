@@ -428,7 +428,7 @@ public class FormattedDescriptionTests
             Theme = new FakeTheme { IsDark = dark };
             Browser = new FakeDefaultBrowser();
             WebView = new FakeDescriptionWebView(browserStarted);
-            Description = new FormattedDescription(WebView, Theme, Browser);
+            Description = new FormattedDescription(WebView, Theme, Browser, new FakeDragPointer(), Serilog.Core.Logger.None);
             Description.OtherLinkClicked += (_, address) => OtherLinks.Add(address);
             Description.OpenFailed += (_, failure) => OpenFailures.Add(failure);
             Description.ImageResized += (_, resize) => Resizes.Add(resize);

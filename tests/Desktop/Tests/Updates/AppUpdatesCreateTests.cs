@@ -13,7 +13,7 @@ public class AppUpdatesCreateTests
 {
     private const string DeviceFolder = @"C:\device";
 
-    // Argument 0 to 8, in the order of Create's parameters, is passed as null.
+    // Each case omits one required dependency.
     private static IAppUpdates CreateWithNull(int argument) => AppUpdates.Create(
         argument == 0 ? null! : new FakeAppInstall(),
         argument == 1 ? null! : new FakeFileSystem(),
@@ -23,6 +23,7 @@ public class AppUpdatesCreateTests
         argument == 5 ? null! : () => new FakeDescriptionWebView(),
         argument == 6 ? null! : new FakeDefaultBrowser(),
         argument == 7 ? null! : new CloseWindowKeys(),
+        argument == 9 ? null! : new FakeDragPointer(),
         argument == 8 ? null! : Logger.None);
 
     [Theory]
@@ -35,6 +36,7 @@ public class AppUpdatesCreateTests
     [InlineData(6)]
     [InlineData(7)]
     [InlineData(8)]
+    [InlineData(9)]
     public void Rejects_a_null_argument(int argument) =>
         Assert.ThrowsAny<ArgumentException>(() => CreateWithNull(argument));
 
@@ -42,7 +44,7 @@ public class AppUpdatesCreateTests
     public void Rejects_a_device_folder_that_is_not_a_full_path() =>
         Assert.ThrowsAny<ArgumentException>(() => AppUpdates.Create(
             new FakeAppInstall(), new FakeFileSystem(), @"device\folder", new FakeTimeProvider(), new FakeTheme(),
-            () => new FakeDescriptionWebView(), new FakeDefaultBrowser(), new CloseWindowKeys(), Logger.None));
+            () => new FakeDescriptionWebView(), new FakeDefaultBrowser(), new CloseWindowKeys(), new FakeDragPointer(), Logger.None));
 
     [Fact]
     public void Checks_nothing_until_it_starts()
@@ -50,7 +52,7 @@ public class AppUpdatesCreateTests
         var install = new FakeAppInstall();
 
         AppUpdates.Create(install, new FakeFileSystem(), DeviceFolder, new FakeTimeProvider(), new FakeTheme(),
-            () => new FakeDescriptionWebView(), new FakeDefaultBrowser(), new CloseWindowKeys(), Logger.None);
+            () => new FakeDescriptionWebView(), new FakeDefaultBrowser(), new CloseWindowKeys(), new FakeDragPointer(), Logger.None);
 
         Assert.Equal(0, install.CheckCount);
     }

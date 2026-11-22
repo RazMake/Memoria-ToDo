@@ -14,5 +14,6 @@ namespace Memoria.ToDo.Testing
         public const string UnitAttributeTypeName = "Memoria.ToDo.Testing.UnitAttribute";
         public const string UxAttributeTypeName = "Memoria.ToDo.Testing.UXAttribute";
         public const string IntegrationAttributeTypeName = "Memoria.ToDo.Testing.IntegrationAttribute";
+        public const string RealInputAttributeTypeName = "Memoria.ToDo.Testing.RealInputAttribute";
     }
 }

@@ -134,13 +134,15 @@ The Task list uses these parts, and the composition root implements the two port
 
 Step 4 of the [desktop delivery backlog](README.md#delivery-backlog) builds it, in `Memoria.ToDo.Desktop.FormattedView`, and row 11 adds `ImageResize`, the two `ImageResized` events, and `FormattedDescription.IsPreview`. Proposed: `IsPreview`'s shape. This is a decision to confirm. The user decided that the formatted title no longer takes the palette, since the [text look](../rendering.md#public-interface) gives every color it shows.
 
+Both controls take the platform's [pointer position and caller's logger](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) for their hover cards and reject null before wiring events. Their caller passes the pointer supplied by the composition root and its own logger.
+
 ```csharp
 namespace Memoria.ToDo.Desktop.FormattedView;
 
 /// A task's title as a reader sees it: native text, with no Markdown characters.
 public sealed class FormattedTitle : TextBlock
 {
-    public FormattedTitle(ITheme theme, IDefaultBrowser browser);
+    public FormattedTitle(ITheme theme, IDefaultBrowser browser, IPointerPosition pointer, Serilog.ILogger logger);
 
     /// The title's Markdown. Setting it shows it formatted, and sets the title's
     /// AutomationProperties.Name to the text shown.
@@ -157,7 +159,8 @@ public sealed class FormattedTitle : TextBlock
 public sealed class FormattedDescription : ContentControl, IDisposable
 {
     /// Takes ownership of webView: releasing the description releases it.
-    public FormattedDescription(IDescriptionWebView webView, ITheme theme, IDefaultBrowser browser);
+    public FormattedDescription(IDescriptionWebView webView, ITheme theme, IDefaultBrowser browser,
+        IPointerPosition pointer, Serilog.ILogger logger);
 
     /// The description's Markdown. Setting it shows it formatted.
     public string Markdown { get; set; }

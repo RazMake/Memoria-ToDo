@@ -13,12 +13,28 @@ public class HoverCardArgumentTests
     [WpfFact]
     public void Rejects_a_null_owner()
     {
-        Assert.Throws<ArgumentNullException>(() => new HoverCard(null!, NoPart));
+        Assert.Throws<ArgumentNullException>(() => new HoverCard(null!, NoPart, new FakeDragPointer(), Serilog.Core.Logger.None));
     }
 
     [WpfFact]
     public void Rejects_a_null_part_finder()
     {
-        Assert.Throws<ArgumentNullException>(() => new HoverCard(new FrameworkElement(), null!));
+        Assert.Throws<ArgumentNullException>(() => new HoverCard(new FrameworkElement(), null!, new FakeDragPointer(), Serilog.Core.Logger.None));
+    }
+
+    [WpfFact]
+    public void Rejects_a_null_pointer()
+    {
+        var error = Assert.Throws<ArgumentNullException>(() => new HoverCard(new FrameworkElement(), NoPart, null!, Serilog.Core.Logger.None));
+
+        Assert.Equal("pointer", error.ParamName);
+    }
+
+    [WpfFact]
+    public void Rejects_a_null_logger()
+    {
+        var error = Assert.Throws<ArgumentNullException>(() => new HoverCard(new FrameworkElement(), NoPart, new FakeDragPointer(), null!));
+
+        Assert.Equal("logger", error.ParamName);
     }
 }

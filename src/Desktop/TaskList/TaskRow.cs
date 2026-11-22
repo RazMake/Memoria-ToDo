@@ -39,7 +39,7 @@ internal sealed class TaskRow : Border
     private bool _selected;
     private UIElement? _editor;
 
-    public TaskRow(TaskItem task, ITheme theme, IDefaultBrowser browser, IDragPointer pointer)
+    public TaskRow(TaskItem task, ITheme theme, IDefaultBrowser browser, IDragPointer pointer, Serilog.ILogger logger)
     {
         _pointer = pointer;
         Task = task;
@@ -52,7 +52,7 @@ internal sealed class TaskRow : Border
         SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
         AutomationProperties.SetAutomationId(this, "Row");
 
-        _title = new FormattedTitle(theme, browser) { TextWrapping = TextWrapping.Wrap };
+        _title = new FormattedTitle(theme, browser, pointer, logger) { TextWrapping = TextWrapping.Wrap };
         _alignment = new FirstLineAlignment(_title, _resolved, CheckBoxGap);
         // The row is named by the title's own name, which it sets as it renders.
         SetBinding(AutomationProperties.NameProperty,

@@ -24,7 +24,7 @@ public class TaskRowDragTests
 
     public TaskRowDragTests()
     {
-        _row = new TaskRow(_task, new FakeTheme(), new FakeDefaultBrowser(), _pointer);
+        _row = new TaskRow(_task, new FakeTheme(), new FakeDefaultBrowser(), _pointer, Serilog.Core.Logger.None);
     }
 
     private void PressAt(double x)
@@ -37,7 +37,7 @@ public class TaskRowDragTests
     private void MoveTo(double x)
     {
         _pointer.Position = new Point(x, 5);
-        Raise(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseMoveEvent });
+        SimulatedPointer.Raise(_row, Mouse.MouseMoveEvent);
     }
 
     private void ReleaseOnRow()
@@ -46,8 +46,7 @@ public class TaskRowDragTests
         Raise(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = Mouse.MouseUpEvent });
     }
 
-    private void PointerLeaves() =>
-        Raise(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseLeaveEvent });
+    private void PointerLeaves() => SimulatedPointer.Leave(_row);
 
     private void Raise(RoutedEventArgs args)
     {

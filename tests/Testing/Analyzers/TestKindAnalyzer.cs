@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Memoria.ToDo.Testing.Analyzers;
 
-/// <summary>Fails the build when a test class has no kind attribute, or more than one.</summary>
+/// <summary>Enforces test kinds and their real-input boundary.</summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class TestKindAnalyzer : DiagnosticAnalyzer
 {
@@ -27,19 +27,16 @@ public sealed class TestKindAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    private static readonly ImmutableHashSet<string> KindTypeNames = ImmutableHashSet.Create(
-        TestKinds.UnitAttributeTypeName,
-        TestKinds.UxAttributeTypeName,
-        TestKinds.IntegrationAttributeTypeName);
-
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-        ImmutableArray.Create(MissingKind, SeveralKinds);
+        ImmutableArray.Create(MissingKind, SeveralKinds)
+            .AddRange(RealInputBoundary.SupportedDiagnostics);
 
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
         context.RegisterSymbolAction(AnalyzeType, SymbolKind.NamedType);
+        RealInputBoundary.Register(context);
     }
 
     private static void AnalyzeType(SymbolAnalysisContext context)
@@ -50,20 +47,7 @@ public sealed class TestKindAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // A kind counts once however many classes in the chain (or partial parts) state it.
-        var kinds = new HashSet<string>();
-        for (var current = type; current is not null; current = current.BaseType)
-        {
-            foreach (var attribute in current.GetAttributes())
-            {
-                var name = attribute.AttributeClass?.ToDisplayString();
-                if (name is not null && KindTypeNames.Contains(name))
-                {
-                    kinds.Add(name);
-                }
-            }
-        }
-
+        var kinds = TestKindLookup.KindsOf(type);
         if (kinds.Count == 1)
         {
             return;

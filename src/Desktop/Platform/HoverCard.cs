@@ -38,28 +38,24 @@ public sealed class HoverCard
     /// Use it on the UI thread.
     /// </summary>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
-    public HoverCard(FrameworkElement owner, Func<Point, Task<HoverPart?>> partAt)
+    public HoverCard(FrameworkElement owner, Func<Point, Task<HoverPart?>> partAt, IPointerPosition pointer, Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(partAt);
+        ArgumentNullException.ThrowIfNull(pointer);
+        ArgumentNullException.ThrowIfNull(logger);
         _owner = owner;
         _partAt = partAt;
-        _rest = new HoverRest(TimeProvider.System, SystemParameters.MouseHoverTime, Slot, new Output(this), windowActive: false);
+        _rest = new HoverRest(TimeProvider.System, SystemParameters.MouseHoverTime, Slot, new Output(this), windowActive: false, owner.GetType().Name, logger);
         _popup.PlacementTarget = owner;
         _popup.Child = _scroller;
         _scroller.MouseEnter += (_, _) => _rest.CardEntered();
         _scroller.MouseLeave += (_, _) => _rest.CardLeft();
         _scroller.PreviewMouseDown += (_, _) => _rest.ButtonPressed(onCard: true);
         _scroller.PreviewMouseWheel += (_, _) => _rest.WheelTurned(onCard: true);
-        owner.PreviewMouseMove += (_, e) => _rest.PointerMoved(e.GetPosition(owner));
-        // The popup is its own window, so the pointer reaching the card leaves the owner; that leaves the card open.
-        owner.MouseLeave += (_, _) =>
-        {
-            if (!(_popup.IsOpen && new Rect(_scroller.RenderSize).Contains(Mouse.GetPosition(_scroller))))
-            {
-                _rest.PointerLeft();
-            }
-        };
+        owner.PreviewMouseMove += (_, _) => _rest.PointerMoved(pointer.PositionIn(owner));
+        // The popup's enter and the owner's leave can arrive in either order.
+        owner.MouseLeave += (_, _) => _rest.OwnerLeft();
         owner.IsVisibleChanged += HiddenWhenInvisible;
         owner.Loaded += (_, _) => Watch(Window.GetWindow(owner));
         owner.Unloaded += (_, _) => Unwatch();

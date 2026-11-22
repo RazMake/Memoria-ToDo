@@ -27,7 +27,7 @@ public class HoverRestTests
         public Harness(HoverCardSlot? slot = null, bool windowActive = true, TimeSpan? hoverTime = null)
         {
             HoverTime = hoverTime ?? HoverRestTests.HoverTime;
-            Rest = new HoverRest(_time, HoverTime, slot ?? new HoverCardSlot(), this, windowActive);
+            Rest = new HoverRest(_time, HoverTime, slot ?? new HoverCardSlot(), this, windowActive, "Test owner", Serilog.Core.Logger.None);
         }
 
         public TimeSpan HoverTime { get; }
@@ -780,6 +780,106 @@ public class HoverRestTests
         harness.Rest.PointerMoved(InsideBox);
         harness.Pass(HoverTime * 3);
 
+        Assert.Equal(0, harness.Closed);
+    }
+
+    [Fact]
+    public void Closes_the_card_when_the_hover_time_passes_after_the_pointer_left_the_owner()
+    {
+        var harness = new Harness();
+        harness.RestAndAnswer(Here, Box);
+
+        harness.Rest.OwnerLeft();
+        Assert.Equal(0, harness.Closed);
+        harness.Pass(HoverTime - TimeSpan.FromMilliseconds(1));
+        Assert.Equal(0, harness.Closed);
+        harness.Pass(TimeSpan.FromMilliseconds(1));
+
+        Assert.Equal(1, harness.Closed);
+    }
+
+    [Fact]
+    public void Keeps_the_card_when_the_pointer_leaves_the_owner_onto_the_card_within_the_hover_time()
+    {
+        var harness = new Harness();
+        harness.RestAndAnswer(Here, Box);
+
+        harness.Rest.OwnerLeft();
+        harness.Pass(HoverTime / 2);
+        harness.Rest.CardEntered();
+        harness.Pass(HoverTime * 3);
+
+        Assert.Equal(0, harness.Closed);
+    }
+
+    [Fact]
+    public void Keeps_the_card_when_the_pointer_enters_the_card_before_the_owner_is_left()
+    {
+        var harness = new Harness();
+        harness.RestAndAnswer(Here, Box);
+
+        harness.Rest.CardEntered();
+        harness.Rest.OwnerLeft();
+        harness.Pass(HoverTime * 3);
+
+        Assert.Equal(0, harness.Closed);
+    }
+
+    [Fact]
+    public void Keeps_the_card_when_the_pointer_leaves_the_owner_and_returns_to_the_part_within_the_hover_time()
+    {
+        var harness = new Harness();
+        harness.RestAndAnswer(Here, Box);
+
+        harness.Rest.OwnerLeft();
+        harness.Pass(HoverTime / 2);
+        harness.Rest.PointerMoved(InsideBox);
+        harness.Pass(HoverTime * 3);
+
+        Assert.Equal(0, harness.Closed);
+    }
+
+    [Fact]
+    public void Leaving_the_owner_does_not_restart_a_grace_period_that_is_already_running()
+    {
+        var harness = new Harness();
+        harness.RestAndAnswer(Here, Box);
+        harness.Rest.PointerMoved(ElsewhereOutside);
+        harness.Pass(HoverTime / 2);
+
+        harness.Rest.OwnerLeft();
+        Assert.Equal(0, harness.Closed);
+        harness.Pass(HoverTime / 2);
+
+        Assert.Equal(1, harness.Closed);
+    }
+
+    [Fact]
+    public void Leaving_the_owner_cancels_a_wait_for_another_part_while_the_card_stays_for_its_grace_period()
+    {
+        var harness = new Harness();
+        harness.RestAndAnswer(Here, Box);
+        harness.Rest.PointerMoved(ElsewhereOutside);
+
+        harness.Rest.OwnerLeft();
+        Assert.Equal(0, harness.Closed);
+        harness.Pass(HoverTime * 3);
+
+        Assert.Single(harness.Asked);
+        Assert.Equal(1, harness.Closed);
+    }
+
+    [Fact]
+    public void Leaving_the_owner_with_no_card_shown_cancels_the_wait_for_a_part_and_closes_nothing()
+    {
+        var harness = new Harness();
+        harness.Rest.PointerMoved(Here);
+        harness.Pass(HoverTime / 2);
+
+        harness.Rest.OwnerLeft();
+        harness.Pass(HoverTime * 3);
+
+        Assert.Empty(harness.Asked);
         Assert.Equal(0, harness.Closed);
     }
 

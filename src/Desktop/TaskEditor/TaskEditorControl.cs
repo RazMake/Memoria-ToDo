@@ -27,13 +27,13 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
     private string _taskId = "";
 
     public TaskEditorControl(ITasks tasks, ITagColors tagColors, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, ILogger logger)
-        : this(new TagsModel(tasks, tagColors, logger), tasks, tagColors, Argument.Required(contacts), palette, theme, time, clipboard, imageFiles, files, Argument.Required(saveKeys), logger)
+        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, IPointerPosition pointer, ILogger logger)
+        : this(Argument.Required(pointer), new TagsModel(tasks, tagColors, logger), tasks, tagColors, Argument.Required(contacts), palette, theme, time, clipboard, imageFiles, files, Argument.Required(saveKeys), logger)
     {
     }
 
     // The model is made in the first constructor's arguments, so a missing tasks or tagColors is rejected before any control exists.
-    private TaskEditorControl(TagsModel tagsModel, ITasks tasks, ITagColors tagColors, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme,
+    private TaskEditorControl(IPointerPosition pointer, TagsModel tagsModel, ITasks tasks, ITagColors tagColors, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme,
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, ILogger logger)
     {
         _tagsModel = tagsModel;
@@ -41,8 +41,8 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
         _lists = new PickerLists(tasks, contacts, palette, theme);
         _images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId, _message.Show, logger);
         var snippets = new SnippetInserter(time, clipboard, _lists.TaskReferences.Open, _images.InsertClipboardOrChosen);
-        _title = new TitleField(theme, _lists, snippets, _router);
-        _description = new DescriptionField(theme, _lists, snippets, _images, _router);
+        _title = new TitleField(theme, _lists, snippets, _router, pointer, logger);
+        _description = new DescriptionField(theme, _lists, snippets, _images, _router, pointer, logger);
         _save = new EditorSave(_tagsModel.AddTypedText, () => Value, _title.MarkMissing, FocusTitle, _message.Show, logger);
 
         var panel = new StackPanel { Margin = new Thickness(16) };

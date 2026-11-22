@@ -55,7 +55,7 @@ internal sealed class UpdatesHarness
 
     /// <summary>Calls <see cref="AppUpdates.Create"/> on these fakes, for a test that changes an argument.</summary>
     public IAppUpdates Create(IAppInstall install, IFileSystem files, string deviceFolder) =>
-        AppUpdates.Create(install, files, deviceFolder, Time, Theme, MakeWebView, Browser, CloseWindowKeys, Log.CreateLogger());
+        AppUpdates.Create(install, files, deviceFolder, Time, Theme, MakeWebView, Browser, CloseWindowKeys, new FakeDragPointer(), Log.CreateLogger());
 
     /// <summary>A newer version whose notes list only itself.</summary>
     public static NewerVersion Newer(string version) => new(version, [new ReleaseNotes(version, $"Notes of {version}.")]);

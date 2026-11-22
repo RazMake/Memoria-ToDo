@@ -58,9 +58,10 @@ internal static class Program
             // Each open of a description web view serves the folder the repository is in then.
             Func<IDescriptionWebView> createWebView = () => new WpfDescriptionWebView(
                 repository.Folder, tasks.EditImagesFolder, BrowserDataFolder(), files, tasks.Synchronization.Files, appLog);
+            var pointer = new MousePointer();
             var updates = AppUpdates.Create(
                 new VelopackUpdates(RepositoryUrl), files, deviceFolder, TimeProvider.System, theme, createWebView, browser, closeWindowKeys,
-                log.ForModule("Updates"));
+                pointer, log.ForModule("Updates"));
             var saveKeys = new SaveKeys();
             var sync = SyncService.Create(
                 repository,
@@ -74,7 +75,6 @@ internal static class Program
                 Environment.MachineName,
                 TimeSpan.FromMinutes(30),
                 log.ForModule("Sync"));
-            var pointer = new MousePointer();
             var (add, viewTasks) = TaskWindows.Create(
                 tasks,
                 contacts.Contacts,

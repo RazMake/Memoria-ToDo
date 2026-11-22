@@ -38,7 +38,7 @@ public class GroupHeadingDragTests
     private void MoveTo(double x)
     {
         _pointer.Position = new Point(x, 5);
-        Raise(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.PreviewMouseMoveEvent });
+        SimulatedPointer.Raise(_heading, Mouse.PreviewMouseMoveEvent);
     }
 
     private void ReleaseOnHeading()
@@ -49,7 +49,7 @@ public class GroupHeadingDragTests
 
     private void PointerLeaves()
     {
-        Raise(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseLeaveEvent });
+        SimulatedPointer.Leave(_heading);
     }
 
     private void Raise(RoutedEventArgs args)
@@ -145,7 +145,7 @@ public class GroupHeadingDragTests
         noTag.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent, Source = noTag });
 
         _pointer.Position = new Point(5 + Far, 5);
-        noTag.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.PreviewMouseMoveEvent, Source = noTag });
+        SimulatedPointer.Raise(noTag, Mouse.PreviewMouseMoveEvent);
 
         Assert.Empty(_pointer.Drags);
     }

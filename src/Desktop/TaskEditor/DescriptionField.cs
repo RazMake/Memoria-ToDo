@@ -17,9 +17,9 @@ internal sealed class DescriptionField
     private const double MinHeight = 140;
     private const double MaxHeight = 400;
 
-    public DescriptionField(ITheme theme, PickerLists lists, SnippetInserter snippets, ImageInsertion images, KeyRouter router)
+    public DescriptionField(ITheme theme, PickerLists lists, SnippetInserter snippets, ImageInsertion images, KeyRouter router, IPointerPosition pointer, Serilog.ILogger logger)
     {
-        Editor = new StyledTextEditor("Description", MarkdownField.Description, theme, lists.Contacts)
+        Editor = new StyledTextEditor("Description", MarkdownField.Description, theme, lists.Contacts, pointer, logger)
         {
             Margin = new Thickness(0, 0, 0, 12),
             MinHeight = MinHeight,

@@ -15,9 +15,9 @@ internal sealed class TitleField
 {
     private const string MissingStatus = "The title is empty. Type a title to save.";
 
-    public TitleField(ITheme theme, PickerLists lists, SnippetInserter snippets, KeyRouter router)
+    public TitleField(ITheme theme, PickerLists lists, SnippetInserter snippets, KeyRouter router, IPointerPosition pointer, Serilog.ILogger logger)
     {
-        Editor = new StyledTextEditor("Title", MarkdownField.Title, theme, lists.Contacts)
+        Editor = new StyledTextEditor("Title", MarkdownField.Title, theme, lists.Contacts, pointer, logger)
         {
             Margin = new Thickness(0, 0, 0, 12),
             HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,

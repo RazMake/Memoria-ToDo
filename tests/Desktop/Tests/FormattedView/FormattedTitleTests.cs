@@ -561,7 +561,7 @@ public class FormattedTitleTests
         {
             Theme = new FakeTheme { IsDark = dark };
             Browser = new FakeDefaultBrowser();
-            Title = new FormattedTitle(Theme, Browser);
+            Title = new FormattedTitle(Theme, Browser, Pointer, Serilog.Core.Logger.None);
             Title.OtherLinkClicked += (_, address) => OtherLinks.Add(address);
             Title.OpenFailed += (_, failure) => OpenFailures.Add(failure);
 
@@ -576,6 +576,8 @@ public class FormattedTitleTests
         public FakeTheme Theme { get; }
 
         public FakeDefaultBrowser Browser { get; }
+
+        public FakeDragPointer Pointer { get; } = new();
 
         public FormattedTitle Title { get; }
 
@@ -647,8 +649,12 @@ public class FormattedTitleTests
             return Title.ChipBox(text);
         }
 
-        /// <summary>Puts the real pointer at the title's point and waits until WPF observes it there.</summary>
-        public void RestOn(Point inTitle) => RealPointer.MoveOver(window, Title, inTitle);
+        /// <summary>Rests the fake pointer at the title's point.</summary>
+        public void RestOn(Point inTitle)
+        {
+            SimulatedPointer.RequireActiveWindow(Title);
+            SimulatedPointer.Move(Title, Pointer, inTitle);
+        }
 
         /// <summary>Lets the dispatcher work until the card is on screen, or ten seconds pass; says whether it showed.</summary>
         public bool WaitForShown(FrameworkElement card)

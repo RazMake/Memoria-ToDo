@@ -15,14 +15,13 @@
   <!-- A test project is one whose name ends in ".Tests". -->
   <PropertyGroup>
     <MemoriaIsTestProject Condition="$(MSBuildProjectName.EndsWith('.Tests'))">true</MemoriaIsTestProject>
+    <MemoriaHasTestCode Condition="'$(MemoriaIsTestProject)' == 'true' Or $(MSBuildProjectName.EndsWith('.Fakes'))">true</MemoriaHasTestCode>
     <MemoriaTestKindsFile>$(MSBuildThisFileDirectory)tests\Testing\Kinds\TestKinds.cs</MemoriaTestKindsFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(MemoriaIsTestProject)' == 'true'">
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
-    <!-- An analyzer that the older compiler skips (CS9057) must fail the build, not pass it unchecked. -->
-    <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>
     <!-- The kinds' strings live only in TestKinds.cs. -->
     <MemoriaTestKindsText>$([System.IO.File]::ReadAllText($(MemoriaTestKindsFile)))</MemoriaTestKindsText>
     <MemoriaTraitName>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'TraitName = "([^"]+)"').Groups[1].Value)</MemoriaTraitName>
@@ -35,14 +34,22 @@
     <TestingPlatformCommandLineArguments>$(MemoriaTestArguments)</TestingPlatformCommandLineArguments>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(MemoriaHasTestCode)' == 'true'">
+    <!-- An analyzer that the older compiler skips (CS9057) must fail the build, not pass it unchecked. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(MemoriaIsTestProject)' == 'true'">
     <PackageReference Include="xunit.v3.mtp-v2" />
     <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
+    <!-- A skipped test fails every run; the one copy of the setting. -->
+    <Content Include="$(MSBuildThisFileDirectory)tests\xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MemoriaHasTestCode)' == 'true'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)tests\Testing\Kinds\Memoria.ToDo.Testing.Kinds.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)tests\Testing\Analyzers\Memoria.ToDo.Testing.Analyzers.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <!-- A skipped test fails every run; the one copy of the setting. -->
-    <Content Include="$(MSBuildThisFileDirectory)tests\xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- A hand-set TestingPlatformCommandLineArguments would silently drop the unit filter and the hang dump. -->

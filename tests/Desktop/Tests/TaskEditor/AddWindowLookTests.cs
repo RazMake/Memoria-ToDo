@@ -14,7 +14,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 /// test sees a look only as the properties of the field and of the border its template draws. The look under the pointer
 /// can't be reached without a mouse, so no test covers it, and each test moves the pointer away before Add opens.
 /// </summary>
-[UX]
+[Integration]
 [Collection(ScreenTests.Collection)]
 public class AddWindowLookTests
 {

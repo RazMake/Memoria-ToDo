@@ -20,20 +20,20 @@ public sealed class DescriptionEditor : UserControl
     private string _taskId = "";
 
     public DescriptionEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, ILogger logger)
-                : this(tasks, new PickerLists(tasks, contacts, palette, theme), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files, Argument.Required(logger))
+        IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, IPointerPosition pointer, ILogger logger)
+                : this(Argument.Required(pointer), tasks, new PickerLists(tasks, contacts, palette, theme), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files, Argument.Required(logger))
     {
     }
 
     // The lists are made in the first constructor's arguments, so a missing tasks or palette is rejected before any control exists.
-    private DescriptionEditor(ITasks tasks, PickerLists lists, SaveKeys saveKeys, ITheme theme, TimeProvider time,
+    private DescriptionEditor(IPointerPosition pointer, ITasks tasks, PickerLists lists, SaveKeys saveKeys, ITheme theme, TimeProvider time,
                 IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, ILogger logger)
     {
         var router = new KeyRouter();
         var message = new MessageLine();
         var images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId, message.Show, logger);
         var snippets = new SnippetInserter(time, clipboard, lists.TaskReferences.Open, images.InsertClipboardOrChosen);
-        _description = new DescriptionField(theme, lists, snippets, images, router);
+        _description = new DescriptionField(theme, lists, snippets, images, router, pointer, logger);
         var editor = _description.Editor;
         _grownCap = editor.MaxHeight;
         ListKeys.AddTo(_description.Keys, editor, () => Leave(FocusNavigationDirection.Next), () => Leave(FocusNavigationDirection.Previous));

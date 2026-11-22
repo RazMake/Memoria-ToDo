@@ -20,12 +20,12 @@ internal sealed class DescriptionEdit : IDescriptionEdit
     private readonly DescriptionEditor _editor;
 
     public DescriptionEdit(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
-        IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested, ILogger logger)
+        IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested, IPointerPosition pointer, ILogger logger)
     {
         _tasks = tasks;
         Started = task;
         Tag = task.Tags.FirstOrDefault();
-        _editor = new DescriptionEditor(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, logger) { TaskId = task.Id, Value = task.Description };
+        _editor = new DescriptionEditor(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, pointer, logger) { TaskId = task.Id, Value = task.Description };
         _editor.SaveRequested += (_, _) => saveRequested();
         _editor.CancelRequested += (_, _) => cancelRequested();
     }

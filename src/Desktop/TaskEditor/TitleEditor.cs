@@ -16,18 +16,18 @@ public sealed class TitleEditor : UserControl
     private readonly SingleFieldEditing _editing;
 
     public TitleEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
-        IClipboard clipboard, SaveKeys saveKeys, ILogger logger)
-        : this(new PickerLists(tasks, contacts, palette, theme), Argument.Required(saveKeys), theme, time, clipboard, Argument.Required(logger))
+        IClipboard clipboard, SaveKeys saveKeys, IPointerPosition pointer, ILogger logger)
+        : this(Argument.Required(pointer), new PickerLists(tasks, contacts, palette, theme), Argument.Required(saveKeys), theme, time, clipboard, Argument.Required(logger))
     {
     }
 
     // The lists are made in the first constructor's arguments, so a missing tasks or palette is rejected before any control exists.
-    private TitleEditor(PickerLists lists, SaveKeys saveKeys, ITheme theme, TimeProvider time, IClipboard clipboard, ILogger logger)
+    private TitleEditor(IPointerPosition pointer, PickerLists lists, SaveKeys saveKeys, ITheme theme, TimeProvider time, IClipboard clipboard, ILogger logger)
     {
         var router = new KeyRouter();
         var message = new MessageLine();
         var snippets = new SnippetInserter(time, clipboard, lists.TaskReferences.Open, NoImages);
-        _title = new TitleField(theme, lists, snippets, router);
+        _title = new TitleField(theme, lists, snippets, router, pointer, logger);
         _title.Keys.On(ModifierKeys.None, Key.Enter, RequestSave);
         var panel = new StackPanel();
         panel.Children.Add(_title.Editor);

@@ -539,20 +539,25 @@ public static class AutoScroll
         System.Action<System.Windows.Point> scrolled);
 }
 
-/// The mouse, as a drag sees it. The composition root passes MousePointer; tests pass a fake.
-public interface IDragPointer
+/// The pointer's position, as a part that follows it sees it.
+/// The composition root passes MousePointer; tests pass a fake.
+public interface IPointerPosition
+{
+    /// The pointer's place in element's own coordinates.
+    System.Windows.Point PositionIn(System.Windows.UIElement element);
+}
+
+/// The mouse, as a drag sees it.
+public interface IDragPointer : IPointerPosition
 {
     /// Whether the left button is down now.
     bool IsLeftButtonDown { get; }
-
-    /// The pointer's place in element's own coordinates.
-    System.Windows.Point PositionIn(System.Windows.UIElement element);
 
     /// Runs a move drag of data from source, and returns when the drag ends.
     void StartDrag(System.Windows.DependencyObject source, System.Windows.IDataObject data);
 }
 
-/// The PC's mouse. Not confirmed by a test: no test can move the real mouse.
+/// The PC's mouse. Real-input integration tests check its connection to WPF.
 public sealed class MousePointer : IDragPointer
 {
     public MousePointer();
@@ -574,6 +579,12 @@ The user asked that resting the mouse pointer on a mention show the contact's ca
 - **An answer that comes after the pointer moved on shows nothing**, since a description's web view answers later than a title does.
 - **It's a platform class, not an interface**, as the other platform parts are: one implementation, and UX tests use the real one.
 
+The user decided that hover reads the pointer through `IPointerPosition`, declared [with the drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them). The composition root passes its one `MousePointer` through each module that creates a hover card. UX tests pass the shared fake instead, under the [input test boundary](../technology-stack.md#unit-and-ux-tests-cannot-send-real-input).
+
+Hover reads positions in the owner's coordinates. Entering and leaving the card use the card's own routed events, so crossing to its separate popup does not depend on a global mouse-position query. The rest time, placement, and activation rules stay unchanged. A null pointer is rejected before any event handler is attached.
+
+The user decided that hover takes its caller's logger, last, under the [logging rules](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens). Debug entries record leaving the owner while a card shows (kept on the card, grace started, or existing grace kept), returning to the part or card before grace ends, and closing because grace expired. They include the owner's control type, the grace duration where relevant, and whether a rest wait was cancelled or remains pending. Moves, unchanged timer ticks, and owner leaves with no card shown are not logged. A null logger is rejected before any event handler is attached.
+
 ```csharp
 namespace Memoria.ToDo.Desktop.Platform;
 
@@ -584,7 +595,8 @@ public sealed class HoverCard
     /// asks partAt for the part there, in owner's coordinates, and shows its card, if any, under the part.
     /// Throws ArgumentNullException for a null argument. Use it on the UI thread.
     public HoverCard(System.Windows.FrameworkElement owner,
-        System.Func<System.Windows.Point, System.Threading.Tasks.Task<HoverPart?>> partAt);
+        System.Func<System.Windows.Point, System.Threading.Tasks.Task<HoverPart?>> partAt,
+        IPointerPosition pointer, Serilog.ILogger logger);
 }
 
 /// A part of an element, its box in the element's coordinates, and the card to show for it.
@@ -592,6 +604,8 @@ public sealed record HoverPart(System.Windows.Rect Box, System.Windows.Framework
 ```
 
 WPF's own tooltip, with the card as its content, was ruled out: chips and descriptions would still need their own hit tests and opening, a tooltip closes on its own after a few seconds, and it may close when Ctrl is pressed.
+
+A test-only constructor was ruled out: it would leave module-level hover tests dependent on the real cursor. Feeding WPF's internal mouse reports through reflection was ruled out because it depends on private framework details instead of the pointer interface the app already needs.
 
 ### A tall card scrolls, and the pointer can reach it
 
@@ -603,6 +617,7 @@ With Ctrl held, a card can be taller than the screen, such as for a manager with
 So the pointer must be able to reach the card. Proposed, each a decision to confirm:
 
 - **The pointer may cross from the part to the card.** Leaving the part starts a short grace, Windows' hover time again, so a user who slows the hover also gets longer to cross. The card closes when the grace ends with the pointer on neither the part nor the card.
+  - **The user decided that leaving the whole owner follows this same grace**, even when no move outside the part arrived first. Entering the card or returning to the part cancels it; leaving the owner does not restart a grace already running. Previously, leaving the owner could close the card immediately. Keeping that immediate close was ruled out because the owner's leave and the popup's enter can arrive in either order.
 - **The card stays open while the pointer is over it**, and leaving it starts the same grace. Coming back to the part or the card within the grace keeps it open.
 - **A press on the card keeps it open**, so its scroll bar can be dragged. Nothing on the card acts on a click, and the card never takes the keyboard focus, so keys and Ctrl still reach the window.
 - **The pointer on the card doesn't count as resting on the owner**, so it opens no other card.

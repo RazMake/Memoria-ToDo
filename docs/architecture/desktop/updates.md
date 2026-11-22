@@ -112,6 +112,8 @@ Updates reaches Velopack only through its install port, which the composition ro
 
 The composition root creates Updates once and passes it on: Shell starts and stops it, and Add, Task View, and Configure show its state. Proposed: the exact parts below. This is a decision to confirm.
 
+The user decided that `AppUpdates.Create` also takes the platform's [pointer position](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part), immediately before its logger, and passes it to the formatted release notes. A null pointer is rejected before anything is created.
+
 ```csharp
 namespace Memoria.ToDo.Desktop.Updates;
 
@@ -120,7 +122,8 @@ public static class AppUpdates
     /// Creates Updates. Nothing checks until IUpdateLifetime.Start. The web view function makes a new web view
     /// each time What is new opens. Fails when an argument is null or deviceFolder isn't a full path.
     public static IAppUpdates Create(IAppInstall install, IFileSystem files, string deviceFolder, TimeProvider time,
-        ITheme theme, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, CloseWindowKeys closeWindowKeys);
+        ITheme theme, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser,
+        CloseWindowKeys closeWindowKeys, IPointerPosition pointer);
 }
 
 /// Updates as the composition root holds it.
