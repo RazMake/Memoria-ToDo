@@ -6,8 +6,6 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
-- A contact card no longer closes immediately when you move the pointer out of the text toward the card. It gives you the same short time to cross as when you leave the mention itself.
-
 ## 1.2.0
 
 - The app now keeps a log of what it does, such as syncs, added, changed, and deleted tasks and contacts, and every error, with the time to the millisecond. When the app says files can't be loaded, the log names each file and why. The log stays on your computer, never holds passwords or keys, and cleans up after itself: entries older than two weeks are deleted, and it never grows past about 30 MB.
@@ -24,6 +22,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - In Task View, the pointer now turns into a hand only over a task's checkbox, not over its title.
 - The Add new task window no longer disappears when you click another window. It stays open behind it, like Task View and the app's other windows, so Alt+Tab or the taskbar brings it back with what you typed.
 - In Logs, the Severity list now offers "Debug and up", which also shows the app's detailed entries that explain its choices, such as where a window opened. The log files now keep these entries too.
+- A contact card no longer closes immediately when you move the pointer out of the text toward the card. It gives you the same short time to cross as when you leave the mention itself.
+
 
 ## 1.1.1
 
