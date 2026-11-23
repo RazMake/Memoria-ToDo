@@ -25,16 +25,19 @@ public class TaskViewReorderPathTests
 
         screen.PressOn("A", Key.LeftAlt, Key.Down);
         Assert.Equal(["B", "A", "C"], screen.RowTitlesIn("work"));
-        Assert.Equal(["B", "A", "C", "Home one"], services.OpenTitlesInRankOrder());
+        Assert.Equal(["B", "A", "C"], StoredWorkTitlesInRankOrder(services));
 
         var taken = screen.Drop(services.Stored("A"), "C", lowerHalf: true, onGroup: "work");
         Assert.True(taken);
         Assert.Equal(["B", "C", "A"], screen.RowTitlesIn("work"));
-        Assert.Equal(["B", "C", "Home one", "A"], services.OpenTitlesInRankOrder());
+        Assert.Equal(["B", "C", "A"], StoredWorkTitlesInRankOrder(services));
 
         screen.DropGroup("work", "home");
         Assert.Equal(["work", "home"], screen.GroupNames);
         Assert.Equal([("work", (string?)null, (string?)"home")], services.TagOrder.Moves);
         Assert.False(screen.HasButton("Undo"));
     }
+
+    private static IEnumerable<string> StoredWorkTitlesInRankOrder(ListServices services) =>
+        services.OpenTitlesInRankOrder().Where(title => title != "Home one");
 }

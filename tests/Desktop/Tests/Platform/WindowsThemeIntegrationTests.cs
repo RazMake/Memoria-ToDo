@@ -7,6 +7,7 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>The Windows theme, each scenario a run of the platform's test program.</summary>
 [Integration]
+[Collection(ScreenTests.Collection)]
 public class WindowsThemeIntegrationTests
 {
     [Fact]

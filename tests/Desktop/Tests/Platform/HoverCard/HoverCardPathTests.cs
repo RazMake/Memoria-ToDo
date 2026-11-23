@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Shared.Fakes;
@@ -41,18 +42,18 @@ public class HoverCardPathTests
 
         screen.Wheel(screen.Card);
 
-        Assert.False(screen.WaitUntil(() => !screen.Card.IsLoaded, TimeSpan.FromMilliseconds(300)), "The wheel over the card closed it.");
+        Assert.False(screen.WaitUntil(() => !screen.Card.IsLoaded, TimeSpan.FromMilliseconds(300)), "The wheel over the card closed it. " + screen.Diagnostics());
         Assert.True(scroller.VerticalOffset > 0, "The wheel over the card didn't scroll it.");
 
         screen.Press(screen.Card);
 
-        Assert.False(screen.WaitUntil(() => !screen.Card.IsLoaded, TimeSpan.FromMilliseconds(300)), "The press on the card closed it.");
+        Assert.False(screen.WaitUntil(() => !screen.Card.IsLoaded, TimeSpan.FromMilliseconds(300)), "The press on the card closed it. " + screen.Diagnostics());
 
         var asked = screen.Asked;
         screen.MoveOntoCard();
 
         Assert.False(screen.WaitUntil(() => !screen.Card.IsLoaded, TimeSpan.FromMilliseconds(2 * SystemParameters.MouseHoverTime.TotalMilliseconds)),
-            "The pointer on the card closed it. " + string.Join(" | ", screen.Log.Events.Select(entry => entry.RenderMessage())));
+            "The pointer on the card closed it. " + screen.Diagnostics());
         Assert.Equal(asked, screen.Asked);
     }
 
@@ -61,11 +62,11 @@ public class HoverCardPathTests
     {
         using var screen = new CardScreen();
         screen.RestOnPart();
-        Assert.True(screen.WaitUntil(() => screen.Card.IsLoaded), "The card didn't show.");
+        Assert.True(screen.WaitUntil(() => screen.Card.IsLoaded), "The card didn't show. " + screen.Diagnostics());
 
         screen.Wheel(screen.Owner);
 
-        Assert.True(screen.WaitUntil(() => !screen.Card.IsLoaded), "The wheel elsewhere left the card open.");
+        Assert.True(screen.WaitUntil(() => !screen.Card.IsLoaded), "The wheel elsewhere left the card open. " + screen.Diagnostics());
     }
 
     [WpfFact]
@@ -73,11 +74,11 @@ public class HoverCardPathTests
     {
         using var screen = new CardScreen();
         screen.RestOnPart();
-        Assert.True(screen.WaitUntil(() => screen.Card.IsLoaded), "The card didn't show.");
+        Assert.True(screen.WaitUntil(() => screen.Card.IsLoaded), "The card didn't show. " + screen.Diagnostics());
 
         screen.Press(screen.Owner);
 
-        Assert.True(screen.WaitUntil(() => !screen.Card.IsLoaded), "The press elsewhere left the card open.");
+        Assert.True(screen.WaitUntil(() => !screen.Card.IsLoaded), "The press elsewhere left the card open. " + screen.Diagnostics());
     }
 
     private static T? Ancestor<T>(DependencyObject element) where T : DependencyObject
@@ -96,6 +97,8 @@ public class HoverCardPathTests
     private sealed class CardScreen : IDisposable
     {
         private readonly Window _window;
+        private readonly Queue<string> _trace = new();
+        private readonly long _started = Environment.TickCount64;
 
         public CardScreen(double cardHeight = 40)
         {
@@ -108,6 +111,7 @@ public class HoverCardPathTests
                 return Task.FromResult<HoverPart?>(box.Contains(point) ? new HoverPart(box, Card) : null);
             }, Pointer, Log.CreateLogger());
             _window = new Window { Content = Owner, Width = 400, Height = 300, WindowStartupLocation = WindowStartupLocation.Manual, Left = 50, Top = 50 };
+            TraceEvents();
             _window.Show();
             _window.UpdateLayout();
         }
@@ -124,6 +128,55 @@ public class HoverCardPathTests
         public FakeDragPointer Pointer { get; } = new();
 
         public InMemoryLogSink Log { get; } = new();
+
+        public string Diagnostics() =>
+            string.Join(" | ", Log.Events.Select(entry => entry.RenderMessage()))
+            + $" || events: {string.Join(" | ", _trace)}"
+            + $" || window active {_window.IsActive}, handle {new WindowInteropHelper(_window).Handle:X}, foreground {Win32.ForegroundWindow():X}";
+
+        private void Note(string message)
+        {
+            if (_trace.Count == 64)
+            {
+                _trace.Dequeue();
+            }
+
+            _trace.Enqueue($"+{Environment.TickCount64 - _started}ms {message}");
+        }
+
+        private void TraceEvents()
+        {
+            _window.Activated += (_, _) => Note("window Activated");
+            _window.Deactivated += (_, _) => Note("window Deactivated");
+            _window.LocationChanged += (_, _) => Note("window LocationChanged");
+            _window.IsVisibleChanged += (_, e) => Note($"window IsVisible={e.NewValue}");
+            _window.AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(
+                (_, e) => Note($"window PreviewMouseDown from {e.OriginalSource}")), handledEventsToo: true);
+            _window.AddHandler(Mouse.PreviewMouseWheelEvent, new MouseWheelEventHandler(
+                (_, e) => Note($"window PreviewMouseWheel from {e.OriginalSource}")), handledEventsToo: true);
+            _window.AddHandler(Keyboard.PreviewKeyDownEvent, new KeyEventHandler(
+                (_, e) => Note($"window PreviewKeyDown {e.Key}")), handledEventsToo: true);
+            Owner.Unloaded += (_, _) => Note("owner Unloaded");
+            Owner.MouseEnter += (_, _) => Note("owner MouseEnter");
+            Owner.MouseLeave += (_, _) => Note("owner MouseLeave");
+            Owner.IsVisibleChanged += (_, e) => Note($"owner IsVisible={e.NewValue}");
+            Card.Unloaded += (_, _) => Note("card Unloaded");
+            Card.Loaded += (_, _) =>
+            {
+                Note("card Loaded");
+                if (Ancestor<ScrollViewer>(Card) is { } scroller)
+                {
+                    scroller.MouseEnter -= CardEntered;
+                    scroller.MouseEnter += CardEntered;
+                    scroller.MouseLeave -= CardLeft;
+                    scroller.MouseLeave += CardLeft;
+                }
+            };
+        }
+
+        private void CardEntered(object sender, MouseEventArgs e) => Note("scroller MouseEnter");
+
+        private void CardLeft(object sender, MouseEventArgs e) => Note("scroller MouseLeave");
 
         public void RestOnPart()
         {

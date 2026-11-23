@@ -76,18 +76,17 @@ internal static class RealPointer
         var observed = false;
         Win32.Point? last = null;
         ObservedMessage? lastPacket = null;
-        Win32.ThreadMessageHook fetched = (code, remove, data) =>
+        var mouseMessages = 0;
+        Win32.MouseMessageHook fetched = (code, message, data) =>
         {
-            if (code == 0 && remove == 1)
+            if (code == 0) // HC_ACTION, not HC_NOREMOVE.
             {
-                var packet = Marshal.PtrToStructure<Win32.Message>(data);
+                var packet = Marshal.PtrToStructure<Win32.MouseHook>(data);
                 var observedPacket = new ObservedMessage(
-                    packet.Id, Win32.MessageExtraInfo(), packet.Point,
+                    (uint)message, packet.ExtraInfo, packet.Point,
                     packet.Window == expectedWindow || Win32.IsChildOf(packet.Window, expectedWindow));
-                if (packet.Id == 0x0200)
-                {
-                    lastPacket = observedPacket;
-                }
+                mouseMessages++;
+                lastPacket = observedPacket;
 
                 receipt.Observe(observedPacket);
                 if (receipt.MisplacedAt is not null)
@@ -96,8 +95,16 @@ internal static class RealPointer
                 }
             }
 
-            return Win32.NextThreadMessage(code, remove, data);
+            return Win32.NextMouseMessage(code, message, data);
         };
+        void FilterMessage(ref MSG message, ref bool handled)
+        {
+            if (message.message != 0x0200)
+            {
+                receipt.Observe(new ObservedMessage((uint)message.message, 0, default, false));
+            }
+        }
+
         MouseEventHandler moved = (_, e) =>
         {
             var screen = element.PointToScreen(e.GetPosition(element));
@@ -108,10 +115,11 @@ internal static class RealPointer
                 frame.Continue = false;
             }
         };
+        var hook = Win32.HookMouseMessages(fetched);
         var timeout = new DispatcherTimer(TestWait.ForSignal, DispatcherPriority.Normal,
             (_, _) => frame.Continue = false, element.Dispatcher);
-        var hook = Win32.HookThreadMessages(fetched);
         element.AddHandler(Mouse.PreviewMouseMoveEvent, moved, handledEventsToo: true);
+        ComponentDispatcher.ThreadFilterMessage += FilterMessage;
         try
         {
             NativeInput.Send(move);
@@ -120,8 +128,9 @@ internal static class RealPointer
         finally
         {
             timeout.Stop();
+            ComponentDispatcher.ThreadFilterMessage -= FilterMessage;
             element.RemoveHandler(Mouse.PreviewMouseMoveEvent, moved);
-            Win32.UnhookThreadMessages(hook);
+            Win32.UnhookMouseMessages(hook);
             GC.KeepAlive(fetched);
         }
 
@@ -137,11 +146,13 @@ internal static class RealPointer
             var current = Win32.CursorPosition();
             throw new TimeoutException(
                 $"WPF did not observe the pointer on {element.GetType().Name}: "
-                + $"{(receipt.Received ? "the packet's message was fetched but no routed move followed it" : "the packet's message was never fetched")}, "
+                + "SendInput accepted the packet; "
+                + $"{(receipt.Received ? "its marked WM_MOUSEMOVE was fetched but no routed move followed it" : "its marked WM_MOUSEMOVE was never fetched")} "
+                + $"({mouseMessages} mouse messages fetched while waiting), "
                 + $"requested screen ({target.X}, {target.Y}), "
                 + $"cursor ({current.X}, {current.Y}), last observed event {(last is { } seen ? $"({seen.X}, {seen.Y})" : "none")}, "
-                + $"expected marker {marker}, last packet "
-                + $"{(lastPacket is { } packet ? $"marker {packet.ExtraInfo} at ({packet.Screen.X}, {packet.Screen.Y}), expected window {packet.InExpectedWindow}" : "none")}, "
+                + $"expected marker {marker}, last fetched mouse message "
+                + $"{(lastPacket is { } packet ? $"0x{packet.Id:X} marker {packet.ExtraInfo} at ({packet.Screen.X}, {packet.Screen.Y}), expected window {packet.InExpectedWindow}" : "none")}, "
                 + $"directly over {Mouse.DirectlyOver}, captured by {Mouse.Captured}; "
                 + $"{Describe(expectedWindow, Win32.WindowAt(target))}.");
         }
