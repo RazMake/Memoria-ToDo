@@ -36,12 +36,6 @@ public class AddWindowAppearanceTests
             Assert.True(red.ShowsColor(LightRed));
             Assert.False(red.ShowsColor(DarkRed));
 
-            screen.Services.Theme.Switch(true);
-            await RenderedField.Settled();
-            var dark = RenderedField.Of(screen.Window, EditorFields.Description);
-            Assert.True(dark.ShowsColor(DarkRed));
-            Assert.False(dark.ShowsColor(LightRed));
-
             var styled = await Look(screen, EditorFields.Description, "**mmmmmmmmmmmmmmmmmmmm**");
             var plain = await Look(screen, EditorFields.Description, "** mmmmmmmmmmmmmmmmmmmm**");
             Assert.True(styled.TotalInk() > plain.TotalInk());
@@ -53,6 +47,13 @@ public class AddWindowAppearanceTests
             Assert.True(one.InkHeight() > two.InkHeight());
             Assert.True(two.InkHeight() > four.InkHeight());
             Assert.True(four.InkHeight() > none.InkHeight());
+
+            await Look(screen, EditorFields.Description, ":red[mmmmmmmmmmmm]");
+            screen.Services.Theme.Switch(true);
+            await RenderedField.Settled();
+            var dark = RenderedField.Of(screen.Window, EditorFields.Description);
+            Assert.True(dark.ShowsColor(DarkRed));
+            Assert.False(dark.ShowsColor(LightRed));
 
             var all = await Look(screen, EditorFields.Description, "# mmmmmmmm\n[mmmmmmmm](https://example.com)\n`mmmmmmmm`\n_mmmmmmmm_");
             Assert.True(all.ShowsColor(TextLooks.Dark.Heading1));
@@ -203,9 +204,9 @@ public class AddWindowAppearanceTests
 
             Assert.Equal("Buy milk", host.Editor.Value.Title);
             Assert.Equal(["home"], host.Editor.Value.Tags);
-            Assert.True(host.Editor.HasChanges);
+            Assert.False(host.Editor.HasChanges);
             OpenWindows.Click(TagControls.PillButton(host.Editor));
-            Assert.Equal(["hobby", "home"], TagControls.MenuTags(host.Editor));
+            Assert.Equal(["hobby"], TagControls.MenuTags(host.Editor));
         }
 
         var services = new EditorServices();

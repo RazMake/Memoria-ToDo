@@ -315,6 +315,7 @@ public class TagControlTests
         Assert.True(TagControls.SearchBox(host.Editor).IsKeyboardFocused);
         host.Press(Key.Escape);
 
+        host.Editor.TaskTag = "b";
         TagEditorWindow.Focus(TagControls.PillButton(host.Editor));
         host.Press(Key.Enter);
         for (var i = 0; i < 5; i++)

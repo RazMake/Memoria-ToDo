@@ -46,9 +46,11 @@ public class HoverCardRealPointerIntegrationTests
             }
             catch (TimeoutException error)
             {
+                var cursor = Win32.CursorPosition();
                 throw new TimeoutException(
                     $"The native move completed but the card did not load: owner loaded={owner.IsLoaded}, window active={window.IsActive}, "
-                    + $"directly over {System.Windows.Input.Mouse.DirectlyOver}, parts requested at [{string.Join("; ", asked)}].", error);
+                    + $"directly over {System.Windows.Input.Mouse.DirectlyOver}, cursor ({cursor.X}, {cursor.Y}), "
+                    + $"foreground window {Win32.ForegroundWindow():X}, parts requested at [{string.Join("; ", asked)}].", error);
             }
             Assert.NotEmpty(asked);
             var first = asked[0];

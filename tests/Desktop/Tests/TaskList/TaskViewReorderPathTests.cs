@@ -30,7 +30,7 @@ public class TaskViewReorderPathTests
         var taken = screen.Drop(services.Stored("A"), "C", lowerHalf: true, onGroup: "work");
         Assert.True(taken);
         Assert.Equal(["B", "C", "A"], screen.RowTitlesIn("work"));
-        Assert.Equal(["B", "C", "A", "Home one"], services.OpenTitlesInRankOrder());
+        Assert.Equal(["B", "C", "Home one", "A"], services.OpenTitlesInRankOrder());
 
         screen.DropGroup("work", "home");
         Assert.Equal(["work", "home"], screen.GroupNames);

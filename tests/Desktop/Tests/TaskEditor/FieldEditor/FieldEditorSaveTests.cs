@@ -1,5 +1,7 @@
 using System.IO;
 using System.Windows.Automation;
+using System.Windows.Input;
+using ICSharpCode.AvalonEdit;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -36,6 +38,41 @@ public class FieldEditorSaveTests
 
     private static bool IsMarked(System.Windows.DependencyObject editor) =>
         !string.IsNullOrEmpty(AutomationProperties.GetItemStatus(EditorFields.Field(editor, EditorFields.Title)));
+
+    [WpfTheory]
+    [InlineData("first\nsecond")]
+    [InlineData("first\r\nsecond")]
+    public void Typing_text_with_a_line_break_keeps_the_Title_and_its_selection(string input)
+    {
+        var editor = Title("Buy milk");
+        var field = (TextEditor)EditorFields.Field(editor, EditorFields.Title);
+        field.Select(4, 4);
+
+        field.TextArea.PerformTextInput(input);
+
+        Assert.Equal("Buy milk", editor.Value);
+        Assert.Equal(4, field.SelectionStart);
+        Assert.Equal(4, field.SelectionLength);
+    }
+
+    [WpfTheory]
+    [InlineData("\n")]
+    [InlineData("\r")]
+    [InlineData("\r\n")]
+    public void Typed_line_breaks_leave_the_Title_on_one_line(string input)
+    {
+        var editor = Title("Buy milk");
+        var field = (TextEditor)EditorFields.Field(editor, EditorFields.Title);
+        field.CaretOffset = field.Text.Length;
+
+        field.TextArea.RaiseEvent(new TextCompositionEventArgs(
+            Keyboard.PrimaryDevice, new TextComposition(InputManager.Current, field.TextArea, input))
+        {
+            RoutedEvent = TextCompositionManager.TextInputEvent,
+        });
+
+        Assert.Equal("Buy milk", editor.Value);
+    }
 
     [WpfFact]
     public void A_Title_editor_has_no_changes_until_its_text_differs_from_the_value_last_set()

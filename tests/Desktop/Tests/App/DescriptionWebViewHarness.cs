@@ -30,6 +30,7 @@ internal sealed class DescriptionWebViewHarness : IDisposable
     private readonly Channel<(string, bool)> _windows = Channel.CreateUnbounded<(string, bool)>();
     private readonly System.Collections.Concurrent.ConcurrentQueue<string> _failures = new();
     private Process? _browser;
+    private Task? _browserExited;
     private readonly Channel<string> _failureSignals = Channel.CreateUnbounded<string>();
     private readonly System.Collections.Concurrent.ConcurrentQueue<Exception> _unhandled = new();
 
@@ -195,7 +196,7 @@ internal sealed class DescriptionWebViewHarness : IDisposable
     {
         // WebView2 holds files in its data folder until its browser has exited, so the web view goes first, then the window.
         Control.Dispatcher.UnhandledException -= OnUnhandled;
-        WebViewTeardown.Run([WebView], _window.Close, _browser, BrowserDataFolder);
+        WebViewTeardown.Run([WebView], _window.Close, _browser, _browserExited, BrowserDataFolder);
         if (Directory.Exists(_root))
         {
             Directory.Delete(_root, recursive: true);
@@ -226,6 +227,7 @@ internal sealed class DescriptionWebViewHarness : IDisposable
 
         var core = Control.CoreWebView2;
         _browser = Process.GetProcessById((int)core.BrowserProcessId);
+        _browserExited = WebViewTeardown.WatchExit(core.Environment);
         // A user navigation's outcome is how the browser ended it, which doesn't depend on handler order.
         var userNavigations = new Dictionary<ulong, string>();
         core.NavigationStarting += (_, args) =>

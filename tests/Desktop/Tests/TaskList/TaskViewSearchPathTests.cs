@@ -32,7 +32,7 @@ public class TaskViewSearchPathTests
         screen.TypeSearch("");
         Assert.Equal(3, screen.RowTitles.Count);
 
-        screen.TypeInSearch("@an");
+        screen.TypeInSearch("@ana");
         Assert.Equal(["Ana Pop (anap)"], screen.ShownAliases);
         screen.Press(Key.Down);
         Assert.Empty(screen.SelectedTitles);

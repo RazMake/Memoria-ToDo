@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -50,7 +51,8 @@ public class HoverCardPathTests
         var asked = screen.Asked;
         screen.MoveOntoCard();
 
-        Assert.False(screen.WaitUntil(() => !screen.Card.IsLoaded, TimeSpan.FromMilliseconds(2 * SystemParameters.MouseHoverTime.TotalMilliseconds)), "The pointer on the card closed it.");
+        Assert.False(screen.WaitUntil(() => !screen.Card.IsLoaded, TimeSpan.FromMilliseconds(2 * SystemParameters.MouseHoverTime.TotalMilliseconds)),
+            "The pointer on the card closed it. " + string.Join(" | ", screen.Log.Events.Select(entry => entry.RenderMessage())));
         Assert.Equal(asked, screen.Asked);
     }
 
@@ -104,7 +106,7 @@ public class HoverCardPathTests
                 AskedAt.Add(point);
                 var box = new Rect(10, 10, 60, 20);
                 return Task.FromResult<HoverPart?>(box.Contains(point) ? new HoverPart(box, Card) : null);
-            }, Pointer, Serilog.Core.Logger.None);
+            }, Pointer, Log.CreateLogger());
             _window = new Window { Content = Owner, Width = 400, Height = 300, WindowStartupLocation = WindowStartupLocation.Manual, Left = 50, Top = 50 };
             _window.Show();
             _window.UpdateLayout();
@@ -120,6 +122,8 @@ public class HoverCardPathTests
         public List<Point> AskedAt { get; } = [];
 
         public FakeDragPointer Pointer { get; } = new();
+
+        public InMemoryLogSink Log { get; } = new();
 
         public void RestOnPart()
         {

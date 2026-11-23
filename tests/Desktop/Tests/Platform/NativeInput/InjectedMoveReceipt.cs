@@ -23,6 +23,9 @@ internal sealed class InjectedMoveReceipt
     public bool Received { get; private set; }
     public Win32.Point? MisplacedAt { get; private set; }
 
+    public static bool IsAtTarget(Win32.Point observed, Win32.Point target) =>
+        Math.Abs((long)observed.X - target.X) <= Tolerance && Math.Abs((long)observed.Y - target.Y) <= Tolerance;
+
     public void Observe(ObservedMessage message)
     {
         _eligible = false;
@@ -32,7 +35,7 @@ internal sealed class InjectedMoveReceipt
         }
 
         Received = true;
-        if (Math.Abs((long)message.Screen.X - _target.X) > Tolerance || Math.Abs((long)message.Screen.Y - _target.Y) > Tolerance)
+        if (!IsAtTarget(message.Screen, _target))
         {
             MisplacedAt = message.Screen;
             return;

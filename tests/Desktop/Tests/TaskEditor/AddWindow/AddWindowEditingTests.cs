@@ -118,6 +118,7 @@ public class AddWindowEditingTests
         Assert.True(screen.Services.Files.FileExists(screen.Services.DraftImagePath(link.Groups[2].Value)));
 
         screen.Edit(EditorFields.Description, "", 0);
+        screen.Services.Clipboard.Image = null;
         screen.Services.ImageFiles.Path = screen.Services.PutImageFile("Cat photo.png", png);
         screen.PressCtrl(true, Key.I);
         Assert.Equal("Cat photo", Assert.Single(ImageLink.Matches(screen.TextOf(EditorFields.Description))).Groups[1].Value);

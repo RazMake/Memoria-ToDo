@@ -92,10 +92,20 @@ internal sealed class HostProcess : IDisposable
     /// <summary>Waits for the program's message box, closes it, and returns its text. Fails after a limit.</summary>
     public string CloseMessageBox()
     {
-        var box = _dialogs.WaitForMessageBoxOf(_process, Limit);
-        var text = Win32.MessageBoxText(box);
-        Win32.CloseWindow(box);
-        return text;
+        try
+        {
+            var box = _dialogs.WaitForMessageBoxOf(_process, Limit);
+            var text = Win32.MessageBoxText(box);
+            Win32.CloseWindow(box);
+            return text;
+        }
+        catch (XunitException error)
+        {
+            lock (_lines)
+            {
+                throw new XunitException($"{error.Message}{Environment.NewLine}Host output:{Environment.NewLine}{string.Join(Environment.NewLine, _output)}");
+            }
+        }
     }
 
     public int Count(string line) => _lines.Count(l => l == line);

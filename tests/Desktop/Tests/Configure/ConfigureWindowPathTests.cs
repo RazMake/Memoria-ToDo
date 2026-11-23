@@ -93,6 +93,7 @@ public class ConfigureWindowPathTests
     {
         using var screen = new ConfigureScreen();
         screen.Open();
+        OpenWindows.UseTheme(screen.Window, dark: false);
         var size = screen.WindowSize;
         Assert.Equal(new[] { "Current version: 2.1.0" }, screen.CardTexts.Take(1));
         Assert.False(screen.CardShowsButton("What is new"));
@@ -103,7 +104,7 @@ public class ConfigureWindowPathTests
         Assert.Equal("2.2.0", ConfigureScreen.BoldPart(screen.CardBlock("Available new version")));
         Assert.True(screen.CardShowsButton("What is new"));
         Assert.True(screen.CardShowsButton("Update Now"));
-        Assert.NotNull(screen.CardBackground);
+        Assert.Equal(((SolidColorBrush)screen.Window.FindResource("SystemFillColorCautionBackgroundBrush")).Color, screen.CardBackground);
 
         OpenWindows.Click(screen.CardButton("What is new")!);
         Assert.Same(screen.Window, Assert.Single(screen.Updates.WhatIsNewOwners));

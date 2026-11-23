@@ -154,7 +154,8 @@ public class ConfigureSyncPathTests
         Assert.True(screen.ShowsButton("Copy public key"));
         Assert.True(screen.ShowsButton("Forget key"));
 
-        screen.SetupActions.CopyFailure = new InvalidOperationException("Clipboard is busy.");
+        var copyFailure = new InvalidOperationException("Clipboard is busy.");
+        screen.SetupActions.CopyFailure = copyFailure;
         screen.Click("Copy public key");
         Assert.True(screen.IsInCard(screen.TitleBlock("Clipboard is busy."), "Git Access"));
         screen.SetupActions.CopyFailure = null;
@@ -204,7 +205,9 @@ public class ConfigureSyncPathTests
 
         screen.ChooseRepositoryAction("Use existing repo clone");
         Assert.False(screen.ShowsButton("Set key"));
-        screen.Log.Events.AssertNoProblems();
+        var loggedFailure = screen.Log.Events.SingleAt(LogEventLevel.Error);
+        Assert.True(loggedFailure.HasException(copyFailure));
+        screen.Log.Events.Where(entry => !ReferenceEquals(entry, loggedFailure)).AssertNoProblems();
     }
 
     private void ClickForget(ConfigureScreen screen, Action<Window> answer) =>

@@ -78,8 +78,9 @@ public class FieldEditorTests
         Assert.Equal((4, 2), (host.Saves, host.Cancels));
 
         host.Layout();
+        host.Focus();
         OpenWindows.UseTheKeyboard();
-        Keyboard.Focus(host.SaveButton);
+        ((UIElement)Keyboard.FocusedElement).MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
         host.Layout();
         Assert.True(OpenWindows.DrawsFocusOutline(host.SaveButton), "No outline frames Save.");
     }

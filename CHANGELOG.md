@@ -23,6 +23,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - The Add new task window no longer disappears when you click another window. It stays open behind it, like Task View and the app's other windows, so Alt+Tab or the taskbar brings it back with what you typed.
 - In Logs, the Severity list now offers "Debug and up", which also shows the app's detailed entries that explain its choices, such as where a window opened. The log files now keep these entries too.
 - A contact card no longer closes immediately when you move the pointer out of the text toward the card. It gives you the same short time to cross as when you leave the mention itself.
+- Task titles now stay on one line when you press an Enter combination that is not assigned to Save.
 
 
 ## 1.1.1

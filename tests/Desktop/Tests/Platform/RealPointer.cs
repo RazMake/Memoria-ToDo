@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Runtime.InteropServices;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -41,7 +42,7 @@ internal static class RealPointer
 
         // WPF must observe the step away before the pointer returns, or Windows can coalesce both moves.
         var current = Win32.CursorPosition();
-        if (current.X == target.X && current.Y == target.Y)
+        if (InjectedMoveReceipt.IsAtTarget(current, target))
         {
             var away = new Win32.Point { X = target.X + 2, Y = target.Y };
             if (!Win32.IsOnScreen(away))
@@ -74,17 +75,28 @@ internal static class RealPointer
         var frame = new DispatcherFrame();
         var observed = false;
         Win32.Point? last = null;
-        ThreadMessageEventHandler fetched = (ref MSG message, ref bool handled) =>
+        ObservedMessage? lastPacket = null;
+        Win32.ThreadMessageHook fetched = (code, remove, data) =>
         {
-            receipt.Observe(new ObservedMessage(
-                (uint)message.message,
-                Win32.MessageExtraInfo(),
-                new Win32.Point { X = message.pt_x, Y = message.pt_y },
-                message.hwnd == expectedWindow || Win32.IsChildOf(message.hwnd, expectedWindow)));
-            if (receipt.MisplacedAt is not null)
+            if (code == 0 && remove == 1)
             {
-                frame.Continue = false;
+                var packet = Marshal.PtrToStructure<Win32.Message>(data);
+                var observedPacket = new ObservedMessage(
+                    packet.Id, Win32.MessageExtraInfo(), packet.Point,
+                    packet.Window == expectedWindow || Win32.IsChildOf(packet.Window, expectedWindow));
+                if (packet.Id == 0x0200)
+                {
+                    lastPacket = observedPacket;
+                }
+
+                receipt.Observe(observedPacket);
+                if (receipt.MisplacedAt is not null)
+                {
+                    frame.Continue = false;
+                }
             }
+
+            return Win32.NextThreadMessage(code, remove, data);
         };
         MouseEventHandler moved = (_, e) =>
         {
@@ -98,7 +110,7 @@ internal static class RealPointer
         };
         var timeout = new DispatcherTimer(TestWait.ForSignal, DispatcherPriority.Normal,
             (_, _) => frame.Continue = false, element.Dispatcher);
-        ComponentDispatcher.ThreadPreprocessMessage += fetched;
+        var hook = Win32.HookThreadMessages(fetched);
         element.AddHandler(Mouse.PreviewMouseMoveEvent, moved, handledEventsToo: true);
         try
         {
@@ -109,7 +121,8 @@ internal static class RealPointer
         {
             timeout.Stop();
             element.RemoveHandler(Mouse.PreviewMouseMoveEvent, moved);
-            ComponentDispatcher.ThreadPreprocessMessage -= fetched;
+            Win32.UnhookThreadMessages(hook);
+            GC.KeepAlive(fetched);
         }
 
         if (receipt.MisplacedAt is { } misplaced)
@@ -127,7 +140,10 @@ internal static class RealPointer
                 + $"{(receipt.Received ? "the packet's message was fetched but no routed move followed it" : "the packet's message was never fetched")}, "
                 + $"requested screen ({target.X}, {target.Y}), "
                 + $"cursor ({current.X}, {current.Y}), last observed event {(last is { } seen ? $"({seen.X}, {seen.Y})" : "none")}, "
-                + $"directly over {Mouse.DirectlyOver}; {Describe(expectedWindow, Win32.WindowAt(target))}.");
+                + $"expected marker {marker}, last packet "
+                + $"{(lastPacket is { } packet ? $"marker {packet.ExtraInfo} at ({packet.Screen.X}, {packet.Screen.Y}), expected window {packet.InExpectedWindow}" : "none")}, "
+                + $"directly over {Mouse.DirectlyOver}, captured by {Mouse.Captured}; "
+                + $"{Describe(expectedWindow, Win32.WindowAt(target))}.");
         }
     }
 

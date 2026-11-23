@@ -33,8 +33,10 @@ internal static class Win32
 
     public delegate void WinEventProc(nint hook, uint eventType, nint window, int objectId, int childId, uint thread, uint time);
 
+    public delegate nint ThreadMessageHook(int code, nint remove, nint data);
+
     [StructLayout(LayoutKind.Sequential)]
-    private struct Message { public nint Window; public uint Id; public nint WParam; public nint LParam; public uint Time; public Point Point; }
+    public struct Message { public nint Window; public uint Id; public nint WParam; public nint LParam; public uint Time; public Point Point; }
 
     public const uint EventSystemDialogStart = 0x0010;
     private const uint EventObjectShow = 0x8002;
@@ -50,6 +52,9 @@ internal static class Win32
 
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point point);
     [DllImport("user32.dll")] private static extern nint GetMessageExtraInfo();
+    [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern nint SetWindowsHookEx(int kind, ThreadMessageHook callback, nint module, uint threadId);
+    [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern bool UnhookWindowsHookEx(nint hook);
+    [RealInput, DllImport("user32.dll")] private static extern nint CallNextHookEx(nint hook, int code, nint message, nint data);
     [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] private static extern bool IsChild(nint parent, nint window);
@@ -83,6 +88,25 @@ internal static class Win32
     public static Point CursorPosition() => GetCursorPos(out var point) ? point : throw new InvalidOperationException("No pointer position.");
 
     public static nint MessageExtraInfo() => GetMessageExtraInfo();
+
+    [RealInput]
+    public static nint HookThreadMessages(ThreadMessageHook callback)
+    {
+        var hook = SetWindowsHookEx(3, callback, 0, GetCurrentThreadId());
+        return hook != 0 ? hook : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+
+    [RealInput]
+    public static void UnhookThreadMessages(nint hook)
+    {
+        if (!UnhookWindowsHookEx(hook))
+        {
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        }
+    }
+
+    [RealInput]
+    public static nint NextThreadMessage(int code, nint remove, nint data) => CallNextHookEx(0, code, remove, data);
 
     /// <summary>
     /// Puts the pointer at the point. Throws when Windows refuses, or puts the pointer more than a pixel away, as it does past a
