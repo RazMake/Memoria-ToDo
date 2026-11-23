@@ -11,6 +11,7 @@ using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 
+
 /// <summary>
 /// The ports an editor test builds its windows on: the shared fakes, and a real Tasks module over the fake files.
 /// Shared test setup, not a fake of a port.
@@ -114,7 +115,7 @@ internal sealed class EditorServices
     /// <summary>The entries the window made by <see cref="CreateAddWindow"/> logged, through the logger it was given.</summary>
     public InMemoryLogSink Log { get; } = new();
 
-    public IAddWindow CreateAddWindow() => AddWindow.Create(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys, Pointer, Log.CreateLogger());
+    public IAddWindow CreateAddWindow() => Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys, Pointer, Log.CreateLogger());
 
     public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys, Pointer, Serilog.Core.Logger.None);
 

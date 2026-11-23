@@ -19,11 +19,29 @@ internal static class SnippetAnalysis
 
     private static readonly Lazy<IReadOnlyList<MetadataReference>> References = new(LoadedAssemblyReferences);
 
-    public static async Task<IReadOnlyList<Diagnostic>> Analyze(string source)
+    /// <summary>
+    /// Declares <c>[UX("screen")]</c> in the snippet itself, shadowing the real attribute (the analyzer finds it by
+    /// full type name), so screen snippets compile whatever constructors the real attribute has.
+    /// </summary>
+    private const string ScreenAttribute = """
+        namespace Memoria.ToDo.Testing
+        {
+            [System.AttributeUsage(System.AttributeTargets.Class)]
+            public sealed class UXAttribute : System.Attribute { public UXAttribute(string screen) { } }
+        }
+        """;
+
+    public static Task<IReadOnlyList<Diagnostic>> Analyze(string source) => Run([Usings + source]);
+
+    /// <summary>Analyzes several files as one project; each file gets the usings, and <c>[UX("screen")]</c> is in scope.</summary>
+    public static Task<IReadOnlyList<Diagnostic>> AnalyzeFiles(params string[] sources) =>
+        Run([ScreenAttribute, .. sources.Select(source => Usings + source)]);
+
+    private static async Task<IReadOnlyList<Diagnostic>> Run(IEnumerable<string> files)
     {
         var compilation = CSharpCompilation.Create(
             "Snippet",
-            [CSharpSyntaxTree.ParseText(Usings + source)],
+            files.Select(file => CSharpSyntaxTree.ParseText(file)),
             References.Value,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

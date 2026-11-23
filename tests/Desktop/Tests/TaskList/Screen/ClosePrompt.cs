@@ -124,23 +124,6 @@ internal sealed class ClosePrompt(string title = ClosePrompt.Title)
     public static void PressEnter(Window prompt) =>
         SimulatedKey.Raise(prompt, Key.Enter, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
 
-    public static Action<Window> PressEnterOn(string text) => prompt =>
-    {
-        var button = OpenWindows.Descendants(prompt).OfType<Button>().Single(candidate => candidate.Content as string == text);
-        button.Focus();
-        Keyboard.Focus(button);
-        if (!ReferenceEquals(Keyboard.FocusedElement, button))
-        {
-            throw new InvalidOperationException($"The \"{text}\" button didn't take the keyboard focus.");
-        }
-
-        SimulatedKey.Raise(button, Key.Enter, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
-        if (prompt.IsVisible)
-        {
-            throw new InvalidOperationException("Enter on the focused button didn't answer the prompt.");
-        }
-    };
-
     /// <summary>Answers by pressing Esc.</summary>
     public static void PressEscape(Window prompt) => OpenWindows.PressEscape(prompt);
 

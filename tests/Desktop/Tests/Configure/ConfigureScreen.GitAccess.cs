@@ -42,15 +42,4 @@ internal sealed partial class ConfigureScreen
 
         return false;
     }
-
-    /// <summary>The tooltip's text, or null when the element has none.</summary>
-    public static string? TipOf(FrameworkElement element) =>
-        element.ToolTip is ToolTip { Content: var content } ? content?.ToString() : element.ToolTip?.ToString();
-
-    /// <summary>Where the element is in the window, once its layout has settled.</summary>
-    public Rect BoundsOf(FrameworkElement element)
-    {
-        Settle();
-        return new Rect(element.TranslatePoint(new Point(0, 0), Window), new Size(element.ActualWidth, element.ActualHeight));
-    }
 }

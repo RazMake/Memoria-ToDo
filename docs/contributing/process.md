@@ -12,7 +12,7 @@ The session you talk to runs these steps, asks you each decision, and delivers t
 | Green | [coder](../../.agents/subagents/coder.md) | Code that makes unit tests pass, inside one module |
 | Review | [reviewer](../../.agents/subagents/reviewer.md) | Findings, sorted into code defects and design gaps |
 | Closing failure proof | [tester](../../.agents/subagents/tester.md) | [Every new test red didn't see fail, proven in the fewest groups](../../AGENTS.md#run-timing), once per session |
-| Final validation | [coder](../../.agents/subagents/coder.md) | [One full build and test run](../../AGENTS.md#run-timing), once per session |
+| Final validation | [coder](../../.agents/subagents/coder.md) | [Every test kind for the changed modules and their dependents](../../AGENTS.md#run-timing), once per session |
 
 ## Spend agents, builds, and test runs sparingly
 
@@ -22,7 +22,7 @@ Each agent call, build, and test run costs minutes, so the session does each as 
 - **Two test checkpoints per change.** Red and green, each running only the tests that cover the change, as [Run timing](../../AGENTS.md#run-timing) says. UX tests wait for the session's end.
 - **One review per session.** It covers every change made in the session together; the trivial lane skips it.
 - **One closing failure proof per session.** It proves every new test that red didn't see fail, all together, in the fewest groups of breaks.
-- **One final validation per session.** It runs after all the session's changes, with one full build and test run.
+- **One final validation per session.** It runs after all the session's changes, with every test kind for the modules the session changed and the modules that depend on them. The full suite runs only [in the cloud](../architecture/test-selection.md#the-full-suite-runs-only-in-the-cloud).
 
 ## Pick the lightest lane that fits
 
@@ -66,7 +66,7 @@ Design files describe the current design only. Git history records how it change
    - **Design gap**: the design is missing, unclear, or wrong. It goes to you as a decision; code doesn't settle it.
 
 5. **Closing failure proof**, only when all the work is done: every change in the session is green, and every finding is fixed or decided by you. The main session calls the tester once, with every test the red runs listed, across all the session's changes. The tester groups their breaks as the [test policy](../../AGENTS.md#test-design) says, runs each group once, and restores the code. A test that can't be proven goes back to step 2 for that test alone; a code defect it reveals goes to the coder.
-6. **Final validation**, right after the closing failure proof. The main session calls the coder once for the [full run](../../AGENTS.md#run-timing). It must end with zero failed and zero skipped tests; the coder fixes every failure it shows and reruns until it does.
+6. **Final validation**, right after the closing failure proof. The main session calls the coder once for the [affected run](../../AGENTS.md#run-timing). It must end with zero failed and zero skipped tests; the coder fixes every failure it shows and reruns until it does.
 7. **Report** in chat, in the format below.
 
 A change that keeps behavior, such as a refactor or a move, uses the same unit tests before and after. UX and integration checks follow the [test policy's final-validation timing](../../AGENTS.md#tests).
@@ -92,5 +92,5 @@ The report tells you exactly what to review, and nothing else:
 - **Decisions to confirm**: each decision taken without asking you, with the option taken and its alternatives.
 - **Changelog**: the entry the change added to [`CHANGELOG.md`](../../CHANGELOG.md), or that it added none because users won't notice it.
 - **Spec coverage**: each listed behavior with the tests that prove it, or "deferred" with the reason and its backlog row.
-- **Evidence**: build results; the closing failure proof's groups, each with its breaks and the tests it proved; unit, UX, and integration results reported separately, each with its passed, failed, and skipped counts, which must show zero failed and zero skipped; and each review's [independence evidence and finding resolutions](#independent-review).
-- **Left open**: unresolved findings, risks, and anything not verified.
+- **Evidence**: build results; the closing failure proof's groups, each with its breaks and the tests it proved; the affected run's selection, each module with why it was selected, and its commands; unit, UX, and integration results reported separately, each with its passed, failed, and skipped counts, which must show zero failed and zero skipped; and each review's [independence evidence and finding resolutions](#independent-review).
+- **Left open**: unresolved findings, risks, and anything not verified. When final validation ran less than every test, it says the rest runs only in the workflow's manual run, as [Test selection](../architecture/test-selection.md#the-full-suite-runs-only-in-the-cloud) says.

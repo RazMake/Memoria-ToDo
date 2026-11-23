@@ -103,8 +103,4 @@ internal class ListTasks
     /// <summary>The titles of the open tasks in rank order, as Tasks keeps them.</summary>
     public IReadOnlyList<string> OpenTitlesInRankOrder() =>
         [.. Tasks.All.Where(task => task.Resolved is null).OrderBy(task => task.Rank, StringComparer.Ordinal).Select(task => task.Title)];
-
-    /// <summary>The titles of the resolved tasks in rank order, as Tasks keeps them.</summary>
-    public IReadOnlyList<string> ResolvedTitlesInRankOrder() =>
-        [.. Tasks.All.Where(task => task.Resolved is not null).OrderBy(task => task.Rank, StringComparer.Ordinal).Select(task => task.Title)];
 }

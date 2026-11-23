@@ -194,6 +194,7 @@ The release job also reads what `--notes` prints. Proposed, a decision to confir
 - **A tag is cleared while its release workflow runs**: not confirmed what the run then publishes. Cancel the run on GitHub first.
 - **A cleared version is made again while its GitHub release exists**: not confirmed whether the workflow can publish it. Delete the old release first.
 - **The script uses a Node.js feature the runner image lacks**: the release job fails at its check, before building, and publishes nothing. Fix the script on the default branch, [clear](#clearing-deletes-one-version-tag-here-and-on-origin) the tag, and make it again.
+- **A tag made without the [release command](releasing.md#publishing-needs-a-manual-run-that-passed-every-test-on-the-tagged-commit), such as with the skill, names a commit with no passing manual run of every test**: the release job fails before building, and nothing is published. Start the manual run on the tag; when it passes, re-run the release job. The tag needn't be cleared.
 
 ## Ruled out
 

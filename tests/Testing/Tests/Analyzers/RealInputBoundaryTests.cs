@@ -26,13 +26,15 @@ public sealed class RealInputBoundaryTests
 
     [Theory]
     [InlineData("Unit")]
-    [InlineData("UX")]
+    [InlineData("UX(\"Orders\")")]
     public async Task A_test_that_uses_real_input_must_be_an_integration_test(string kind)
     {
         var diagnostics = await Analyze(Input + $$"""
+            namespace Memoria.ToDo.Orders.Tests {
             [{{kind}}] public class Screen
             {
                 [Fact] public void Exercise() { Input.Move(); }
+            }
             }
             """);
 
@@ -61,7 +63,9 @@ public sealed class RealInputBoundaryTests
         string declaration, string method, string body)
     {
         var diagnostics = await Analyze(Input + $$"""
-            [UX] {{declaration}} { {{method}} { {{body}} } }
+            namespace Memoria.ToDo.Orders.Tests {
+            [UX("Orders")] {{declaration}} { {{method}} { {{body}} } }
+            }
             """);
 
         AssertError(diagnostics, "MTD0003");
@@ -131,12 +135,14 @@ public sealed class RealInputBoundaryTests
     public async Task A_nested_UX_test_cannot_borrow_an_outer_integration_boundary()
     {
         var diagnostics = await Analyze(Input + """
+            namespace Memoria.ToDo.Orders.Tests {
             [Integration] public class Outer
             {
-                [UX] public class Screen
+                [UX("Orders")] public class Screen
                 {
                     [Fact] public void Exercise() { Input.Move(); }
                 }
+            }
             }
             """);
 
@@ -279,7 +285,9 @@ public sealed class RealInputBoundaryTests
         bool getterMarked, bool setterMarked, string body)
     {
         var diagnostics = await Analyze(PropertyAccessors(getterMarked, setterMarked) + $$"""
-            [UX] public class Helper { public void Exercise() { {{body}} } }
+            namespace Memoria.ToDo.Orders.Tests {
+            [UX("Orders")] public class Helper { public void Exercise() { {{body}} } }
+            }
             """);
 
         AssertError(diagnostics, "MTD0003");
@@ -322,7 +330,9 @@ public sealed class RealInputBoundaryTests
         bool getterMarked, bool setterMarked, string body)
     {
         var diagnostics = await Analyze(PropertyAccessors(getterMarked, setterMarked, "int? this[int index]") + $$"""
-            [UX] public class Helper { public void Exercise() { {{body}} } }
+            namespace Memoria.ToDo.Orders.Tests {
+            [UX("Orders")] public class Helper { public void Exercise() { {{body}} } }
+            }
             """);
 
         AssertError(diagnostics, "MTD0003");

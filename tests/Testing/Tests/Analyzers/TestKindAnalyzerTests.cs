@@ -3,6 +3,12 @@ using static Memoria.ToDo.Testing.Analyzers.SnippetAnalysis;
 
 namespace Memoria.ToDo.Testing.Analyzers;
 
+/// <summary>Puts a snippet's classes in the namespace of the Orders screen, which <c>[UX("Orders")]</c> names.</summary>
+internal static class OrdersScreen
+{
+    public const string Namespace = "namespace Memoria.ToDo.Orders.Tests;\n";
+}
+
 [Unit]
 [Collection(SnippetAnalysis.Collection)]
 public sealed class A_test_class_with_no_kind
@@ -89,11 +95,11 @@ public sealed class A_test_class_with_one_kind
 {
     [Theory]
     [InlineData("Unit")]
-    [InlineData("UX")]
+    [InlineData("UX(\"Orders\")")]
     [InlineData("Integration")]
     public async Task Gets_no_diagnostic(string kind)
     {
-        var diagnostics = await Analyze($"[{kind}] public class OrdersTests {{ [Fact] public void Places_an_order() {{ }} }}");
+        var diagnostics = await Analyze($"{OrdersScreen.Namespace}[{kind}] public class OrdersTests {{ [Fact] public void Places_an_order() {{ }} }}");
 
         Assert.Empty(diagnostics);
     }
@@ -104,13 +110,13 @@ public sealed class A_test_class_with_one_kind
 public sealed class A_test_class_with_two_or_more_kinds
 {
     [Theory]
-    [InlineData("[Unit][UX]")]
+    [InlineData("[Unit][UX(\"Orders\")]")]
     [InlineData("[Unit, Integration]")]
-    [InlineData("[UX][Integration]")]
-    [InlineData("[Unit][UX][Integration]")]
+    [InlineData("[UX(\"Orders\")][Integration]")]
+    [InlineData("[Unit][UX(\"Orders\")][Integration]")]
     public async Task Gets_one_error_MTD0002_naming_the_class(string attributes)
     {
-        var diagnostics = await Analyze($"{attributes} public class OrdersTests {{ [Fact] public void Places_an_order() {{ }} }}");
+        var diagnostics = await Analyze($"{OrdersScreen.Namespace}{attributes} public class OrdersTests {{ [Fact] public void Places_an_order() {{ }} }}");
 
         AssertOneError(diagnostics, "MTD0002", "OrdersTests");
     }
@@ -175,9 +181,9 @@ public sealed class A_test_class_that_inherits_tests
     [Fact]
     public async Task Gets_no_diagnostic_when_it_has_a_kind_of_its_own()
     {
-        var diagnostics = await Analyze("""
+        var diagnostics = await Analyze(OrdersScreen.Namespace + """
             public abstract class OrdersTestsBase { [Fact] public void Places_an_order() { } }
-            [UX] public class DesktopOrdersTests : OrdersTestsBase { }
+            [UX("Orders")] public class DesktopOrdersTests : OrdersTestsBase { }
             """);
 
         Assert.Empty(diagnostics);
@@ -224,9 +230,9 @@ public sealed class A_test_class_that_inherits_tests
     [Fact]
     public async Task Gets_an_error_when_it_adds_a_second_kind_to_an_inherited_one()
     {
-        var diagnostics = await Analyze("""
+        var diagnostics = await Analyze(OrdersScreen.Namespace + """
             [Unit] public abstract class OrdersTestsBase { [Fact] public void Places_an_order() { } }
-            [UX] public class DesktopOrdersTests : OrdersTestsBase { }
+            [UX("Orders")] public class DesktopOrdersTests : OrdersTestsBase { }
             """);
 
         AssertOneError(diagnostics, "MTD0002", "DesktopOrdersTests");
@@ -295,9 +301,9 @@ public sealed class A_partial_test_class
     [Fact]
     public async Task Gets_one_error_when_its_parts_carry_different_kinds()
     {
-        var diagnostics = await Analyze("""
+        var diagnostics = await Analyze(OrdersScreen.Namespace + """
             [Unit] public partial class OrdersTests { [Fact] public void Places_an_order() { } }
-            [UX] public partial class OrdersTests { [Fact] public void Cancels_an_order() { } }
+            [UX("Orders")] public partial class OrdersTests { [Fact] public void Cancels_an_order() { } }
             """);
 
         AssertOneError(diagnostics, "MTD0002", "OrdersTests");

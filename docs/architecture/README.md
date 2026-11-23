@@ -10,6 +10,7 @@ This chapter holds Memoria-ToDo's design: what each part does, how parts depend 
 | Learn how the desktop app is built | [Desktop app](desktop/README.md) |
 | Learn how the Android app is built | [Android app](android/README.md) |
 | Learn how the code is built, tested, and released | [Technology stack](technology-stack.md) |
+| Learn which tests a change runs, and how many UX tests a screen keeps | [Test selection](test-selection.md) |
 | Learn what the app logs, and where the logs are kept | [Logging](logging.md) |
 | Make a version tag, which starts a release, or clear one | [Version tags](version-tags.md) |
 | Publish a version and follow its build with one guided command | [Release a version](releasing.md) |
@@ -43,3 +44,4 @@ Proposed: the technology stack row's place and scope. This is a decision to conf
 | 14 | Guided release: one command and VS Code task that use the version tag rules, follow GitHub Actions, download the installer, and guide manual preparation and checks. | [Release a version](releasing.md) | Decided |
 | 15 | Contacts: a shared module for the contact files, how contacts relate, how they sync and are searched, the data types key fields choose from, and how a task mentions one through a template. Designed together with the desktop [Contact list](desktop/contact-list.md). | [Contacts](contacts.md) | Decided |
 | 16 | Logging: Serilog's logger in every module, what each module logs, the desktop's log files and their limits, keeping secrets out, errors no module handles, and the Serilog packages. Designed together with the desktop [Logs window](desktop/logs.md). | [Logging](logging.md) | Decided |
+| 17 | Test selection: which tests final validation runs for a change, narrowed to changed screens, the script that picks them, the full suite in the cloud's manual run, which each release reuses, and the limit of 10 UX tests per screen with the plan that shrinks today's UX tests | [Test selection](test-selection.md) | Decided |

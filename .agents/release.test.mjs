@@ -12,6 +12,7 @@ import * as release from './release.mjs';
 import { createCommands, createGitHub, run } from './release.mjs';
 import { createGit } from './version-tag.mjs';
 import { changelogWith, commitA, commitB, createFakeFiles, createFakeGit } from './version-tag.fake-git.mjs';
+import { createFakeActionsApi, restJob, restRun } from './full-run-check.fake-github.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repository = { nameWithOwner: 'example/tasks', url: 'https://github.com/example/tasks', pushUrl: 'git@github.com:example/tasks.git' };
@@ -19,17 +20,23 @@ const branchRun = { databaseId: 10, headBranch: 'main', headSha: commitA, status
 const tagRun = { ...branchRun, databaseId: 20, headBranch: 'v1.0.0' };
 const published = { tagName: 'v1.0.0', isDraft: false, isPrerelease: false, url: `${repository.url}/releases/tag/v1.0.0`, assets: [{ name: 'MemoriaToDo-win-Setup.exe', size: 123 }] };
 
-const runningBranchRun = { ...branchRun, status: 'in_progress', conclusion: null };
+// The workflow's manual run on the default branch, which the release command checks before tagging.
+const manualRun = { ...branchRun, databaseId: 30, event: 'workflow_dispatch', url: `${repository.url}/actions/runs/30` };
+const runningManualRun = { ...manualRun, status: 'in_progress', conclusion: null };
+// What github.fullRun(commit) answers: the shared run check's { state, run }.
+const found = (state, run) => (run ? { state, run } : { state });
 
 function session(options = {}) {
   const git = createFakeGit({ originHead: commitA, changelog: changelogWith('1.0.0'), ...options.git });
   const output = [];
   const githubWaits = [];
   const questions = [];
-  const firstBranchRun = options.branchRun ?? runningBranchRun;
+  const fullRun = options.fullRun ?? found('running', runningManualRun);
   const answers = [...(options.answers ?? ['yes', 'yes'])];
+  const lookups = [];
+  const starts = [];
+  const watched = [];
   let tested = false;
-  let appTestedAfterQuestions;
   const services = {
     interactive: true,
     git,
@@ -44,13 +51,17 @@ function session(options = {}) {
       return typeof answer === 'function' ? answer(git) : answer;
     },
     testTooling: async () => { tested = true; },
-    testApp: async () => { appTestedAfterQuestions = questions.length; },
+    // The command runs no .NET tests on this PC; a call fails the release.
+    testApp: async () => assert.fail('the release command must not run .NET tests locally'),
     github: {
       connect: async () => repository,
       ensureOrigin: async () => {},
       runs: async () => [],
-      waitForRun: async (ref) => ref === 'main' ? firstBranchRun : tagRun,
+      fullRun: async (commit) => { lookups.push(commit); return fullRun; },
+      startFullRun: async (branch) => { starts.push(branch); return runningManualRun; },
+      waitForRun: async () => tagRun,
       watch: async (job) => {
+        watched.push(job.databaseId);
         if (job.headBranch === 'main') assert.deepEqual(git.snapshot().remote, {});
         else assert.equal(git.snapshot().remote['v1.0.0'], commitA);
       },
@@ -60,10 +71,8 @@ function session(options = {}) {
     },
     ...options.services,
   };
-  return { git, services, questions, output, githubWaits, tested: () => tested, appTestedAfterQuestions: () => appTestedAfterQuestions };
+  return { git, services, questions, output, githubWaits, lookups, starts, watched, tested: () => tested };
 }
-
-const finishedBranchRun = (conclusion, status = 'completed') => ({ ...branchRun, status, conclusion });
 
 describe('guided release (unit)', () => {
   test('tests the tooling, publishes the previewed commit, and guides installation and smoke checks', async () => {
@@ -130,19 +139,34 @@ describe('guided release (unit)', () => {
     assert.match(s.output.join('\n'), /cancel/i);
   });
 
-  test('runs every app test only once the preview passes, so it tests the commit it tags', async () => {
-    const s = session({ git: { clean: false }, answers: [(git) => { git.configure({ clean: true }); return ''; }, 'yes', 'yes'] });
-    assert.equal((await run([], s.services)).code, 0);
-    assert.equal(s.appTestedAfterQuestions(), 1);
-    assert.equal(s.git.snapshot().remote['v1.0.0'], commitA);
+  test('runs no .NET test on this PC, leaving every test to the manual run', async () => {
+    const s = session();
+    const result = await run([], s.services);
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(s.tested(), true);
+    assert.match(s.output.join('\n'), /Node/);
+    assert.doesNotMatch(s.output.join('\n'), /every test kind|dotnet/i);
   });
 
-  for (const stage of ['connect', 'tests', 'app tests', 'branch']) {
+  test('does not look for a manual run while the preview is refused', async () => {
+    const s = session({ git: { clean: false }, answers: ['cancel'] });
+    assert.equal((await run([], s.services)).code, 0);
+    assert.deepEqual(s.lookups, []);
+    assert.deepEqual(s.starts, []);
+  });
+
+  test('looks for the manual run of exactly the commit the preview names', async () => {
+    const s = session();
+    assert.equal((await run([], s.services)).code, 0);
+    assert.deepEqual(s.lookups, [commitA]);
+  });
+
+  for (const stage of ['connect', 'tests', 'manual run']) {
     test(`reports a ${stage} failure before publishing any tag`, async () => {
       const failure = async () => { throw new Error(`${stage} failed`); };
       const s = session({
-        services: stage === 'tests' ? { testTooling: failure } : stage === 'app tests' ? { testApp: failure } : {},
-        github: stage === 'connect' ? { connect: failure } : stage === 'branch' ? { watch: failure } : {},
+        services: stage === 'tests' ? { testTooling: failure } : {},
+        github: stage === 'connect' ? { connect: failure } : stage === 'manual run' ? { watch: failure } : {},
       });
       const result = await run([], s.services);
       assert.equal(result.code, 1);
@@ -150,6 +174,14 @@ describe('guided release (unit)', () => {
       assert.deepEqual(s.git.snapshot().remote, {});
     });
   }
+
+  test('does not look for a manual run when the Node tooling tests fail', async () => {
+    const s = session({ services: { testTooling: async () => { throw new Error('tooling failed'); } } });
+    const result = await run([], s.services);
+    assert.equal(result.code, 1);
+    assert.deepEqual(s.lookups, []);
+    assert.deepEqual(s.starts, []);
+  });
 
   test('does not silently approve another commit when the plan changes after confirmation', async () => {
     const s = session({ answers: [(git) => { git.configure({ originHead: commitB }); return 'yes'; }] });
@@ -186,69 +218,133 @@ describe('guided release (unit)', () => {
 
 describe('release publishing approval (unit)', () => {
   const finalQuestion = /tray|Task View/i;
+  const passed = found('passed', manualRun);
+  const publishedTags = { local: { 'v1.0.0': commitA }, remote: { 'v1.0.0': commitA } };
+  const nothingTagged = { local: {}, remote: {} };
 
-  test('publishes without a publishing question when the first branch run had already passed, but still asks for the manual checks', async () => {
-    const s = session({ branchRun, answers: ['yes'] });
+  test('publishes without a publishing question when the manual run already passed, but still asks for the manual checks', async () => {
+    const s = session({ fullRun: passed, answers: ['yes'] });
     const result = await run([], s.services);
     assert.equal(result.code, 0, result.stderr);
-    assert.deepEqual(s.git.snapshot(), { local: { 'v1.0.0': commitA }, remote: { 'v1.0.0': commitA } });
+    assert.deepEqual(s.git.snapshot(), publishedTags);
     assert.equal(s.questions.length, 1);
     assert.match(s.questions[0], finalQuestion);
     assert.match(s.output.join('\n'), /already passed/i);
+    assert.ok(s.output.join('\n').includes(manualRun.url), 'the passed run is linked');
+  });
+
+  test('neither waits for nor starts a run when the manual run already passed', async () => {
+    const s = session({ fullRun: passed, answers: ['yes'] });
+    assert.equal((await run([], s.services)).code, 0);
+    assert.deepEqual(s.starts, []);
+    assert.deepEqual(s.watched.filter((id) => id === manualRun.databaseId), []);
   });
 
   test('still fails when the manual installer checks are not confirmed after an automatic publish', async () => {
-    const s = session({ branchRun, answers: ['no'] });
+    const s = session({ fullRun: passed, answers: ['no'] });
     const result = await run([], s.services);
     assert.equal(result.code, 1);
     assert.match(result.stderr, /already published|already public/i);
     assert.equal(s.git.snapshot().remote['v1.0.0'], commitA);
   });
 
-  for (const [status, conclusion] of [['queued', null], ['in_progress', null], ['waiting', null], ['requested', null], ['pending', null], ['in_progress', 'success']]) {
-    test(`asks before publishing when the first branch run was ${status} with conclusion ${conclusion}, even though watching succeeds`, async () => {
-      const watched = [];
-      const s = session({
-        branchRun: finishedBranchRun(conclusion, status),
-        answers: ['no'],
-        github: { watch: async (job) => { watched.push(job.databaseId); } },
-      });
+  test('waits for a queued or running manual run, and does not start another', async () => {
+    const s = session({ fullRun: found('running', runningManualRun), answers: ['no'] });
+    await run([], s.services);
+    assert.deepEqual(s.watched, [manualRun.databaseId]);
+    assert.deepEqual(s.starts, []);
+  });
+
+  for (const answer of ['no', '', 'y']) {
+    test(`cancels without a tag when the answer is ${JSON.stringify(answer)} after a manual run that was waited for`, async () => {
+      const s = session({ fullRun: found('running', runningManualRun), answers: [answer] });
       const result = await run([], s.services);
       assert.equal(result.code, 0, result.stderr);
-      assert.deepEqual(watched, [branchRun.databaseId]);
       assert.equal(s.questions.length, 1);
       assert.match(s.questions[0], /publish/i);
-      assert.deepEqual(s.git.snapshot(), { local: {}, remote: {} });
+      assert.deepEqual(s.git.snapshot(), nothingTagged);
       assert.match(s.output.join('\n'), /cancel/i);
     });
   }
 
-  test('publishes a build that was waited for once the user types yes', async () => {
-    const s = session({ branchRun: finishedBranchRun(null, 'queued') });
+  test('publishes after a manual run that was waited for once the user types yes', async () => {
+    const s = session({ fullRun: found('running', runningManualRun) });
     const result = await run([], s.services);
     assert.equal(result.code, 0, result.stderr);
     assert.equal(s.questions.length, 2);
     assert.match(s.questions[0], /publish/i);
-    assert.equal(s.git.snapshot().remote['v1.0.0'], commitA);
+    assert.deepEqual(s.git.snapshot(), publishedTags);
+  });
+
+  test('asks nothing and tags nothing when the manual run fails while it is waited for', async () => {
+    const s = session({ fullRun: found('running', runningManualRun), answers: [], github: { watch: async () => { throw new Error('Workflow 30 failed'); } } });
+    const result = await run([], s.services);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /Workflow 30 failed/);
+    assert.deepEqual(s.questions, []);
+    assert.deepEqual(s.git.snapshot(), nothingTagged);
+  });
+
+  test('starts a manual run on the default branch when none exists, waits for it, and asks for yes', async () => {
+    const s = session({ fullRun: found('none') });
+    const result = await run([], s.services);
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(s.starts, ['main']);
+    assert.deepEqual(s.watched.slice(0, 1), [runningManualRun.databaseId]);
+    assert.equal(s.questions.length, 2);
+    assert.match(s.questions[0], /publish/i);
+    assert.ok(s.output.join('\n').includes(runningManualRun.url), 'the started run is linked');
+    assert.deepEqual(s.git.snapshot(), publishedTags);
+  });
+
+  test('starts the run on whatever the default branch is called', async () => {
+    const s = session({ fullRun: found('none'), git: { defaultBranch: 'trunk', branch: 'trunk' } });
+    assert.equal((await run([], s.services)).code, 0);
+    assert.deepEqual(s.starts, ['trunk']);
+  });
+
+  test('cancels without a tag when the user does not type yes after a started manual run passed', async () => {
+    const s = session({ fullRun: found('none'), answers: ['no'] });
+    const result = await run([], s.services);
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(s.starts, ['main']);
+    assert.deepEqual(s.git.snapshot(), nothingTagged);
+    assert.match(s.output.join('\n'), /cancel/i);
+  });
+
+  test('stops, leaving the run alone and tagging nothing, when the started run is on another commit', async () => {
+    const starts = [];
+    const other = { ...runningManualRun, headSha: commitB };
+    const s = session({ fullRun: found('none'), answers: [], github: { startFullRun: async (branch) => { starts.push(branch); return other; } } });
+    const result = await run([], s.services);
+    assert.equal(result.code, 1);
+    assert.ok(result.stderr.includes(commitA) && result.stderr.includes(commitB), 'names both commits');
+    assert.ok(result.stderr.includes(other.url), 'links the run');
+    assert.match(result.stderr, /preview/i);
+    assert.deepEqual(starts, ['main'], 'starts no second run');
+    assert.deepEqual(s.watched, []);
+    assert.deepEqual(s.questions, []);
+    assert.deepEqual(s.git.snapshot(), nothingTagged);
   });
 
   for (const conclusion of ['failure', 'cancelled', 'timed_out', 'skipped', null]) {
-    test(`stops without asking or tagging when the first branch run finished with ${conclusion}`, async () => {
-      const s = session({ branchRun: finishedBranchRun(conclusion), answers: [] });
+    test(`stops without asking, tagging, or starting another run when the manual run finished with ${conclusion}`, async () => {
+      const failed = { ...manualRun, conclusion };
+      const s = session({ fullRun: found('failed', failed), answers: [] });
       const result = await run([], s.services);
       assert.equal(result.code, 1);
-      assert.match(result.stderr, /branch checks/i);
+      assert.ok(result.stderr.includes(failed.url), 'links the failed run');
+      assert.match(result.stderr, /manual run|every test/i);
       assert.deepEqual(s.questions, []);
-      assert.deepEqual(s.git.snapshot(), { local: {}, remote: {} });
+      assert.deepEqual(s.starts, []);
+      assert.deepEqual(s.watched, []);
+      assert.deepEqual(s.git.snapshot(), nothingTagged);
     });
   }
 
-  test('refuses a plan that changed after an already passed build, without asking or tagging', async () => {
-    const s = session({ branchRun, answers: [] });
-    s.services.github.waitForRun = async (ref) => {
-      if (ref === 'main') s.git.configure({ originHead: commitB });
-      return ref === 'main' ? branchRun : tagRun;
-    };
+  test('refuses a plan that changed after an already passed manual run, without asking or tagging', async () => {
+    const s = session({ answers: [] });
+    s.services.github.fullRun = async () => { s.git.configure({ originHead: commitB }); return passed; };
     const result = await run([], s.services);
     assert.equal(result.code, 1);
     assert.match(result.stderr, /approved|preview|behind/i);
@@ -256,17 +352,17 @@ describe('release publishing approval (unit)', () => {
     assert.deepEqual(s.git.snapshot().remote, {});
   });
 
-  test('refuses a destination changed after an already passed build, without asking or tagging', async () => {
-    const s = session({ branchRun, answers: [], github: { ensureOrigin: async () => { throw new Error('origin push destination changed'); } } });
+  test('refuses a destination changed after an already passed manual run, without asking or tagging', async () => {
+    const s = session({ fullRun: passed, answers: [], github: { ensureOrigin: async () => { throw new Error('origin push destination changed'); } } });
     const result = await run([], s.services);
     assert.equal(result.code, 1);
     assert.match(result.stderr, /destination changed/);
     assert.deepEqual(s.questions, []);
-    assert.deepEqual(s.git.snapshot(), { local: {}, remote: {} });
+    assert.deepEqual(s.git.snapshot(), nothingTagged);
   });
 
-  test('pins the tag push to the validated endpoint after an already passed build', async () => {
-    const s = session({ branchRun, answers: ['yes'] });
+  test('pins the tag push to the validated endpoint after an already passed manual run', async () => {
+    const s = session({ fullRun: passed, answers: ['yes'] });
     const push = s.git.pushTag;
     const destinations = [];
     s.git.pushTag = async (name, id, destination) => {
@@ -278,13 +374,12 @@ describe('release publishing approval (unit)', () => {
     assert.deepEqual(destinations, [repository.pushUrl]);
   });
 });
-
 describe('release waits on GitHub (unit)', () => {
   test('announces each GitHub wait before starting it, separately from questions', async () => {
     const seen = [];
     const s = session({ answers: ['yes', 'yes'] });
     const github = s.services.github;
-    for (const name of ['connect', 'waitForRun', 'watch', 'release']) {
+    for (const name of ['connect', 'fullRun', 'waitForRun', 'watch', 'release']) {
       const original = github[name];
       github[name] = async (...args) => {
         seen.push(s.githubWaits.length);
@@ -293,11 +388,21 @@ describe('release waits on GitHub (unit)', () => {
     }
     const result = await run([], s.services);
     assert.equal(result.code, 0, result.stderr);
-    // connect, branch find, branch watch, tag find, tag watch, release fetch
+    // connect, manual run lookup, manual run watch, tag find, tag watch, release fetch
     assert.equal(seen.length, 6);
     assert.ok(seen[0] >= 1);
     for (let i = 1; i < seen.length; i++) assert.ok(seen[i] > seen[i - 1], `wait ${i} was not announced before its GitHub call: ${seen}`);
     assert.ok(s.githubWaits.every((text) => !s.questions.includes(text)));
+  });
+
+  test('announces starting a manual run before asking GitHub to start it', async () => {
+    const s = session({ fullRun: found('none') });
+    const start = s.services.github.startFullRun;
+    let announced;
+    s.services.github.startFullRun = async (branch) => { announced = s.githubWaits.length; return start(branch); };
+    assert.equal((await run([], s.services)).code, 0);
+    assert.ok(announced > 0);
+    assert.match(s.githubWaits[announced - 1], /start|manual run|workflow/i);
   });
 });
 
@@ -377,8 +482,10 @@ describe('release terminal output (unit)', () => {
 function githubFixture(options = {}) {
   let time = 0;
   const calls = [];
+  const actions = createFakeActionsApi(options.actions);
   const execute = async (file, args) => {
     calls.push([file, ...args]);
+    if (args[0] === 'api') return actions.execute(file, args);
     if (file === 'git') return args.includes('--push') ? (options.pushOrigin ?? 'git@github.com:example/tasks.git\n') : (options.origin ?? 'https://github.com/example/tasks.git\n');
     if (args[0] === 'auth') {
       if (options.authError) throw new Error(options.authError);
@@ -424,6 +531,49 @@ describe('GitHub release boundary (unit)', () => {
   test('explains how to sign in when GitHub authentication fails', async () => {
     const { github } = githubFixture({ authError: 'not logged in' });
     await assert.rejects(() => github.connect(), /gh auth login/);
+  });
+
+  test('finds the manual run of a commit through the shared run check, in the origin repository', async () => {
+    const { github, calls } = githubFixture({ actions: { runs: [restRun()], jobs: { 30: [restJob('full-tests', 'success')] } } });
+    await github.connect();
+    const result = await github.fullRun(commitA);
+    assert.equal(result.state, 'passed');
+    assert.equal(result.run.databaseId, 30);
+    for (const call of calls.filter((call) => call[1] === 'api')) assert.ok(call.some((arg) => arg.startsWith(`repos/${repository.nameWithOwner}/`)), call.join(' '));
+  });
+
+  test('says no manual run exists when GitHub lists none for the commit', async () => {
+    const { github } = githubFixture({ actions: { runs: [] } });
+    await github.connect();
+    assert.deepEqual(await github.fullRun(commitA), { state: 'none' });
+  });
+
+  test('starts the manual run on the named branch asking GitHub for the new run, and returns that run', async () => {
+    const started = restRun({ id: 77, head_sha: commitA, status: 'queued', conclusion: null });
+    const { github, calls } = githubFixture({ actions: { runs: [started], dispatch: { workflow_run_id: 77 } } });
+    await github.connect();
+    const run = await github.startFullRun('main');
+    const dispatch = calls.find((call) => call.includes('POST'));
+    assert.ok(dispatch, 'a POST starts the workflow');
+    assert.ok(dispatch.some((arg) => arg.includes(`repos/${repository.nameWithOwner}/actions/workflows/build.yml/dispatches`)));
+    assert.ok(dispatch.includes('ref=main'), 'the branch is the ref');
+    assert.ok(dispatch.some((arg) => /^return_run_details=true$/.test(arg)), 'asks for the run details');
+    assert.equal(run.databaseId, 77);
+    assert.equal(run.headSha, commitA);
+    assert.equal(run.url, started.html_url);
+  });
+
+  test('returns the started run even when it runs another commit, so the command can refuse it', async () => {
+    const { github } = githubFixture({ actions: { runs: [restRun({ id: 77, head_sha: commitB })], dispatch: { workflow_run_id: 77 } } });
+    await github.connect();
+    assert.equal((await github.startFullRun('main')).headSha, commitB);
+  });
+
+  test('fails when GitHub does not return the started run instead of guessing among recent runs', async () => {
+    const { github, calls } = githubFixture({ actions: { runs: [restRun({ id: 77 })], dispatch: {} } });
+    await github.connect();
+    await assert.rejects(() => github.startFullRun('main'), /run/i);
+    assert.equal(calls.filter((call) => call.includes('POST')).length, 1);
   });
 
   test('ignores a branch run, another commit, and a previous run of the same tag', async () => {

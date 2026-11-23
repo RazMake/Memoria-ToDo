@@ -9,8 +9,6 @@ namespace Memoria.ToDo.Testing.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class TestKindAnalyzer : DiagnosticAnalyzer
 {
-    private const string FactAttributeTypeName = "Xunit.FactAttribute";
-
     private static readonly DiagnosticDescriptor MissingKind = new(
         "MTD0001",
         "Test class has no kind attribute",
@@ -29,7 +27,8 @@ public sealed class TestKindAnalyzer : DiagnosticAnalyzer
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
         ImmutableArray.Create(MissingKind, SeveralKinds)
-            .AddRange(RealInputBoundary.SupportedDiagnostics);
+            .AddRange(RealInputBoundary.SupportedDiagnostics)
+            .AddRange(UxScreenCheck.SupportedDiagnostics);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -37,12 +36,13 @@ public sealed class TestKindAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
         context.RegisterSymbolAction(AnalyzeType, SymbolKind.NamedType);
         RealInputBoundary.Register(context);
+        UxScreenCheck.Register(context);
     }
 
     private static void AnalyzeType(SymbolAnalysisContext context)
     {
         var type = (INamedTypeSymbol)context.Symbol;
-        if (type.TypeKind != TypeKind.Class || type.IsAbstract || type.Locations.Length == 0 || !HasTestMethod(type))
+        if (type.TypeKind != TypeKind.Class || type.IsAbstract || type.Locations.Length == 0 || !TestMethods.Any(type))
         {
             return;
         }
@@ -57,32 +57,4 @@ public sealed class TestKindAnalyzer : DiagnosticAnalyzer
         context.ReportDiagnostic(Diagnostic.Create(descriptor, type.Locations[0], type.Name));
     }
 
-    private static bool HasTestMethod(INamedTypeSymbol type)
-    {
-        for (var current = type; current is not null; current = current.BaseType)
-        {
-            foreach (var member in current.GetMembers())
-            {
-                if (member is IMethodSymbol method && method.GetAttributes().Any(IsFactAttribute))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static bool IsFactAttribute(AttributeData attribute)
-    {
-        for (var current = attribute.AttributeClass; current is not null; current = current.BaseType)
-        {
-            if (current.ToDisplayString() == FactAttributeTypeName)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

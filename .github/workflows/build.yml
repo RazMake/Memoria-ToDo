@@ -5,7 +5,8 @@ name: Build, test, and release
 on:
   workflow_dispatch:
   push:
-    # A branch push checks the code. A tag push (not a branch push) runs the release job only.
+    # A branch push checks the code. A tag push (not a branch push) runs the release job only, which needs
+    # a passing manual run (workflow_dispatch) of the tag's commit.
     branches: ["**"]
     tags: ["v*"]
 
@@ -108,6 +109,7 @@ jobs:
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+  # A manual run builds and runs every test kind. A release needs one that passed on its commit.
   full-tests:
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-2025
@@ -117,19 +119,21 @@ jobs:
         with:
           global-json-file: global.json
       - name: Build and run every test
-        run: &all-tests |
+        run: |
           node .agents/desktop-check.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet test "-p:MemoriaAllTestKinds=true"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-  # A version tag runs every test, then packs and publishes the release. Any failure before the last step
+  # A version tag runs no test itself. It checks that a manual run of this workflow (full-tests above) passed
+  # every test on the tag's commit, then packs and publishes the release. Any failure before the last step
   # publishes nothing.
   release:
     if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: windows-2025
     permissions:
       contents: write
+      actions: read
     env:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
@@ -154,6 +158,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "The tag '$env:GITHUB_REF_NAME' points to a commit that isn't on the default branch, '$env:DEFAULT_BRANCH'. Nothing was published."
           }
+      - name: Fail unless a manual run of this workflow passed every test on the tag's commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node .agents/full-run-check.mjs --repo ${{ github.repository }} --commit ${{ github.sha }} --ref ${{ github.ref_name }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -163,9 +173,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not $name) { throw "The app's Product property is empty. Set <Product> in Directory.Build.props." }
           "APP_NAME=$name" >> $env:GITHUB_ENV
-      - name: Build and run every test
-        # MemoriaAllTestKinds drops the unit-only filter; the hang dump is on in every run.
-        run: *all-tests
       - name: Publish the desktop app, self-contained for x64
         run: dotnet publish $env:APP_PROJECT -c Release -r win-x64 --self-contained true -o publish "-p:Version=$env:VERSION"
       - name: Restore the pinned vpk

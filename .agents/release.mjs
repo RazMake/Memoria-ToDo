@@ -7,6 +7,7 @@ import { createInterface } from 'node:readline/promises';
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { styleText } from 'node:util';
+import { checkFullRun, createSource, messageOf } from './full-run-check.mjs';
 import { approvalOf, createFiles, createGit, defaultPart, parts, run as tagCommand } from './version-tag.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -15,16 +16,15 @@ const runWaitMs = 120_000;
 const pollMs = 2_000;
 const commandTimeoutMs = 120_000;
 const liveTimeoutMs = 30 * 60_000;
-const messageOf = (error) => String(error.message).trim().replace(/\s*\n\s*/g, ' ');
 
 export async function run(args, services) {
-  const { interactive, ask, write, waitForGitHub, git, files, github, testTooling, testApp } = services;
+  const { interactive, ask, write, waitForGitHub, git, files, github, testTooling } = services;
   let publishedTag;
   let attemptedTag;
   let repository;
   try {
     if (args.length === 1 && args[0] === '--help') {
-      write(`${usage}\nRuns the tooling tests and every app test, checks GitHub builds, asks before publishing, downloads the installer, and guides manual checks.\n`);
+      write(`${usage}\nRuns the Node tooling tests, checks that a manual GitHub run passed every test on the commit (waiting for it, or starting it, when needed), asks before publishing, downloads the installer, and guides manual checks.\n`);
       return { code: 0, stderr: '' };
     }
     if (args.length > 1 || (args.length === 1 && !parts.includes(args[0]))) throw new Error(usage);
@@ -50,26 +50,46 @@ export async function run(args, services) {
     }
 
     write(preview.stdout);
-    // After a passing preview the working tree is clean at the commit the tag will name, so these tests check exactly it.
-    write('Building the app and running every test kind, as the release workflow does before publishing.\n');
-    await testApp();
     const approval = approvalOf(preview.stdout);
     const branch = await git.defaultBranch();
-    waitForGitHub(`Waiting for GitHub to find the branch checks on ${approval.commit}.\n`);
-    const check = await github.waitForRun(branch, approval.commit);
-    write(`${check.url}\n`);
-    const alreadyPassed = check.status === 'completed' && check.conclusion === 'success';
-    if (check.status === 'completed' && !alreadyPassed) {
-      throw new Error(`The branch checks finished with ${check.conclusion}, not success; inspect ${check.url}. Nothing was tagged.`);
-    }
-    waitForGitHub('Waiting for GitHub to confirm the branch checks.\n');
-    await github.watch(check);
+    // Every .NET test runs in the cloud, in a manual run of the build workflow on exactly the commit the tag will name.
+    waitForGitHub(`Waiting for GitHub to look for a manual run of every test on ${approval.commit}.\n`);
+    const full = await github.fullRun(approval.commit);
+    const watchRun = async (manual) => {
+      write(`${manual.url}\n`);
+      waitForGitHub(`Waiting for GitHub to finish the manual run of every test on ${approval.commit}.\n`);
+      await github.watch(manual);
+    };
+    // Each state of the manual run says whether publishing needs the user's yes; true means the run already passed.
+    const fullRunStates = {
+      passed: async ({ run: manual }) => {
+        write(`The manual run of every test on ${approval.commit} already passed: ${manual.url}\nPublishing happens automatically.\n`);
+        return true;
+      },
+      running: async ({ run: manual }) => {
+        write(`The manual run of every test on ${approval.commit} is not finished yet, so the command waits for it.\n`);
+        await watchRun(manual);
+        return false;
+      },
+      none: async () => {
+        write(`No manual run of every test exists for ${approval.commit}, so the command starts one on ${branch}.\n`);
+        waitForGitHub(`Waiting for GitHub to start a manual run of every test on ${branch}.\n`);
+        const started = await github.startFullRun(branch);
+        if (started.headSha !== approval.commit) {
+          throw new Error(`The manual run GitHub started on ${branch} is for commit ${started.headSha}, not ${approval.commit} (${started.url}); ${branch} moved. Run the release command to preview again. Nothing was tagged.`);
+        }
+        await watchRun(started);
+        return false;
+      },
+      failed: async ({ run: manual }) => {
+        throw new Error(`The manual run of every test on ${approval.commit} did not pass; inspect ${manual.url}. Fix the problem, then start a new manual run yourself with gh workflow run build.yml --ref ${branch}; the release command never starts another after a failure. Nothing was tagged.`);
+      },
+    };
+    const alreadyPassed = await fullRunStates[full.state](full);
     waitForGitHub(`Waiting for GitHub to list earlier workflows for ${approval.tag}.\n`);
     const previous = (await github.runs(approval.tag, approval.commit)).map((job) => job.databaseId);
 
-    if (alreadyPassed) {
-      write('The branch checks already passed, so publishing happens automatically.\n');
-    } else {
+    if (!alreadyPassed) {
       const yes = await ask(`Publishing ${approval.tag} pushes its tag and makes an installer available on GitHub. Type exactly yes to publish: `);
       if (yes !== 'yes') {
         write('Cancelled. No version tag was pushed.\n');
@@ -221,6 +241,13 @@ export function createGitHub(execute, clock = { now: Date.now, wait: setTimeout 
         await clock.wait(pollMs);
       }
     },
+    fullRun: (commit) => checkFullRun(commit, createSource(execute, target())),
+    async startFullRun(branch) {
+      const body = await execute('gh', ['api', '-X', 'POST', `repos/${target()}/actions/workflows/build.yml/dispatches`, '-f', `ref=${branch}`, '-F', 'return_run_details=true']);
+      const id = body.trim() ? JSON.parse(body)?.workflow_run_id : undefined;
+      if (!Number.isSafeInteger(id)) throw new Error(`GitHub did not say which run it started on ${branch}; inspect ${repository.url}/actions and do not start another blindly.`);
+      return createSource(execute, target()).run(id);
+    },
     async watch(job) {
       await execute('gh', ['run', 'watch', String(job.databaseId), '--repo', target(), '--exit-status'], { live: true });
       const result = await json(['run', 'view', String(job.databaseId), '--repo', target(), '--json', 'status,conclusion']);
@@ -271,7 +298,6 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
         if (!tests.length) throw new Error('No Node tooling tests were found.');
         await execute(process.execPath, ['--test', ...tests], { live: true });
       },
-      testApp: () => execute('dotnet', ['test', '-p:MemoriaAllTestKinds=true'], { live: true }),
     });
     if (result.stderr) process.stderr.write(result.stderr);
     process.exitCode = result.code;

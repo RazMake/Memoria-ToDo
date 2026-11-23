@@ -488,11 +488,11 @@ to the new required arguments; no old constructor or sync-less overload remains 
 
 Focused build: `dotnet build src\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj`.
 After the tester adds unit cases, run Sync's unit tests as a
-[focused batch](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test):
+[focused batch](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-kind-of-test):
 `dotnet test --project tests\Shared\Tests\Memoria.ToDo.Shared.Tests.csproj --filter-namespace "Memoria.ToDo.Shared.Sync.Tests*"`.
-At main-session final validation only, run the full commands from the
-[test workflow](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-test),
-including the architecture integration checks and the agent-file generator checks required by `AGENTS.md`.
+At main-session final validation only, run the commands [Test selection](test-selection.md#a-script-turns-the-changed-files-into-the-commands-to-run) gives from the
+[test workflow](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-kind-of-test),
+including the architecture integration checks and the agent-file generator checks when the change selects them.
 
 **Validation backlog**
 
