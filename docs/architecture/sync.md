@@ -358,6 +358,19 @@ library types are not public. The user decided that Contacts is a shared module 
 | [`IDeviceSigningKey`](../../src/Shared/Sync/DeviceKeys/IDeviceSigningKey.cs) | An owned signing handle: public blob and RSA SHA-2 signing, never private-key export |
 | [`IRepositorySelection`](../../src/Shared/Sync/IRepositorySelection.cs) | App's adapter over the single existing selected-path owner |
 
+**Decided by the user:** when `SyncNowAsync` can't start a pass because sync isn't ready, it throws a type of its own, so a caller such as the [local API](local-api-contract.md#each-failure-maps-to-one-grpc-status) tells it from a failure inside the app without matching messages. Sync isn't ready in exactly three cases: no repository is selected, the device has no key yet, or the selected repository contains the device folder. The type derives from `InvalidOperationException`, so callers that catch that keep working. Every other failure keeps its current type. Proposed, a decision to confirm: this declaration, and that `ISyncService.SyncNowAsync`'s summary names it.
+
+```csharp
+namespace Memoria.ToDo.Shared.Sync;
+
+/// SyncNowAsync can't start a pass: no repository is selected, the device has no key yet,
+/// or the selected repository contains the device folder. The message says which.
+public sealed class SyncNotReadyException : InvalidOperationException
+{
+    public SyncNotReadyException(string message);
+}
+```
+
 **Decided by the user:** the selected-folder adapter's constructor only validates and stores dependencies.
 Sync calls its synchronous `Load()` on the owned worker during initialization, before refreshing or publishing
 setup. App reads its saved selection directly, treating only FileNotFoundException as an absent selection;

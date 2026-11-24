@@ -1,0 +1,57 @@
+// Design: docs/architecture/local-api-contract.md.
+syntax = "proto3";
+
+package memoria.todo.v1;
+
+option csharp_namespace = "Memoria.ToDo.Api.V1";
+
+import "google/protobuf/timestamp.proto";
+
+service Sync {
+  rpc GetStatus(GetStatusRequest) returns (SyncStatus);
+  rpc SyncNow(SyncNowRequest) returns (SyncStatus);
+  rpc WatchStatus(WatchStatusRequest) returns (stream SyncStatus);
+}
+
+enum SyncState {
+  SYNC_STATE_UNSPECIFIED = 0;
+  SYNC_STATE_IDLE = 1;
+  SYNC_STATE_WORKING = 2;
+  SYNC_STATE_OFFLINE = 3;
+  SYNC_STATE_ERROR = 4;
+}
+
+// UNSPECIFIED means no failure.
+enum SyncFailure {
+  SYNC_FAILURE_UNSPECIFIED = 0;
+  SYNC_FAILURE_CONNECTION = 1;
+  SYNC_FAILURE_AUTHENTICATION = 2;
+  SYNC_FAILURE_UNKNOWN_HOST_KEY = 3;
+  SYNC_FAILURE_CHANGED_HOST_KEY = 4;
+  SYNC_FAILURE_REPOSITORY = 5;
+  SYNC_FAILURE_PUSH_REJECTED = 6;
+  SYNC_FAILURE_INVALID_FILE = 7;
+  SYNC_FAILURE_LOCAL_STORAGE = 8;
+  SYNC_FAILURE_UNEXPECTED = 9;
+}
+
+message SkippedFile {
+  string relative_path = 1;
+  string reason = 2;
+  bool requires_update = 3;
+}
+
+message SyncStatus {
+  SyncState state = 1;
+  SyncFailure failure = 2;
+  string details = 3;
+  google.protobuf.Timestamp last_successful_sync = 4;
+  bool has_pending_changes = 5;
+  repeated SkippedFile skipped_files = 6;
+}
+
+message GetStatusRequest {}
+
+message SyncNowRequest {}
+
+message WatchStatusRequest {}

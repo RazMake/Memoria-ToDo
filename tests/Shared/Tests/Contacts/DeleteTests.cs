@@ -120,7 +120,7 @@ public sealed class DeleteTests
         f.Load();
         f.ForgetWrites();
 
-        Assert.Throws<InvalidOperationException>(() => f.Contacts.Delete("broken", "1"));
+        Assert.Throws<SkippedFileException>(() => f.Contacts.Delete("broken", "1"));
 
         f.AssertNothingWritten();
     }

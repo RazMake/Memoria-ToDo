@@ -20,6 +20,9 @@ public sealed class FakeSyncService : ISyncService
     public int DisposeCount { get; private set; }
     public bool HoldStartupPublication { get; set; }
     public Func<CancellationToken, Task<ISyncStatus>>? SyncOperation { get; set; }
+
+    /// <summary>When set, <see cref="SyncNowAsync"/> returns a task that fails with it, as Sync's does when it can't start a pass.</summary>
+    public SyncNotReadyException? NotReady { get; set; }
     public Func<CancellationToken, Task>? StopOperation { get; set; }
 
     /// <summary>
@@ -46,7 +49,9 @@ public sealed class FakeSyncService : ISyncService
     public Task<ISyncStatus> SyncNowAsync(CancellationToken cancellationToken)
     {
         SyncCount++;
-        LastSync = (SyncOperation?.Invoke(cancellationToken) ?? Task.FromResult(Status)).WaitAsync(cancellationToken);
+        LastSync = (NotReady is { } notReady
+            ? Task.FromException<ISyncStatus>(notReady)
+            : SyncOperation?.Invoke(cancellationToken) ?? Task.FromResult(Status)).WaitAsync(cancellationToken);
         return LastSync;
     }
 

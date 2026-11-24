@@ -347,9 +347,10 @@ describe('release command: a run that fails (unit)', () => {
     assert.match((await run([], s.services)).stderr, /commit and push[\s\S]*new release/i);
   });
 
-  test('tells a Publish failure to re-run the failed jobs on GitHub, or clear the tag, and re-runs nothing itself', async () => {
+  test('tells a Publish failure to delete any draft, then re-run the failed jobs on GitHub, or clear the tag, and re-runs nothing itself', async () => {
     const s = session(failing('Publish'));
     const result = await run([], s.services);
+    assert.match(result.stderr, /delete[^.]*draft[\s\S]*re-run the failed jobs/i, 'a draft left by a partial upload is deleted before the re-run');
     assert.match(result.stderr, /node \.agents\/version-tag\.mjs --clear v1\.0\.0(?![\w.])/, 'names the failed release\'s tag, not the latest one');
     assert.ok(s.fake.calls.every((call) => !call.includes('rerun') && call[1] !== 'run'));
   });

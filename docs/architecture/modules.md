@@ -20,7 +20,7 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 
 ### The platform serves every module and knows none
 
-- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), the [JSON style and file rules](#stores-share-one-json-style-and-one-set-of-file-rules) every store follows, and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The platform holds no log interface: every module and platform project depends on the [Serilog](https://serilog.net) package and logs through its `ILogger`, as [Logging](logging.md#every-module-logs-through-serilogs-logger) decides. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
+- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), the [JSON style and file rules](#stores-share-one-json-style-and-one-set-of-file-rules) every store follows, the [exception for a skipped file](#a-call-that-needs-a-skipped-file-throws-one-type), and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The platform holds no log interface: every module and platform project depends on the [Serilog](https://serilog.net) package and logs through its `ILogger`, as [Logging](logging.md#every-module-logs-through-serilogs-logger) decides. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
 - **Every module takes the time from .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, which gives the time and timers, and the composition root passes the system's. The shared library has no clock interface of its own. The one exception is the time on a log entry, which Serilog stamps, as [Logging](logging.md#every-module-logs-through-serilogs-logger) says.
 - **Every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files.
 - **Code shared by two modules moves to the platform**, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) requires. Code shared only inside one module stays in that module.
@@ -259,6 +259,31 @@ public static class RepositoryPath
 }
 ```
 
+### A call that needs a skipped file throws one type
+
+Tasks and Contacts each refuse some calls when a file the call needs was skipped at the latest load. The user decided that the store that owns the file decides this and says so with a typed exception, so a caller such as the [local API](local-api-contract.md#each-failure-maps-to-one-grpc-status) never matches file paths or messages. Both stores need the same type, so it lives in the platform:
+
+- **It names the skipped file** with the report the store's skipped files list, so its path and reason match the sync status.
+- **It's thrown before anything is written**, so the call changes nothing.
+- **It's an `InvalidOperationException`**, so a caller that already catches that type keeps working.
+
+Proposed, a decision to confirm: this declaration.
+
+```csharp
+namespace Memoria.ToDo.Shared.Platform;
+
+/// A call needs a store file that was skipped at the latest load, so it changed nothing.
+/// The message names the file's relative path and the reason it was skipped.
+public sealed class SkippedFileException : InvalidOperationException
+{
+    /// Throws ArgumentNullException for null.
+    public SkippedFileException(ISkippedRepositoryFile file);
+
+    /// The skipped file, as the store's skipped files list it.
+    public ISkippedRepositoryFile File { get; }
+}
+```
+
 ### A contact address has one home
 
 A mention's link address names a contact by ID, as `contact:<id>`. [Contacts](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) makes and reads it, and [Rendering](rendering.md#a-mention-shows-on-a-colored-background) recognizes it, so its format lives in the shared platform. The user confirmed this declaration, and the platform implements it:
@@ -294,7 +319,7 @@ Who decides a change depends on what it touches:
 
 ### Module map
 
-The three tables below list each part's modules, their design files, and the modules each may use. Adding, removing, or changing a row is an architecture change. An [architecture test](technology-stack.md#architecture-tests-check-the-module-map) reads the "May use" columns, so a change to the tables' format needs a change to that test. Each module's design file comes from its row in the [design backlog](README.md#design-backlog).
+The four tables below list each part's modules, their design files, and the modules each may use. Adding, removing, or changing a row is an architecture change. An [architecture test](technology-stack.md#architecture-tests-check-the-module-map) reads the "May use" columns, so a change to the tables' format needs a change to that test. Each module's design file comes from its row in the [design backlog](README.md#design-backlog).
 
 The shared library has five modules:
 
@@ -306,11 +331,11 @@ The shared library has five modules:
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's and mention list's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, the text look of headings, links, mentions, code, and italic text, and which links may open in the browser | [Rendering](rendering.md) | None |
 
-The desktop app has eight modules of its own:
+The desktop app has nine modules of its own:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs |
+| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates and the Local API, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs, Local API |
 | Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips, and the "@" list for a plain text box that Task View's search box uses | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates, Contact list |
 | Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates, Contact list |
 | Contact list | The Contacts window: contacts grouped by file, in groups the user orders by dragging, beside the selected contact's details, with search, editing, adding, and deleting; and the contact card a mention shows | [Contact list](desktop/contact-list.md) | Contacts, Rendering |
@@ -318,6 +343,7 @@ The desktop app has eight modules of its own:
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 | Updates | Checking for a new version, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
 | Logs | The Logs window: the app's log entries, newest first, with filters by time, severity, and component, and a quick search | [Logs](desktop/logs.md) | None |
+| Local API | The gRPC server on a named pipe that lets your own programs on this PC reach tasks, contacts, sync, and shared settings | [Local API](local-api.md) | Tasks, Contacts, Sync, Rendering, Contract |
 
 Proposed, each a decision to confirm:
 
@@ -331,6 +357,17 @@ The user decided that the [Logs window](desktop/logs.md) is a desktop module of 
 The user decided that the Task editor and the Task list may use the Contact list, for the [contact card](desktop/contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) a mention shows while the pointer rests on it. The Contact list uses no desktop module, so no loop forms. The other homes considered are in the [Contact list's Ruled out](desktop/contact-list.md#ruled-out).
 
 The user decided that the contact card's heading shows in Rendering's heading color. Proposed, a decision to confirm: so the Contact list may use Rendering, for its text look. Rendering uses no module, so no loop forms.
+
+The user decided the [Local API](local-api.md#the-contract-and-clients-form-a-part-of-their-own) module: Shell may use it, only to start and stop it, and it may use Rendering for the tag color names. Its project, `Memoria.ToDo.Desktop.LocalAPI`, is named from its row by the naming rules.
+
+The user also decided a fourth part, **Api**, beside the shared library and the two apps. Its contract, `Memoria.ToDo.Api.Contract`, uses no module; its .NET client, `Memoria.ToDo.Api.Client`, may use only the contract; and the Local API may use the contract too. No other app module may use either. The Node.js client sits in the part too, outside the .NET build and the map.
+
+The Api part has two modules:
+
+| Module | What it does | Design file | May use |
+| --- | --- | --- | --- |
+| Contract | The `.proto` files of the local API's version 1, and the C# generated from them | [What programs can call](local-api-contract.md) | None |
+| Client | The .NET client, `MemoriaClient.Connect`, which hides the pipe | [Local API](local-api.md#the-contract-and-clients-form-a-part-of-their-own) | Contract |
 
 The Android app has four modules with the same names as the desktop app's first four, separate from them:
 

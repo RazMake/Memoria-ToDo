@@ -65,6 +65,9 @@ Memoria.ToDo.Shared.Platform.SyncedRepository.Select(string? folder) -> void
 Memoria.ToDo.Shared.Platform.SyncedRepository.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!>!
 Memoria.ToDo.Shared.Platform.SyncedRepository.SyncedRepository(Serilog.ILogger! logger) -> void
 Memoria.ToDo.Shared.Platform.SyncedRepository.Update(string! expectedFolder, System.Action! update) -> void
+Memoria.ToDo.Shared.Platform.SkippedFileException
+Memoria.ToDo.Shared.Platform.SkippedFileException.File.get -> Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!
+Memoria.ToDo.Shared.Platform.SkippedFileException.SkippedFileException(Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile! file) -> void
 override Memoria.ToDo.Shared.Platform.FileLoad<T>.Equals(object? obj) -> bool
 override Memoria.ToDo.Shared.Platform.FileLoad<T>.GetHashCode() -> int
 override Memoria.ToDo.Shared.Platform.FileLoad<T>.ToString() -> string!

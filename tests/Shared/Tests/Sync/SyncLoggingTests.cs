@@ -354,7 +354,7 @@ public sealed class SyncLoggingTests
         await using var sync = f.Create();
         var before = f.Logs.Events.Count;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.SyncNowAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<SyncNotReadyException>(() => sync.SyncNowAsync(CancellationToken.None));
 
         f.Logs.After(before).AssertNoProblems();
     }

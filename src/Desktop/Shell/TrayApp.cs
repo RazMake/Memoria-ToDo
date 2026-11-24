@@ -1,5 +1,6 @@
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
+using Memoria.ToDo.Desktop.LocalAPI;
 using Memoria.ToDo.Desktop.Logs;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
@@ -36,12 +37,13 @@ public static class TrayApp
         IConfigureWindow configure,
         ILogsWindow logs,
         IUpdateLifetime updates,
+        ILocalApiLifetime localApi,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
         ISyncService sync,
         ILogger logger) =>
-        Create(trayIcon, add, viewTasks, contacts, configure, logs, updates, shortcut, oneInstance, startedAtSignIn, sync, logger, () => new WpfUiThread());
+        Create(trayIcon, add, viewTasks, contacts, configure, logs, updates, localApi, shortcut, oneInstance, startedAtSignIn, sync, logger, () => new WpfUiThread());
 
     internal static IAppLifetime Create(
         ITrayIcon trayIcon,
@@ -51,6 +53,7 @@ public static class TrayApp
         IConfigureWindow configure,
         ILogsWindow logs,
         IUpdateLifetime updates,
+        ILocalApiLifetime localApi,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
@@ -65,6 +68,7 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(configure);
         ArgumentNullException.ThrowIfNull(logs);
         ArgumentNullException.ThrowIfNull(updates);
+        ArgumentNullException.ThrowIfNull(localApi);
         ArgumentNullException.ThrowIfNull(shortcut);
         ArgumentNullException.ThrowIfNull(oneInstance);
         ArgumentNullException.ThrowIfNull(sync);
@@ -114,6 +118,7 @@ public static class TrayApp
                 logger),
             startup,
             updates,
+            localApi,
             endApp => new ShellExit(add, viewTasks, contacts, configure, endApp),
             sync,
             ShowLogs,

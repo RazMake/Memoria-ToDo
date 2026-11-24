@@ -19,6 +19,13 @@ const commands = {
   generate: 'node .agents/generate.mjs --check',
   everyTest: 'dotnet test -p:MemoriaAllTestKinds=true',
 };
+// The Node.js client of the Local API (technology-stack.md): install, build, then its tests with Node.js's per-test timeout.
+const nodeClientCommands = [
+  'npm ci --prefix src/Api/NodeClient',
+  'npm run build --prefix src/Api/NodeClient',
+  'node --test --test-timeout=120000 "tests/Api/NodeClient/*.test.mjs"',
+];
+const LOCAL_API_MODULE = 'src/Desktop/LocalAPI';
 const ignoredFolders = new Set(['bin', 'obj', 'node_modules']);
 
 export class PlanError extends Error {
@@ -206,6 +213,11 @@ const modulePathOf = (match) => `src/${match[1]}/${match[2]}`;
 const rules = [
   rule(/^(?:Directory\.Build\.props|Directory\.Packages\.props|global\.json|\.config\/dotnet-tools\.json|\.editorconfig|tests\/xunit\.runner\.json|[^/]+\.slnx?|tests\/Testing\/(?:Kinds|Analyzers)\/.+)$/,
     (c, { path }) => c.everyTest.push(path)),
+  rule(/^(?:src|tests)\/Api\/NodeClient\//, (c, change) => {
+    for (const command of nodeClientCommands) c.extra(command, change.path);
+    // The Local API's integration tests run the built client.
+    c.changedModule(change, LOCAL_API_MODULE)?.top.push(change.path);
+  }),
   rule(/^tests\/Testing\/(?:Tests|UnitRunTiming)\//,
     (c, change) => c.wholeTestProject(TESTING_PART, change)),
   rule(/^(tests\/[^/]+\/(?:Fakes|PlatformTestHost))\//, (c, change, match) => {
@@ -238,6 +250,8 @@ const rules = [
 
 /** Rules that add to the row that matched. */
 const addOns = [
+  // The Node.js client loads the contract's .proto files, though it isn't in the project graph.
+  { applies: (path) => path.startsWith('src/Api/Contract/'), apply: (c, path) => { for (const command of nodeClientCommands) c.extra(command, path); } },
   { applies: (path) => path.endsWith('.csproj') || path === 'docs/architecture/modules.md', apply: (c, path) => c.architecture.push(path) },
   { applies: (path, repo) => repo.graph.projectsLinking(path).length > 0, apply: (c, path) => { for (const project of c.repo.graph.projectsLinking(path)) c.wholeProject(project, path); } },
 ];
@@ -324,7 +338,7 @@ export function planTests({ changes, projects, testFiles }) {
   const found = collectSelections(changedPaths(changes), repo);
 
   const extras = [];
-  for (const command of [commands.node, commands.generate]) {
+  for (const command of [commands.node, commands.generate, ...nodeClientCommands]) {
     if (found.extras.has(command)) extras.push({ command, reasons: [changedReason(found.extras.get(command))] });
   }
   if (found.everyTest.length) {

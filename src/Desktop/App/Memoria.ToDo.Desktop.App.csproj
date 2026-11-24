@@ -29,6 +29,7 @@
     <ProjectReference Include="..\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
     <ProjectReference Include="..\Logs\Memoria.ToDo.Desktop.Logs.csproj" />
+    <ProjectReference Include="..\LocalAPI\Memoria.ToDo.Desktop.LocalAPI.csproj" />
     <PackageReference Include="H.NotifyIcon.Wpf" />
     <PackageReference Include="Velopack" />
     <PackageReference Include="Serilog" />
