@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.Platform;
 using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;

@@ -17,6 +17,9 @@ Memoria.ToDo.Desktop.Logs.LogEntry.Message.get -> string!
 Memoria.ToDo.Desktop.Logs.LogEntry.Message.init -> void
 Memoria.ToDo.Desktop.Logs.LogEntry.Time.get -> System.DateTimeOffset
 Memoria.ToDo.Desktop.Logs.LogEntry.Time.init -> void
+Memoria.ToDo.Desktop.Logs.LogFilter
+Memoria.ToDo.Desktop.Logs.LogFilter.LogFilter(Serilog.Events.LogEventLevel minimumLevel, System.Collections.Generic.IEnumerable<string!>? components, System.DateTimeOffset? from, System.DateTimeOffset? to, string? text) -> void
+Memoria.ToDo.Desktop.Logs.LogFilter.Matches(Memoria.ToDo.Desktop.Logs.LogEntry! entry) -> bool
 Memoria.ToDo.Desktop.Logs.LogRead
 Memoria.ToDo.Desktop.Logs.LogRead.<Clone>$() -> Memoria.ToDo.Desktop.Logs.LogRead!
 Memoria.ToDo.Desktop.Logs.LogRead.Deconstruct(out System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.Logs.LogEntry!>! Entries, out int UnreadableLines, out string? WriteProblem) -> void
@@ -35,6 +38,8 @@ override Memoria.ToDo.Desktop.Logs.LogEntry.ToString() -> string!
 override Memoria.ToDo.Desktop.Logs.LogRead.Equals(object? obj) -> bool
 override Memoria.ToDo.Desktop.Logs.LogRead.GetHashCode() -> int
 override Memoria.ToDo.Desktop.Logs.LogRead.ToString() -> string!
+static Memoria.ToDo.Desktop.Logs.LogFilter.ComponentsOf(System.Collections.Generic.IEnumerable<Memoria.ToDo.Desktop.Logs.LogEntry!>! entries) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Memoria.ToDo.Desktop.Logs.LogFilter.Levels.get -> System.Collections.Generic.IReadOnlyList<Serilog.Events.LogEventLevel>!
 static Memoria.ToDo.Desktop.Logs.LogEntry.operator !=(Memoria.ToDo.Desktop.Logs.LogEntry? left, Memoria.ToDo.Desktop.Logs.LogEntry? right) -> bool
 static Memoria.ToDo.Desktop.Logs.LogEntry.operator ==(Memoria.ToDo.Desktop.Logs.LogEntry? left, Memoria.ToDo.Desktop.Logs.LogEntry? right) -> bool
 static Memoria.ToDo.Desktop.Logs.LogRead.operator !=(Memoria.ToDo.Desktop.Logs.LogRead? left, Memoria.ToDo.Desktop.Logs.LogRead? right) -> bool

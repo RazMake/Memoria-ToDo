@@ -1,5 +1,4 @@
 using System.Globalization;
-using Serilog.Events;
 
 namespace Memoria.ToDo.Desktop.Logs;
 
@@ -52,11 +51,4 @@ internal sealed class LogRow
     /// <summary>The row as copied: a line of time, severity, component, and message, then the exception's text.</summary>
     public string CopyText =>
         $"{TimeText}  {SeverityText}  {Component}  {Entry.Message}" + (HasError ? $"{Environment.NewLine}{Entry.Error}" : "");
-
-    /// <summary>Whether the message or the exception's text contains the text, ignoring case.</summary>
-    public bool Contains(string text) =>
-        Entry.Message.Contains(text, StringComparison.OrdinalIgnoreCase) || Entry.Error?.Contains(text, StringComparison.OrdinalIgnoreCase) == true;
-
-    /// <summary>Whether the entry is at the level or above.</summary>
-    public bool IsAtLeast(LogEventLevel level) => Entry.Level >= level;
 }

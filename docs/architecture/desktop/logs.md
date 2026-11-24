@@ -2,7 +2,7 @@
 
 Status: Decided
 
-The Logs window lets the user read what the app did and what went wrong, without opening files: the entries the [log](../logging.md) keeps for two weeks, newest first, narrowed by time, component, severity, and a quick search. The tray menu opens it. It's a desktop module of its own, Logs, which uses no other module, as the user decided.
+The Logs window lets the user read what the app did and what went wrong, without opening files: the entries the [log](../logging.md) keeps for two weeks, newest first, narrowed by time, component, severity, and a quick search. The tray menu opens it. It's a desktop module of its own, Logs, which uses no other module, as the user decided. Its filter is public, so the [MCP server's](mcp-server.md#reading-the-log-filters-as-the-logs-window-does) log tool narrows entries by the same rules.
 
 ## Behavior
 
@@ -30,19 +30,43 @@ The Logs window lets the user read what the app did and what went wrong, without
 
 ### Filters narrow the list
 
-A bar above the list holds four filters, as the user decided. Each change applies at once, and every filter must match for a row to show:
+A bar above the list holds four filters, as the user decided. Each change applies at once: the window turns the four into the module's one [log filter](#one-filter-decides-which-entries-match), and a row shows when its entry matches it.
 
 - **Time range: presets that fill a From and a To bound the user can edit.** The presets are Last hour, Today, Last 24 hours, Last 7 days, and All, which is the default.
   - A preset fills From with its start, in this PC's local time, and empties To, which means "up to now". Today starts at midnight; All empties both bounds.
   - Only the bounds a choice uses show, as the user decided: All shows neither, the other presets show only From, and Custom shows both.
   - Each bound is a date picker and a time box, as the user decided, so the user can look at the exact minute an error happened. WPF has no time picker, so the time box is an editable list of every half hour that also takes any time typed, such as `10:43`, checked as the user types. No date sets no bound, and the time box is off until a date is picked. Picking a date while the time is empty fills in 00:00 for From and 23:59 for To, so a To date includes its whole day. Proposed, a decision to confirm. A To of `9999-12-31 23:59` sets no bound either. Each bound includes its own minute.
-  - Editing a bound changes the preset list to Custom. Choosing Custom in the list fills an empty To with the current minute, as the user decided. A time that isn't a time shows red, a From later than To shows both bounds red, and the time range doesn't filter until it's fixed.
+  - Editing a bound changes the preset list to Custom. Choosing Custom in the list fills an empty To with the current minute, as the user decided. A time that isn't a time shows red, a From later than To shows both bounds red, and the time range doesn't filter until it's fixed. From and the end the filter uses, the minute after To, are compared as moments, after each becomes one, and an end that isn't later than From makes the range invalid, so the hour the clock skips in spring can't make a range that ends before it starts. The user decided this.
   - Refresh and F5 work a preset out again from the current time, so Last hour still means the last hour. The user decided this.
 - **Severity: a minimum level.** The list holds Debug and up, Information and up, the default, Warning and up, Error and up, and Fatal only: the five [levels the app uses](../logging.md#five-levels-say-what-an-entry-records). Proposed, each a decision to confirm: Debug and up is first in the list but not the default, since most looks are for operations and errors, and the user picks it to see the [choices behind a result](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens); and Fatal gets its own item, for the errors that ended the app.
 - **Component**: a list of the components found in the loaded entries, in name order ignoring case, as the user decided, such as `Sync` or `Tasks`, each with a check box, all checked by default, with one box to check or clear them all. The component is each entry's `SourceContext`, which the [log](../logging.md#every-module-logs-through-serilogs-logger) names after each module. An entry without one shows as `Unknown`. Proposed, a decision to confirm.
-- **Quick search**: a text box, through the platform's [search band](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them). A row shows when its rendered message or its exception's text contains the typed text anywhere, ignoring case. So a search for `IOException` or a file named only in a stack trace finds the entry. An empty box matches every row.
+- **Quick search**: a text box, through the platform's [search band](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them). It's the filter's text, which also looks in the exception, so a search for `IOException` or a file named only in a stack trace finds the entry. An empty box matches every row.
 
 Each change of a filter or the search shows its result within a quarter second on 30 MB of logs. Proposed, a decision to confirm.
+
+### One filter decides which entries match
+
+The user decided that the filtering lives in the module's public interface, as `LogFilter`, so the window and the MCP server's log tool use one filter and keep the window's behavior. An entry matches when it matches all four parts:
+
+| Part | An entry matches when | Left out |
+| --- | --- | --- |
+| Minimum level | Its level is the minimum or above. The minimum is one of the five [levels the app uses](../logging.md#five-levels-say-what-an-entry-records), Debug to Fatal. | Can't be: every filter has one |
+| Components | Its component is one of the names, compared exactly, case included. An empty list matches no entry. | Every component matches |
+| From and To | Its time is at From or later, and before To. Both are moments in time, so time zones don't change the result. | No start, or no end |
+| Text | Its whole rendered message, or its exception's text, contains the text, ignoring case | Every entry matches; so does empty text |
+
+- **A filter that can't be right is refused when it's made**: a minimum outside the five levels, such as Verbose, a missing component name, or a From later than To. A From equal to To is allowed and matches nothing.
+- **The filter also lists the components a set of entries holds**, each name once, in name order ignoring case. The window's component list and the tool's list come from it, so they're always the same.
+- **It checks one entry at a time and keeps nothing**, so each caller filters in one pass over what it read, with no copy of the log.
+
+The window makes a new filter on each change, from what its bar holds:
+
+- the chosen minimum level;
+- the checked components, or no list while every box is checked;
+- the time range's bounds as moments, To being the start of the minute after the To box's, so each bound keeps its own minute; or no bounds while a bound is red;
+- the quick search's text.
+
+The user decided on a list of components to keep, not to hide; a To that leaves out its own moment; the refusals above; and the component list on the filter.
 
 ### A status line says what the list holds
 
@@ -54,7 +78,7 @@ The parts that apply share one line, joined by " · ":
 
 ## Public interface
 
-Logs is a desktop module, `Memoria.ToDo.Desktop.Logs`, in `src/Desktop/Logs/`. It uses no other module, only the desktop and shared platforms and Serilog's core package, for its levels and its logger. Shell uses it, for the window port, as the [module map](../modules.md#module-map) says.
+Logs is a desktop module, `Memoria.ToDo.Desktop.Logs`, in `src/Desktop/Logs/`. It uses no other module, only the desktop and shared platforms and Serilog's core package, for its levels and its logger. Shell uses it, for the window port, and the [MCP server](mcp-server.md#reading-the-log-filters-as-the-logs-window-does) for the log source and the filter, as the [module map](../modules.md#module-map) says.
 
 Proposed, a decision to confirm: the window reads the log through a port it owns, which the composition root implements with Serilog's reader, beside the writer. So the folder, the file names, and the format keep [one home](../logging.md#the-desktop-app-keeps-two-weeks-of-logs-at-most-30-mb), and the window's unit tests read entries from a fake source, with no files:
 
@@ -80,6 +104,30 @@ public interface ILogSource
     Task<LogRead> ReadAsync(CancellationToken cancellationToken);
 }
 
+/// Which log entries match: the Logs window's filters, which the MCP server's log tool shares.
+/// An entry matches when it matches every part.
+public sealed class LogFilter
+{
+    /// The levels a minimum may be, lowest first: Debug, Information, Warning, Error, and Fatal.
+    public static IReadOnlyList<Serilog.Events.LogEventLevel> Levels { get; }
+
+    /// minimumLevel: entries at it or above match.
+    /// components: entries whose Component is one of these, compared exactly, match; null matches every component.
+    /// from: entries at it or later match; null sets no start. to: entries before it match; null sets no end.
+    /// text: entries whose Message or Error contains it, ignoring case, match; null or empty matches every entry.
+    /// Throws ArgumentOutOfRangeException when minimumLevel isn't one of Levels, ArgumentNullException for a
+    /// null name in components, and ArgumentException when from is later than to.
+    public LogFilter(Serilog.Events.LogEventLevel minimumLevel, IEnumerable<string>? components,
+        DateTimeOffset? from, DateTimeOffset? to, string? text);
+
+    /// Whether the entry matches every part. Throws ArgumentNullException for null.
+    public bool Matches(LogEntry entry);
+
+    /// The entries' components, each once, in name order ignoring case: the names a filter chooses from.
+    /// Throws ArgumentNullException for null.
+    public static IReadOnlyList<string> ComponentsOf(IEnumerable<LogEntry> entries);
+}
+
 /// The Logs window, as Shell uses it.
 public interface ILogsWindow
 {
@@ -95,7 +143,9 @@ public static class LogsWindow
 }
 ```
 
-`TimeProvider` gives "now" for the time presets. The window logs its own failures through `logger`, as the [log](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. The window's filtering lives in an internal view model, so unit tests check every filter with a fake log source and no window, as [the desktop app](README.md#eight-modules-make-up-the-desktop-app) does for every window module. The `ILogSource` fake, for Logs' tests, and the `ILogsWindow` fake, for Shell's, live in the desktop fakes project beside the other window fakes.
+`TimeProvider` gives "now" for the time presets. The window logs its own failures through `logger`, as the [log](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. Which entries match lives in `LogFilter`, so unit tests check each filter rule on it alone, with entries they make. The window's own rules, such as its presets, red bounds, and component boxes, live in an internal view model, so unit tests check them with a fake log source and no window, as [the desktop app](README.md#nine-modules-make-up-the-desktop-app) does for every window module. The `ILogSource` fake, for Logs' and the MCP server's tests, and the `ILogsWindow` fake, for Shell's, live in the desktop fakes project beside the other window fakes.
+
+The user decided on `LogFilter`'s declaration above.
 
 ## Failure modes
 
@@ -118,6 +168,11 @@ public static class LogsWindow
 - **Debug and up as the default**: every look would start among the choices behind results, which crowd the operations and errors most looks are for.
 - **A quick search of the message only**, decided by the user: a search for an exception's type, or a file named only in its stack trace, would find nothing.
 - **A list that follows new entries as they're written**: the list would move while the user reads, and the writer would need to tell the window about each entry. Ruled out by the user.
+- Where the filter lives:
+  - **In the window only, with the MCP server's assistant filtering entries itself**: decided against by the user, who wanted the tool to filter as the window does, with one filter.
+  - **Inside the log source, which would filter while it reads**: the window needs every entry anyway, to filter again at once and count all of them, so only the tool would gain. The port would grow a filter and a limit, and its fake would filter too.
+  - **The time presets in the filter**: they're the window's shortcuts to fill its boxes from "now", and other callers can pass moments.
+- **A list of components to hide, as the window's boxes are cleared**: the same rows for the window, but a caller asking for one component would have to name every other one.
 
 ## Open questions
 

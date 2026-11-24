@@ -1,6 +1,5 @@
 using System.IO;
 using System.Security;
-using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.Platform;
 using Microsoft.Win32;
 using Serilog;

@@ -6,9 +6,13 @@ internal static class StartArguments
     /// <summary>The argument the <c>Run</c> key's entry adds.</summary>
     public const string AtSignIn = "--at-sign-in";
 
-    public static bool IsStartAtSignIn(string[] args)
+    public static bool IsStartAtSignIn(string[] args) => Contains(args, AtSignIn);
+
+    public static bool IsMcpBridge(string[] args) => Contains(args, McpServer.McpServer.BridgeArgument);
+
+    private static bool Contains(string[] args, string argument)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return Array.Exists(args, argument => argument == AtSignIn);
+        return Array.Exists(args, candidate => candidate == argument);
     }
 }

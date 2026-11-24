@@ -241,6 +241,16 @@ Proposed, each a decision to confirm:
 
 Git history keeps every task and image ever saved, so the repository only grows. This is an [accepted risk](overview.md#risks-the-later-rows-must-resolve); the 1 MB cap limits each image.
 
+### An assistant adds tasks and images without touching the draft or an open edit
+
+The desktop's [MCP server](desktop/mcp-server.md) lets an AI assistant add tasks and images while the user may have a draft kept or an edit open. The user decided that two operations of their own do this, so the assistant's work never passes through the user's:
+
+- **Adding a task from a title, a description, and a tag** adds it at the top, with a new task ID, through the same step `Add` with a draft uses: the same checks, rank, file, log entry, notices, and local save report. It never reads, keeps, or deletes the draft, and moves no images. It writes one file, so it has nothing to undo when that fails.
+- **Adding an image to a task** shrinks it by the [rules above](#images-are-at-most-1-mb-and-live-beside-their-task), the same way `SaveImage` does, and writes it straight into the task's folder in the clone. It returns the image's Markdown, as `SaveImage` does. It never touches the task's file, the images waiting for its open edit, or the draft, so the user's Save or discard of an open edit neither moves nor deletes it. It reports a local save and raises no `Changed`, since the task list didn't change. The task must exist.
+- An image added this way and never linked stays until its task is deleted, as every image does.
+
+The user decided that the operations are named `Add`, beside `Add` with a draft, and `AddImage`, as the [public interface](#public-interface) shows.
+
 ### A draft waits on this device until it's saved
 
 Each device keeps at most one draft of a new task, and Tasks owns all of it, so both apps keep drafts the same way. The draft lives outside the clone, in a folder the app gives Tasks; the desktop app's is [`%LocalAppData%\Memoria-ToDo\draft\`](desktop/task-editor.md#closing-without-saving-keeps-a-draft-on-this-device). It's one JSON file with the fields `version`, `id`, `title`, `description`, and `tags`, where `id` is the task ID the draft got when it started. The draft's images sit beside it. Adding the task writes its file, moves the draft's images into the clone, and then deletes the draft.
@@ -356,11 +366,11 @@ When a neighbor has no place yet, or both neighbors share one, the move first gi
 Each app's modules and Sync use these parts:
 
 - **The task list**: every task, open and resolved, in rank order, with a notice when any task changes here or through sync.
-- **Task operations**: add a task at the top, save an edit, move, resolve, reopen, and delete. Each writes the task's file at once.
+- **Task operations**: add a task at the top, from the draft or from a title, description, and tag; save an edit, move, resolve, reopen, and delete. Each writes the task's file at once.
 - **Tags and search**: the tags in use with how many tasks use each, and the tasks matching a search and a tag.
 - **Task links**: a task's link, and the task ID in a link's address, if it's a task link.
 - **Drafts**: start, load, keep, and discard this device's draft of a new task, with its images.
-- **Images**: save an image for a draft or an open edit and get its Markdown, discard an open edit's images, and the folder where an open edit's images wait.
+- **Images**: save an image for a draft or an open edit and get its Markdown, add an image straight to a task, discard an open edit's images, and the folder where an open edit's images wait.
 - **[Shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs)**: the typed settings capability used by Configure.
 - **[Tag colors](#tag-colors-are-a-capability-of-their-own)**: the color name kept for a tag, and keeping a new one.
 - **[Tag order](#tag-order-is-a-capability-of-its-own)**: tags sorted in the user's order, and moving a tag to a new place.
@@ -368,7 +378,7 @@ Each app's modules and Sync use these parts:
 
 The same three versions always merge to the same result, on every device. Tasks reads and writes files through the shared platform's [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files), takes the time from .NET's TimeProvider, and publishes an interface for image shrinking. Each app implements the interfaces and passes the system's time, as [How the apps fit together](overview.md#two-apps-share-one-c-library) says.
 
-Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the part below, in `Memoria.ToDo.Shared.Tasks`; its calls are synchronous. Step 4 renames `SaveDraftImage` to `SaveImage`, and adds `DiscardEditImages`, `SaveEdit`, `Move`, `Resolve`, `Reopen`, `Delete`, the tag filter's `Search`, and `TaskNotFoundException`, all shown below. Step 5 adds the [separate settings and synchronization capabilities](#step-5-publishes-small-capabilities-without-growing-task-operations). `All` and `Search` hold resolved tasks too, in rank order; each screen picks open or resolved tasks by `Resolved`.
+Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the part below, in `Memoria.ToDo.Shared.Tasks`; its calls are synchronous. Step 4 renames `SaveDraftImage` to `SaveImage`, and adds `DiscardEditImages`, `SaveEdit`, `Move`, `Resolve`, `Reopen`, `Delete`, the tag filter's `Search`, and `TaskNotFoundException`, all shown below. Step 5 adds the [separate settings and synchronization capabilities](#step-5-publishes-small-capabilities-without-growing-task-operations). Step 19 adds `Add` without a draft, and `AddImage`, for the [MCP server](desktop/mcp-server.md). `All` and `Search` hold resolved tasks too, in rank order; each screen picks open or resolved tasks by `Resolved`.
 
 ```csharp
 namespace Memoria.ToDo.Shared.Tasks;
@@ -392,6 +402,13 @@ public interface ITasks
     /// then deletes the kept draft. Throws NoRepositoryFolderException when no folder is set,
     /// and ArgumentException for an empty or multi-line title or an invalid tag.
     TaskItem Add(TaskDraft draft);
+
+    /// Adds a new task at the top, with a new task ID, and writes its file, through the same checks,
+    /// notices, and local save report as Add(TaskDraft). Never touches the draft or any images.
+    /// A null tag adds no tag; the caller spells it through WithTag. Throws, before any change:
+    /// NoRepositoryFolderException when no folder is set, and ArgumentException for an empty or
+    /// multi-line title or an invalid tag.
+    TaskItem Add(string title, string description, string? tag);
 
     /// The tags in use and how many tasks have each, most-used first, ties in alphabetical order.
     IReadOnlyList<TagUse> TagsInUse();
@@ -429,6 +446,14 @@ public interface ITasks
     /// that already exists, and with the draft otherwise. Throws InvalidDataException when it
     /// isn't an image, and ImageTooLargeException when it can't be shrunk to 1 MB.
     string SaveImage(string taskId, byte[] image, string altText);
+
+    /// Shrinks the image by SaveImage's rules, writes it into the task's folder in the clone,
+    /// images/<task-id>/, and returns its Markdown. Reports a local save; raises no Changed.
+    /// Never touches the task's file, its open edit's images, or the draft. Throws, before any
+    /// change: NoRepositoryFolderException when no folder is set; TaskNotFoundException when the
+    /// task isn't in All; InvalidDataException when it isn't an image; and ImageTooLargeException
+    /// when it can't be shrunk to 1 MB.
+    string AddImage(string taskId, byte[] image, string altText);
 
     /// Deletes the images kept for the task's open edit. Never touches the draft.
     void DiscardEditImages(string taskId);
@@ -698,7 +723,7 @@ Proposed: the file rules keep their `TagColors` names, though `tags.json` now ho
 - **A task file can't be read**, such as broken JSON from the remote: Tasks skips the task and never deletes its file, and the sync status names it.
 - **A task file has a newer `version`**: Tasks skips it and leaves it unchanged, and the sync status asks the user to update the app.
 - **A task file can't be written**, such as on a full disk: the screen that asked shows the error and keeps the user's text, and the draft stays.
-- **An image can't be read, or can't be shrunk to 1 MB**: nothing is saved, and the editor says why.
+- **An image can't be read, or can't be shrunk to 1 MB**: nothing is saved, and the editor, or the assistant's tool, says why.
 - **The kept draft can't be read**: loading it fails with `InvalidDataException` (a read failure keeps its cause inside), and the file stays as it is until the next keep or discard. The Add window then opens empty and says so.
 - **Adding a task fails after its file is written**, while moving images or deleting the draft: Tasks undoes what it did, moving the images back and deleting the new task file, and rethrows the original error, so the draft stays whole, nothing is left in the repository, and a retry works. The draft's images folder is deleted before its file, so a failed draft delete is undone the same way. If the undo itself fails, Tasks throws an `AggregateException` with both errors. Adding never overwrites: if the task file's path is already occupied, even by a file that was skipped on load, it throws `ArgumentException`.
 - **The top task's rank isn't a valid key**: adding fails with `InvalidDataException` rather than guess an order.
@@ -744,6 +769,9 @@ The options below were considered and rejected, grouped by decision.
 - Images for an open edit:
   - **The editor says whether it holds a draft or a task, and calls a separate image part for edits**: an extra setting on the editor, and two image parts that shrink images the same way.
   - **Images added during an edit go straight into the clone**: a sync during the edit could push images that a discard then deletes, and git history would keep them.
+- How an assistant adds a task and an image:
+  - **`Add` with a draft deletes the kept draft only when it's the draft being added, matched by task ID**: the user chose an operation of its own, so `Add` with a draft keeps its one rule.
+  - **An assistant's image waits with the task's open edit through `SaveImage`**: the user's discard of the edit would delete it, and the user's Save would publish it unseen.
 - How the desktop's web view finds an open edit's waiting images:
   - **A call that reads a waiting image's bytes for a link**: a bigger interface, and Tasks would serve the web view's requests one by one, for what one folder path gives.
   - **The composition root joins the draft folder and `edits` itself**: the folder's layout would then live in two places that must change together.

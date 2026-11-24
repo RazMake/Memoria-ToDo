@@ -174,11 +174,46 @@ public sealed class The_module_map_and_the_projects
     }
 
     [Fact]
-    public void Only_Shell_may_use_Logs()
+    public void Only_Shell_and_the_MCP_server_may_use_Logs()
     {
         var users = _map.Modules.Where(m => m.MayUse.Contains("Logs")).Select(m => $"{m.Part} {m.Name}");
 
-        Assert.Equal(["Desktop Shell"], users);
+        Assert.Equal(["Desktop MCP server", "Desktop Shell"], users.Order());
+    }
+
+    [Fact]
+    public void Only_Shell_and_Configure_may_use_the_MCP_server()
+    {
+        var users = _map.Modules.Where(m => m.MayUse.Contains("MCP server")).Select(m => $"{m.Part} {m.Name}");
+
+        Assert.Equal(["Desktop Configure", "Desktop Shell"], users.Order());
+    }
+
+    [Fact]
+    public void The_MCP_server_may_use_no_window_module_so_no_loop_forms()
+    {
+        var server = Assert.Single(_map.Modules, m => m.Part == "Desktop" && m.Name == "MCP server");
+
+        Assert.Equal(["Contacts", "Logs", "Sync", "Tasks", "Updates"], server.MayUse.Order());
+    }
+
+    [Fact]
+    public void The_MCP_server_project_sits_in_its_own_folder_of_the_desktop_part()
+    {
+        var server = Assert.Single(_projects, p => p.Name == "Memoria.ToDo.Desktop.McpServer");
+
+        Assert.Equal("Desktop", server.Part);
+        Assert.Equal("McpServer", server.FolderName);
+    }
+
+    [Fact]
+    public void Only_the_MCP_server_project_references_the_ModelContextProtocol_Core_package()
+    {
+        var users = _projects
+            .Where(p => p.PackageReferences.Contains("ModelContextProtocol.Core", StringComparer.OrdinalIgnoreCase))
+            .Select(p => p.Name);
+
+        Assert.Equal(["Memoria.ToDo.Desktop.McpServer"], users);
     }
 
     [Fact]

@@ -128,6 +128,11 @@ Proposed, each a decision to confirm:
 
 - **Saving a contact writes only its group's file**, then announces the change. A contact whose ID the group doesn't hold yet is added to it.
 - **Save checks the contact first and writes nothing invalid**: a missing ID or full name, a name with other characters, a multi-line value, a bad date or time, an ID or alias another contact holds, or a key its data type doesn't list. A name the saved contact already shared, or a key it already held, stays allowed, so the user can still fix its other fields.
+- **A caller that changes only some fields saves through a change**, so the other fields keep their latest value, even when a sync or a window saves the contact meanwhile. Proposed, each a decision to confirm:
+  - Contacts hands the change the group's current contact with that ID, ignoring case, or nothing when the group holds none. It then saves the contact the change returns, exactly as Save does, all under the [repository's lock](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload). So no reload or other save lands between the read and the write.
+  - The returned contact gets Save's checks and no extra rule. So the user's own contact still can't get a new ID, and a new contact in "me" is still refused.
+  - A failing change writes nothing, and its exception reaches the caller. A change that returns no contact is refused the same way, with an `ArgumentException`.
+  - The [MCP server's `save_contact`](desktop/mcp-server.md#each-tool-is-one-operation-the-user-can-do) uses it.
 - **The user's own contact can be saved but never added or deleted**, and its ID never changes.
 - **Deleting a contact removes it from its group's file.** An emptied group file stays, as a group with no members.
 - **After a delete**, a `reportsTo` that named the contact shows its name as written, and a mention of it shows its stored text.
@@ -382,6 +387,15 @@ public interface IContacts
     /// an unknown group, a new contact in "me", or a new ID for the
     /// user's own contact; InvalidOperationException when the group's file was skipped.
     void Save(string groupName, Contact contact);
+
+    /// Proposed, a decision to confirm: runs change under the repository's lock with the group's contact holding
+    /// the ID, ignoring case, or null when none does, then saves the contact it returns exactly as
+    /// Save(groupName, contact) does: the same checks and exceptions before writing, then Changed and the local-save report.
+    /// So a caller that changes some fields keeps the latest value of the others, even when a sync or a window saves between.
+    /// Throws as Save does for no clone, an unknown group, or a skipped group file, before calling change.
+    /// An exception change throws reaches the caller, with nothing written. Because change runs under the lock,
+    /// a Save, Delete, or MoveGroup inside it throws InvalidOperationException.
+    void Save(string groupName, string id, Func<Contact?, Contact> change);
 
     /// Removes the contact from the group's file, then raises Changed. Throws, before writing:
     /// NoRepositoryFolderException; ArgumentException for "me", an unknown group, or an ID the group doesn't hold;

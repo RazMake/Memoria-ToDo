@@ -1,3 +1,6 @@
+Memoria.ToDo.Desktop.Platform.IStartWithWindows
+Memoria.ToDo.Desktop.Platform.IStartWithWindows.IsOn() -> bool
+Memoria.ToDo.Desktop.Platform.IStartWithWindows.Set(bool on) -> void
 Memoria.ToDo.Desktop.Platform.AppRunner
 Memoria.ToDo.Desktop.Platform.QuestionDialog
 static Memoria.ToDo.Desktop.Platform.QuestionDialog.Ask<T>(System.Windows.Window! owner, string! title, string! text, System.Collections.Generic.IReadOnlyList<(string! Label, T Answer)>! answers, T defaultAnswer, T cancelAnswer, Serilog.ILogger! logger) -> T
@@ -130,3 +133,7 @@ Memoria.ToDo.Desktop.Platform.ILeavingEdit.Save() -> bool
 Memoria.ToDo.Desktop.Platform.LeaveDecision
 Memoria.ToDo.Desktop.Platform.LeaveDecision.LeaveDecision(Memoria.ToDo.Desktop.Platform.ILeavePrompt! prompt) -> void
 Memoria.ToDo.Desktop.Platform.LeaveDecision.MayLeave(Memoria.ToDo.Desktop.Platform.ILeavingEdit? edit) -> bool
+Memoria.ToDo.Desktop.Platform.OnOffSettingFile
+Memoria.ToDo.Desktop.Platform.OnOffSettingFile.OnOffSettingFile(Memoria.ToDo.Shared.Platform.IFileSystem! files, string! path, bool whenMissing, string! name, Serilog.ILogger! logger) -> void
+Memoria.ToDo.Desktop.Platform.OnOffSettingFile.Read() -> (bool On, string? Failure)
+Memoria.ToDo.Desktop.Platform.OnOffSettingFile.Write(bool on) -> void

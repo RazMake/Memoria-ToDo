@@ -1,4 +1,4 @@
-using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.Platform;
 
 namespace Memoria.ToDo.Desktop.Fakes;
 
@@ -9,9 +9,16 @@ namespace Memoria.ToDo.Desktop.Fakes;
 public sealed class FakeStartWithWindows : IStartWithWindows
 {
     private readonly List<bool> setCalls = [];
+    private readonly List<int> callThreads = [];
 
     /// <summary>Whether the setting is on now.</summary>
     public bool On { get; set; }
+
+    /// <summary>The managed id of the thread each <see cref="IsOn"/> and <see cref="Set"/> call ran on, in order, for tests of callers that must use the UI thread.</summary>
+    public IReadOnlyList<int> CallThreads
+    {
+        get { lock (callThreads) { return [.. callThreads]; } }
+    }
 
     /// <summary>The values Set was called with, in order, including those that failed.</summary>
     public IReadOnlyList<bool> SetCalls => setCalls;
@@ -20,11 +27,16 @@ public sealed class FakeStartWithWindows : IStartWithWindows
     public Exception? SetFailure { get; set; }
 
     /// <inheritdoc />
-    public bool IsOn() => On;
+    public bool IsOn()
+    {
+        RecordThread();
+        return On;
+    }
 
     /// <inheritdoc />
     public void Set(bool on)
     {
+        RecordThread();
         setCalls.Add(on);
         if (SetFailure is not null)
         {
@@ -32,5 +44,10 @@ public sealed class FakeStartWithWindows : IStartWithWindows
         }
 
         On = on;
+    }
+
+    private void RecordThread()
+    {
+        lock (callThreads) { callThreads.Add(Environment.CurrentManagedThreadId); }
     }
 }

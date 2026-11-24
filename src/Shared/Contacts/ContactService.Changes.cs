@@ -8,8 +8,23 @@ internal sealed partial class ContactService
     {
         ArgumentNullException.ThrowIfNull(groupName);
         ArgumentNullException.ThrowIfNull(contact);
-        Change(current => [SaveInto(current, groupName, contact)], written =>
-            logger.Information("Saved contact {ContactId} {ContactName} in {GroupFile}", contact.Id, contact.FullName, GroupFileOf(written[0])));
+        Save(groupName, contact.Id, _ => contact);
+    }
+
+    public void Save(string groupName, string id, Func<Contact?, Contact> change)
+    {
+        ArgumentNullException.ThrowIfNull(groupName);
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(change);
+        Contact? saved = null;
+        Change(
+            current =>
+            {
+                var group = WritableGroup(current, groupName);
+                saved = change(MemberWithId(group, id)?.Contact) ?? throw new ArgumentException("The change returned no contact.", nameof(change));
+                return [SaveInto(current, group, saved)];
+            },
+            written => logger.Information("Saved contact {ContactId} {ContactName} in {GroupFile}", saved!.Id, saved.FullName, GroupFileOf(written[0])));
     }
 
     public void Delete(string groupName, string id)
@@ -86,9 +101,8 @@ internal sealed partial class ContactService
         failures.ThrowIfAny();
     }
 
-    private static GroupFile SaveInto(ContactSnapshot current, string groupName, Contact contact)
+    private static GroupFile SaveInto(ContactSnapshot current, GroupFile group, Contact contact)
     {
-        var group = WritableGroup(current, groupName);
         if (ContactRules.Problem(contact) is { } problem)
             throw new ArgumentException(problem, nameof(contact));
         var existing = MemberWithId(group, contact.Id);

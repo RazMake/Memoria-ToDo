@@ -5,9 +5,6 @@ Memoria.ToDo.Desktop.Configure.IShortcutAction
 Memoria.ToDo.Desktop.Configure.IShortcutAction.Register(Memoria.ToDo.Desktop.Configure.Shortcut! shortcut) -> bool
 Memoria.ToDo.Desktop.Configure.IShortcutAction.Unregister() -> void
 Memoria.ToDo.Desktop.Configure.IConfigureWindow.Show() -> void
-Memoria.ToDo.Desktop.Configure.IStartWithWindows
-Memoria.ToDo.Desktop.Configure.IStartWithWindows.IsOn() -> bool
-Memoria.ToDo.Desktop.Configure.IStartWithWindows.Set(bool on) -> void
 Memoria.ToDo.Desktop.Configure.Shortcut
 Memoria.ToDo.Desktop.Configure.Shortcut.<Clone>$() -> Memoria.ToDo.Desktop.Configure.Shortcut!
 Memoria.ToDo.Desktop.Configure.Shortcut.Equals(Memoria.ToDo.Desktop.Configure.Shortcut? other) -> bool
@@ -16,7 +13,7 @@ Memoria.ToDo.Desktop.Configure.Shortcut.Modifiers.get -> System.Windows.Input.Mo
 override Memoria.ToDo.Desktop.Configure.Shortcut.Equals(object? obj) -> bool
 override Memoria.ToDo.Desktop.Configure.Shortcut.GetHashCode() -> int
 override Memoria.ToDo.Desktop.Configure.Shortcut.ToString() -> string!
-static Memoria.ToDo.Desktop.Configure.ConfigureWindow.Create(Memoria.ToDo.Desktop.Configure.IStartWithWindows! startWithWindows, Memoria.ToDo.Shared.Tasks.ISharedTaskSettings! settings, Memoria.ToDo.Shared.Sync.ISyncService! sync, Memoria.ToDo.Desktop.Configure.ISetupActions! setupActions, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.Updates.IUpdateStatus! updates, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys, Serilog.ILogger! logger) -> Memoria.ToDo.Desktop.Configure.IConfigureWindow!
+static Memoria.ToDo.Desktop.Configure.ConfigureWindow.Create(Memoria.ToDo.Desktop.Platform.IStartWithWindows! startWithWindows, Memoria.ToDo.Shared.Tasks.ISharedTaskSettings! settings, Memoria.ToDo.Shared.Sync.ISyncService! sync, Memoria.ToDo.Desktop.Configure.ISetupActions! setupActions, Memoria.ToDo.Desktop.Platform.CloseWindowKeys! closeWindowKeys, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.Updates.IUpdateStatus! updates, Memoria.ToDo.Desktop.McpServer.IMcpServerStatus! mcpServer, Memoria.ToDo.Desktop.Platform.SaveKeys! saveKeys, Serilog.ILogger! logger) -> Memoria.ToDo.Desktop.Configure.IConfigureWindow!
 static Memoria.ToDo.Desktop.Configure.Shortcut.TryCreate(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key, out Memoria.ToDo.Desktop.Configure.Shortcut? shortcut) -> bool
 static Memoria.ToDo.Desktop.Configure.Shortcut.operator !=(Memoria.ToDo.Desktop.Configure.Shortcut? left, Memoria.ToDo.Desktop.Configure.Shortcut? right) -> bool
 static Memoria.ToDo.Desktop.Configure.Shortcut.operator ==(Memoria.ToDo.Desktop.Configure.Shortcut? left, Memoria.ToDo.Desktop.Configure.Shortcut? right) -> bool
@@ -24,4 +21,5 @@ Memoria.ToDo.Desktop.Configure.IConfigureWindow.IsOpen.get -> bool
 Memoria.ToDo.Desktop.Configure.IConfigureWindow.Close() -> void
 Memoria.ToDo.Desktop.Configure.ISetupActions
 Memoria.ToDo.Desktop.Configure.ISetupActions.CopyPublicKey(string! publicKey) -> void
+Memoria.ToDo.Desktop.Configure.ISetupActions.CopyText(string! text) -> void
 Memoria.ToDo.Desktop.Configure.ISetupActions.OpenKeyPage(System.Uri! address) -> void

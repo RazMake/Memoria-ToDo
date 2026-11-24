@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using Memoria.ToDo.Desktop.McpServer;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
@@ -24,6 +25,8 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly CloseWindowKeys _closeWindowKeys;
     private readonly ITheme _theme;
     private readonly IUpdateStatus _updates;
+    private readonly AiAssistantsSetting _aiAssistants;
+    private readonly IMcpServerStatus _mcpServer;
     private readonly ILogger _logger;
     private Window? _open;
     private Action? _refreshOpen;
@@ -31,7 +34,7 @@ internal sealed class ConfigureShow : IConfigureWindow
 
     public ConfigureShow(
         IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions,
-        CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates, SaveKeys saveKeys, ILogger logger)
+        CloseWindowKeys closeWindowKeys,         ITheme theme, IUpdateStatus updates, IMcpServerStatus mcpServer, SaveKeys saveKeys, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
         ArgumentNullException.ThrowIfNull(settings);
@@ -40,9 +43,12 @@ internal sealed class ConfigureShow : IConfigureWindow
         ArgumentNullException.ThrowIfNull(closeWindowKeys);
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(updates);
+        ArgumentNullException.ThrowIfNull(mcpServer);
         ArgumentNullException.ThrowIfNull(saveKeys);
         ArgumentNullException.ThrowIfNull(logger);
         _updates = updates;
+        _aiAssistants = new AiAssistantsSetting(mcpServer, setupActions, logger);
+        _mcpServer = mcpServer;
         _logger = logger;
         _theme = theme;
         _settings = settings;
@@ -123,7 +129,8 @@ internal sealed class ConfigureShow : IConfigureWindow
     private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)
     {
         var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _contacts, _configure, _closeWindow, _save);
-        var application = new ApplicationSection(new UpdateCard(_updates, _logger), shortcuts, _theme);
+        var application = new ApplicationSection(new UpdateCard(_updates, _logger), shortcuts,
+            new AiAssistantsCard(_aiAssistants, _mcpServer), _theme);
         var delay = new DeletionDelayRow(_settings, _logger);
         var ui = new SyncUi(sync, setupActions, _notices.Post, _logger);
         var syncSettings = new SyncSettingsSection(ui, delay, _theme);

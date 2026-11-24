@@ -31,7 +31,7 @@ public static class AppUpdates
         }
 
         var ui = new UiThread();
-        var model = new UpdateModel(install, new AutoUpdateSetting(files, deviceFolder, logger), ui, logger);
+        var model = new UpdateModel(install, new OnOffSettingFile(files, Path.Combine(deviceFolder, "auto-update.txt"), whenMissing: false, "Auto update's file", logger), ui, logger);
         var runner = new UpdateRunner(install, model, new NightSchedule(time), ui, logger);
         return new UpdatesService(model, runner, new WhatIsNewDialog(theme, createWebView, browser, closeWindowKeys, pointer, logger));
     }

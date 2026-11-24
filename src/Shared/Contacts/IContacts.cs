@@ -71,6 +71,17 @@ public interface IContacts
     void Save(string groupName, Contact contact);
 
     /// <summary>
+    /// Proposed, a decision to confirm: runs <paramref name="change"/> under the repository's lock with the group's contact holding
+    /// the ID, ignoring case, or null when none does, then saves the contact it returns exactly as
+    /// <see cref="Save(string, Contact)"/> does: the same checks and exceptions before writing, then Changed and the local-save report.
+    /// So a caller that changes some fields keeps the latest value of the others, even when a sync or a window saves between.
+    /// Throws as Save does for no clone, an unknown group, or a skipped group file, before calling change.
+    /// An exception change throws reaches the caller, with nothing written; a null it returns is refused with <see cref="ArgumentException"/>. Because change runs under the lock,
+    /// a Save, Delete, or MoveGroup inside it throws <see cref="InvalidOperationException"/>.
+    /// </summary>
+    void Save(string groupName, string id, Func<Contact?, Contact> change);
+
+    /// <summary>
     /// Removes the contact from the group's file, then raises Changed. Throws, before writing:
     /// <see cref="NoRepositoryFolderException"/>; <see cref="ArgumentException"/> for "me", an unknown group, or an ID the group doesn't hold;
     /// <see cref="InvalidOperationException"/> when the group's file was skipped.

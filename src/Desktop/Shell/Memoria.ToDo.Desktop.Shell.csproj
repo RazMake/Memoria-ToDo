@@ -17,6 +17,7 @@
     <ProjectReference Include="..\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
+    <ProjectReference Include="..\McpServer\Memoria.ToDo.Desktop.McpServer.csproj" />
     <ProjectReference Include="..\Logs\Memoria.ToDo.Desktop.Logs.csproj" />
     <ProjectReference Include="..\..\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
     <PackageReference Include="Serilog" />

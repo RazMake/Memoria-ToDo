@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using Memoria.ToDo.Desktop.Platform;
 using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;

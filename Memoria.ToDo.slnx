@@ -14,6 +14,7 @@
     <Project Path="src/Desktop/Configure/Memoria.ToDo.Desktop.Configure.csproj" />
     <Project Path="src/Desktop/Updates/Memoria.ToDo.Desktop.Updates.csproj" />
     <Project Path="src/Desktop/Logs/Memoria.ToDo.Desktop.Logs.csproj" />
+    <Project Path="src/Desktop/McpServer/Memoria.ToDo.Desktop.McpServer.csproj" />
     <Project Path="src/Desktop/App/Memoria.ToDo.Desktop.App.csproj" />
     <Project Path="src/Shared/Rendering/Memoria.ToDo.Shared.Rendering.csproj" />
   </Folder>

@@ -78,7 +78,7 @@ Auto update is a check box on the [Update card](configure.md#the-update-card-lea
 Proposed, each a decision to confirm:
 
 - **Auto update is off at first**, as the request's empty check box shows. It's this device's setting, kept on this device, since each PC decides when it restarts. It isn't synced.
-- **It's kept in `auto-update.txt` in this device's folder**, `%LocalAppData%\Memoria-ToDo`, beside [`repository-folder.txt`](configure.md#the-sync-settings-section-sets-the-devices-clone), as `on` or `off`. A missing file means off.
+- **It's kept in `auto-update.txt` in this device's folder**, `%LocalAppData%\Memoria-ToDo`, beside [`repository-folder.txt`](configure.md#the-sync-settings-section-sets-the-devices-clone), through the platform's [on-or-off setting file](README.md#an-on-or-off-setting-file-keeps-one-switch-on-this-device), which sets how it's read and written. A missing file means off. Its messages call it "Auto update's file".
 - **The night run waits while any of the app's windows is open**, and starts within an hour after the last one closes. So it never closes a window under you, and it never meets Task View's prompt about a changed edit. Proposed, each a decision to confirm:
   - **A window opened during the night run's download holds the restart** until every window is closed again; the state stays Updating meanwhile.
   - **Turning Auto update off cancels a night run that's still waiting** for windows to close; one already downloading goes on, as an update you started would.
@@ -233,7 +233,7 @@ The time source is .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotne
 - **You cancel Task View's prompt, or Save doesn't save**: the state returns to Available with no message, since you chose it.
 - **Velopack's updater can't start**: the app still ends, as Exit does, and the error shows as any failed stop does, through the [platform](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it). You start the app again, and its next check finds the version again.
 - **The app takes longer than 60 seconds to end after the updater starts**: the updater gives up, so the app stays closed on its old version until you start it again. Velopack doesn't confirm a failure to the app. This is an accepted risk; the updater starts after the slow steps.
-- **Auto update's file can't be read, or holds something other than `on` or `off`**: Auto update stays off, and the card says why. Turning it on writes the file again.
+- **Auto update's file can't be read, or holds something else**: Auto update stays off, as the [on-or-off setting file](README.md#an-on-or-off-setting-file-keeps-one-switch-on-this-device) decides, and the card says why. Turning it on writes the file again.
 - **Auto update can't be saved**: the check box keeps its previous value, and the card says why, as Configure does for [every setting](configure.md#failure-modes).
 - **The web view fails in What is new**: the dialog shows the notes' Markdown source with a message, as the [Formatted view](formatted-view.md#failure-modes) does.
 

@@ -14,6 +14,10 @@ public sealed class FakeLogSource : ILogSource
     private readonly List<(int Count, TaskCompletionSource Done)> _waiters = [];
     private TaskCompletionSource? _hold;
     private int _finished;
+    private readonly TaskCompletionSource _firstReadStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>A task that completes when the first read starts, before it waits on <see cref="Hold"/>.</summary>
+    public Task WhenFirstReadStarted() => _firstReadStarted.Task;
 
     /// <summary>The entries the next read finds.</summary>
     public List<LogEntry> Entries { get; } = [];
@@ -79,6 +83,7 @@ public sealed class FakeLogSource : ILogSource
 
         try
         {
+            _firstReadStarted.TrySetResult();
             if (hold is not null)
             {
                 await hold.Task.WaitAsync(cancellationToken).ConfigureAwait(false);

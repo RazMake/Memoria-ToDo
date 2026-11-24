@@ -7,10 +7,12 @@ namespace Memoria.ToDo.Desktop.App;
 /// <summary>Configure's setup actions on Windows: the WPF clipboard and the default browser.</summary>
 internal sealed class WindowsSetupActions(IDefaultBrowser browser) : ISetupActions
 {
-    public void CopyPublicKey(string publicKey)
+    public void CopyPublicKey(string publicKey) => CopyText(publicKey);
+
+    public void CopyText(string text)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(publicKey);
-        Clipboard.SetText(publicKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        Clipboard.SetText(text);
     }
 
     public void OpenKeyPage(Uri address)

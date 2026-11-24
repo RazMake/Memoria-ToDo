@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Shell;
 
 namespace Memoria.ToDo.Desktop.App;
@@ -14,6 +15,9 @@ internal sealed class NamedSignalOneInstance : IOneInstance
 {
     private const uint AllowAnyProcess = uint.MaxValue; // ASFW_ANY
 
+    /// <summary>The app's own signal name: the product name, not Velopack's installer ID, which a copy run from a build folder doesn't have, so every copy counts as the same app.</summary>
+    public static string AppSignalName { get; } = $"{AppName.Value}.OneInstance";
+
     private readonly string _signalName;
     private Semaphore? _signal;
     private RegisteredWaitHandle? _wait;
@@ -21,8 +25,25 @@ internal sealed class NamedSignalOneInstance : IOneInstance
     public NamedSignalOneInstance(string signalName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(signalName);
-        _signalName = $@"Local\{signalName}";
+        _signalName = ScopedName(signalName);
     }
+
+    /// <summary>Whether an instance holds the claim of <paramref name="signalName"/> now. Looking never takes the claim or signals the instance.</summary>
+    public static bool IsClaimed(string signalName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(signalName);
+        try
+        {
+            Semaphore.OpenExisting(ScopedName(signalName)).Dispose();
+            return true;
+        }
+        catch (WaitHandleCannotBeOpenedException)
+        {
+            return false;
+        }
+    }
+
+    private static string ScopedName(string signalName) => $@"Local\{signalName}";
 
     public bool Claim(Action laterStart)
     {

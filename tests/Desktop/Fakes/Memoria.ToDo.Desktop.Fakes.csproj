@@ -16,6 +16,7 @@
     <ProjectReference Include="..\..\..\src\Desktop\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Logs\Memoria.ToDo.Desktop.Logs.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\McpServer\Memoria.ToDo.Desktop.McpServer.csproj" />
   </ItemGroup>
 
 </Project>

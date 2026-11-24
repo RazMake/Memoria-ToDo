@@ -110,6 +110,32 @@ public class NamedSignalOneInstanceTests
     }
 
     [WpfFact]
+    public void A_claim_can_be_looked_at_without_taking_it()
+    {
+        var name = UniqueName();
+        Assert.False(NamedSignalOneInstance.IsClaimed(name));
+        IOneInstance first = new NamedSignalOneInstance(name);
+        IOneInstance next = new NamedSignalOneInstance(name);
+        try
+        {
+            first.Claim(() => { });
+
+            Assert.True(NamedSignalOneInstance.IsClaimed(name));
+            Assert.True(NamedSignalOneInstance.IsClaimed(name)); // Looking again changes nothing.
+
+            first.Release();
+
+            Assert.False(NamedSignalOneInstance.IsClaimed(name));
+            Assert.True(next.Claim(() => { })); // Looking never took the claim.
+        }
+        finally
+        {
+            next.Release();
+            first.Release();
+        }
+    }
+
+    [WpfFact]
     public void Release_frees_the_claim_for_the_next_instance()
     {
         var name = UniqueName();

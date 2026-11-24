@@ -18,6 +18,14 @@ public interface ITasks
     /// </summary>
     TaskItem Add(TaskDraft draft);
 
+    /// <summary>
+    /// Adds a new task at the top, with a new task ID, and writes its file, through the same checks, notices, and local save
+    /// report as <see cref="Add(TaskDraft)"/>. Never touches the draft or any images. A null <paramref name="tag"/> adds no tag;
+    /// the caller spells it through <see cref="WithTag"/>. Throws, before any change: <see cref="NoRepositoryFolderException"/>
+    /// when no folder is set, and <see cref="ArgumentException"/> for an empty or multi-line title or an invalid tag.
+    /// </summary>
+    TaskItem Add(string title, string description, string? tag);
+
     /// <summary>The tags in use and how many tasks have each, most-used first, ties in alphabetical order.</summary>
     IReadOnlyList<TagUse> TagsInUse();
 
@@ -61,6 +69,16 @@ public interface ITasks
     /// isn't an image, and <see cref="ImageTooLargeException"/> when it can't be shrunk to 1 MB.
     /// </summary>
     string SaveImage(string taskId, byte[] image, string altText);
+
+    /// <summary>
+    /// Shrinks the image by <see cref="SaveImage"/>'s rules, writes it into the task's folder in the clone,
+    /// <c>images/&lt;task-id&gt;/</c>, and returns its Markdown. Reports a local save; raises no <see cref="Changed"/>.
+    /// Never touches the task's file, its open edit's images, or the draft. Throws, before any change:
+    /// <see cref="NoRepositoryFolderException"/> when no folder is set; <see cref="TaskNotFoundException"/> when the task
+    /// isn't in <see cref="All"/>; <see cref="InvalidDataException"/> when it isn't an image; and
+    /// <see cref="ImageTooLargeException"/> when it can't be shrunk to 1 MB.
+    /// </summary>
+    string AddImage(string taskId, byte[] image, string altText);
 
     /// <summary>Deletes the images kept for the task's open edit. Never touches the draft.</summary>
     void DiscardEditImages(string taskId);

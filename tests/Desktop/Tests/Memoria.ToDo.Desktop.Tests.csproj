@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\..\src\Desktop\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Logs\Memoria.ToDo.Desktop.Logs.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\McpServer\Memoria.ToDo.Desktop.McpServer.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\Shell\Memoria.ToDo.Desktop.Shell.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
@@ -23,8 +24,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The WPF SDK leaves System.Net.Http out of the implicit usings; the Shell's tests rely on it. -->
+    <!-- The WPF SDK leaves System.Net.Http and System.IO out of the implicit usings; the Shell's tests and the bridge's stream tests rely on them. -->
     <Using Include="System.Net.Http" />
+    <Using Include="System.IO" />
   </ItemGroup>
 
 </Project>

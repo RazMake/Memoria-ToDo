@@ -40,6 +40,7 @@ Two throwaway proofs ran before this page was Decided, though the [design backlo
 - **Proof code lives on a throwaway branch of this repository and is never merged**, so it never becomes product code. You create the branch and make its commits, since [only you commit](../../AGENTS.md#contributions).
 - **Proof code skips AGENTS.md's [Code design](../../AGENTS.md#code-design) and [Tests](../../AGENTS.md#tests) rules, and [Contributions](../../AGENTS.md#contributions) principle 4.** Principle 4 delivers each change through the [process](../contributing/process.md): design, tests first, code, independent review, and a delivery report. A proof only shows whether something works, so none of that is worth its cost for code that's thrown away. Every other rule in [AGENTS.md](../../AGENTS.md) still applies, so AI never commits or pushes the branch.
 - **What a proof shows is recorded in the design files it checks**, such as the [Android app](android/README.md) and [How the apps fit together](overview.md). That record is a design change, not a delivery report.
+- **A later proof runs the same way.** The [MCP server's SDK proof](desktop/mcp-server.md#it-uses-the-official-c-sdk-which-a-proof-checked) is one, and it passed before that module was built.
 
 ### Code and tests sit in mirrored trees by part, in one solution
 
@@ -332,6 +333,7 @@ Tests that check every project, rather than one module, sit in `tests/Testing/Te
 - **One test compares each project's references with the [module map](modules.md#module-map).** It checks that there are no cycles, no references between the apps, and no module named by the platform. It reads the "May use" columns of the map's tables in `modules.md`, so the map keeps one home, and matches each name there to a project by the [naming rules above](#code-and-tests-sit-in-mirrored-trees-by-part-in-one-solution).
 - **A change to the tables' format fails that test, which then needs a fix.** Code reads a Markdown table, so a new column or a renamed heading breaks it.
 - **Another test checks that only the desktop composition root references the packages that must stay out of modules**: Velopack and the tray icon's package, and, proposed as a decision to confirm, the four Serilog packages that write and read log files, as [Logging](logging.md#five-serilog-packages-do-the-work) says.
+- **The same test checks that only the [MCP server](desktop/mcp-server.md#it-uses-the-official-c-sdk-which-a-proof-checked) module references `ModelContextProtocol.Core`**, the official MCP C# SDK, which the user chose and a proof checked, so no other module or the composition root speaks MCP.
 - **During development, the reviewer checks references**, as [its instructions](../../.agents/subagents/reviewer.md) say.
 
 ### Sync's integration tests run an SSH server inside the test process

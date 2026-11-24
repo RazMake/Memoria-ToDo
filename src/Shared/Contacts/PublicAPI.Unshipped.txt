@@ -94,6 +94,7 @@ Memoria.ToDo.Shared.Contacts.IContacts.MentionOf(Memoria.ToDo.Shared.Contacts.Co
 Memoria.ToDo.Shared.Contacts.IContacts.MentionTemplates.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Memoria.ToDo.Shared.Contacts.IContacts.MoveGroup(string! groupName, string? previousGroup, string? nextGroup) -> void
 Memoria.ToDo.Shared.Contacts.IContacts.Save(string! groupName, Memoria.ToDo.Shared.Contacts.Contact! contact) -> void
+Memoria.ToDo.Shared.Contacts.IContacts.Save(string! groupName, string! id, System.Func<Memoria.ToDo.Shared.Contacts.Contact?, Memoria.ToDo.Shared.Contacts.Contact!>! change) -> void
 Memoria.ToDo.Shared.Contacts.IContacts.Search(string! text) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Contacts.Contact!>!
 Memoria.ToDo.Shared.Contacts.IContacts.SharedNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Memoria.ToDo.Shared.Contacts.IContacts.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!>!

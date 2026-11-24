@@ -8,4 +8,7 @@ public interface ISetupActions
 
     /// <summary>Opens Sync's supplied add-key page in the default browser. A launch failure propagates.</summary>
     void OpenKeyPage(Uri address);
+
+    /// <summary>Copies any text, such as an AI assistant's connection lines, to the clipboard. A clipboard failure propagates.</summary>
+    void CopyText(string text);
 }

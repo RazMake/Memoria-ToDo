@@ -1,4 +1,4 @@
-namespace Memoria.ToDo.Desktop.Configure;
+namespace Memoria.ToDo.Desktop.Platform;
 
 /// <summary>The Start with Windows setting, which is the current user's <c>Run</c> registry entry. The composition root implements it.</summary>
 public interface IStartWithWindows

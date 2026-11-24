@@ -6,6 +6,9 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- AI assistants on your PC, such as GitHub Copilot in VS Code, Claude Desktop, Claude Code, and Codex, can now use Memoria-ToDo while it runs. An assistant can list, search, add, edit, move, resolve, reopen, and delete tasks, add images to tasks, change tag colors and order, manage contacts, sync, change settings such as Start with Windows and Auto update, and read the app's log with the same filters as the Logs window. Only your own programs on this PC can connect. It can't set up Git access or the repository, update the app, or change shortcuts. An assistant's task never touches the task you're typing in Add. To connect one, open Configure: the new AI assistants card has the text to copy into your assistant, and a check box to turn access off on this PC. See [Connect an AI assistant](docs/user/connect-an-ai-assistant.md).
+- In Logs, a custom time range that falls around the hour skipped when clocks move forward in spring, and so ends before it starts, now shows in red. Before, it showed an empty list.
+
 ## 1.2.0
 
 - The app now keeps a log of what it does, such as syncs, added, changed, and deleted tasks and contacts, and every error, with the time to the millisecond. When the app says files can't be loaded, the log names each file and why. The log stays on your computer, never holds passwords or keys, and cleans up after itself: entries older than two weeks are deleted, and it never grows past about 30 MB.

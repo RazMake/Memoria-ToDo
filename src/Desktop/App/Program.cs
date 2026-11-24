@@ -36,6 +36,12 @@ internal static class Program
             .OnBeforeUninstallFastCallback(_ => HookSteps().Uninstall())
             .Run();
 
+        if (StartArguments.IsMcpBridge(args))
+        {
+            // The bridge is no app: no log files, no one-instance claim, and no WPF. Without a message pump, blocking on its one task is safe.
+            return RunMcpBridge();
+        }
+
         // The log is made after Velopack's steps, so an install or uninstall hook, which logs to Velopack's own log, leaves no file here.
         var log = AppLog.Create(AppLog.Folder);
         // Raised at the end of Main and by Environment.Exit, so an app ended by an error flushes the log too.
@@ -92,34 +98,45 @@ internal static class Program
                 pointer,
                 log.ForModule("Task editor"),
                 log.ForModule("Task list"));
-            var logs = LogsWindow.Create(
-                new LogFileSource(AppLog.Folder, () => log.WriteProblem, appLog), theme, closeWindowKeys, TimeProvider.System, log.ForModule("Logs"));
+            var logSource = new LogFileSource(AppLog.Folder, () => log.WriteProblem, appLog);
+            var logs = LogsWindow.Create(logSource, theme, closeWindowKeys, TimeProvider.System, log.ForModule("Logs"));
+            var startWithWindows = StartWithWindows(appLog);
+            var mcpServer = McpServer.McpServer.Create(
+                tasks, tasks.TagColors, tasks.TagOrder, tasks.Settings, contacts.Contacts, sync, updates, startWithWindows, logSource, files,
+                deviceFolder, PipeName.ForCurrentUser(), Environment.ProcessPath!, TimeProvider.System, log.ForModule("MCP server"));
             return TrayApp.Create(
                 new TrayIcon(),
                 add,
                 viewTasks,
                 ContactsWindow.Create(contacts.Contacts, theme, TimeProvider.System, closeWindowKeys, saveKeys, pointer, log.ForModule("Contact list")),
                 ConfigureWindow.Create(
-                    StartWithWindows(appLog),
+                    startWithWindows,
                     tasks.Settings,
                     sync,
                     new WindowsSetupActions(browser),
                     closeWindowKeys,
                     theme,
                     updates,
+                    mcpServer,
                     saveKeys,
                     log.ForModule("Configure")),
                 logs,
                 updates,
+                mcpServer,
                 new HotKeyShortcut(),
-                // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
-                // every copy must count as the same app.
-                new NamedSignalOneInstance($"{AppName.Value}.OneInstance"),
+                new NamedSignalOneInstance(NamedSignalOneInstance.AppSignalName),
                 StartArguments.IsStartAtSignIn(args),
                 sync,
                 log.ForModule("Shell"));
         }, log.ForModule("Platform"));
     }
+
+    private static int RunMcpBridge() => new McpBridge(
+            new ProcessBridgeApp(InstalledStarter.Find(), Environment.ProcessPath!),
+            new NamedPipeBridgePipe(PipeName.ForCurrentUser()),
+            TimeProvider.System)
+        .RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput(), Console.Error, CancellationToken.None)
+        .GetAwaiter().GetResult();
 
     private static RunKeyStartWithWindows StartWithWindows(Serilog.ILogger logger) => new(RunKeyPath, InstalledStarter.Find(), logger);
 

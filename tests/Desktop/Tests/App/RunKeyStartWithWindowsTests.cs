@@ -1,4 +1,4 @@
-using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Serilog.Events;

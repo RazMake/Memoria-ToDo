@@ -2,7 +2,7 @@
 
 Status: Decided
 
-Shell is the desktop app's tray icon and everything around it: the four global shortcuts, one running instance, what each start shows, starting and stopping [Updates](updates.md), and sync status. It opens the [Task editor](task-editor.md), the [Task list](task-list.md), the [Contact list](contact-list.md), and [Configure](configure.md); the [desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists what it needs from later designs.
+Shell is the desktop app's tray icon and everything around it: the four global shortcuts, one running instance, what each start shows, starting and stopping [Updates](updates.md) and the [MCP server](mcp-server.md), and sync status. It opens the [Task editor](task-editor.md), the [Task list](task-list.md), the [Contact list](contact-list.md), and [Configure](configure.md); the [desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists what it needs from later designs.
 
 ## Behavior
 
@@ -148,11 +148,15 @@ the user's local short date/time format when there is one, then error/offline de
 time before free-form details so long errors do not displace it when the tray adapter truncates the text.
 Before the first success, the time line is absent. Lines use the platform's newline. Working adds no extra line.
 
+### The MCP server starts once the clone has loaded
+
+Shell starts the [MCP server](mcp-server.md#it-runs-while-the-app-runs-through-the-services-the-windows-use), once, on the UI thread, when Sync's initial local publication or its failure arrives, the same moment that resolves startup navigation. So it starts only in the instance that holds the claim, and no assistant's call sees the task list before it's read. The server reads its own switch, so Shell starts it whether the user turned it off or not. Shutdown cancels a start that hasn't come yet. The user decided this moment.
+
 ### Shutdown joins owned work without blocking the dispatcher
 
 [`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) replaces synchronous Stop.
 The first call detaches sync notices, cancels and observes Shell's pending waits and startup navigation, disposes Configure, and releases
-every shortcut and the tray on the UI thread. It then awaits the shared Sync service's disposal, then Updates' stop, and only then releases the one-instance claim. Proposed by [Updates](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it): Updates stops after Sync, since Updates' stop starts Velopack's updater when an update ended the app, and the updater waits only 60 seconds for the app to end. This is a decision to confirm. Cleanup attempts every step and retains
+every shortcut and the tray on the UI thread. It then awaits the MCP server's stop, then the shared Sync service's disposal, then Updates' stop, and only then releases the one-instance claim. The user decided that the MCP server stops before Sync, so no assistant's call changes the clone while Sync stops. Proposed by [Updates](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it): Updates stops after Sync, since Updates' stop starts Velopack's updater when an update ended the app, and the updater waits only 60 seconds for the app to end. This is a decision to confirm. Cleanup attempts every step and retains
 all failures. Repeated calls join the same cleanup; cancelling a caller's wait does not abandon it.
 
 Updates retains its run Task instead of discarding it, and observes a check that
@@ -205,6 +209,14 @@ No module uses Shell. Only the composition root does, through one part:
     public static IAppLifetime Create(ITrayIcon trayIcon, IAddWindow add, IViewTasksWindow viewTasks,
         IContactsWindow contacts, IConfigureWindow configure, ILogsWindow logs, IUpdateLifetime updates,
         IGlobalShortcut shortcut, IOneInstance oneInstance, bool startedAtSignIn, ISyncService sync, ILogger logger);
+    ```
+  - **Create the tray app takes the [MCP server's](mcp-server.md#public-interface) lifetime, `IMcpServerLifetime mcpServer`, after `updates`**, as the user's choice that Shell starts and stops the server needs. Starting calls its Start as [above](#the-mcp-server-starts-once-the-clone-has-loaded), and Stopping awaits its stop before Sync's, as the [shutdown order](#shutdown-joins-owned-work-without-blocking-the-dispatcher) says. The internal overload that takes the UI thread gets the same argument in the same place. The user decided this place.
+
+    ```csharp
+    public static IAppLifetime Create(ITrayIcon trayIcon, IAddWindow add, IViewTasksWindow viewTasks,
+        IContactsWindow contacts, IConfigureWindow configure, ILogsWindow logs, IUpdateLifetime updates,
+        IMcpServerLifetime mcpServer, IGlobalShortcut shortcut, IOneInstance oneInstance, bool startedAtSignIn,
+        ISyncService sync, ILogger logger);
     ```
 
 Shell publishes three ports. The composition root implements each one, and Shell's unit tests use each one's [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test); the real adapters have integration tests. Shell's former updates port, its one part that downloaded a newer version for the next start, moves to Updates as its [install port](updates.md#velopack-checks-downloads-and-applies-behind-one-port), and its update schedule and the time source it needed move with it, as the user decided.

@@ -119,20 +119,33 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     public TaskItem Add(TaskDraft draft)
     {
         ArgumentNullException.ThrowIfNull(draft);
+        return AddTask(draft.TaskId, draft.Title, draft.Description, draft.Tags, nameof(draft), fromDraft: true);
+    }
+
+    public TaskItem Add(string title, string description, string? tag)
+    {
+        ArgumentNullException.ThrowIfNull(title);
+        ArgumentNullException.ThrowIfNull(description);
+        return AddTask(TaskId.New(time), title, description, tag is null ? [] : [tag], "task", fromDraft: false);
+    }
+
+    /// <summary>Adds the task at the top, logs it, and raises the notices. <paramref name="fromDraft"/> says the task is the kept draft's, so its images move in and the draft goes.</summary>
+    private TaskItem AddTask(string taskId, string title, string description, IReadOnlyList<string> tagList, string paramName, bool fromDraft)
+    {
         var task = repository.LockedChange(clone =>
         {
             var root = clone ?? throw new NoRepositoryFolderException();
-            TaskId.ThrowIfInvalid(draft.TaskId, nameof(draft));
-            if (set.Contains(draft.TaskId) || folder.FileExists(root, draft.TaskId))
-                throw new ArgumentException("A task with this ID exists.", nameof(draft));
-            var title = TaskText.SingleLine(draft.Title, nameof(draft));
-            var tag = OneTag(draft.Tags, nameof(draft));
+            TaskId.ThrowIfInvalid(taskId, paramName);
+            if (set.Contains(taskId) || folder.FileExists(root, taskId))
+                throw new ArgumentException("A task with this ID exists.", paramName);
+            var singleLine = TaskText.SingleLine(title, paramName);
+            var tag = OneTag(tagList, paramName);
             var tags = tag is null ? [] : set.Tags.With([], tag);
             var now = Now();
             var rank = RankKey.Before(set.Items.Count == 0 ? null : set.Items[0].Rank);
-            var added = new TaskItem(draft.TaskId, title, TaskText.LineFeeds(draft.Description), rank, tags, now, now, null);
+            var added = new TaskItem(taskId, singleLine, TaskText.LineFeeds(description), rank, tags, now, now, null);
 
-            Publish(root, added);
+            Publish(root, added, fromDraft);
             set = set.WithTask(added);
             return added;
         });
@@ -143,16 +156,18 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     }
 
     /// <summary>
-    /// Writes the task's file, moves the draft's images into the clone, and deletes the draft. When a step fails, it
-    /// undoes the steps before it, so the draft is whole, nothing of the task is left in the clone, and Add can be retried.
+    /// Writes the task's file and, for the draft's task, moves the draft's images into the clone and deletes the draft. When a step
+    /// fails, it undoes the steps before it, so the draft is whole, nothing of the task is left in the clone, and Add can be retried.
     /// </summary>
-    private void Publish(string root, TaskItem task)
+    private void Publish(string root, TaskItem task, bool fromDraft)
     {
         var undo = new Stack<Action>();
         try
         {
             folder.Write(root, task);
             undo.Push(() => folder.Delete(root, task.Id));
+            if (!fromDraft)
+                return;
             foreach (var (from, to) in drafts.ImageMoves(task.Id, root))
             {
                 files.MoveFile(from, to);
@@ -399,14 +414,39 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         ArgumentNullException.ThrowIfNull(altText);
         return repository.Locked(_ =>
         {
-            var encoded = shrinker.Shrink(image);
-            var fileName = $"{TaskId.New(time)}.{encoded.Extension}";
+            var (fileName, bytes) = Shrunk(image);
             if (set.Contains(taskId))
-                editImages.Save(taskId, fileName, encoded.Bytes);
+                editImages.Save(taskId, fileName, bytes);
             else
-                drafts.SaveImage(taskId, fileName, encoded.Bytes);
+                drafts.SaveImage(taskId, fileName, bytes);
             logger.Information("Saved image {FileName} for task {TaskId}", fileName, taskId);
             return ImageMarkdown.Of(altText, taskId, fileName);
         });
+    }
+
+    public string AddImage(string taskId, byte[] image, string altText)
+    {
+        TaskId.ThrowIfInvalid(taskId, nameof(taskId));
+        ArgumentNullException.ThrowIfNull(image);
+        ArgumentNullException.ThrowIfNull(altText);
+        var markdown = repository.LockedChange(clone =>
+        {
+            var root = clone ?? throw new NoRepositoryFolderException();
+            Find(taskId);
+            var (fileName, bytes) = Shrunk(image);
+            files.WriteFile(Path.Combine(RepositoryLayout.ImagesFolder(root, taskId), fileName), bytes);
+            logger.Information("Added image {FileName} to task {TaskId}", fileName, taskId);
+            return ImageMarkdown.Of(altText, taskId, fileName);
+        });
+
+        Announce(Notice.LocalSaved);
+        return markdown;
+    }
+
+    /// <summary>The image shrunk to at most 1 MB, with the new file name it's kept under.</summary>
+    private (string FileName, byte[] Bytes) Shrunk(byte[] image)
+    {
+        var encoded = shrinker.Shrink(image);
+        return ($"{TaskId.New(time)}.{encoded.Extension}", encoded.Bytes);
     }
 }

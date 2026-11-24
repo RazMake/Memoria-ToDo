@@ -1,6 +1,7 @@
 using System.Runtime.ExceptionServices;
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
+using Memoria.ToDo.Desktop.McpServer;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
@@ -9,8 +10,8 @@ using Serilog;
 namespace Memoria.ToDo.Desktop.Shell;
 
 /// <summary>
-/// The tray app's lifetime: the one-instance claim, the tray icon with its menu, the shortcuts, Updates, and
-/// the shared sync service. Only the instance that wins the claim starts and stops sync.
+/// The tray app's lifetime: the one-instance claim, the tray icon with its menu, the shortcuts, Updates, the MCP
+/// server, and the shared sync service. Only the instance that wins the claim starts and stops sync and the server.
 /// </summary>
 internal sealed class ShellLifetime(
     ITrayIcon trayIcon,
@@ -26,6 +27,8 @@ internal sealed class ShellLifetime(
     ContactsShortcutAction contactsShortcut,
     StartupNavigation startup,
     IUpdateLifetime updates,
+    McpServerStart mcpStart,
+    IMcpServerLifetime mcpServer,
     Func<Action, IAppExit> createExit,
     ISyncService sync,
     Action showLogs,
@@ -73,6 +76,7 @@ internal sealed class ShellLifetime(
 
         updates.Start(createExit(endApp));
         startup.Begin(!shortcutsReady);
+        mcpStart.Begin();
         followAvailability = (_, _) =>
         {
             logger.Information("Contacts became {Availability}", contacts.IsAvailable ? "available" : "unavailable");
@@ -99,6 +103,7 @@ internal sealed class ShellLifetime(
     {
         List<Exception> failures = [];
         Attempt(startup.Cancel, failures);
+        Attempt(mcpStart.Cancel, failures);
         Attempt(syncTray.Detach, failures);
         Attempt(configure.Dispose, failures);
         Attempt(StopFollowingAvailability, failures);
@@ -108,8 +113,10 @@ internal sealed class ShellLifetime(
         Attempt(contactsShortcut.Unregister, failures);
         Attempt(trayIcon.Remove, failures);
 
+        // Before Sync, so no assistant's call changes the clone while Sync stops.
         if (claimed)
         {
+            await Attempt(mcpServer.StopAsync, failures);
             await Attempt(() => sync.StopAsync(CancellationToken.None), failures);
             await Attempt(() => sync.DisposeAsync().AsTask(), failures);
         }

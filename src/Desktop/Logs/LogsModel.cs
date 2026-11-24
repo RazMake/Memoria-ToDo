@@ -11,13 +11,7 @@ namespace Memoria.ToDo.Desktop.Logs;
 internal sealed class LogsModel
 {
     private static readonly IReadOnlyList<LevelChoice> LevelChoices =
-    [
-        new("Debug and up", LogEventLevel.Debug),
-        new("Information and up", LogEventLevel.Information),
-        new("Warning and up", LogEventLevel.Warning),
-        new("Error and up", LogEventLevel.Error),
-        new("Fatal only", LogEventLevel.Fatal),
-    ];
+        [.. LogFilter.Levels.Select(level => new LevelChoice(level == LogEventLevel.Fatal ? "Fatal only" : $"{level} and up", level))];
 
     private readonly ILogSource _source;
     private readonly TimeProvider _time;
@@ -193,15 +187,13 @@ internal sealed class LogsModel
     private static Loaded Prepare(LogRead read, TimeZoneInfo zone)
     {
         var rows = new LogRow[read.Entries.Count];
-        var names = new HashSet<string>(StringComparer.Ordinal);
         for (var at = 0; at < rows.Length; at++)
         {
             rows[at] = new LogRow(read.Entries[at], zone);
-            names.Add(rows[at].Component);
         }
 
         Array.Sort(rows, LogRow.NewestFirst);
-        return new Loaded(rows, [.. names.Order(StringComparer.OrdinalIgnoreCase)], read.UnreadableLines, read.WriteProblem);
+        return new Loaded(rows, LogFilter.ComponentsOf(read.Entries), read.UnreadableLines, read.WriteProblem);
     }
 
     private void Show(Loaded loaded)
@@ -247,14 +239,13 @@ internal sealed class LogsModel
     private void Refilter()
     {
         _range = TimeRange.Of(_from, _to, _time.LocalTimeZone);
-        var hidden = _components.Where(choice => !choice.IsChecked).Select(choice => choice.Name).ToHashSet(StringComparer.Ordinal);
+        // No list while every box is checked, so the filter skips the component check.
+        var kept = _components.All(choice => choice.IsChecked) ? null : _components.Where(choice => choice.IsChecked).Select(choice => choice.Name);
+        var filter = new LogFilter(_minimumLevel, kept, _range.Start, _range.EndExclusive, _searchText);
         var rows = new List<LogRow>();
         foreach (var row in _all)
         {
-            if (row.IsAtLeast(_minimumLevel)
-                && _range.Contains(row.Entry.Time)
-                && (hidden.Count == 0 || !hidden.Contains(row.Component))
-                && (_searchText.Length == 0 || row.Contains(_searchText)))
+            if (filter.Matches(row.Entry))
             {
                 rows.Add(row);
             }
@@ -290,5 +281,5 @@ internal sealed class LogsModel
             : _hasRead && _all.Length == 0 ? "No log entries yet."
             : null;
 
-    private sealed record Loaded(LogRow[] Rows, string[] Components, int UnreadableLines, string? WriteProblem);
+    private sealed record Loaded(LogRow[] Rows, IReadOnlyList<string> Components, int UnreadableLines, string? WriteProblem);
 }

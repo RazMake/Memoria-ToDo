@@ -55,7 +55,7 @@ The table lists what each part logs at Information, Warning, and Error, beyond t
 | Platform: the [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) | Each load of the clone, after a selection or a sync, with the folder and how many files each store skipped | Each skipped file, at Warning, with its path relative to the clone and its reason, and whether it needs a newer app. This is what names the "3 files". |
 | Platform: [running the app](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) | Start, with the app's version; the end, with its exit code | Each error no module handles, at Error or Fatal, as [below](#errors-no-module-handles-are-logged-before-theyre-shown) |
 | Platform: [store failures](desktop/README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them) | | Each store failure it turns into a message, at Error, so every window that shows one logs it in one place |
-| [Tasks](tasks.md) | Add, save an edit, move, resolve, reopen, delete, each automatic deletion, keep and discard the draft, save an image, and each change to the shared settings, tag colors, and tag order, with the task's ID and title, or the setting's old and new value | |
+| [Tasks](tasks.md) | Add, with a draft or without, save an edit, move, resolve, reopen, delete, each automatic deletion, keep and discard the draft, save an image, add an image to a task, and each change to the shared settings, tag colors, and tag order, with the task's ID and title, or the setting's old and new value | |
 | [Contacts](contacts.md) | Save, delete, and move a group, with the contact's ID, name, and group file | |
 | [Sync](sync.md) | Each pass's start, with what started it, and its end, with what it fetched, merged, and pushed, and how long it took; each status change; each setup step: a new key, with its fingerprint only; a forgotten key, with its fingerprint, or without one when the key can't be opened; the device name; an accepted host key, with the host and fingerprint; and a clone or repository change, with its address and folder | Each file the merge skipped, at Warning, with its path and reason; offline, at Warning; every other failed pass, at Error, with its kind, details, and exception; a forgotten key that can't be opened, at Warning, with the exception. Logging never stops the key from being deleted. |
 | [Shell](desktop/shell.md) | Each tray item and global shortcut used; a later start handing over to the running one; contacts becoming available or not; each sync notification it shows | A shortcut another app holds, at Warning |
@@ -63,6 +63,8 @@ The table lists what each part logs at Information, Warning, and Error, beyond t
 | [Configure](desktop/configure.md), [Task editor](desktop/task-editor.md), [Task list](desktop/task-list.md), [Contact list](desktop/contact-list.md) | Nothing of their own: their changes are Tasks', Contacts', Sync's, or App's operations, which log themselves | Each failure they catch and show, at Error, such as a kept draft that can't be read, or a link that won't open |
 | App: the composition root and its adapters | Start with Windows turned on or off; the repository folder chosen | Each failure an adapter catches, such as the web view's, the clipboard's, or the key file's; a log file the log source can't read, at Warning; entries the writer lost, at Warning, as [below](#a-log-that-cant-be-written-never-stops-the-app) |
 | [Logs window](desktop/logs.md) | | A log folder it can't list, at Error |
+| [MCP server](desktop/mcp-server.md) | Listening started, with the pipe's name, and stopped; the switch turned on or off; each connection opened and closed; each tool call's end, with the tool's name and the IDs it names | A tool's invalid input, at Warning; a switch file it can't read or that holds another value, at Warning; a failed operation, at Error; a pipe it can't make, at Error. Never a description, a contact's fields, or an image's bytes. |
+| The [MCP server's bridge](desktop/mcp-server.md#an-assistant-reaches-it-through-a-pipe-and-a-bridge-the-app-provides) | Nothing in the log files, which the running app holds | Its own failures, on its standard error, which the assistant shows |
 
 The [Formatted view](desktop/formatted-view.md) passes each failure to the window that shows it, which logs it. Its [hover cards](desktop/README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) use the caller's logger for their Debug entries.
 
@@ -164,6 +166,7 @@ No new type: modules use Serilog's `ILogger`. Each create method below takes the
 - [Configure](desktop/configure.md#public-interface): `ConfigureWindow.Create`.
 - [Updates](desktop/updates.md#public-interface): `AppUpdates.Create`.
 - [Logs](desktop/logs.md#public-interface): `LogsWindow.Create`, a new module.
+- [MCP server](desktop/mcp-server.md#public-interface): `McpServer.Create`, a new module.
 
 The shared fakes add the in-memory sink:
 

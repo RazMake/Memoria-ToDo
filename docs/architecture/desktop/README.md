@@ -1,8 +1,8 @@
 # How the desktop app is built
 
-The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, Configure, and Logs. This page lists its eight modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
+The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, Configure, and Logs. This page lists its nine modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
 
-## Eight modules make up the desktop app
+## Nine modules make up the desktop app
 
 Each module is a project of its own, and the [module map](../modules.md#module-map) says which modules each may use. The table lists them in the order a user meets them:
 
@@ -13,9 +13,10 @@ Each module is a project of its own, and the [module map](../modules.md#module-m
 | [Task list](task-list.md) | Task View: tasks grouped by tag, in groups that collapse, beside the selected task's description, editing a description or title in place, search, resolving, deleting, and the Sync button and the version in the status bar |
 | [Contact list](contact-list.md) | The Contacts window: contacts grouped by file beside the selected contact's details, with search, editing in place, adding, deleting, and reordering groups |
 | [Formatted view](formatted-view.md) | A task's title and description as a reader sees them, with no Markdown characters, the web view the description shows in, and which links open in the default browser |
-| [Configure](configure.md) | The settings window: the four global shortcuts, the Close window and Save shortcuts, starting with Windows, the shared deletion delay, and sync status details |
+| [Configure](configure.md) | The settings window: the four global shortcuts, the Close window and Save shortcuts, starting with Windows, AI assistant access, the shared deletion delay, and sync status details |
 | [Updates](updates.md) | When the app checks for a new version, the status bar Add and Task View share, What is new, Auto update, and how an update restarts the app |
-| [Logs](logs.md) | The window the tray menu opens to read the app's [log](../logging.md): entries newest first, with filters by time, severity, and component, and a quick search |
+| [Logs](logs.md) | The window the tray menu opens to read the app's [log](../logging.md): entries newest first, with filters by time, severity, and component, and a quick search; and the one filter the window and the MCP server's log tool share |
+| [MCP server](mcp-server.md) | What an AI assistant on this PC may do through the Model Context Protocol while the app runs, how it connects through a named pipe and a bridge, and who may connect |
 
 Every module logs its operations and failures through Serilog, as [Logging](../logging.md) decides.
 
@@ -29,7 +30,7 @@ Each window module keeps its screens' state and logic in internal [view models](
 
 The desktop platform, `Memoria.ToDo.Desktop.Platform`, holds the app's startup, as [Modules](../modules.md#the-platform-serves-every-module-and-knows-none) decides. The composition root, `Memoria.ToDo.Desktop.App`, builds the app from the modules and hands it to the platform to run.
 
-The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; the app's [version](#the-apps-version-has-one-home), which the user decided; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows) and the theme follower, below the theme; and [Save keys](#the-save-shortcut-saves-in-any-window-that-edits), which the user decided. The decided parts are:
+The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; the app's [version](#the-apps-version-has-one-home), which the user decided; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows) and the theme follower, below the theme; and [Save keys](#the-save-shortcut-saves-in-any-window-that-edits), which the user decided; and [Start with Windows](#start-with-windows-is-a-port-the-platform-publishes), which the user decided; and the [on-or-off setting file](#an-on-or-off-setting-file-keeps-one-switch-on-this-device), which Updates and the MCP server share. The decided parts are:
 
 - **The app's lifetime**: an interface with two steps, start and stop. Start receives a way to end the app. [Shell](shell.md#public-interface) implements it, so the platform names no module. Proposed: the way to end the app works from any thread. The platform passes the call to the UI thread and returns without waiting, so a module that ends the app from a background task needs no thread rule of its own. This is a decision to confirm.
 - **Run the app**: takes a function that builds the lifetime, and returns the process's exit code. In order, it:
@@ -152,7 +153,7 @@ alive until cleanup finishes. These paths share the once-only cleanup, not the s
 - **Shell sets the theme when it starts**: it would change app-wide state the platform created, after the hidden Add window already exists.
 - **The classic light look until the theme is no longer experimental**: the app would have no dark mode.
 
-When the app starts, the composition root calls the create part of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), giving Configure its [Start with Windows port](configure.md#public-interface), and the Task list the [Formatted view's](formatted-view.md#the-app-supplies-the-web-view-and-the-browser) web view and default browser. It builds Shell's lifetime from the results, the implementations of [Shell's ports](shell.md#public-interface), and whether the app started at sign-in, and passes it to Run the app. The windows themselves stay `internal`, as all of a module's code does ([Modules](../modules.md#a-module-is-one-capability-behind-a-small-interface)).
+When the app starts, the composition root calls the create part of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), giving Configure and the [MCP server](mcp-server.md#public-interface) the platform's [Start with Windows](#start-with-windows-is-a-port-the-platform-publishes), and the Task list the [Formatted view's](formatted-view.md#the-app-supplies-the-web-view-and-the-browser) web view and default browser. It builds Shell's lifetime from the results, the implementations of [Shell's ports](shell.md#public-interface), and whether the app started at sign-in, and passes it to Run the app. The windows themselves stay `internal`, as all of a module's code does ([Modules](../modules.md#a-module-is-one-capability-behind-a-small-interface)).
 
 For the Sync step, App creates one
 [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) first,
@@ -445,6 +446,86 @@ Proposed, each a decision to confirm:
 - **An editor asks it on each key press**, with the modifier keys it already tracks through [Held modifier keys](#window-modules-read-keys-through-the-platform), so a change applies to an edit already open, and the editor needs no event.
 - **It checks keys as Close window keys does**, through one key check both share, so the rule that a shortcut is real keys has one home. Configure alone decides the keys' default and rules.
 - **The modules use the class itself, not an interface**, as for Close window keys: it has one implementation and does no I/O, so tests use the real one. Its tests are unit tests.
+
+### Start with Windows is a port the platform publishes
+
+Configure's switch and the [MCP server's](mcp-server.md#each-tool-is-one-operation-the-user-can-do) tools both read and change whether the app starts at sign-in, so the port they use lives in the platform, which both may use. It keeps the members it had in Configure, and Configure keeps the [behavior](configure.md#start-with-windows-is-the-run-key-itself): the switch is the `Run` key itself. The composition root implements it once and passes the same object to both.
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// The Start with Windows setting, which is the current user's Run registry entry.
+/// The composition root implements it.
+public interface IStartWithWindows
+{
+    /// Whether the Run key holds the app's entry.
+    bool IsOn();
+
+    /// Writes or removes the entry. Throws InvalidOperationException when the app isn't
+    /// installed, or Windows refused the write.
+    void Set(bool on);
+}
+```
+
+The user decided that the port moves from Configure to the platform, unchanged, since the MCP server can't use Configure, which uses it.
+
+### An on-or-off setting file keeps one switch on this device
+
+Decided: Updates' [Auto update](updates.md#auto-update-updates-each-night-once-no-window-is-open) and the [MCP server's switch](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) keep their value by one rule, so the rule lives in the platform, in one class both use, as the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) requires. Each module keeps its own file name, its default, and the name its messages use; the class knows neither module nor folder.
+
+- **The file holds `on` or `off`** as UTF-8 text, with no byte-order mark and no line break. Reading ignores whitespace around the word.
+- **A missing file gives the caller's default**, with no failure.
+- **A file that can't be read, or holds anything else, counts as off.** Read returns the reason, which starts with the caller's name for the file, and logs it at Warning through the caller's logger. So a damaged file never turns a switch on.
+- **Write replaces the whole file** through the [file system interface](../modules.md#the-file-system-interface-reads-and-writes-whole-files), and fails with its exception, keeping the old file. The class logs no write; each module logs its switch turned on or off, as [Logging](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) lists.
+- **Making it checks its arguments and does no I/O.**
+- **It's a platform class, not an interface**, as the other parts are: one implementation, and tests run it on the shared `FakeFileSystem`, so its tests are unit tests. Updates' and the MCP server's tests keep checking their own file name and default.
+
+Proposed, a decision to confirm: this shape, with `path` the full path the module builds from the device folder:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// One switch kept in a file on this device as "on" or "off".
+public sealed class OnOffSettingFile
+{
+    /// path is the file's full path. whenMissing is the value when there's no file. name names the file
+    /// in failures and log entries, such as "Auto update's file". Does no I/O.
+    /// Throws ArgumentNullException for a null argument, and ArgumentException when path isn't fully
+    /// qualified or name is empty.
+    public OnOffSettingFile(Memoria.ToDo.Shared.Platform.IFileSystem files, string path, bool whenMissing,
+        string name, Serilog.ILogger logger);
+
+    /// The saved value, and a null Failure. whenMissing when there's no file. Off, with Failure saying why,
+    /// when the file can't be read (IOException or UnauthorizedAccessException) or holds something other
+    /// than on or off; logs that at Warning. Other exceptions pass through.
+    public (bool On, string? Failure) Read();
+
+    /// Saves the value. Fails with the file system's exception, keeping the old file.
+    public void Write(bool on);
+}
+```
+
+Two options were ruled out:
+
+- **Updates and the MCP server each keep their own copy**: the same rule in two places, which the no-duplication rule forbids.
+- **Each module's class stays, and only the parsing moves to the platform**: the read, its failure text, and its log entry would still be written twice.
+
+### The composition root names the MCP server's pipe and runs its bridge
+
+The [MCP server](mcp-server.md#an-assistant-reaches-it-through-a-pipe-and-a-bridge-the-app-provides) needs a pipe name both the app and its bridge know, and a bridge the assistant starts. The composition root holds both, so neither has a second home:
+
+- **It makes the pipe's name** and passes it to the server's create part, and the bridge uses the same code.
+- **It creates the server** with Tasks, its tag colors, tag order, and shared settings, Contacts, Sync, Updates' status, Start with Windows, the [Logs window's](logs.md) log source, the file system, the device folder, the pipe's name, the path of the program the bridge runs, and the system's time. It passes the server's lifetime to Shell and its status to Configure.
+- **Started with `--mcp`, the program is the bridge**: after Velopack's startup step, it skips Run the app, makes no claim and no log files, and copies its standard input and output to the pipe, as the MCP server's design says.
+- **The setup-action adapter also copies text**, for Configure's copy buttons, through the clipboard code that copies the public key.
+- **Decided rules for the bridge**, which the bridge's tests check:
+  - The bridge reads the one-instance signal through `NamedSignalOneInstance.IsClaimed`, which never claims it.
+  - The pipe and signal names have no test override: tests that need the app's real names say so and require the real app not to run.
+  - A failure message on standard error includes the cause.
+  - The bridge ends with code 1 on every failure.
+  - With no installed starter, the bridge starts its own program with `--at-sign-in`.
+  - The `--mcp` branch of `Main` blocks on the bridge's one task, since it has no message pump; the rule above against `GetAwaiter().GetResult()` covers the WPF app only.
+- **The setup actions' `CopyText` refuses a null or blank text**, as `CopyPublicKey` does, since `CopyPublicKey` now calls it.
 
 ## Split panes, search band, and drag parts serve every window that needs them
 
@@ -801,8 +882,9 @@ The table lists each step, what it builds, and its status:
 | 14 | One tag per task | Tasks' [one-tag rule](../tasks.md#a-task-has-at-most-one-tag) in `Add`, saving an edit, the merge, and kept drafts; the Task editor's [tag pill](task-editor.md#a-task-has-one-tag-shown-as-one-pill) and its [menu](task-editor.md#a-click-on-the-pill-opens-the-tag-menu), with the `TagEditor` interface the user decided; and the Task list's [tag changes without Edit](task-list.md#tags-show-as-colored-badges-and-change-without-edit), a [tag that joins an open edit's one save](task-list.md#a-tag-chosen-during-an-edit-saves-with-the-edit), and one group per task. | Implemented |
 | 15 | Contacts | Built in slices, in this order, each reviewed on its own: (a) the platform's [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), with Tasks, Sync, and App moved onto it and no change users notice; (b) the shared [Contacts](../contacts.md) module, with the platform's [contact address](../modules.md#a-contact-address-has-one-home), and Tasks' JSON style, version check, skip rule, and path check moved into the platform's [shared file rules](../modules.md#stores-share-one-json-style-and-one-set-of-file-rules) with no change users notice; (c) Sync [carrying contact files](../sync.md#sync-manages-contact-files-through-contacts-rules), with App's composition root creating the Contacts store; (d) the platform's [split panes, search band, and drag parts](#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), with Task View moved onto them unchanged; (e) the [Contact list](contact-list.md), with Shell's and Configure's [Contacts shortcut](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) and tray item; (f) Rendering's [mentions](../rendering.md#a-mention-shows-on-a-colored-background) and Editing's [mention list](../editing.md#typing-an-at-sign-opens-the-mention-list); (g) the [Task editor's "@" list and chips](task-editor.md#typing-an-at-sign-mentions-a-contact), then Task View's [live mention text](task-list.md#mentions-show-each-contacts-current-details). The Android app's mentions come when the Android app is built. | Implemented |
 | 16 | Tasks' notices after a change | Tasks raises its notices one by one after a change: `Changed`, then settings, tag colors, and tag order, then the [local save report](../tasks.md#sync-shares-the-repositorys-lock-never-a-network-wait). When a handler throws, the notices after it and the report are skipped, so Sync doesn't learn of the save. This step makes Tasks attempt every notice and the report, even when one fails, and throw the failures by the platform's [rule for steps that must all run](../modules.md#steps-that-must-all-run-throw-their-failures-together), as [Contacts](../contacts.md#failure-modes) does. Its design is in Tasks' [failure modes](../tasks.md#failure-modes). | Implemented |
-|
+| 17 | Application logs | [Serilog's logger](../logging.md#every-module-logs-through-serilogs-logger) in every module's create method, with every module logging its [operations and failures](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens), including each skipped file by path; the composition root's [log files](../logging.md#the-desktop-app-keeps-two-weeks-of-logs-at-most-30-mb) and [background writer](../logging.md#a-slow-disk-never-holds-up-the-app), with [secrets kept out](../logging.md#passwords-and-keys-never-reach-the-log); the platform's [logging of errors no module handles](../logging.md#errors-no-module-handles-are-logged-before-theyre-shown), after which the app [keeps running](#the-platform-runs-the-app-and-the-composition-root-builds-it) on a UI-thread error; and the [Logs window](logs.md) with Shell's Logs tray item. | Implemented |
 | 18 | Contact cards and the "@" list at the cursor | The Task editor's ["@" list in a popup at the "@"](task-editor.md#typing-an-at-sign-mentions-a-contact), with its template header and "**Full Name** (_alias_)" rows, and its [alias list for a plain text box](task-editor.md#a-plain-text-box-can-offer-contacts-by-alias); Task View's [search by "@" alias](task-list.md#search-narrows-the-list); the Contact list's [contact card](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details), with Contacts' `ContactOf`; the platform's [hover card](#a-hover-card-shows-while-the-pointer-rests-on-a-part) and search band box; Rendering's [mention numbers](../rendering.md#a-mention-shows-on-a-colored-background); and the cards on [chips](task-editor.md#resting-the-pointer-on-a-chip-shows-the-contacts-card), [titles and descriptions](task-list.md#resting-the-pointer-on-a-mention-shows-the-contacts-card), through the [Formatted view](formatted-view.md#a-mention-shows-a-card-its-user-makes). | Not scheduled |
+| 19 | MCP server | After the [SDK proof](mcp-server.md#it-uses-the-official-c-sdk-which-a-proof-checked): the Logs module's [shared log filter](logs.md#one-filter-decides-which-entries-match), with the Logs window moved onto it, built first; the [MCP server](mcp-server.md) module, with its tools, pipe, switch, and logging; Tasks' [`Add` without a draft and `AddImage`](../tasks.md#an-assistant-adds-tasks-and-images-without-touching-the-draft-or-an-open-edit); the platform's [Start with Windows](#start-with-windows-is-a-port-the-platform-publishes), moved from Configure; Shell's [start and stop](shell.md#the-mcp-server-starts-once-the-clone-has-loaded) of the server; Configure's [AI assistants card](configure.md#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them) and its copy action; the composition root's [pipe name, bridge, and wiring](#the-composition-root-names-the-mcp-servers-pipe-and-runs-its-bridge); and the user page, `docs/user/connect-an-ai-assistant.md`, with the README's link to it | Not scheduled |
 
 The remaining work follows this order:
 

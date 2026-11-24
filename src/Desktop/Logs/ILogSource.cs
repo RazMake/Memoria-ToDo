@@ -1,6 +1,6 @@
 namespace Memoria.ToDo.Desktop.Logs;
 
-/// <summary>Where the window reads the log. The composition root implements it beside its log writer.</summary>
+/// <summary>Where the log is read, by the window and the MCP server's log tool. The composition root implements it beside its log writer.</summary>
 public interface ILogSource
 {
     /// <summary>

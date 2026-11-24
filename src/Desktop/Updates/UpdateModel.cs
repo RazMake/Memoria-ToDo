@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.Platform;
 using Serilog;
 
 namespace Memoria.ToDo.Desktop.Updates;
@@ -6,7 +7,7 @@ namespace Memoria.ToDo.Desktop.Updates;
 /// What the app knows about updates: the stage, the newer version, Auto update, and why the last update or setting read failed.
 /// Every change runs on the UI thread, and raises <see cref="Changed"/> there when it changed <see cref="State"/> or Auto update.
 /// </summary>
-internal sealed class UpdateModel(IAppInstall install, AutoUpdateSetting setting, UiThread ui, ILogger logger)
+internal sealed class UpdateModel(IAppInstall install, OnOffSettingFile setting, UiThread ui, ILogger logger)
 {
     private UpdateStage _stage = UpdateStage.NoUpdate;
     private NewerVersion? _newer;

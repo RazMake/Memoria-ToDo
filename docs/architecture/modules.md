@@ -306,18 +306,19 @@ The shared library has five modules:
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's and mention list's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, the text look of headings, links, mentions, code, and italic text, and which links may open in the browser | [Rendering](rendering.md) | None |
 
-The desktop app has eight modules of its own:
+The desktop app has nine modules of its own:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs |
+| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates and the MCP server, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs, MCP server |
 | Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips, and the "@" list for a plain text box that Task View's search box uses | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates, Contact list |
 | Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates, Contact list |
 | Contact list | The Contacts window: contacts grouped by file, in groups the user orders by dragging, beside the selected contact's details, with search, editing, adding, and deleting; and the contact card a mention shows | [Contact list](desktop/contact-list.md) | Contacts, Rendering |
-| Configure | The four global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates |
+| Configure | The four global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; AI assistant access; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates, MCP server |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
 | Updates | Checking for a new version, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
-| Logs | The Logs window: the app's log entries, newest first, with filters by time, severity, and component, and a quick search | [Logs](desktop/logs.md) | None |
+| Logs | The Logs window: the app's log entries, newest first, with filters by time, severity, and component, and a quick search; and the one log filter the window and the MCP server share | [Logs](desktop/logs.md) | None |
+| MCP server | Lets an AI assistant on this PC do the user's task, contact, sync, and settings operations through the Model Context Protocol while the app runs, over a named pipe only this user can reach | [MCP server](desktop/mcp-server.md) | Tasks, Contacts, Sync, Updates, Logs |
 
 Proposed, each a decision to confirm:
 
@@ -326,7 +327,9 @@ Proposed, each a decision to confirm:
 
 The user decided that [Contacts](contacts.md) is a shared module of its own, that the desktop has a Contacts window with a fourth global shortcut, and that the Android Task editor and Task list mention contacts too. Proposed, a decision to confirm: the desktop module keeps the name Contact list, beside the shared Contacts, as the Task list sits beside Tasks; it uses Contacts, and Rendering only for the contact card's heading color, as below, since its split panes, search band, and drag come from the desktop platform.
 
-The user decided that the [Logs window](desktop/logs.md) is a desktop module of its own, which uses no module, and that Shell may use it, for its tray item.
+The user decided that the [Logs window](desktop/logs.md) is a desktop module of its own, which uses no module, and that Shell may use it, for its tray item. The user also decided that its [log filter](desktop/logs.md#one-filter-decides-which-entries-match) is public, so the MCP server, which may already use Logs, filters the log by the same rules.
+
+The user decided that the [MCP server](desktop/mcp-server.md) is a desktop module of its own, which Shell starts and stops, and which uses the modules whose operations it offers. The user also decided that Configure may use it, for the AI assistant access switch; and Start with Windows moves from Configure to the [desktop platform](desktop/README.md#start-with-windows-is-a-port-the-platform-publishes), so the MCP server uses it without using Configure. The MCP server uses no window module, so no loop forms.
 
 The user decided that the Task editor and the Task list may use the Contact list, for the [contact card](desktop/contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) a mention shows while the pointer rests on it. The Contact list uses no desktop module, so no loop forms. The other homes considered are in the [Contact list's Ruled out](desktop/contact-list.md#ruled-out).
 

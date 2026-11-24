@@ -1,4 +1,4 @@
-using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.Platform;
 
 namespace Memoria.ToDo.Desktop.App;
 

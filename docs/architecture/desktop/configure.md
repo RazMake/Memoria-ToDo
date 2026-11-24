@@ -2,7 +2,7 @@
 
 Status: Decided
 
-Configure is the desktop app's settings window. It changes the four global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
+Configure is the desktop app's settings window. It changes the four global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, AI assistant access, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
 
 ## Behavior
 
@@ -19,6 +19,7 @@ The table lists every setting in Configure, the module that owns it, where it's 
 | Days before a resolved task is deleted | Tasks | In the repository, shared by every device | One week, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides |
 | The repository's SSH address, the device name, the device's SSH key, and the accepted host keys | Sync | On this device | The device name starts as the machine's name; the rest is set up as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says |
 | Auto update, on the [Update card](#the-update-card-leads-the-application-section) | Updates | In a file on this device, as [Updates](updates.md#auto-update-updates-each-night-once-no-window-is-open) proposes | Off, proposed |
+| AI assistant access, on the [AI assistants card](#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them) | MCP server | In a file on this device, as the [MCP server](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) says | On |
 
 **Every device uses the same shortcuts.** Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-settings-and-tag-colors) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
 
@@ -39,7 +40,7 @@ The window shows each shortcut with the name of what it does, Add new task, Task
 The user decided the rules on sections below: only a click on another section's title closes the open one, sections have rounded corners and no expand or collapse arrow, an open section's content starts at its top rather than centered in the window's height, titles look like heading 1, and titles show the hand pointer. The user also decided that the section once called Shortcuts is named Application and holds two cards, Update and then Shortcuts. The rest are proposed, each a decision to confirm:
 
 - **Three sections, in order: Application, Startup, and Sync settings, and exactly one is always open.** The window opens with Application open. Clicking a closed section's title opens it and closes the open one; clicking the open section's title does nothing. No section can be closed on its own, so titles show no expand or collapse arrow.
-- **Application shows two cards, in order: Update and Shortcuts.** Update is the [Update card](#the-update-card-leads-the-application-section). Shortcuts holds the line on how to change a shortcut and every shortcut row, below.
+- **Application shows three cards, in order: Update, Shortcuts, and AI assistants.** Update is the [Update card](#the-update-card-leads-the-application-section). Shortcuts holds the line on how to change a shortcut and every shortcut row, below. AI assistants is the [AI assistants card](#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them).
 - **A title works from the keyboard too**: Tab reaches it, and Enter or Space opens its section.
 - **Each section is a box with rounded corners**, and so is each card inside Application and [Sync settings](#the-sync-settings-section-sets-the-devices-clone). Their colors and corners come from the theme, and a card stands out from the section around it. One Configure part makes every card, so the Update card and the Sync settings cards look alike.
 - **Everything in a section starts at its top.** The open section's content starts right under its title, and space the content doesn't need stays at the section's bottom. Inside a section or a card, each label lines up with the top of the control beside it, not with its middle, and nothing is centered in the height around it.
@@ -71,6 +72,18 @@ The Update card shows the app's version and whether a newer one is available, an
   - A message in the error color, when an update or Auto update failed, as [Updates](updates.md#failure-modes) words it.
 - **A copy run from a build folder** shows its version, the help line "Updates work only in an installed copy.", and Auto update off and turned off, as [Updates](updates.md#a-copy-run-from-a-build-folder-shows-its-version-and-doesnt-update) proposes.
 - **The card follows the state as it changes**, while the window is open.
+
+### The AI assistants card lets assistants in and shows how to connect them
+
+The AI assistants card is the third card in the Application section, after Shortcuts. It holds the switch that lets AI assistants on this PC use the app through the [MCP server](mcp-server.md), and the lines each assistant needs to connect. The user decided that the switch is on by default and kept on this device only, and that Configure shows copy-ready lines. The [MCP server](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) owns the switch's value, its file, its state, and the lines; Configure only shows them and passes the user's switch on. The user also decided these:
+
+- **Its title is "AI assistants", in [heading 2's look](#the-window-shows-its-settings-in-labeled-sections)**, like every card's.
+- **It shows, in order**:
+  - The check box "Let AI assistants on this PC use Memoria-ToDo", with the help line "Assistants such as GitHub Copilot, Claude, and Codex can read and change your tasks, contacts, and settings. Each asks you before it uses a tool, as its own settings say."
+  - A status line: "Running. AI assistants on this PC can use Memoria-ToDo." while the server listens; "Starting…" while it's on and not listening yet; "Off. AI assistants can't reach Memoria-ToDo." while it's off; and the server's failure, in the error color, when it has one.
+  - For each assistant the server lists, in its order: the assistant's name, its lines in a read-only box in a fixed-width font, and a Copy button that copies them. A copy failure shows in the card's message, in the error color.
+- **A switch applies at once.** Configure calls the server's switch, and the status line follows the server's state. When the switch can't be saved, the check box goes back, and the card's message shows why.
+- **The card follows the server's state as it changes**, while the window is open.
 
 ### Esc and the Close window shortcut close the window
 
@@ -159,7 +172,7 @@ The setting is the current user's `Run` registry key ([Run keys](https://learn.m
 
 - **The entry starts the app through Velopack's starter**, the program Velopack keeps in the install folder, whose path survives updates ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). It adds the argument that marks a [start at sign-in](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view).
 - **Installing turns it on, and uninstalling removes it.** Velopack runs the app during install and uninstall for such steps, which must be fast and show no window ([hooks](https://docs.velopack.io/integrating/hooks)). The install step writes the entry once, and updates leave it alone, so no start turns back on what the user turned off. A step that can't write or remove the entry goes on quietly, since a step can't stop the install or uninstall: after a failed install step Configure shows the setting off, and after a failed uninstall step the entry stays. Proposed: the step writes its error to [Velopack's log](https://docs.velopack.io/troubleshooting/debugging), since a step shows no window. This is a decision to confirm.
-- **Configure shows and switches it through a port Configure publishes.** The check box shows whether the entry is there when the window opens, and a switch writes or removes the entry at once. The composition root implements the port, and its Velopack install and uninstall steps use the same code.
+- **Configure shows and switches it through the platform's [Start with Windows](README.md#start-with-windows-is-a-port-the-platform-publishes) port.** The check box shows whether the entry is there when the window opens, and a switch writes or removes the entry at once. The composition root implements the port, and its Velopack install and uninstall steps use the same code. The [MCP server](mcp-server.md#each-tool-is-one-operation-the-user-can-do) switches it through the same port.
 - **Only an installed copy can switch it.** A copy run from a build folder shows the setting, but switching it fails, since the entry must name the installed starter.
 
 The entry is named with the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), and its value is the starter's quoted path followed by the [sign-in argument](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view). Changing the app's name or the argument after the first release would leave existing entries out of date.
@@ -259,10 +272,12 @@ The composition root and Shell use these parts:
   public static IConfigureWindow Create(
       IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync,
       ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates,
-      SaveKeys saveKeys);
+      IMcpServerStatus mcpServer, SaveKeys saveKeys);
   ```
 
   The user decided that Configure may use [Updates](updates.md), for the [Update card](#the-update-card-leads-the-application-section). Proposed: `Create` takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, after `theme`, and the Save keys come last, after it. This is a decision to confirm.
+
+  The user decided that `Create` takes the [MCP server's](mcp-server.md#public-interface) status, `IMcpServerStatus mcpServer`, after `updates`, for the [AI assistants card](#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them), and `IStartWithWindows` comes from the [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes) instead of Configure. The logger stays last, as [Logging](../logging.md#public-interface) says.
 - **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) meanwhile.
 - **Close Configure**: closes the window when it's open, and does nothing otherwise, so Shell can close it when the [Logs window](logs.md#the-tray-menus-logs-item-opens-one-window) opens, as the user decided. It closes as Esc does.
 - **Setup and status** come directly from Sync; Configure publishes no parallel clone, Git identity, or repository-settings port. The desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show) still governs opening and closing.
@@ -283,12 +298,16 @@ The composition root and Shell use these parts:
   - It accepts only Ctrl, Alt, Shift, and Win as modifier keys, and only a real key: one WPF defines, but not the placeholders WPF reports for a key pressed with Alt, a key an input method handles, or a dead key. So every shortcut a caller gets follows the rules.
 - **Dispose Configure**: detaches shared settings/setup/status subscriptions and closes its window. Shell still owns shortcut unregistration and Sync's lifetime.
 
-Configure publishes two ports:
+Configure publishes one port, and uses the platform's [Start with Windows](README.md#start-with-windows-is-a-port-the-platform-publishes), which keeps its `Run`-key contract:
 
-- **Start with Windows** retains its existing `Run`-key contract.
-- **[Setup actions](../../../src/Desktop/Configure/ISetupActions.cs)** copies the public key and opens the add-key page Sync gives. Generate key and Copy public key only copy; Set key copies, then opens the page, as [above](#git-access-makes-copies-and-forgets-the-devices-key) says. The port itself doesn't change. App adapts its existing clipboard and browser components; Configure never reaches another window module's port. Failures are shown under setup.
+- **[Setup actions](../../../src/Desktop/Configure/ISetupActions.cs)** copies the public key and opens the add-key page Sync gives. Generate key and Copy public key only copy; Set key copies, then opens the page, as [above](#git-access-makes-copies-and-forgets-the-devices-key) says. App adapts its existing clipboard and browser components; Configure never reaches another window module's port. Failures are shown under setup. The user decided that it also copies any text, for the [AI assistants card's](#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them) Copy buttons, through the same clipboard code:
 
-The composition root implements these ports. Their real adapters have integration tests; Configure's UX tests use
+  ```csharp
+  /// Puts text on the clipboard. Throws when the clipboard can't be written.
+  void CopyText(string text);
+  ```
+
+The composition root implements this port. Its real adapter has integration tests; Configure's UX tests use
 the shared fakes.
 
 ## Failure modes
@@ -304,6 +323,7 @@ the shared fakes.
 - **A key button can't copy, or Set key can't open the host's page**: the message in the button's card shows the error. A failed copy opens no page, and a failed page leaves the key copied. When Generate key made the key but couldn't copy it, the key stays.
 - **Forget key can't delete the key**: the message under Git Access shows the error, and the key stays.
 - **Accept host key can't save the trust**: the message under Git Access shows the error, and the saved trust doesn't change.
+- **The MCP server can't start, or its switch can't be read**: the AI assistants card's status line shows the server's reason in the error color, and the rest of Configure works. **The switch can't be saved, or a Copy button can't copy**: the card's message shows why, and the check box keeps its previous value.
 
 ## Ruled out
 
