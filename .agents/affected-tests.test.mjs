@@ -539,11 +539,12 @@ describe('the printed plan (unit)', () => {
     assert.ok(!text.includes('No tests to run'));
   });
 
-  test('says that only the cloud checks a changed workflow file, and to start the manual run on a pushed branch', () => {
+  test('says that only the cloud checks a changed workflow file, and to start Run All tests with the command or the task', () => {
     const text = formatPlan(plan(modified('.github/workflows/ci.yml')));
     assert.ok(text.includes('.github/workflows/ci.yml'));
-    assert.match(text, /manual run/);
-    assert.match(text, /pushed branch/);
+    assert.ok(text.includes('node .agents/run-all-tests.mjs'), text);
+    assert.match(text, /run all tests/);
+    assert.doesNotMatch(text, /Start the manual run/);
   });
 
   test('says that a selected module has no test folder, naming it', () => {

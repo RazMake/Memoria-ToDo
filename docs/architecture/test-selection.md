@@ -14,18 +14,18 @@ The user decided these, on November 22, 2026:
 4. **Each UX test names its screen, and our analyzer counts the tests of each screen across every class**, so the limit holds per screen, not per class. Each UX class names its screen in its attribute, `[UX("<Screen>")]`, and the analyzer fails the build when that name differs from the class's screen folder, as [below](#our-analyzer-counts-each-screens-ux-tests).
 8. **Each screen of a module with several screens has its own folder, in its code and its tests**, so the script reads a changed file's screen from its path, as [below](#a-change-inside-screens-runs-only-those-screens-tests).
 5. **A change that stays inside one screen, or a few, runs only those screens' tests** of the changed module, as [below](#a-change-inside-screens-runs-only-those-screens-tests).
-6. **A release runs the full suite once, in the workflow's manual run, and the version tag doesn't run it again**, as [below](#the-full-suite-runs-only-in-the-cloud).
+6. **A release runs the full suite once, in its own Tests job or in a passed Run All tests run of the same commit that it reuses**, as [below](#the-full-suite-runs-only-in-the-cloud).
 7. **A change to shared test support selects every test in each test project that references it; the script follows one test folder's use of another's test code; and every module that depends on a changed module runs, whether or not its public interface changed.** The [rules below](#each-changed-path-selects-tests-by-one-rule) apply them.
 
 Why: before this design, a full local run was about 6,800 tests, about 1,140 of them UX tests, and most failures in past sessions came from the desktop, not the code: a locked PC, a disconnected Remote Desktop session, a window that lost focus, or a changed display scale. Fewer screen tests, run only where a change can break them, fail less often and finish sooner. The UX tests are now [100 across 18 screens](#existing-ux-tests-shrink-one-screen-at-a-time).
 
 ### The full suite runs only in the cloud
 
-Every test, of every kind, runs only in the [workflow's](technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) manual run, `workflow_dispatch`, on GitHub. No session runs the full suite on your PC, unless a change selects every module, as the [rules below](#each-changed-path-selects-tests-by-one-rule) say for build files.
+Every test, of every kind, runs only in the [Run All tests](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) workflow on GitHub, which you start by hand and each release run calls. No session runs the full suite on your PC, unless a change selects every module, as the [rules below](#each-changed-path-selects-tests-by-one-rule) say for build files.
 
-- **The [release command](releasing.md#publishing-needs-a-manual-run-that-passed-every-test-on-the-tagged-commit) starts the manual run on the commit it will tag, and tags only after that run passes.** It runs no tests on your PC.
-- **A version tag publishes only a commit whose manual run passed, and runs no test itself**, as the [workflow's section](technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) says. So a release is still checked by every test, once.
-- **Every delivery report says what final validation ran.** When it ran less than every test, the report says the rest runs only in the workflow's manual run, since a test in a module the session didn't select can only fail there.
+- **A [release run](releasing.md#a-release-run-plans-tests-tags-then-publishes) tags and publishes only after every test passed on the commit it tags.** The [release command](releasing.md#the-release-command-previews-asks-once-then-follows-the-run) runs no .NET test on your PC.
+- **A release run [reuses a passed Run All tests run](releasing.md#a-release-reuses-a-passed-run-all-tests-run-of-its-commit) of its commit, and runs every test itself only when there's none.** So a release is checked by every test, once.
+- **Every delivery report says what final validation ran.** When it ran less than every test, the report says the rest runs only in Run All tests, since a test in a module the session didn't select can only fail there.
 
 ### A script turns the changed files into the commands to run
 
@@ -43,7 +43,7 @@ What it prints, in this order:
 - **Why each module or screen is selected**: changed, the files that changed it; narrowed, the screens every changed file sits in; a dependent, the module it depends on; or a user of test code, the folder whose code it uses. A wrong selection is explained by the output alone, as [Log so problems can be traced](../../AGENTS.md#code-design) asks.
 - **Whether the desktop check is needed**: yes whenever a command runs desktop tests, so the agent runs the [desktop check](technology-stack.md#agents-check-the-desktop-before-they-start-screen-tests) first, as [Run timing](../../AGENTS.md#run-timing) asks.
 - **The commands**, one per line, each runnable from the repository root, or "No tests to run" when nothing is selected.
-- **What only the cloud checks**: a changed workflow file is checked only by a workflow run, so the output says to start the manual run on a pushed branch.
+- **What only the cloud checks**: a changed workflow file is checked only by a workflow run, so the output says to start [Run All tests](releasing.md#the-run-all-tests-command-tests-the-commit-you-pushed) on a pushed branch, with `node .agents/run-all-tests.mjs` or the **run all tests** task.
 
 Proposed, a decision to confirm: the script only prints. The agent runs each command, so the [hang bound](technology-stack.md#a-hang-dump-stops-a-test-application-that-hangs-despite-its-bounds) and the desktop check stay with the agent, as today. A `--run` option that runs them too was left out as code nobody needs yet.
 
@@ -192,7 +192,7 @@ None. No module uses the script or the analyzer rule.
 - **A selected module has no test folder**: nothing runs for it, and the output says so.
 - **A code folder looks like a screen folder but has no matching test folder**: the script treats its files as the module's top and selects the whole module, so it selects more, never less.
 - **A screen has an 11th UX test, a UX theory, a UX class beside its screen folders, or a screen name that differs from its folder**: the build fails with `MTD0005`, `MTD0006`, `MTD0007`, or `MTD0008`, naming the class, method, or attribute.
-- **A test outside the selection breaks**: final validation can't see it; the next manual run fails on it, and no release can be published from that commit.
+- **A test outside the selection breaks**: final validation can't see it; the next Run All tests run or release run fails on it, and no release can be published from that commit.
 - **A run with desktop tests starts on a locked or disconnected PC**: the desktop check stops the session first, as [Run timing](../../AGENTS.md#run-timing) says.
 
 ## Ruled out
@@ -220,7 +220,7 @@ None. No module uses the script or the analyzer rule.
 - How a release is tested:
   - **The release command runs the full suite on your PC**: the release again depends on your PC's desktop.
   - **No tests before tagging, with the tag's run checking them**: a failure leaves a tag to [clear](version-tags.md).
-  - The other ways the release job could avoid running the tests again are in [Release a version](releasing.md#ruled-out).
+  - The other ways a release could avoid running the tests again are in [Release a version](releasing.md#ruled-out).
 
 ## Open questions
 

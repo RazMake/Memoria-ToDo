@@ -162,7 +162,7 @@ The setting is the current user's `Run` registry key ([Run keys](https://learn.m
 - **Configure shows and switches it through a port Configure publishes.** The check box shows whether the entry is there when the window opens, and a switch writes or removes the entry at once. The composition root implements the port, and its Velopack install and uninstall steps use the same code.
 - **Only an installed copy can switch it.** A copy run from a build folder shows the setting, but switching it fails, since the entry must name the installed starter.
 
-The entry is named with the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), and its value is the starter's quoted path followed by the [sign-in argument](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view). Changing the app's name or the argument after the first release would leave existing entries out of date.
+The entry is named with the [app's name](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases), and its value is the starter's quoted path followed by the [sign-in argument](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view). Changing the app's name or the argument after the first release would leave existing entries out of date.
 
 Not confirmed by a run: Windows' [Startup apps page](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows) seems to keep its own on and off list beside the key, so Configure could show on while Windows keeps the app off.
 

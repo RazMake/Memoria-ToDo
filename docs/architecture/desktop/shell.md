@@ -90,7 +90,7 @@ Proposed, each a decision to confirm:
 
 Proposed, each a decision to confirm:
 
-- **The one-instance signal is a named semaphore, named with the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), not the [installer's ID](#velopack-installs-the-app-and-keeps-it-up-to-date).** A copy run from a build folder has no installer ID. A semaphore counts each later start, so several quick starts each show Task View.
+- **The one-instance signal is a named semaphore, named with the [app's name](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases), not the [installer's ID](#velopack-installs-the-app-and-keeps-it-up-to-date).** A copy run from a build folder has no installer ID. A semaphore counts each later start, so several quick starts each show Task View.
 - **A later instance lets any process come to the front**, since it doesn't know the running instance's process ID. Letting only that process come forward would need the running instance to publish its ID.
 
 Not confirmed by a run:
@@ -166,13 +166,13 @@ The app installs with [Velopack](https://www.nuget.org/packages/Velopack/1.2.0) 
 
 The composition root runs Velopack's own startup step first each time the app starts, before anything else, as Velopack requires ([Velopack integration](https://docs.velopack.io/integrating/overview)). When Velopack starts the app to install, update, or uninstall it, that step does the work and ends the app. Its install and uninstall steps also turn [Start with Windows](configure.md#start-with-windows-is-the-run-key-itself) on and off.
 
-The [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) puts each version on GitHub Releases.
+The [release workflow](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) puts each version on GitHub Releases.
 
 **The installer's ID is `MemoriaToDo`, and it never changes.** Velopack installs the app in `%LocalAppData%\MemoriaToDo`, and uninstalling deletes that whole folder ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). The repository's name, `Memoria-ToDo`, can't be the ID: each developer PC keeps the [pinned SDK](../technology-stack.md#three-files-pin-every-version) in `%LocalAppData%\Memoria-ToDo\dotnet`, which uninstalling would delete. Installed copies keep their ID, so changing it after the first release would strand them.
 
 Proposed, each a decision to confirm:
 
-- The installer shows the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) in its Start menu shortcut and in Windows' list of installed apps.
+- The installer shows the [app's name](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) in its Start menu shortcut and in Windows' list of installed apps.
 - The installer adds a Start menu shortcut and no desktop shortcut, since the app starts with Windows and lives in the tray. Velopack adds both by default ([vpk options](https://docs.velopack.io/reference/cli/content/vpk-windows)).
 - The installer isn't code-signed, so Windows may warn when it's first run. Velopack recommends signing, since an unsigned app may be flagged as a virus ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)).
 

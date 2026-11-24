@@ -29,6 +29,11 @@ async function runWith(args, options) {
   return { git, result };
 }
 
+// A real make, as a release run does it: on the given commit, which the preview named.
+async function makeWith(args, options) {
+  return runWith([...args, '--commit', commitA], { originHead: commitA, ...options });
+}
+
 const lines = (text) => text.split('\n').filter((line) => line !== '');
 
 function assertRefusal(result, message) {
@@ -102,6 +107,7 @@ describe('command line arguments (unit)', () => {
 });
 
 describe('making the next version tag (unit)', () => {
+  const runWith = makeWith;
   test('raises the minor part when no part is named', async () => {
     const { git, result } = await runWith([], onBoth({ 'v1.2.3': 'c1' }));
     assert.equal(result.code, 0, result.stderr);
@@ -154,9 +160,9 @@ describe('making the next version tag (unit)', () => {
     assert.deepEqual(Object.keys(git.snapshot().remote).sort(), ['v2.4.0', 'v2.4.1']);
   });
 
-  test('puts the tag on the newest commit of origin\'s default branch', async () => {
-    const { git } = await runWith([], { originHead: 'c2', commits: { c2: { shortId: 'def5678', subject: 'Fix the build' } } });
-    assert.deepEqual(git.snapshot(), { local: { 'v1.0.0': 'c2' }, remote: { 'v1.0.0': 'c2' } });
+  test('puts the tag on the commit it was given', async () => {
+    const { git } = await runWith([]);
+    assert.deepEqual(git.snapshot(), { local: { 'v1.0.0': commitA }, remote: { 'v1.0.0': commitA } });
   });
 
   test('makes an annotated tag', async () => {
@@ -169,7 +175,7 @@ describe('making the next version tag (unit)', () => {
     assert.equal(result.code, 0);
     assert.equal(result.stderr, '');
     assert.match(result.stdout, /v2\.0\.0/);
-    assert.equal(git.snapshot().remote['v2.0.0'], 'c1');
+    assert.equal(git.snapshot().remote['v2.0.0'], commitA);
   });
 
   test('deletes the tag it made, shows git\'s message, and fails when the push fails', async () => {
@@ -183,7 +189,7 @@ describe('making the next version tag (unit)', () => {
 describe('checks before making a tag (unit)', () => {
   const unchanged = (git, before) => assert.deepEqual(git.snapshot(), before);
 
-  for (const mode of [[], ['--dry-run']]) {
+  for (const mode of [['--dry-run']]) {
     const how = mode.length ? 'a preview' : 'a real run';
     const refuses = (name, options, message) => test(`${how} refuses ${name}, changing no tag`, async () => {
       const git = createFakeGit(options);
@@ -226,6 +232,99 @@ describe('checks before making a tag (unit)', () => {
       assert.deepEqual(git.snapshot(), { local: {}, remote: {} });
     });
   }
+});
+
+describe('making a tag on a given commit with --commit (unit)', () => {
+  const state = { ...onBoth({ 'v1.2.0': commitA }), changelog: changelogWith('1.3.0') };
+  const refusesUnchanged = async (args, options, message) => {
+    const git = createFakeGit(options);
+    const before = git.snapshot();
+    const result = await run(args, git);
+    assertRefusal(result, message);
+    assert.deepEqual(git.snapshot(), before);
+  };
+
+  test('makes and pushes the tag on that commit', async () => {
+    const { git, result } = await runWith(['--commit', commitB], { ...state, offBranch: [] });
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(git.snapshot().remote['v1.3.0'], commitB);
+    assert.deepEqual(git.snapshot().local['v1.3.0'], commitB);
+  });
+
+  test('makes the tag of the part it was given', async () => {
+    const { git } = await runWith(['major', '--commit', commitA], { ...state, changelog: changelogWith('2.0.0') });
+    assert.ok(Object.hasOwn(git.snapshot().remote, 'v2.0.0'));
+  });
+
+  test('skips the branch, working tree and in-step checks', async () => {
+    const { result } = await runWith(['--commit', commitA], { ...state, branch: 'feature', clean: false, ahead: 2, behind: 3 });
+    assert.equal(result.code, 0, result.stderr);
+  });
+
+  test('makes the tag even when HEAD is detached', async () => {
+    const { result } = await runWith(['--commit', commitA], { ...state, branch: undefined });
+    assert.equal(result.code, 0, result.stderr);
+  });
+
+  test('refuses a commit that is not on origin\'s default branch, and makes no tag', async () => {
+    await refusesUnchanged(['--commit', commitB], { ...state, offBranch: [commitB] }, /main/);
+  });
+
+  test('asks whether the commit is on the default branch it fetched from origin', async () => {
+    const { git } = await runWith(['--commit', commitA], state);
+    assert.deepEqual(git.fetchedBranches, ['main']);
+    assert.ok(git.calls.indexOf('fetch') < git.calls.indexOf('isOnOriginBranch'), git.calls.join(','));
+  });
+
+  test('refuses when a local version tag is missing on origin', async () => {
+    await refusesUnchanged(['--commit', commitA], { ...state, local: { 'v1.2.0': commitA, 'v1.1.0': commitA }, remote: { 'v1.2.0': commitA } }, /v1\.1\.0/);
+  });
+
+  test('refuses when a local version tag points to another commit on origin', async () => {
+    await refusesUnchanged(['--commit', commitA], { ...state, remote: { 'v1.2.0': commitB } }, /v1\.2\.0/);
+  });
+
+  test('refuses when the changelog at that commit has no section for the version', async () => {
+    await refusesUnchanged(['--commit', commitB], { ...state, changelog: withEntries, changelogs: { [commitB]: withEntries } }, /1\.3\.0/);
+  });
+
+  test('reads the changelog at that commit, whatever the default branch has now', async () => {
+    const { result } = await runWith(['--commit', commitB], { ...state, changelog: withEntries, changelogs: { [commitB]: ready } });
+    assert.equal(result.code, 0, result.stderr);
+  });
+
+  test('deletes the tag it made, shows git\'s message, and fails when the push fails', async () => {
+    const git = createFakeGit({ ...state, refusePush: 'remote: refused by the server' });
+    const before = git.snapshot();
+    const result = await run(['--commit', commitA], git);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /remote: refused by the server/);
+    assert.deepEqual(git.snapshot(), before);
+  });
+
+  test('deletes the tag it made and fails when origin got that tag meanwhile', async () => {
+    const { git, result } = await runWith(['--commit', commitA], { ...state, afterRemoteTagsRead: (fake) => fake.setRemoteTag('v1.3.0', commitB) });
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /rejected/);
+    assert.deepEqual(git.snapshot().local, { 'v1.2.0': commitA });
+  });
+});
+
+describe('making a tag without --commit (unit)', () => {
+  for (const args of [[], ['major'], ['patch']]) {
+    test(`refuses ${args.join(' ') || 'no part'}, names the release command, and makes no tag`, async () => {
+      const git = createFakeGit(onBoth({ 'v1.2.3': commitA }));
+      const before = git.snapshot();
+      const result = await run(args, git);
+      assertRefusal(result, /node \.agents\/release\.mjs/);
+      assert.deepEqual(git.snapshot(), before);
+    });
+  }
+
+  test('refuses before it runs any git operation', async () => {
+    const { git } = await runWith([]);
+    assert.deepEqual(git.calls, []);
+  });
 });
 
 describe('clearing a version tag (unit)', () => {
@@ -407,7 +506,7 @@ describe('version parts of any size (unit)', () => {
   const big = '9007199254740993'; // 2^53 + 1, which a floating-point number can't hold
   // The committed changelog has the section of the one tag expected to be made.
   const tagsAt = async (args, tag, made) => {
-    const { git, result } = await runWith(args, { ...onBoth({ [tag]: 'c1' }), changelog: changelogWith(made.slice(1)) });
+    const { git, result } = await makeWith(args,  { ...onBoth({ [tag]: 'c1' }), changelog: changelogWith(made.slice(1)) });
     assert.equal(result.code, 0, result.stderr);
     return Object.keys(git.snapshot().remote).filter((name) => name !== tag);
   };
@@ -429,7 +528,7 @@ describe('version parts of any size (unit)', () => {
   });
 
   test('tells apart two versions that differ only beyond 2^53', async () => {
-    const { git } = await runWith(['patch'], { ...onBoth({ 'v9007199254740992.0.0': 'c1', [`v${big}.0.0`]: 'c1' }), changelog: changelogWith(`${big}.0.1`) });
+    const { git } = await makeWith(['patch'], { ...onBoth({ 'v9007199254740992.0.0': 'c1', [`v${big}.0.0`]: 'c1' }), changelog: changelogWith(`${big}.0.1`) });
     assert.ok(Object.hasOwn(git.snapshot().remote, `v${big}.0.1`));
   });
 
@@ -441,7 +540,7 @@ describe('version parts of any size (unit)', () => {
 
 describe('fetching only origin\'s default branch (unit)', () => {
   const trunk = { defaultBranch: 'trunk', branch: 'trunk' };
-  for (const [what, args] of [['a make', []], ['a make preview', ['--dry-run']], ['a clear', ['--clear', 'v1.0.0']], ['a clear preview', ['--clear', 'v1.0.0', '--dry-run']]]) {
+  for (const [what, args] of [['a make', ['--commit', commitA]], ['a make preview', ['--dry-run']], ['a clear', ['--clear', 'v1.0.0']], ['a clear preview', ['--clear', 'v1.0.0', '--dry-run']]]) {
     test(`${what} asks origin for its default branch first, then fetches that branch alone`, async () => {
       const { git } = await runWith(args, { ...trunk, ...onBoth({ 'v1.0.0': 'c1' }) });
       assert.deepEqual(git.fetchedBranches, ['trunk']);
@@ -451,6 +550,7 @@ describe('fetching only origin\'s default branch (unit)', () => {
 });
 
 describe('the push that makes a tag (unit)', () => {
+  const runWith = makeWith;
   test('deletes the tag it made here, shows git\'s message, and exits 1 when origin got that tag meanwhile', async () => {
     const { git, result } = await runWith([], { afterRemoteTagsRead: (fake) => fake.setRemoteTag('v1.0.0', commitB) });
     assert.equal(result.code, 1);
@@ -461,7 +561,7 @@ describe('the push that makes a tag (unit)', () => {
   test('pushes the tag object it made, not a tag moved here to another commit right after', async () => {
     const { git, result } = await runWith([], { afterCreateTag: (fake) => fake.setLocalTag('v1.0.0', commitB) });
     assert.equal(result.code, 0, result.stderr);
-    assert.deepEqual(git.snapshot().remote, { 'v1.0.0': 'c1' });
+    assert.deepEqual(git.snapshot().remote, { 'v1.0.0': commitA });
   });
 
   test('keeps a tag moved here after the script made it, and exits 1, when the push is rejected', async () => {
@@ -718,8 +818,10 @@ describe('a make with --expect and --commit (unit)', () => {
     await refusesUnchanged(['minor', '--expect', 'v1.3.0', '--commit', commitA], { ...state, remote: { 'v1.2.3': commitA, 'v1.3.0': commitA } });
   });
 
-  test('refuses when origin\'s default branch has a newer commit than the approved one', async () => {
-    await refusesUnchanged(['minor', '--expect', 'v1.3.0', '--commit', commitA], { ...state, originHead: 'old', afterFetch: { originHead: commitB } });
+  test('makes the tag on the approved commit even when origin\'s default branch has moved on', async () => {
+    const { git, result } = await runWith(['minor', '--expect', 'v1.3.0', '--commit', commitA], { ...state, afterFetch: { originHead: commitB } });
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(git.snapshot().remote['v1.3.0'], commitA);
   });
 
   test('goes ahead when only a lower version tag was pushed meanwhile', async () => {
@@ -730,13 +832,13 @@ describe('a make with --expect and --commit (unit)', () => {
     assert.deepEqual(git.snapshot().remote['v1.3.0'], commitA);
   });
 
-  test('still works without approval options', async () => {
-    const { result } = await runWith(['minor'], state);
+  test('works with --commit alone, without --expect', async () => {
+    const { result } = await runWith(['minor', '--commit', commitA], state);
     assert.equal(result.code, 0, result.stderr);
   });
 
-  test('still runs the branch and working tree checks', async () => {
-    await refusesUnchanged(['--expect', 'v1.3.0', '--commit', commitA], { ...state, clean: false }, /uncommitted/i);
+  test('refuses an approved commit that is not on origin\'s default branch', async () => {
+    await refusesUnchanged(['--expect', 'v1.3.0', '--commit', commitA], { ...state, offBranch: [commitA] }, /main/);
   });
 });
 
@@ -819,7 +921,7 @@ describe('approval options in the command line (unit)', () => {
   const short = 'abc1234';
   const wrong = [
     ['--expect without --commit', ['--expect', 'v1.3.0']],
-    ['--commit without --expect', ['--commit', commitA]],
+    ['--expect with a part but without --commit', ['minor', '--expect', 'v1.3.0']],
     ['--expect with a missing value', ['--commit', commitA, '--expect']],
     ['--commit with a missing value', ['--expect', 'v1.3.0', '--commit']],
     ['--expect with a tag that is not a version tag', ['--expect', 'proof-1', '--commit', commitA]],
@@ -832,8 +934,12 @@ describe('approval options in the command line (unit)', () => {
     ['a 41-character commit id', ['--expect', 'v1.3.0', '--commit', `${commitA}a`]],
     ['a 63-character commit id', ['--expect', 'v1.3.0', '--commit', commitC.slice(1)]],
     ['a branch name as the commit', ['--expect', 'v1.3.0', '--commit', 'main']],
-    ['--expect with --dry-run', ['--expect', 'v1.3.0', '--commit', commitA, '--dry-run']],
     ['--expect with --clear', ['--clear', 'v1.0.0', '--expect', 'v1.3.0', '--commit', commitA]],
+    ['--commit with --clear', ['--clear', 'v1.0.0', '--commit', commitA]],
+    ['--commit with --check', ['--check', 'v1.0.0', '--commit', commitA]],
+    ['--dry-run with --here', ['--dry-run', '--here', commitA]],
+    ['--dry-run with --origin', ['--dry-run', '--origin', commitA]],
+    ['--dry-run with --commit and --here', ['--dry-run', '--commit', commitA, '--here', commitA]],
     ['--expect with --check', ['--check', 'v1.0.0', '--expect', 'v1.3.0', '--commit', commitA]],
     ['--here with a make', ['minor', '--here', commitA]],
     ['--origin with a make', ['--origin', commitA]],
@@ -855,6 +961,19 @@ describe('approval options in the command line (unit)', () => {
       const { git, result } = await runWith(args, onBoth({ 'v1.0.0': commitA }));
       assertRefusal(result);
       assert.deepEqual(git.calls, []);
+    });
+  }
+
+  for (const [what, args] of [
+    ['--dry-run with --commit', ['--dry-run', '--commit', commitA]],
+    ['--dry-run with --expect and --commit', ['--dry-run', '--expect', 'v1.3.0', '--commit', commitA]],
+    ['--dry-run with a part, --expect and --commit', ['minor', '--dry-run', '--expect', 'v1.3.0', '--commit', commitA]],
+    ['--commit alone', ['--commit', commitA]],
+    ['a part with --commit', ['patch', '--commit', commitA]],
+  ]) {
+    test(`accepts ${what}`, async () => {
+      const { result } = await runWith(args, { ...onBoth({ 'v1.2.3': commitA }), originHead: commitA });
+      assert.equal(result.code, 0, result.stderr);
     });
   }
 
@@ -886,8 +1005,10 @@ const stillInUnreleased = ['has the version\'s section and entries still under U
 const after120 = onBoth({ 'v1.2.0': 'c1' });
 
 describe('the changelog check when making a tag (unit)', () => {
-  for (const mode of [[], ['--dry-run']]) {
-    const how = mode.length ? 'a preview' : 'a real run';
+  for (const mode of [['--dry-run'], ['--commit', commitA]]) {
+    const preview = mode.includes('--dry-run');
+    const how = preview ? 'a preview' : 'a make with --commit';
+    const at = preview ? 'c2' : commitA;
 
     for (const [what, changelog, fix] of [...notReady, stillInUnreleased]) {
       test(`${how} refuses when the committed changelog ${what}, naming the version and the fix, and changes no tag`, async () => {
@@ -913,35 +1034,37 @@ describe('the changelog check when making a tag (unit)', () => {
     });
 
     test(`${how} reads the changelog on the commit it would tag`, async () => {
-      const { result } = await runWith(mode, { ...after120, originHead: 'c2', commits: secondCommit, changelog: ready, changelogs: { c2: withEntries } });
+      const { result } = await runWith(mode, { ...after120, originHead: at, commits: secondCommit, changelog: ready, changelogs: { [at]: withEntries } });
       assertRefusal(result, /1\.3\.0/);
     });
 
     test(`${how} accepts the changelog of the commit it would tag, whatever another commit has`, async () => {
-      const { result } = await runWith(mode, { ...after120, originHead: 'c2', commits: secondCommit, changelog: withEntries, changelogs: { c2: ready } });
+      const { result } = await runWith(mode, { ...after120, originHead: at, commits: secondCommit, changelog: withEntries, changelogs: { [at]: ready } });
       assert.equal(result.code, 0, result.stderr);
     });
 
-    test(`${how} reports a wrong branch before a changelog problem`, async () => {
-      const { result } = await runWith(mode, { ...after120, branch: 'feature', changelog: withEntries });
-      assertRefusal(result, /main/);
-    });
+    if (preview) {
+      test(`${how} reports a wrong branch before a changelog problem`, async () => {
+        const { result } = await runWith(mode, { ...after120, branch: 'feature', changelog: withEntries });
+        assertRefusal(result, /main/);
+      });
 
-    test(`${how} reports uncommitted changes before a changelog problem`, async () => {
-      const { result } = await runWith(mode, { ...after120, clean: false, changelog: withEntries });
-      assertRefusal(result, /uncommitted/i);
-    });
+      test(`${how} reports uncommitted changes before a changelog problem`, async () => {
+        const { result } = await runWith(mode, { ...after120, clean: false, changelog: withEntries });
+        assertRefusal(result, /uncommitted/i);
+      });
 
-    test(`${how} reports being behind origin before a changelog problem`, async () => {
-      const { result } = await runWith(mode, { ...after120, behind: 1, changelog: withEntries });
-      assertRefusal(result, /behind/);
-    });
+      test(`${how} reports being behind origin before a changelog problem`, async () => {
+        const { result } = await runWith(mode, { ...after120, behind: 1, changelog: withEntries });
+        assertRefusal(result, /behind/);
+      });
+    }
   }
 
   test('makes and pushes the tag when the version\'s section has entries and Unreleased has none', async () => {
-    const { git, result } = await runWith([], { ...after120, changelog: ready });
+    const { git, result } = await makeWith([], { ...after120, changelog: ready });
     assert.equal(result.code, 0, result.stderr);
-    assert.equal(git.snapshot().remote['v1.3.0'], 'c1');
+    assert.equal(git.snapshot().remote['v1.3.0'], commitA);
   });
 
   test('previews the tag when the version\'s section has entries and Unreleased has none', async () => {
@@ -951,12 +1074,12 @@ describe('the changelog check when making a tag (unit)', () => {
   });
 
   test('treats blank lines under Unreleased as no entries', async () => {
-    const { result } = await runWith([], { ...after120, changelog: ready.replace('## Unreleased\n', '## Unreleased\n\n   \n\n') });
+    const { result } = await makeWith([], { ...after120, changelog: ready.replace('## Unreleased\n', '## Unreleased\n\n   \n\n') });
     assert.equal(result.code, 0, result.stderr);
   });
 
   test('makes the tag from the committed changelog, whatever the working tree has', async () => {
-    const { result } = await runWith([], { ...after120, changelog: ready, workingChangelog: withEntries });
+    const { result } = await makeWith([], { ...after120, changelog: ready, workingChangelog: withEntries });
     assert.equal(result.code, 0, result.stderr);
   });
 
@@ -1107,7 +1230,10 @@ function repositories(t, { changelog = validChangelog } = {}) {
     return result;
   };
   const runScript = (cwd, ...args) => runScriptWith({}, cwd, ...args);
-  return { root, origin, work, clone, tags, runScript, runScriptWith };
+  // A real make, as a release run does it: on the commit the work repository has checked out.
+  const make = (cwd, ...args) => runScript(cwd, ...args, '--commit', git(work, 'rev-parse', 'HEAD'));
+  const makeWith = (env, cwd, ...args) => runScriptWith(env, cwd, ...args, '--commit', git(work, 'rev-parse', 'HEAD'));
+  return { root, origin, work, clone, tags, runScript, runScriptWith, make, makeWith };
 }
 
 describe('version-tag.mjs on real git (integration)', () => {
@@ -1129,8 +1255,8 @@ describe('version-tag.mjs on real git (integration)', () => {
   });
 
   test('makes an annotated tag on the newest commit and pushes it, so origin has the same commit', (t) => {
-    const { work, origin, runScript } = repositories(t);
-    const result = runScript(work);
+    const { work, origin, make } = repositories(t);
+    const result = make(work);
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /v1\.0\.0/);
     const head = git(work, 'rev-parse', 'HEAD');
@@ -1140,14 +1266,14 @@ describe('version-tag.mjs on real git (integration)', () => {
   });
 
   test('raises the part it was given from the latest tag', (t) => {
-    const { work, origin, runScript } = repositories(t);
-    assert.equal(runScript(work).status, 0);
-    const result = runScript(work, 'patch');
+    const { work, origin, make } = repositories(t);
+    assert.equal(make(work).status, 0);
+    const result = make(work, 'patch');
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(git(origin, 'tag', '--list').split('\n').sort(), ['v1.0.0', 'v1.0.1']);
   });
 
-  test('refuses as behind when another clone pushed a commit to origin after the last fetch', (t) => {
+  test('a preview refuses as behind when another clone pushed a commit to origin after the last fetch', (t) => {
     const { work, origin, clone, tags, runScript } = repositories(t);
     const other = clone();
     writeFileSync(join(other, 'news.txt'), 'new\n');
@@ -1155,38 +1281,38 @@ describe('version-tag.mjs on real git (integration)', () => {
     git(other, 'commit', '-m', 'Another commit');
     git(other, 'push', 'origin', 'main');
 
-    const result = runScript(work);
+    const result = runScript(work, '--dry-run');
     assert.equal(result.status, 1);
     assert.match(result.stderr, /behind/);
     assert.deepEqual(tags(work), []);
     assert.deepEqual(tags(origin), []);
   });
 
-  test('refuses when the working tree has an untracked file', (t) => {
+  test('a preview refuses when the working tree has an untracked file', (t) => {
     const { work, tags, runScript } = repositories(t);
     writeFileSync(join(work, 'notes.txt'), 'draft\n');
-    const result = runScript(work);
+    const result = runScript(work, '--dry-run');
     assert.equal(result.status, 1);
     assert.match(result.stderr, /uncommitted/i);
     assert.deepEqual(tags(work), []);
   });
 
-  test('ignored files do not make the working tree unclean', (t) => {
-    const { work, origin, runScript } = repositories(t);
+  test('ignored files do not make the working tree unclean for a preview', (t) => {
+    const { work, runScript } = repositories(t);
     writeFileSync(join(work, '.gitignore'), '*.log\n');
     git(work, 'add', '.');
     git(work, 'commit', '-m', 'Ignore logs');
     git(work, 'push', 'origin', 'main');
     writeFileSync(join(work, 'build.log'), 'output\n');
 
-    const result = runScript(work);
+    const result = runScript(work, '--dry-run');
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(git(origin, 'tag', '--list'), 'v1.0.0');
+    assert.match(result.stdout, /v1\.0\.0/);
   });
 
   test('--clear deletes the latest version tag from the work repository and from origin', (t) => {
-    const { work, origin, tags, runScript } = repositories(t);
-    assert.equal(runScript(work).status, 0);
+    const { work, origin, tags, runScript, make } = repositories(t);
+    assert.equal(make(work).status, 0);
     const result = runScript(work, '--clear');
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(tags(work), []);
@@ -1194,8 +1320,8 @@ describe('version-tag.mjs on real git (integration)', () => {
   });
 
   test('--clear leaves other tags alone', (t) => {
-    const { work, origin, tags, runScript } = repositories(t);
-    assert.equal(runScript(work).status, 0);
+    const { work, origin, tags, runScript, make } = repositories(t);
+    assert.equal(make(work).status, 0);
     git(work, 'tag', 'proof-1');
     git(work, 'push', 'origin', 'proof-1');
     assert.equal(runScript(work, '--clear', 'v1.0.0').status, 0);
@@ -1223,12 +1349,12 @@ describe('version-tag.mjs on real git (integration)', () => {
   });
 
   test('acts on the repository the script sits in, whatever folder it runs from', (t) => {
-    const { root, work, origin, tags, runScript } = repositories(t);
+    const { root, work, origin, tags, make } = repositories(t);
     const elsewhere = join(root, 'elsewhere');
     mkdirSync(elsewhere);
     git(elsewhere, 'init', '--initial-branch=main');
 
-    const result = runScript(elsewhere);
+    const result = make(elsewhere);
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(tags(work), ['v1.0.0']);
     assert.deepEqual(tags(origin), ['v1.0.0']);
@@ -1280,15 +1406,15 @@ describe('version-tag.mjs changelog on real git (integration)', () => {
   });
 
   test('makes and pushes the tag when the committed changelog has the version\'s notes', (t) => {
-    const { work, origin, runScript } = repositories(t, { changelog: changelogWith('1.0.0') });
-    const result = runScript(work);
+    const { work, origin, make } = repositories(t, { changelog: changelogWith('1.0.0') });
+    const result = make(work);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(git(origin, 'tag', '--list'), 'v1.0.0');
   });
 
   test('refuses with one line naming the version, and makes no tag, when the committed changelog lacks its notes', (t) => {
-    const { work, origin, tags, runScript } = repositories(t, { changelog: withEntries });
-    const result = runScript(work);
+    const { work, origin, tags, make } = repositories(t, { changelog: withEntries });
+    const result = make(work);
     assert.equal(result.status, 1);
     assert.equal(result.stdout, '');
     assert.equal(lines(result.stderr).length, 1);
@@ -1313,9 +1439,9 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
   };
 
   test('fetches only origin\'s default branch with tags and pruning off, and every push turns tag following off', (t) => {
-    const { root, work, runScriptWith } = repositories(t);
+    const { root, work, runScriptWith, makeWith } = repositories(t);
     const { file, env } = traced(t, root);
-    assert.equal(runScriptWith(env, work).status, 0);
+    assert.equal(makeWith(env, work).status, 0);
     assert.equal(runScriptWith(env, work, '--clear').status, 0);
     assert.ok(commands(file, 'fetch').length >= 1);
     for (const line of commands(file, 'fetch')) {
@@ -1327,9 +1453,9 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
   });
 
   test('--clear deletes on origin with a lease on the tag\'s own id, not its commit\'s, and then deletes here', (t) => {
-    const { root, work, origin, tags, runScriptWith } = repositories(t);
+    const { root, work, origin, tags, runScriptWith, makeWith } = repositories(t);
     const { file, env } = traced(t, root);
-    assert.equal(runScriptWith(env, work).status, 0);
+    assert.equal(makeWith(env, work).status, 0);
     const tagId = git(work, 'rev-parse', 'v1.0.0');
     assert.notEqual(tagId, git(work, 'rev-parse', 'v1.0.0^{commit}'));
     assert.equal(runScriptWith(env, work, '--clear').status, 0);
@@ -1339,8 +1465,8 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
   });
 
   test('the guarded delete removes an annotated tag for its own id and refuses, deleting nothing, for its commit\'s id or any other', (t) => {
-    const { work, origin, runScript } = repositories(t);
-    assert.equal(runScript(work).status, 0);
+    const { work, origin, make } = repositories(t);
+    assert.equal(make(work).status, 0);
     const tagId = git(origin, 'rev-parse', 'refs/tags/v1.0.0');
     const commitId = git(origin, 'rev-parse', 'refs/tags/v1.0.0^{commit}');
     const guarded = (id) => spawnSync('git', ['push', '--no-follow-tags', `--force-with-lease=refs/tags/v1.0.0:${id}`, 'origin', ':refs/tags/v1.0.0'], { cwd: work, env: gitEnv, encoding: 'utf8' });
@@ -1353,8 +1479,8 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
   });
 
   test('the guarded delete here removes an annotated tag for its own id and refuses, deleting nothing, for its commit\'s id or any other', (t) => {
-    const { work, runScript } = repositories(t);
-    assert.equal(runScript(work).status, 0);
+    const { work, make } = repositories(t);
+    assert.equal(make(work).status, 0);
     const tagId = git(work, 'rev-parse', 'refs/tags/v1.0.0');
     const commitId = git(work, 'rev-parse', 'refs/tags/v1.0.0^{commit}');
     const guarded = (id) => spawnSync('git', ['update-ref', '-d', 'refs/tags/v1.0.0', id], { cwd: work, env: gitEnv, encoding: 'utf8' });
@@ -1381,11 +1507,11 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
     assert.equal(git(work, 'rev-parse', '--verify', 'refs/heads/main'), mainId);
   });
 
-  test('refuses a make as not clean for an untracked file even when status.showUntrackedFiles is no', (t) => {
+  test('refuses a preview as not clean for an untracked file even when status.showUntrackedFiles is no', (t) => {
     const { work, origin, tags, runScript } = repositories(t);
     git(work, 'config', 'status.showUntrackedFiles', 'no');
     writeFileSync(join(work, 'notes.txt'), 'draft\n');
-    const result = runScript(work);
+    const result = runScript(work, '--dry-run');
     assert.equal(result.status, 1);
     assert.match(result.stderr, /uncommitted/i);
     assert.deepEqual(tags(work), []);
@@ -1393,7 +1519,7 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
   });
 
   test('git settings that fetch, prune, or push other tags change nothing beyond the one tag', (t) => {
-    const { work, origin, clone, tags, runScript } = repositories(t);
+    const { work, origin, clone, tags, runScript, make } = repositories(t);
     otherClonePushesTag(clone, 'proof-9');
     git(work, 'tag', 'only-here');
     git(work, 'tag', '-a', 'annotated-here', '-m', 'Not pushed');
@@ -1403,7 +1529,7 @@ describe('version-tag.mjs git commands and settings on real git (integration)', 
     git(work, 'config', 'fetch.pruneTags', 'true');
     git(work, 'config', 'push.followTags', 'true');
 
-    const made = runScript(work);
+    const made = make(work);
     assert.equal(made.status, 0, made.stderr);
     assert.deepEqual(tags(work).sort(), ['annotated-here', 'only-here', 'v1.0.0']);
     assert.deepEqual(tags(origin).sort(), ['proof-9', 'v1.0.0']);
@@ -1454,9 +1580,10 @@ describe('version-tag.mjs preview and approved run on real git (integration)', (
     assert.deepEqual(tags(work), ['v1.0.0']);
   });
 
-  test('an approved make refuses, changing no tag, when origin\'s default branch got a commit after the preview', (t) => {
+  test('an approved make tags the previewed commit even when origin\'s default branch got a commit after the preview', (t) => {
     const { work, origin, clone, tags, runScript } = repositories(t);
     const preview = runScript(work, '--dry-run');
+    const previewed = git(work, 'rev-parse', 'HEAD');
     const other = clone();
     writeFileSync(join(other, 'news.txt'), 'new\n');
     git(other, 'add', '.');
@@ -1464,10 +1591,9 @@ describe('version-tag.mjs preview and approved run on real git (integration)', (
     git(other, 'push', 'origin', 'main');
 
     const result = runScript(work, ...approved(preview));
-    assert.equal(result.status, 1);
-    assert.equal(lines(result.stderr).length, 1);
-    assert.deepEqual(tags(work), []);
-    assert.deepEqual(tags(origin), []);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(tags(work), ['v1.0.0']);
+    assert.equal(git(origin, 'rev-parse', 'v1.0.0^{commit}'), previewed);
   });
 
   test('an approved make refuses, changing no tag, when another version tag changed the next one', (t) => {
@@ -1484,8 +1610,8 @@ describe('version-tag.mjs preview and approved run on real git (integration)', (
   });
 
   test('the last line of a clear preview, run unchanged, clears what the preview showed, and a newer tag stays', (t) => {
-    const { work, origin, tags, runScript } = repositories(t);
-    assert.equal(runScript(work).status, 0);
+    const { work, origin, tags, runScript, make } = repositories(t);
+    assert.equal(make(work).status, 0);
     const head = git(work, 'rev-parse', 'HEAD');
     const preview = runScript(work, '--clear', 'v1.0.0', '--dry-run');
     assert.equal(preview.status, 0, preview.stderr);
@@ -1500,8 +1626,8 @@ describe('version-tag.mjs preview and approved run on real git (integration)', (
   });
 
   test('an approved clear refuses, changing no tag, when the tag is on another commit', (t) => {
-    const { work, origin, tags, runScript } = repositories(t);
-    assert.equal(runScript(work).status, 0);
+    const { work, origin, tags, runScript, make } = repositories(t);
+    assert.equal(make(work).status, 0);
     const result = runScript(work, '--clear', 'v1.0.0', '--here', '1'.repeat(40), '--origin', git(work, 'rev-parse', 'HEAD'));
     assert.equal(result.status, 1);
     assert.equal(lines(result.stderr).length, 1);
@@ -1531,5 +1657,48 @@ describe('version-tag.mjs preview and approved run on real git (integration)', (
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(tags(origin), []);
     assert.deepEqual(tags(work), []);
+  });
+});
+
+describe('version-tag.mjs making a tag on a given commit on real git (integration)', () => {
+  test('tags and pushes the commit from a clone on another branch with uncommitted changes', (t) => {
+    const { work, origin, tags, runScript } = repositories(t);
+    const head = git(work, 'rev-parse', 'HEAD');
+    git(work, 'switch', '--create', 'feature');
+    writeFileSync(join(work, 'CHANGELOG.md'), `${validChangelog}\nEdited, not committed.\n`);
+    writeFileSync(join(work, 'draft.txt'), 'draft\n');
+
+    const result = runScript(work, 'patch', '--commit', head);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(tags(work), ['v1.0.0']);
+    assert.equal(git(origin, 'rev-parse', 'v1.0.0^{commit}'), head);
+    assert.equal(git(work, 'branch', '--show-current'), 'feature');
+  });
+
+  test('refuses a commit that is not on origin\'s default branch, and makes no tag', (t) => {
+    const { work, origin, tags, runScript } = repositories(t);
+    git(work, 'switch', '--create', 'side');
+    writeFileSync(join(work, 'side.txt'), 'side\n');
+    git(work, 'add', '.');
+    git(work, 'commit', '-m', 'Only on a side branch');
+    git(work, 'push', 'origin', 'side');
+    const sideId = git(work, 'rev-parse', 'HEAD');
+
+    const result = runScript(work, '--commit', sideId);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.equal(lines(result.stderr).length, 1);
+    assert.match(result.stderr, /main/);
+    assert.deepEqual(tags(work), []);
+    assert.deepEqual(tags(origin), []);
+  });
+
+  test('refuses to make a tag without --commit, naming the release command, and makes no tag', (t) => {
+    const { work, origin, tags, runScript } = repositories(t);
+    const result = runScript(work);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /node \.agents\/release\.mjs/);
+    assert.deepEqual(tags(work), []);
+    assert.deepEqual(tags(origin), []);
   });
 });

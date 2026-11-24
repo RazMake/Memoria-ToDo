@@ -1,14 +1,10 @@
-# The one workflow. Design: docs/architecture/technology-stack.md, "A GitHub Actions workflow checks each push
-# and publishes each version tag" and "The workflow times the unit run, and a slow run opens one issue".
-name: Build, test, and release
+# Checks each branch push. Design: docs/architecture/technology-stack.md, "Three GitHub Actions workflows check
+# pushes, run every test, and publish releases" and "The workflow times the unit run, and a slow run opens one issue".
+name: Build and unit tests
 
 on:
-  workflow_dispatch:
   push:
-    # A branch push checks the code. A tag push (not a branch push) runs the release job only, which needs
-    # a passing manual run (workflow_dispatch) of the tag's commit.
     branches: ["**"]
-    tags: ["v*"]
 
 # Every job gets read-only access to the repository unless it asks for more.
 permissions:
@@ -20,11 +16,6 @@ env:
   # The slow-run issue is found by its label, not its title.
   SLOW_RUN_ISSUE_TITLE: Unit tests are slower than the time limit
   SLOW_RUN_ISSUE_LABEL: slow-unit-tests
-  # The installer ID is the folder name under %LocalAppData%, and can't change after the first release.
-  INSTALLER_ID: MemoriaToDo
-  APP_PROJECT: src/Desktop/App/Memoria.ToDo.Desktop.App.csproj
-  APP_EXE: Memoria.ToDo.Desktop.App.exe
-  APP_ICON: src/Desktop/App/app.ico
 
 defaults:
   run:
@@ -108,83 +99,3 @@ jobs:
             default { throw "The timing program printed an unknown decision: '$decision'" }
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-  # A manual run builds and runs every test kind. A release needs one that passed on its commit.
-  full-tests:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: windows-2025
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
-      - name: Build and run every test
-        run: |
-          node .agents/desktop-check.mjs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test "-p:MemoriaAllTestKinds=true"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-  # A version tag runs no test itself. It checks that a manual run of this workflow (full-tests above) passed
-  # every test on the tag's commit, then packs and publishes the release. Any failure before the last step
-  # publishes nothing.
-  release:
-    if: github.event_name == 'push' && github.ref_type == 'tag'
-    runs-on: windows-2025
-    permissions:
-      contents: write
-      actions: read
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # The full history, so a later step can tell whether the tag's commit is on the default branch.
-          fetch-depth: 0
-      - name: Take the version from the tag, or fail on a tag that isn't a version tag
-        run: |
-          $version = node .agents/version-tag.mjs --check $env:GITHUB_REF_NAME
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          "VERSION=$version" >> $env:GITHUB_ENV
-      - name: Write the version's release notes from the changelog, or fail when it has none
-        run: |
-          node .agents/version-tag.mjs --notes $env:GITHUB_REF_NAME > release-notes.md
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Fail unless the tag's commit is on the default branch
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          git merge-base --is-ancestor $env:GITHUB_SHA "origin/$env:DEFAULT_BRANCH"
-          if ($LASTEXITCODE -ne 0) {
-            throw "The tag '$env:GITHUB_REF_NAME' points to a commit that isn't on the default branch, '$env:DEFAULT_BRANCH'. Nothing was published."
-          }
-      - name: Fail unless a manual run of this workflow passed every test on the tag's commit
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          node .agents/full-run-check.mjs --repo ${{ github.repository }} --commit ${{ github.sha }} --ref ${{ github.ref_name }}
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
-      - name: Read the app's name from its Product property, and fail if it's empty
-        run: |
-          $name = (dotnet msbuild $env:APP_PROJECT -getProperty:Product).Trim()
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (-not $name) { throw "The app's Product property is empty. Set <Product> in Directory.Build.props." }
-          "APP_NAME=$name" >> $env:GITHUB_ENV
-      - name: Publish the desktop app, self-contained for x64
-        run: dotnet publish $env:APP_PROJECT -c Release -r win-x64 --self-contained true -o publish "-p:Version=$env:VERSION"
-      - name: Restore the pinned vpk
-        run: dotnet tool restore
-      - name: Download the last release, which the new one's delta packages build on
-        run: dotnet vpk download github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --token $env:GITHUB_TOKEN
-      - name: Pack the installer and update files, with no portable zip
-        run: >
-          dotnet vpk pack --packId $env:INSTALLER_ID --packVersion $env:VERSION --packDir publish
-          --mainExe $env:APP_EXE --packTitle $env:APP_NAME --icon $env:APP_ICON
-          --runtime win-x64 --shortcuts StartMenuRoot --noPortable --releaseNotes release-notes.md
-      - name: Publish the release
-        run: >
-          dotnet vpk upload github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --token $env:GITHUB_TOKEN
-          --publish --releaseName "$env:APP_NAME $env:VERSION" --tag "v$env:VERSION"
