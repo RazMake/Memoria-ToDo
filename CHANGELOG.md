@@ -6,10 +6,6 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
-- AI assistants on your PC, such as GitHub Copilot in VS Code, Claude Desktop, Claude Code, and Codex, can now use Memoria-ToDo while it runs. An assistant can list, search, add, edit, move, resolve, reopen, and delete tasks, add images to tasks, change tag colors and order, manage contacts, sync, change settings such as Start with Windows and Auto update, and read the app's log with the same filters as the Logs window. Only your own programs on this PC can connect. It can't set up Git access or the repository, update the app, or change shortcuts. An assistant's task never touches the task you're typing in Add. To connect one, open Configure: the new AI assistants card has the text to copy into your assistant, and a check box to turn access off on this PC. See [Connect an AI assistant](docs/user/connect-an-ai-assistant.md).
-- In Logs, a custom time range that falls around the hour skipped when clocks move forward in spring, and so ends before it starts, now shows in red. Before, it showed an empty list.
-- Your own programs and scripts can now work with the app while it runs. They can list, add, change, and delete tasks and contacts, see the sync status, start a sync, and read and change the tag colors and order. Only programs running under your Windows account on the same computer can connect; nothing is opened to the network. Each release now includes a client library for .NET and one for Node.js, ready to use from your own code.
-
 ## 1.2.0
 
 - The app now keeps a log of what it does, such as syncs, added, changed, and deleted tasks and contacts, and every error, with the time to the millisecond. When the app says files can't be loaded, the log names each file and why. The log stays on your computer, never holds passwords or keys, and cleans up after itself: entries older than two weeks are deleted, and it never grows past about 30 MB.
@@ -29,7 +25,9 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - A contact card no longer closes immediately when you move the pointer out of the text toward the card. It gives you the same short time to cross as when you leave the mention itself.
 - Task titles now stay on one line when you press an Enter combination that is not assigned to Save.
 - Fixed: in Task View, the window that lists your tasks, moving a task within its group could give it the same place in the overall order as a task in another group. The list of resolved tasks, which shows them all in one list, could then show the two in an order you didn't choose. A moved task now always gets a place of its own.
-
+- AI assistants on your PC, such as GitHub Copilot in VS Code, Claude Desktop, Claude Code, and Codex, can now use Memoria-ToDo while it runs. An assistant can list, search, add, edit, move, resolve, reopen, and delete tasks, add images to tasks, change tag colors and order, manage contacts, sync, change settings such as Start with Windows and Auto update, and read the app's log with the same filters as the Logs window. Only your own programs on this PC can connect. It can't set up Git access or the repository, update the app, or change shortcuts. An assistant's task never touches the task you're typing in Add. To connect one, open Configure: the new AI assistants card has the text to copy into your assistant, and a check box to turn access off on this PC. See [Connect an AI assistant](docs/user/connect-an-ai-assistant.md).
+- In Logs, a custom time range that falls around the hour skipped when clocks move forward in spring, and so ends before it starts, now shows in red. Before, it showed an empty list.
+- Your own programs and scripts can now work with the app while it runs. They can list, add, change, and delete tasks and contacts, see the sync status, start a sync, and read and change the tag colors and order. Only programs running under your Windows account on the same computer can connect; nothing is opened to the network. Each release now includes a client library for .NET and one for Node.js, ready to use from your own code.
 
 ## 1.1.1
 
