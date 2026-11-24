@@ -112,7 +112,8 @@ internal sealed class PipeListener(string pipeName, Func<Stream, Task> serve, Fu
         using var identity = WindowsIdentity.GetCurrent();
         var user = identity.User!;
         var security = new PipeSecurity();
-        security.SetOwner(user);
+        // CurrentUserOnly checks the token owner, which can differ from the user when elevated.
+        security.SetOwner(identity.Owner!);
         security.AddAccessRule(new PipeAccessRule(user, PipeAccessRights.ReadWrite | PipeAccessRights.CreateNewInstance, AccessControlType.Allow));
         security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.NetworkSid, null), PipeAccessRights.FullControl, AccessControlType.Deny));
         return security;
