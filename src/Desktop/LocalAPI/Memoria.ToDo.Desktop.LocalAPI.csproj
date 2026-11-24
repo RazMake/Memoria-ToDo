@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The tests of the Local API's internal components. -->
+    <InternalsVisibleTo Include="Memoria.ToDo.Desktop.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Kestrel and gRPC's server come from ASP.NET Core's shared framework, which the self-contained app then carries. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Serilog" />
+    <ProjectReference Include="..\..\Api\Contract\Memoria.ToDo.Api.Contract.csproj" />
+    <ProjectReference Include="..\..\Shared\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
+    <ProjectReference Include="..\..\Shared\Contacts\Memoria.ToDo.Shared.Contacts.csproj" />
+    <ProjectReference Include="..\..\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
+    <ProjectReference Include="..\..\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -18,7 +18,7 @@ public interface ISyncService : IAsyncDisposable
     /// <summary>
     /// Starts a pass or joins the active pass, also before Start. Operational failures are returned
     /// as a failed status. Cancellation stops only this caller's wait, not the service-owned pass.
-    /// Throws InvalidOperationException before starting a pass when no repository or device key is available,
+    /// Throws SyncNotReadyException before starting a pass when no repository or device key is available,
     /// or the selected repository contains the device-only data folder.
     /// </summary>
     /// <exception cref="ObjectDisposedException">

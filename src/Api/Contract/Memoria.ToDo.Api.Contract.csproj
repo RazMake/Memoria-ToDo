@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- The .proto files are the contract's only home; Grpc.Tools generates the message, server, and client code from them. -->
+  <ItemGroup>
+    <Protobuf Include="memoria\todo\v1\*.proto" ProtoRoot="." GrpcServices="Both" />
+  </ItemGroup>
+
+  <!-- The .proto files, not a PublicAPI file, list this project's public interface, so the generated code isn't listed. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);RS0016;RS0041</NoWarn>
+  </PropertyGroup>
+
+</Project>

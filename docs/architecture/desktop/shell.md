@@ -153,7 +153,7 @@ Before the first success, the time line is absent. Lines use the platform's newl
 [`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) replaces synchronous Stop.
 The first call detaches sync notices, cancels and observes Shell's pending waits and startup navigation, disposes Configure, and releases
 every shortcut and the tray on the UI thread. It then awaits the shared Sync service's disposal, then Updates' stop, and only then releases the one-instance claim. Proposed by [Updates](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it): Updates stops after Sync, since Updates' stop starts Velopack's updater when an update ended the app, and the updater waits only 60 seconds for the app to end. This is a decision to confirm. Cleanup attempts every step and retains
-all failures. Repeated calls join the same cleanup; cancelling a caller's wait does not abandon it.
+all failures. Repeated calls join the same cleanup; cancelling a caller's wait does not abandon it. The user decided, with the [Local API](../local-api.md#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread): the Local API's stop comes before Sync's disposal.
 
 Updates retains its run Task instead of discarding it, and observes a check that
 outlives cancellation, as [Updates](updates.md#a-check-runs-at-start-and-each-night-at-3-am) says. Shell never waits synchronously for either update or sync work.
@@ -206,6 +206,7 @@ No module uses Shell. Only the composition root does, through one part:
         IContactsWindow contacts, IConfigureWindow configure, ILogsWindow logs, IUpdateLifetime updates,
         IGlobalShortcut shortcut, IOneInstance oneInstance, bool startedAtSignIn, ISyncService sync, ILogger logger);
     ```
+  - The user decided, with the [Local API](../local-api.md#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread): **Create the tray app takes the Local API's lifetime, `ILocalApiLifetime localApi`, after `IUpdateLifetime updates`.** Starting starts it only after the claim is won and after Sync's initial local publication, even when initialization failed; its start returns at once. Stopping stops it first, before Sync's disposal, so no call reaches a disposed Sync and the pipe is free before the claim is released.
 
 Shell publishes three ports. The composition root implements each one, and Shell's unit tests use each one's [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test); the real adapters have integration tests. Shell's former updates port, its one part that downloaded a newer version for the next start, moves to Updates as its [install port](updates.md#velopack-checks-downloads-and-applies-behind-one-port), and its update schedule and the time source it needed move with it, as the user decided.
 

@@ -57,8 +57,14 @@ internal sealed class ContactSnapshot
     public GroupFile? GroupNamed(string name) =>
         GroupFiles.FirstOrDefault(group => group.Name.Equals(name, StringComparison.Ordinal));
 
-    /// <summary>Whether the group's file exists but was skipped.</summary>
-    public bool IsSkipped(string group) => skippedGroups.Contains(group);
+    /// <summary>Throws <see cref="SkippedFileException"/>, naming the group's file, when that file exists but was skipped.</summary>
+    public void ThrowIfSkipped(string group)
+    {
+        if (!skippedGroups.Contains(group))
+            return;
+        var path = ContactLayout.GroupRelativePath(group);
+        throw new SkippedFileException(Skipped.Last(file => file.RelativePath == path));
+    }
 
     /// <summary>The snapshot with each given group file replacing the loaded one of its name.</summary>
     public ContactSnapshot With(IEnumerable<GroupFile> changed)

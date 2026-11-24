@@ -201,6 +201,83 @@ describe('a changed product project (unit)', () => {
   });
 });
 
+// ---------- the Local API and its Node.js client ----------
+
+describe('a change to the Local API or its Node.js client (unit)', () => {
+  const contract = 'src/Api/Contract/Memoria.ToDo.Api.Contract.csproj';
+  const client = 'src/Api/Client/Memoria.ToDo.Api.Client.csproj';
+  const localApi = 'src/Desktop/LocalAPI/Memoria.ToDo.Desktop.LocalAPI.csproj';
+  const apiTests = 'tests/Api/Tests/Memoria.ToDo.Api.Tests.csproj';
+  const apiProjects = [
+    ...projects.filter((p) => p.path !== desktopTests),
+    project(contract),
+    project(client, contract),
+    project(localApi, contract, desktopPlatform),
+    project(apiTests, client),
+    project(desktopTests, desktopPlatform, taskEditor, taskList, logs, shell, app, desktopFakes, testHost, localApi, client),
+  ];
+  const apiTestFiles = [
+    ...testFiles,
+    testFile('tests/Api/Tests/Client/ClientTests.cs', 'Memoria.ToDo.Api.Client.Tests'),
+    testFile('tests/Desktop/Tests/LocalAPI/LocalApiTests.cs', 'Memoria.ToDo.Desktop.LocalAPI.Tests'),
+  ];
+  const planApi = (...paths) => planTests({ changes: modified(...paths), projects: apiProjects, testFiles: apiTestFiles });
+
+  // Run from the repository root, in this order: install, build, then the tests with Node.js's per-test timeout.
+  const nodeCommands = [
+    'npm ci --prefix src/Api/NodeClient',
+    'npm run build --prefix src/Api/NodeClient',
+    'node --test --test-timeout=120000 "tests/Api/NodeClient/*.test.mjs"',
+  ];
+
+  for (const path of ['src/Api/NodeClient/package-lock.json', 'src/Api/NodeClient/src/connect.ts', 'tests/Api/NodeClient/client.test.mjs']) {
+    test(`builds the Node.js client, then runs its tests, when ${path} changes`, () => {
+      const result = planApi(path);
+
+      assert.deepEqual(result.commands.slice(-3), nodeCommands);
+      assert.equal(result.commands.filter((c) => c.startsWith('npm ')).length, 2);
+      assert.ok(result.extras.some((extra) => extra.reasons.some((r) => r.startsWith('changed: ') && r.includes(path))));
+    });
+  }
+
+  test('also selects the Local API\'s tests when the Node.js client changes, since they run that client', () => {
+    const result = planApi('src/Api/NodeClient/package-lock.json');
+
+    assert.ok(selectionOf(result, 'Memoria.ToDo.Desktop.LocalAPI.Tests'));
+  });
+
+  test('selects the Node.js client\'s build and tests, and the .NET dependants, when the contract changes', () => {
+    const result = planApi('src/Api/Contract/memoria/todo/v1/tasks.proto');
+
+    assert.deepEqual(result.commands.slice(-3), nodeCommands);
+    assert.ok(selectionOf(result, 'Memoria.ToDo.Api.Client.Tests'));
+    assert.ok(selectionOf(result, 'Memoria.ToDo.Desktop.LocalAPI.Tests'));
+    assert.ok(result.extras.some((extra) => extra.reasons.some((r) => r.startsWith('changed: ') && r.includes('tasks.proto'))));
+  });
+
+  test('prints the Node.js commands without a duplicate when both the client and the contract changed', () => {
+    const result = planApi('src/Api/Contract/memoria/todo/v1/tasks.proto', 'src/Api/NodeClient/src/connect.ts');
+
+    assert.equal(result.commands.filter((c) => c === nodeCommands[2]).length, 1);
+    assert.equal(result.commands.filter((c) => c === nodeCommands[0]).length, 1);
+  });
+
+  test('does not select the Node.js client when a .NET client file changes', () => {
+    const result = planApi('src/Api/Client/MemoriaClient.cs');
+
+    assert.ok(!result.commands.some((c) => c.startsWith('npm ') || c.includes('tests/Api/NodeClient')));
+  });
+
+  test('prints the Node.js commands, one per line', () => {
+    const text = formatPlan(planApi('src/Api/NodeClient/package-lock.json'));
+    const printed = text.split('\n');
+
+    for (const command of nodeCommands) {
+      assert.ok(printed.includes(command), command);
+    }
+  });
+});
+
 // ---------- screens ----------
 
 describe('a change inside screen folders (unit)', () => {

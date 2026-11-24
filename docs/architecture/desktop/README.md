@@ -1,8 +1,8 @@
 # How the desktop app is built
 
-The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, Configure, and Logs. This page lists its eight modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
+The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, Configure, and Logs. This page lists its nine modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
 
-## Eight modules make up the desktop app
+## Nine modules make up the desktop app
 
 Each module is a project of its own, and the [module map](../modules.md#module-map) says which modules each may use. The table lists them in the order a user meets them:
 
@@ -16,6 +16,9 @@ Each module is a project of its own, and the [module map](../modules.md#module-m
 | [Configure](configure.md) | The settings window: the four global shortcuts, the Close window and Save shortcuts, starting with Windows, the shared deletion delay, and sync status details |
 | [Updates](updates.md) | When the app checks for a new version, the status bar Add and Task View share, What is new, Auto update, and how an update restarts the app |
 | [Logs](logs.md) | The window the tray menu opens to read the app's [log](../logging.md): entries newest first, with filters by time, severity, and component, and a quick search |
+| [Local API](../local-api.md) | The gRPC server, with no window, that lets your own programs on this PC reach tasks, contacts, sync, and shared settings over a named pipe only your account opens. Its design file sits beside the shared modules' pages, with the [contract](../local-api-contract.md) its clients share. |
+
+The composition root creates the Local API with the task store, Contacts, Sync, its pipe name, and its logger, and passes its lifetime to Shell, which [starts and stops it](shell.md#public-interface) as it does Updates.
 
 Every module logs its operations and failures through Serilog, as [Logging](../logging.md) decides.
 
@@ -803,6 +806,7 @@ The table lists each step, what it builds, and its status:
 | 16 | Tasks' notices after a change | Tasks raises its notices one by one after a change: `Changed`, then settings, tag colors, and tag order, then the [local save report](../tasks.md#sync-shares-the-repositorys-lock-never-a-network-wait). When a handler throws, the notices after it and the report are skipped, so Sync doesn't learn of the save. This step makes Tasks attempt every notice and the report, even when one fails, and throw the failures by the platform's [rule for steps that must all run](../modules.md#steps-that-must-all-run-throw-their-failures-together), as [Contacts](../contacts.md#failure-modes) does. Its design is in Tasks' [failure modes](../tasks.md#failure-modes). | Implemented |
 |
 | 18 | Contact cards and the "@" list at the cursor | The Task editor's ["@" list in a popup at the "@"](task-editor.md#typing-an-at-sign-mentions-a-contact), with its template header and "**Full Name** (_alias_)" rows, and its [alias list for a plain text box](task-editor.md#a-plain-text-box-can-offer-contacts-by-alias); Task View's [search by "@" alias](task-list.md#search-narrows-the-list); the Contact list's [contact card](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details), with Contacts' `ContactOf`; the platform's [hover card](#a-hover-card-shows-while-the-pointer-rests-on-a-part) and search band box; Rendering's [mention numbers](../rendering.md#a-mention-shows-on-a-colored-background); and the cards on [chips](task-editor.md#resting-the-pointer-on-a-chip-shows-the-contacts-card), [titles and descriptions](task-list.md#resting-the-pointer-on-a-mention-shows-the-contacts-card), through the [Formatted view](formatted-view.md#a-mention-shows-a-card-its-user-makes). | Not scheduled |
+| 19 | Local API | The [Local API](../local-api.md) module, the [contract](../local-api-contract.md) and both clients, Tasks' [direct task changes](../tasks.md#direct-task-changes-are-a-capability-of-their-own), Shell [starting and stopping it](shell.md#public-interface), the Api part's table in the [module map](../modules.md#module-map) with the architecture test's fourth part, and the release files. Its cost is measured first, against the [limits](../local-api.md#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread) it sets. | Not scheduled |
 
 The remaining work follows this order:
 

@@ -1,0 +1,9 @@
+// Messages that more than one service uses. Design: docs/architecture/local-api-contract.md.
+syntax = "proto3";
+
+package memoria.todo.v1;
+
+option csharp_namespace = "Memoria.ToDo.Api.V1";
+
+// An empty notice: something changed, so the program reads whatever it needs.
+message ChangeNotice {}

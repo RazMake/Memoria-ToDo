@@ -6,6 +6,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- Your own programs and scripts can now work with the app while it runs. They can list, add, change, and delete tasks and contacts, see the sync status, start a sync, and read and change the tag colors and order. Only programs running under your Windows account on the same computer can connect; nothing is opened to the network. Each release now includes a client library for .NET and one for Node.js, ready to use from your own code.
+
 ## 1.2.0
 
 - The app now keeps a log of what it does, such as syncs, added, changed, and deleted tasks and contacts, and every error, with the time to the millisecond. When the app says files can't be loaded, the log names each file and why. The log stays on your computer, never holds passwords or keys, and cleans up after itself: entries older than two weeks are deleted, and it never grows past about 30 MB.

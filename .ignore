@@ -14,3 +14,5 @@ obj/
 TestResults/
 Releases/
 publish/
+node_modules/
+src/Api/NodeClient/dist/

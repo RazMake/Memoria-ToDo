@@ -1,0 +1,44 @@
+// Design: docs/architecture/local-api-contract.md.
+syntax = "proto3";
+
+package memoria.todo.v1;
+
+option csharp_namespace = "Memoria.ToDo.Api.V1";
+
+service Settings {
+  rpc GetSettings(GetSettingsRequest) returns (SharedSettings);
+  rpc SetDeletionDelay(SetDeletionDelayRequest) returns (SharedSettings);
+  rpc SetTagColor(SetTagColorRequest) returns (SharedSettings);
+  rpc MoveTag(MoveTagRequest) returns (SharedSettings);
+}
+
+message TagLook {
+  string tag = 1;
+  string color = 2;
+  bool color_is_default = 3;
+}
+
+message SharedSettings {
+  int32 deletion_delay_days = 1;
+  // Each tag in use, in the tags' order.
+  repeated TagLook tags = 2;
+  // Rendering's 30 tag color names.
+  repeated string colors = 3;
+}
+
+message GetSettingsRequest {}
+
+message SetDeletionDelayRequest {
+  int32 deletion_delay_days = 1;
+}
+
+message SetTagColorRequest {
+  string tag = 1;
+  string color = 2;
+}
+
+message MoveTagRequest {
+  string tag = 1;
+  optional string previous_tag = 2;
+  optional string next_tag = 3;
+}

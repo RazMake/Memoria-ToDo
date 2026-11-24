@@ -53,6 +53,7 @@ The script holds these rules in code, their only home; this table explains them.
 
 | A changed path under | Selects |
 | --- | --- |
+| The Node.js client of the [Local API](local-api.md), `src/Api/NodeClient/` or `tests/Api/NodeClient/` | Every Node.js client test, with the [build and command the technology stack gives](technology-stack.md#the-local-api-adds-a-part-its-packages-nodejs-and-two-release-files), and the Local API's tests, whose integration tests run that client |
 | A screen folder of a product project, `src/<Part>/<Module>/<Screen>/` | That screen's test folder, every module that depends on the module, and the test folders that use those folders' test code. Another changed file of the module outside its screen folders widens this to the next row. |
 | A product project, `src/<Part>/<Module>/` | That module and every module that depends on it, each module's own test folder, and the test folders that use those folders' test code |
 | A screen's test folder, `tests/<Part>/Tests/<Module>/<Screen>/` | That folder, and the test folders that use its test code |
@@ -69,6 +70,7 @@ The script holds these rules in code, their only home; this table explains them.
 Two rules add to the row that matched:
 
 - **Any `.csproj`, or `docs/architecture/modules.md`, also selects the [architecture tests](technology-stack.md#architecture-tests-check-the-module-map)**, since they read both.
+- **A change in `src/Api/Contract/` also selects the Node.js client's tests**, since that client loads the contract's `.proto` files but isn't in the project graph. The user decided this with the [Local API](local-api.md). Those tests need the package built first, with `npm ci` and then `npm run build` in `src/Api/NodeClient/`, and each run bounds every test with Node.js's per-test timeout. The [technology stack](technology-stack.md#the-local-api-adds-a-part-its-packages-nodejs-and-two-release-files) holds the commands and the bound.
 - **A deleted file whose project no longer exists selects every test**, since the graph can't say who used it. This holds for a deleted test project too.
 - **A changed file that a test project compiles through a linked `Compile` item selects every test in that test project**, besides what its own row selects. Today the Shared tests link the desktop composition root's Windows file system, which Sync's integration tests run. Decided by the session, a decision to confirm: following which tests call the linked code would need C# analysis.
 

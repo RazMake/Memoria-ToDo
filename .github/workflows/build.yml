@@ -43,6 +43,17 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Build the Node.js client, which its tests load
+        working-directory: src/Api/NodeClient
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run the Node.js client's unit tests
+        run: |
+          node --test --test-timeout=120000 --test-name-pattern="\(unit\)" "tests/Api/NodeClient/*.test.mjs"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and run the unit tests
         run: |
           # The timed run appends the JUnit report and results folder after Directory.Build.props's unit filter.
@@ -118,6 +129,17 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Build the Node.js client, which its tests and the Local API's integration tests load
+        working-directory: src/Api/NodeClient
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run every test of the Node.js client
+        run: |
+          node --test --test-timeout=120000 "tests/Api/NodeClient/*.test.mjs"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and run every test
         run: |
           node .agents/desktop-check.mjs
@@ -184,7 +206,29 @@ jobs:
           dotnet vpk pack --packId $env:INSTALLER_ID --packVersion $env:VERSION --packDir publish
           --mainExe $env:APP_EXE --packTitle $env:APP_NAME --icon $env:APP_ICON
           --runtime win-x64 --shortcuts StartMenuRoot --noPortable --releaseNotes release-notes.md
-      - name: Publish the release
+      - name: Pack the .NET client, which holds the contract's assembly
+        run: dotnet pack src/Api/Client/Memoria.ToDo.Api.Client.csproj -c Release -o packages "-p:Version=$env:VERSION"
+      - name: Pack the Node.js client
+        working-directory: src/Api/NodeClient
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm version $env:VERSION --no-git-tag-version --allow-same-version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm pack --pack-destination ../../../packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload the installer and update files to a draft release, which no user or installed app sees
+        # Without --publish, vpk leaves the release a draft.
         run: >
           dotnet vpk upload github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --token $env:GITHUB_TOKEN
-          --publish --releaseName "$env:APP_NAME $env:VERSION" --tag "v$env:VERSION"
+          --releaseName "$env:APP_NAME $env:VERSION" --tag "v$env:VERSION"
+      - name: Attach the client packages to the draft
+        run: |
+          gh release upload "v$env:VERSION" (Get-ChildItem packages/*.nupkg, packages/*.tgz).FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Publish the release, now that everything is attached
+        run: |
+          gh release edit "v$env:VERSION" --draft=false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

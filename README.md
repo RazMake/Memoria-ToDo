@@ -15,7 +15,7 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
 
 ## What you need
 
-- **Node.js**, to run the AI tooling in [.agents/](.agents/): the repository map, the agent file generator, and the [version tag script](docs/architecture/version-tags.md).
+- **Node.js 22 or later**, to run the AI tooling in [.agents/](.agents/): the repository map, the agent file generator, and the [version tag script](docs/architecture/version-tags.md). It also builds and tests the [Local API's](docs/architecture/local-api.md) Node.js client, whose integration tests run it.
 - **An AI coding tool**: GitHub Copilot, OpenAI Codex, or Claude Code v2.1.284 or later ([required for Sonnet 5.5](https://code.claude.com/docs/en/model-config)). Each one reads [`AGENTS.md`](AGENTS.md) and the agents generated from [.agents/subagents/](.agents/subagents/).
 - **The .NET 11 SDK**, the version [`global.json`](global.json) pins. It installs beside any other SDK, in a folder just for this repository, without administrator rights. From the repository root, in PowerShell:
 

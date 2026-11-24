@@ -60,6 +60,8 @@ Memoria.ToDo.Shared.Sync.SyncFailure.PushRejected = 5 -> Memoria.ToDo.Shared.Syn
 Memoria.ToDo.Shared.Sync.SyncFailure.Repository = 4 -> Memoria.ToDo.Shared.Sync.SyncFailure
 Memoria.ToDo.Shared.Sync.SyncFailure.Unexpected = 8 -> Memoria.ToDo.Shared.Sync.SyncFailure
 Memoria.ToDo.Shared.Sync.SyncFailure.UnknownHostKey = 2 -> Memoria.ToDo.Shared.Sync.SyncFailure
+Memoria.ToDo.Shared.Sync.SyncNotReadyException
+Memoria.ToDo.Shared.Sync.SyncNotReadyException.SyncNotReadyException(string! message) -> void
 Memoria.ToDo.Shared.Sync.SyncService
 Memoria.ToDo.Shared.Sync.SyncState
 Memoria.ToDo.Shared.Sync.SyncState.Error = 3 -> Memoria.ToDo.Shared.Sync.SyncState
