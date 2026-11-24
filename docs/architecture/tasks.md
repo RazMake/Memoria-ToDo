@@ -46,7 +46,7 @@ Each task file is a JSON object with the nine fields in the table. Every time is
 | `resolved` | When the task was resolved, or `null` while it's open |
 | `version` | The file format's version, starting at 1 |
 
-- Times are written to the millisecond, so two edits rarely carry the same time.
+- Times are written to the millisecond, and each change on a device [moves `updated` strictly forward](#direct-task-changes-are-a-capability-of-their-own).
 - A newer app reads every older `version`. An app that finds a newer `version` skips the file and leaves it unchanged, by the platform's [version and skip rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules).
 
 Proposed, each a decision to confirm:
@@ -701,12 +701,101 @@ The file rules keep their `TagColorsFileName` and `MergeTagColors` names; their 
 
 Proposed: the file rules keep their `TagColors` names, though `tags.json` now holds places too. Renaming them would change Sync's code and two published names for no change in behavior. This is a decision to confirm.
 
+### Direct task changes are a capability of their own
+
+The user decided, for the [local API](local-api-contract.md#task-calls-never-touch-your-draft-or-open-edit): a fourth capability adds and changes tasks for a caller with no editor. `Add` deletes the kept draft, `SaveImage` keeps images with the open edit or the draft, and `SaveEdit` moves the open edit's images, so a program using them would change what you're typing. Direct changes never touch the draft or an open edit. A task has one tag here, as in the editor. The declarations below add to the existing contracts:
+
+```csharp
+namespace Memoria.ToDo.Shared.Tasks;
+
+public interface ITaskStore : ITasks
+{
+    // The existing members stay as they are.
+
+    /// <summary>Adds and changes tasks without touching the kept draft or any open edit.</summary>
+    IDirectTaskChanges Direct { get; }
+}
+
+/// <summary>
+/// Task changes for a caller with no editor, such as the local API. Never reads or changes the kept draft or an open
+/// edit's waiting images. Safe to call from any thread; uses the task store's lock. Each change writes the task's file,
+/// then raises Changed on the calling thread and reports the local save, as ITasks' changes do.
+/// </summary>
+public interface IDirectTaskChanges
+{
+    /// <summary>
+    /// Adds an open task with a new ID, at the top, with Created and Updated set to now; a null or empty tag means none. Returns it.
+    /// Throws, before writing: ArgumentException for an empty or multi-line title, or an invalid tag;
+    /// NoRepositoryFolderException when no folder is set.
+    /// </summary>
+    TaskItem Add(string title, string description, string? tag);
+
+    /// <summary>
+    /// Replaces each field that isn't null; an empty tag removes every tag. Sets Updated, unless nothing changed, which
+    /// writes nothing. Returns the task as saved. Throws, before writing: StaleTaskException when the task's Updated isn't
+    /// baseUpdated; TaskNotFoundException; ArgumentException for an empty or multi-line title or an invalid tag;
+    /// NoRepositoryFolderException.
+    /// </summary>
+    TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, string? tag);
+
+    /// <summary>
+    /// Shrinks the image to at most 1 MB, writes it into the task's image folder in the clone, and appends its Markdown on
+    /// a new line at the end of the description, or as the whole description when it's empty, in one save that sets
+    /// Updated. Deletes the image again when the save
+    /// fails. Returns the task as saved. Throws, before writing: TaskNotFoundException; InvalidDataException when it
+    /// isn't an image; ImageTooLargeException; NoRepositoryFolderException.
+    /// </summary>
+    TaskItem AddImage(string taskId, byte[] image, string altText);
+}
+
+/// <summary>The task changed since the caller read it. Current is the task as it is now.</summary>
+public sealed class StaleTaskException : InvalidOperationException
+{
+    public StaleTaskException(TaskItem current);
+
+    public TaskItem Current { get; }
+}
+```
+
+Moving, resolving, reopening, and deleting use `ITasks` as they are, since none touches the draft.
+
+The user decided: `Update` compares `Updated` exactly, to the millisecond it's stored to, so a caller that read a task before any change passes. No update without a time to compare is offered, since a program would undo a change it never saw.
+
+**Every change to a task moves `Updated` strictly forward.** An editor save, a move, a resolve, a reopen, a direct update, and an added image each set it to now, cut to the millisecond, or to one millisecond after its last value when now isn't later. So two changes in the same millisecond still leave different times, and an `Update` that read the first fails with `StaleTaskException`.
+
+Decided by the implementation, to confirm: `Add` treats an empty tag as no tag, as `Update` treats it as a cleared tag, so a program that sends an empty tag gets the same result from both. `AddImage` on an empty description makes the image's Markdown the whole description, with no blank first line.
+
+### A caller can require readable settings files
+
+The user decided that Tasks, which owns `settings.json` and `tags.json`, says when either was skipped, with the platform's [`SkippedFileException`](modules.md#a-call-that-needs-a-skipped-file-throws-one-type). The [local API's settings calls](local-api-contract.md#four-services-cover-version-1) need it: tag colors and places fall back to defaults while `tags.json` can't be read, so a reply would hide the problem, and a write to one file must not happen while the other is skipped. The existing reads and writes keep their contracts.
+
+Proposed, a decision to confirm: this declaration.
+
+```csharp
+namespace Memoria.ToDo.Shared.Tasks;
+
+public interface ITaskStore : ITasks
+{
+    // The existing members stay as they are.
+
+    /// <summary>
+    /// Throws SkippedFileException when the latest load skipped settings.json or tags.json, naming settings.json
+    /// when both were. Does nothing otherwise, including when either file is missing or no repository is selected.
+    /// Writes nothing and raises nothing.
+    /// </summary>
+    void RequireReadableSettings();
+}
+```
+
+The check and a later call each take the lock on their own, so a sync that skips a file between them makes the later call fail as its own contract says, or a read answer from defaults. Proposed: this is an accepted risk, a decision to confirm.
+
 ## Failure modes
 
 - **No clone folder is set**: adding a task fails before any file is written, and the screen that asked keeps the text and points to where the folder is set.
 - **A task file can't be read**, such as broken JSON from the remote: Tasks skips the task and never deletes its file, and the sync status names it.
 - **A task file has a newer `version`**: Tasks skips it and leaves it unchanged, and the sync status asks the user to update the app.
 - **A task file can't be written**, such as on a full disk: the screen that asked shows the error and keeps the user's text, and the draft stays.
+- **A direct update names a task that changed since the caller read it**: it throws `StaleTaskException` and writes nothing, as [direct task changes](#direct-task-changes-are-a-capability-of-their-own) say.
 - **An image can't be read, or can't be shrunk to 1 MB**: nothing is saved, and the editor says why.
 - **The kept draft can't be read**: loading it fails with `InvalidDataException` (a read failure keeps its cause inside), and the file stays as it is until the next keep or discard. The Add window then opens empty and says so.
 - **Adding a task fails after its file is written**, while moving images or deleting the draft: Tasks undoes what it did, moving the images back and deleting the new task file, and rethrows the original error, so the draft stays whole, nothing is left in the repository, and a retry works. The draft's images folder is deleted before its file, so a failed draft delete is undone the same way. If the undo itself fails, Tasks throws an `AggregateException` with both errors. Adding never overwrites: if the task file's path is already occupied, even by a file that was skipped on load, it throws `ArgumentException`.

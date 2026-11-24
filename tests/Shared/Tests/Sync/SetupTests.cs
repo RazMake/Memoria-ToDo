@@ -159,7 +159,7 @@ public sealed class SetupTests
         f.Git.SeedClone(link, f.Address);
         await using var sync = f.Create();
 
-        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => sync.SyncNowAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<SyncNotReadyException>(() => sync.SyncNowAsync(CancellationToken.None));
 
         Assert.Equal(0, f.Git.ConnectionsOpened);
     }

@@ -21,6 +21,17 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Build the Node.js client, which its tests and the Local API's integration tests load
+        working-directory: src/Api/NodeClient
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run every test of the Node.js client
+        run: |
+          node --test --test-timeout=120000 "tests/Api/NodeClient/*.test.mjs"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and run every test
         run: |
           node .agents/desktop-check.mjs

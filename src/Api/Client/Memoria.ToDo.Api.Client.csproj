@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The NuGet package ID; the release gives the package its version from the version tag. -->
+    <PackageId>Memoria.ToDo.Client</PackageId>
+    <Description>.NET client for the local API of the Memoria-ToDo desktop app.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The tests of the client's internal components. -->
+    <InternalsVisibleTo Include="Memoria.ToDo.Api.Tests" />
+    <!-- The Local API's real-pipe tests connect with this client through its pipe-name seam. -->
+    <InternalsVisibleTo Include="Memoria.ToDo.Desktop.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The package holds the contract's assembly, since a package can't depend on a project nobody publishes.
+         PrivateAssets keeps the contract out of the package's dependencies, so the contract's own packages are listed here. -->
+    <ProjectReference Include="..\Contract\Memoria.ToDo.Api.Contract.csproj" PrivateAssets="all" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);MemoriaIncludeContractAssembly</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+
+  <Target Name="MemoriaIncludeContractAssembly">
+    <ItemGroup>
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths)" Condition="'%(Filename)' == 'Memoria.ToDo.Api.Contract'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -61,7 +61,7 @@ The table lists what a failed run leaves, and what you do:
 | --- | --- | --- |
 | Plan or Tests | No tag, nothing published | Fix the problem, commit and push, then start a new release |
 | Tag | No new tag on origin; the script deletes the tag it made when its push fails | Start a new release |
-| Publish | The tag on origin, and no release | Re-run the failed jobs: GitHub re-runs only Publish and keeps the other jobs' results ([re-runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)). Or [clear](version-tags.md#clearing-deletes-one-version-tag-here-and-on-origin) the tag and start a new release. |
+| Publish | The tag on origin, no published release, and a [draft](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) of it if the upload started, which no user or installed app sees | Delete the draft on GitHub, if there is one. Then re-run the failed jobs: GitHub re-runs only Publish and keeps the other jobs' results ([re-runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)). Or [clear](version-tags.md#clearing-deletes-one-version-tag-here-and-on-origin) the tag and start a new release. |
 
 ### The release command previews, asks once, then follows the run
 

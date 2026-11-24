@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Api\Contract\Memoria.ToDo.Api.Contract.csproj" />
+        <ProjectReference Include="..\..\..\src\Api\Client\Memoria.ToDo.Api.Client.csproj" />  </ItemGroup>
+
+</Project>

@@ -39,10 +39,11 @@ internal sealed partial class ModuleMap
             }
         });
 
-    /// <summary>The module a "May use" name means for a module of <paramref name="part"/>: the part's own, else the shared library's.</summary>
+    /// <summary>The module a "May use" name means for a module of <paramref name="part"/>: the part's own, else the shared library's, else the Api part's.</summary>
     public MapModule Resolve(string part, string name) =>
         Modules.FirstOrDefault(m => m.Part == part && m.Name == name)
         ?? Modules.FirstOrDefault(m => m.Part == "Shared" && m.Name == name)
+        ?? Modules.FirstOrDefault(m => m.Part == "Api" && m.Name == name)
         ?? throw new InvalidOperationException($"The module map names '{name}' as used by a {part} module, but lists no such module.");
 
     public static ModuleMap Read(string modulesMarkdown)
@@ -74,6 +75,7 @@ internal sealed partial class ModuleMap
                 {
                     "shared library" => "Shared",
                     "desktop app" => "Desktop",
+                    "Api part" => "Api",
                     _ => "Android",
                 };
                 headerSeen = false;
@@ -114,6 +116,6 @@ internal sealed partial class ModuleMap
         return new ModuleMap(modules);
     }
 
-    [GeneratedRegex(@"^The (shared library|desktop app|Android app) has ")]
+    [GeneratedRegex(@"^The (shared library|desktop app|Api part|Android app) has ")]
     private static partial Regex PartLeadIn();
 }

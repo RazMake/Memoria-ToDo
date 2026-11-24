@@ -66,21 +66,22 @@ public interface IContacts
     /// Throws, before writing: <see cref="NoRepositoryFolderException"/> with no clone; <see cref="ArgumentException"/> for an invalid
     /// contact, a name another contact holds, a key its data type doesn't list that the contact didn't hold,
     /// an unknown group, a new contact in "me", or a new ID for the user's own contact;
-    /// <see cref="InvalidOperationException"/> when the group's file was skipped.
+    /// <see cref="SkippedFileException"/> when the group's file was skipped.
     /// </summary>
     void Save(string groupName, Contact contact);
 
     /// <summary>
     /// Removes the contact from the group's file, then raises Changed. Throws, before writing:
     /// <see cref="NoRepositoryFolderException"/>; <see cref="ArgumentException"/> for "me", an unknown group, or an ID the group doesn't hold;
-    /// <see cref="InvalidOperationException"/> when the group's file was skipped.
+    /// <see cref="SkippedFileException"/> when the group's file was skipped.
     /// </summary>
     void Delete(string groupName, string id);
 
     /// <summary>
     /// Moves the group between two groups now next to each other, null at either end, rewriting positions
     /// as the design says, then raises Changed. Does nothing when the group is already there.
-    /// Throws <see cref="ArgumentException"/> when a group is unknown,
+    /// Throws <see cref="SkippedFileException"/> first, for the moved group, then the previous, then the next, whose file was skipped;
+    /// then <see cref="ArgumentException"/> when a group is unknown,
     /// or previous and next aren't neighbors once the group is taken out; <see cref="NoRepositoryFolderException"/>.
     /// A renumber that fails partway publishes the files it wrote, then throws the failure.
     /// </summary>

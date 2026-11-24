@@ -1,0 +1,4 @@
+#nullable enable
+Memoria.ToDo.Api.Contract.LocalApiPipe
+static Memoria.ToDo.Api.Contract.LocalApiPipe.ForCurrentUser() -> string!
+static Memoria.ToDo.Api.Contract.LocalApiPipe.NameFor(string! domain, string! user) -> string!

@@ -234,7 +234,7 @@ internal sealed class SyncEngine : ISyncService
         string folder;
         try
         {
-            folder = repository.Folder ?? throw new InvalidOperationException("No repository is selected.");
+            folder = repository.Folder ?? throw new SyncNotReadyException("No repository is selected.");
         }
         catch (ArgumentException ex) when (!IsStopping(token))
         {
@@ -258,7 +258,7 @@ internal sealed class SyncEngine : ISyncService
         }
 
         if (!hasKey)
-            throw new InvalidOperationException("The device has no key yet.");
+            throw new SyncNotReadyException("The device has no key yet.");
 
         scheduler.PassStarting();
         logger.Information("Sync pass started by {Trigger}", trigger);
@@ -338,7 +338,7 @@ internal sealed class SyncEngine : ISyncService
         if (IsStopping(token))
             throw new OperationCanceledException(token);
         const string problem = "The selected repository folder contains the device folder.";
-        var failure = new InvalidOperationException(problem);
+        var failure = new SyncNotReadyException(problem);
         if (trigger != SyncTrigger.Manual)
             logger.LogFailure(SyncFailure.Repository, problem, failure);
         status.Update(s => s.Failed(SyncFailure.Repository, problem, s.SkippedFiles));

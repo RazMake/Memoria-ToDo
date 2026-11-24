@@ -63,6 +63,7 @@ The table lists what each part logs at Information, Warning, and Error, beyond t
 | [Configure](desktop/configure.md), [Task editor](desktop/task-editor.md), [Task list](desktop/task-list.md), [Contact list](desktop/contact-list.md) | Nothing of their own: their changes are Tasks', Contacts', Sync's, or App's operations, which log themselves | Each failure they catch and show, at Error, such as a kept draft that can't be read, or a link that won't open |
 | App: the composition root and its adapters | Start with Windows turned on or off; the repository folder chosen | Each failure an adapter catches, such as the web view's, the clipboard's, or the key file's; a log file the log source can't read, at Warning; entries the writer lost, at Warning, as [below](#a-log-that-cant-be-written-never-stops-the-app) |
 | [Logs window](desktop/logs.md) | | A log folder it can't list, at Error |
+| [Local API](local-api.md) | Each call's end, with its method, the IDs it names, its status, and its duration; the server's start and stop, with the pipe's name; each stream's open and close | A call that ends with a status the program caused, such as not found, at Warning; an internal failure, at Error, with the exception; a server that can't start, such as when another process holds the pipe's name, at Error |
 
 The [Formatted view](desktop/formatted-view.md) passes each failure to the window that shows it, which logs it. Its [hover cards](desktop/README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) use the caller's logger for their Debug entries.
 

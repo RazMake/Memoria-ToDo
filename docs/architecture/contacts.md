@@ -380,16 +380,17 @@ public interface IContacts
     /// Throws, before writing: NoRepositoryFolderException with no clone; ArgumentException for an invalid
     /// contact, a name another contact holds, a key its data type doesn't list that the contact didn't hold,
     /// an unknown group, a new contact in "me", or a new ID for the
-    /// user's own contact; InvalidOperationException when the group's file was skipped.
+    /// user's own contact; SkippedFileException when the group's file was skipped.
     void Save(string groupName, Contact contact);
 
     /// Removes the contact from the group's file, then raises Changed. Throws, before writing:
     /// NoRepositoryFolderException; ArgumentException for "me", an unknown group, or an ID the group doesn't hold;
-    /// InvalidOperationException when the group's file was skipped.
+    /// SkippedFileException when the group's file was skipped.
     void Delete(string groupName, string id);
 
     /// Moves the group between two groups now next to each other, null at either end, rewriting positions
-    /// as the design says, then raises Changed. Throws ArgumentException when a group is unknown,
+    /// as the design says, then raises Changed. Throws, before writing: SkippedFileException when the file of
+    /// the group or a named neighbor was skipped; ArgumentException when a group is unknown,
     /// or previous and next aren't neighbors once the group is taken out; NoRepositoryFolderException.
     void MoveGroup(string groupName, string? previousGroup, string? nextGroup);
 
@@ -422,6 +423,7 @@ public interface IContactFileRules
 - **A contact's key isn't in its data type file**: the key is kept and shown as written, and a template that reads its entry shows the full name.
 - **Two contacts share a name**: both load, the name finds nobody, and it's listed in the shared names.
 - **No clone is selected**: every list is empty, and Save, Delete, and MoveGroup fail with `NoRepositoryFolderException` before writing.
+- **A call names a group whose file was skipped**: Save, Delete, and MoveGroup fail with the platform's [`SkippedFileException`](modules.md#a-call-that-needs-a-skipped-file-throws-one-type), naming that file, before writing. The user decided that Contacts, which owns the file layout, says so with a type, so no caller matches paths. Proposed, a decision to confirm: MoveGroup checks the moved group first, then the previous and next neighbors, and checks them before any other rule; until now it said such a group was unknown.
 - **A write fails**: the call throws the file system's exception; the file stays whole, as the [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files) promises, and the screen that asked says why.
 - **A Changed handler or the local save report fails**: after a write, Contacts still raises Changed and reports the local save, each even when the other fails. The user decided this follows the [synced repository's rule](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload): one failure is thrown as it is, and several make an `AggregateException`, the write's own failure first, then Changed's, then the report's.
 - **A sync deletes a contact being edited in the Contact list**: Save adds it back. This is an accepted risk, decided with the [Contact list](desktop/contact-list.md#failure-modes).

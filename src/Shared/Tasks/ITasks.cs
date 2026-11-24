@@ -84,21 +84,22 @@ public interface ITasks
     /// next task, before that task's rank and after the last rank before it in <see cref="All"/> that differs from it. Both skip the
     /// moved task. Changes only the task's own file and sets Updated. Changes nothing when the task already shows there: between the
     /// two given tasks, or, with a side open, next to the given task, with only tasks sharing its rank between them. Returns the task
-    /// as saved. Throws <see cref="TaskNotFoundException"/> when any ID isn't in <see cref="All"/>, and
+    /// as saved. Throws <see cref="NoRepositoryFolderException"/> when no folder is set,
+    /// <see cref="TaskNotFoundException"/> when any ID isn't in <see cref="All"/>, and
     /// <see cref="ArgumentException"/> when a neighbor is the task itself, the previous task doesn't show before the next, or the
     /// neighbors share a rank, so no rank of the task's own shows it between them.
     /// </summary>
     TaskItem Move(string taskId, string? previousTaskId, string? nextTaskId);
 
-    /// <summary>Sets Resolved and Updated to now. A resolved task stays as it is. Returns the task as saved. Throws <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
+    /// <summary>Sets Resolved to now and advances Updated. A resolved task stays as it is. Returns the task as saved. Throws <see cref="NoRepositoryFolderException"/> when no folder is set, and <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
     TaskItem Resolve(string taskId);
 
-    /// <summary>Clears Resolved and sets Updated to now. An open task stays as it is. Returns the task as saved. Throws <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
+    /// <summary>Clears Resolved and advances Updated. An open task stays as it is. Returns the task as saved. Throws <see cref="NoRepositoryFolderException"/> when no folder is set, and <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
     TaskItem Reopen(string taskId);
 
     /// <summary>
     /// Deletes the task's file, then its images in the clone, then any images kept for its open edit. Throws
-    /// <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>. Stops at the first step that fails and
+        /// <see cref="NoRepositoryFolderException"/> when no folder is set, and <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>. Stops at the first step that fails and
     /// throws its error; once the file is deleted, the task leaves <see cref="All"/> and <see cref="Changed"/> is raised even if a later step fails.
     /// </summary>
     void Delete(string taskId);

@@ -1,0 +1,84 @@
+// Design: docs/architecture/local-api-contract.md.
+syntax = "proto3";
+
+package memoria.todo.v1;
+
+option csharp_namespace = "Memoria.ToDo.Api.V1";
+
+import "memoria/todo/v1/common.proto";
+
+service Contacts {
+  rpc ListGroups(ListGroupsRequest) returns (GroupList);
+  rpc GetMe(GetMeRequest) returns (Contact);
+  rpc SearchContacts(SearchContactsRequest) returns (ContactList);
+  rpc GetContact(GetContactRequest) returns (Contact);
+  rpc SaveContact(SaveContactRequest) returns (Contact);
+  rpc DeleteContact(DeleteContactRequest) returns (DeleteContactResponse);
+  rpc MoveGroup(MoveGroupRequest) returns (GroupList);
+  rpc MentionOf(MentionOfRequest) returns (Mention);
+  rpc WatchContacts(WatchContactsRequest) returns (stream ChangeNotice);
+}
+
+// Each entry is a contact file field's name, such as "reportsTo", and the text the file holds.
+// The contract never lists the fields; Contacts does.
+message Contact {
+  map<string, string> fields = 1;
+}
+
+message ContactList {
+  repeated Contact contacts = 1;
+}
+
+// A group is one contact file; groups come in the user's order.
+message ContactGroup {
+  string name = 1;
+  repeated Contact contacts = 2;
+}
+
+message GroupList {
+  repeated ContactGroup groups = 1;
+}
+
+message ListGroupsRequest {}
+
+message GetMeRequest {}
+
+message SearchContactsRequest {
+  string text = 1;
+}
+
+// The name is a contact's ID or alias.
+message GetContactRequest {
+  string name = 1;
+}
+
+// Replaces the whole contact in the group.
+message SaveContactRequest {
+  string group = 1;
+  Contact contact = 2;
+}
+
+message DeleteContactRequest {
+  string group = 1;
+  string id = 2;
+}
+
+message DeleteContactResponse {}
+
+message MoveGroupRequest {
+  string group = 1;
+  optional string previous_group = 2;
+  optional string next_group = 3;
+}
+
+message MentionOfRequest {
+  string contact_id = 1;
+  string template = 2;
+}
+
+// The Markdown link for a new mention.
+message Mention {
+  string markdown = 1;
+}
+
+message WatchContactsRequest {}

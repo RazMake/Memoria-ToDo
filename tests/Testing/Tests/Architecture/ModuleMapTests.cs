@@ -6,7 +6,7 @@ namespace Memoria.ToDo.Architecture;
 [Integration]
 public sealed class The_module_map_and_the_projects
 {
-    private static readonly string[] Parts = ["Shared", "Desktop", "Android"];
+    private static readonly string[] Parts = ["Shared", "Desktop", "Api", "Android"];
 
     private static readonly ModuleMap _map = ModuleMap.Read(Repository.ReadModulesMarkdown());
     private static readonly IReadOnlyList<SourceProject> _projects = Repository.ReadSourceProjects();
@@ -37,13 +37,18 @@ public sealed class The_module_map_and_the_projects
         }
 
         var allowed = module.MayUse.Select(use => _map.Resolve(module.Part, use).ProjectName).ToHashSet();
-        allowed.Add(PlatformOf(module.Part));
-        allowed.Add(PlatformOf("Shared"));
+        if (module.Part != "Api")
+        {
+            // The Api part has no platform: its modules use only what the map lists.
+            allowed.Add(PlatformOf(module.Part));
+            allowed.Add(PlatformOf("Shared"));
+        }
+
         return allowed;
     }
 
     [Fact]
-    public void Map_lists_the_three_parts_with_modules_that_each_name_only_listed_modules()
+    public void Map_lists_the_four_parts_with_modules_that_each_name_only_listed_modules()
     {
         Assert.Equal(Parts, _map.Modules.Select(m => m.Part).Distinct());
         Assert.All(_map.Modules, m => Assert.All(m.MayUse, use => _map.Resolve(m.Part, use)));

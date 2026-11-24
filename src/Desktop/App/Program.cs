@@ -1,6 +1,8 @@
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Api.Contract;
+using Memoria.ToDo.Desktop.LocalAPI;
 using Memoria.ToDo.Desktop.Logs;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Shell;
@@ -111,6 +113,7 @@ internal static class Program
                     log.ForModule("Configure")),
                 logs,
                 updates,
+                LocalApiServer.Create(tasks, contacts.Contacts, sync, LocalApiPipe.ForCurrentUser(), log.ForModule("Local API")),
                 new HotKeyShortcut(),
                 // The product name, not Velopack's installer ID, which a copy run from a build folder doesn't have:
                 // every copy must count as the same app.

@@ -1,0 +1,6 @@
+#nullable enable
+Memoria.ToDo.Desktop.LocalAPI.ILocalApiLifetime
+Memoria.ToDo.Desktop.LocalAPI.ILocalApiLifetime.Start() -> void
+Memoria.ToDo.Desktop.LocalAPI.ILocalApiLifetime.StopAsync() -> System.Threading.Tasks.Task!
+Memoria.ToDo.Desktop.LocalAPI.LocalApiServer
+static Memoria.ToDo.Desktop.LocalAPI.LocalApiServer.Create(Memoria.ToDo.Shared.Tasks.ITaskStore! tasks, Memoria.ToDo.Shared.Contacts.IContacts! contacts, Memoria.ToDo.Shared.Sync.ISyncService! sync, string! pipeName, Serilog.ILogger! logger) -> Memoria.ToDo.Desktop.LocalAPI.ILocalApiLifetime!

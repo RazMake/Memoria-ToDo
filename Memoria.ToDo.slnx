@@ -13,9 +13,12 @@
     <Project Path="src/Desktop/FormattedView/Memoria.ToDo.Desktop.FormattedView.csproj" />
     <Project Path="src/Desktop/Configure/Memoria.ToDo.Desktop.Configure.csproj" />
     <Project Path="src/Desktop/Updates/Memoria.ToDo.Desktop.Updates.csproj" />
+    <Project Path="src/Desktop/LocalAPI/Memoria.ToDo.Desktop.LocalAPI.csproj" />
     <Project Path="src/Desktop/Logs/Memoria.ToDo.Desktop.Logs.csproj" />
     <Project Path="src/Desktop/App/Memoria.ToDo.Desktop.App.csproj" />
     <Project Path="src/Shared/Rendering/Memoria.ToDo.Shared.Rendering.csproj" />
+    <Project Path="src/Api/Contract/Memoria.ToDo.Api.Contract.csproj" />
+    <Project Path="src/Api/Client/Memoria.ToDo.Api.Client.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Testing/Kinds/Memoria.ToDo.Testing.Kinds.csproj" />
@@ -27,5 +30,6 @@
     <Project Path="tests/Desktop/Fakes/Memoria.ToDo.Desktop.Fakes.csproj" />
     <Project Path="tests/Desktop/PlatformTestHost/Memoria.ToDo.Desktop.PlatformTestHost.csproj" />
     <Project Path="tests/Desktop/Tests/Memoria.ToDo.Desktop.Tests.csproj" />
+    <Project Path="tests/Api/Tests/Memoria.ToDo.Api.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,6 +1,6 @@
 # Architecture
 
-This chapter holds Memoria-ToDo's design: what each part does, how parts depend on each other, and the decisions still to confirm. The [purpose and scope](purpose.md), [how the apps fit together](overview.md), the [module rules and map](modules.md), the [Android app](android/README.md), the [desktop app](desktop/README.md), the [Editing](editing.md), [Rendering](rendering.md), [Tasks](tasks.md), [Contacts](contacts.md), and [Sync through git](sync.md) modules, [version tags](version-tags.md), [releasing a version](releasing.md), [how each AI tool finds a skill](agent-skills.md), and the [technology stack](technology-stack.md) are decided. The desktop app and the shared modules it uses have code, for the built steps of the desktop [delivery backlog](desktop/README.md#delivery-backlog); the Android app has none yet.
+This chapter holds Memoria-ToDo's design: what each part does, how parts depend on each other, and the decisions still to confirm. The [purpose and scope](purpose.md), [how the apps fit together](overview.md), the [module rules and map](modules.md), the [Android app](android/README.md), the [desktop app](desktop/README.md), the [Editing](editing.md), [Rendering](rendering.md), [Tasks](tasks.md), [Contacts](contacts.md), and [Sync through git](sync.md) modules, [version tags](version-tags.md), [releasing a version](releasing.md), [how each AI tool finds a skill](agent-skills.md), the [local API](local-api.md), and the [technology stack](technology-stack.md) are decided. The desktop app and the shared modules it uses have code, for the built steps of the desktop [delivery backlog](desktop/README.md#delivery-backlog); the Android app has none yet.
 
 | If you want to | Read |
 | --- | --- |
@@ -12,6 +12,7 @@ This chapter holds Memoria-ToDo's design: what each part does, how parts depend 
 | Learn how the code is built, tested, and released | [Technology stack](technology-stack.md) |
 | Learn which tests a change runs, and how many UX tests a screen keeps | [Test selection](test-selection.md) |
 | Learn what the app logs, and where the logs are kept | [Logging](logging.md) |
+| Reach your tasks from your own programs on this PC | [Local API](local-api.md), and [what programs can call](local-api-contract.md) |
 | Preview or clear a version tag | [Version tags](version-tags.md) |
 | Publish a version, or run every test in the cloud, with one guided command | [Release a version](releasing.md) |
 | Add a skill for AI tools, or learn how each tool finds one | [Agent skills](agent-skills.md) |
@@ -45,3 +46,4 @@ Proposed: the technology stack row's place and scope. This is a decision to conf
 | 15 | Contacts: a shared module for the contact files, how contacts relate, how they sync and are searched, the data types key fields choose from, and how a task mentions one through a template. Designed together with the desktop [Contact list](desktop/contact-list.md). | [Contacts](contacts.md) | Decided |
 | 16 | Logging: Serilog's logger in every module, what each module logs, the desktop's log files and their limits, keeping secrets out, errors no module handles, and the Serilog packages. Designed together with the desktop [Logs window](desktop/logs.md). | [Logging](logging.md) | Decided |
 | 17 | Test selection: which tests final validation runs for a change, narrowed to changed screens, the script that picks them, the full suite in the cloud's Run All tests, which each release runs or reuses, and the limit of 10 UX tests per screen with the plan that shrinks today's UX tests | [Test selection](test-selection.md) | Decided |
+| 18 | Local API: gRPC over a named pipe only your Windows account can open, hosted by the desktop app; the one contract; the generated .NET and Node.js clients; and their release files | [Local API](local-api.md), with its [contract](local-api-contract.md) | Decided |

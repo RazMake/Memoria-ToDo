@@ -18,6 +18,16 @@ public interface ITaskStore : ITasks
     /// </summary>
     string EditImagesFolder { get; }
 
+    /// <summary>Adds and changes tasks without touching the kept draft or any open edit.</summary>
+    IDirectTaskChanges Direct { get; }
+
     /// <summary>Sync's access to this same store, including its local update lock.</summary>
     ITaskSynchronization Synchronization { get; }
+
+    /// <summary>
+    /// Throws SkippedFileException when the latest load skipped settings.json or tags.json, naming settings.json
+    /// when both were. Does nothing otherwise, including when either file is missing or no repository is selected.
+    /// Writes nothing and raises nothing.
+    /// </summary>
+    void RequireReadableSettings();
 }

@@ -22,7 +22,7 @@ const failureRows = [
   [/^Plan$/, () => 'Left behind: no tag, nothing published. Fix the problem, commit and push, then start a new release.'],
   [/^Tests\b/, () => 'Left behind: no tag, nothing published. Fix the problem, commit and push, then start a new release.'],
   [/^Tag$/, () => 'Left behind: no new tag on origin (the script deletes the tag it made when its push fails). Start a new release.'],
-  [/^Publish$/, (tag) => `Left behind: the tag on origin, and no release. Re-run the failed jobs on GitHub, which re-runs only Publish and keeps the other jobs' results, or clear the tag with node .agents/version-tag.mjs --clear ${tag} and start a new release.`],
+  [/^Publish$/, (tag) => `Left behind: the tag on origin, no published release, and a draft release of it if the upload started. Delete that draft on GitHub, then re-run the failed jobs on GitHub, which re-runs only Publish and keeps the other jobs' results, or clear the tag with node .agents/version-tag.mjs --clear ${tag} and start a new release.`],
 ];
 
 function installerOf(assets) {

@@ -157,7 +157,7 @@ public sealed class ForgetKeyTests
         await using var sync = f.Create();
         await sync.Setup.ForgetKeyAsync(CancellationToken.None);
 
-        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => sync.SyncNowAsync(CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<SyncNotReadyException>(() => sync.SyncNowAsync(CancellationToken.None));
 
         Assert.Equal("The device has no key yet.", failure.Message);
         Assert.Equal(0, f.Git.ConnectionsOpened);

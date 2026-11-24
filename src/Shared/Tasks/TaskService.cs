@@ -24,6 +24,18 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
 
     public event EventHandler? Changed;
 
+    public IDirectTaskChanges Direct => this;
+
+    public void RequireReadableSettings() =>
+        repository.Locked(_ =>
+        {
+            // A skipped settings.json is named before a skipped tags.json.
+            var unreadable = skipped.FirstOrDefault(file => file.RelativePath == RepositoryLayout.SettingsFileName)
+                ?? skipped.FirstOrDefault(file => file.RelativePath == RepositoryLayout.TagColorsFileName);
+            if (unreadable is not null)
+                throw new SkippedFileException(unreadable);
+        });
+
     public string EditImagesFolder => RepositoryLayout.EditImagesRoot(deviceFolder);
 
     public IReadOnlyList<TaskItem> All => repository.Locked(_ => set.Items);
@@ -127,10 +139,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
                 throw new ArgumentException("A task with this ID exists.", nameof(draft));
             var title = TaskText.SingleLine(draft.Title, nameof(draft));
             var tag = OneTag(draft.Tags, nameof(draft));
-            var tags = tag is null ? [] : set.Tags.With([], tag);
-            var now = Now();
-            var rank = RankKey.Before(set.Items.Count == 0 ? null : set.Items[0].Rank);
-            var added = new TaskItem(draft.TaskId, title, TaskText.LineFeeds(draft.Description), rank, tags, now, now, null);
+            var added = NewTask(draft.TaskId, title, draft.Description, tag);
 
             Publish(root, added);
             set = set.WithTask(added);
@@ -141,6 +150,17 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         Announce(Notice.Tasks | Notice.LocalSaved);
         return task;
     }
+
+    /// <summary>An open task at the top, created now, from a validated title and tag. Call under the lock.</summary>
+    private TaskItem NewTask(string id, string title, string description, string? tag)
+    {
+        var now = Now();
+        var rank = RankKey.Before(set.Items.Count == 0 ? null : set.Items[0].Rank);
+        return new TaskItem(id, title, TaskText.LineFeeds(description), rank, TagsOf(tag), now, now, null);
+    }
+
+    /// <summary>The tags of a task with this validated tag, spelled as the tag is already in use; none for null. Call under the lock.</summary>
+    private IReadOnlyList<string> TagsOf(string? tag) => tag is null ? [] : set.Tags.With([], tag);
 
     /// <summary>
     /// Writes the task's file, moves the draft's images into the clone, and deletes the draft. When a step fails, it
@@ -219,12 +239,12 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
                 Description = description == started.Description ? current.Description : description,
                 Tags = string.Equals(editedTag, started.Tags.FirstOrDefault(), StringComparison.OrdinalIgnoreCase)
                     ? current.Tags
-                    : editedTag is null ? [] : set.Tags.With([], editedTag),
+                    : TagsOf(editedTag),
             };
             if (changed.Title == current.Title && changed.Description == current.Description && changed.Tags.SequenceEqual(current.Tags))
                 return current;
 
-            var saved = changed with { Updated = Now() };
+            var saved = changed with { Updated = NextUpdated(current) };
             foreach (var (from, to) in editImages.ImageMoves(saved.Id, root))
                 files.MoveFile(from, to);
             folder.Write(root, saved);
@@ -286,21 +306,22 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             var upper = after >= items.Count ? null : items[after].Rank;
             var rank = RankKey.Between(lower, upper);
             logger.Debug("Move of task {TaskId} between {PreviousTaskId} and {NextTaskId} chose a rank between {LowerRank} and {UpperRank}: {Rank}", taskId, previousTaskId, nextTaskId, lower, upper, rank);
-            return task with { Rank = rank, Updated = Now() };
+            return task with { Rank = rank, Updated = NextUpdated(task) };
         });
     }
 
     public TaskItem Resolve(string taskId) =>
-        Change("Resolved", taskId, task => Now() is var now && task.Resolved is null ? task with { Resolved = now, Updated = now } : task);
+        Change("Resolved", taskId, task => task.Resolved is null ? task with { Resolved = Now(), Updated = NextUpdated(task) } : task);
 
     public TaskItem Reopen(string taskId) =>
-        Change("Reopened", taskId, task => task.Resolved is null ? task : task with { Resolved = null, Updated = Now() });
+        Change("Reopened", taskId, task => task.Resolved is null ? task : task with { Resolved = null, Updated = NextUpdated(task) });
 
     public void Delete(string taskId)
     {
         TaskId.ThrowIfInvalid(taskId, nameof(taskId));
         // Deleting the task file is the commit: once it succeeded the removal is published, even if the image cleanup threw.
-        RemoveAndAnnounce((clone, committed) => RemoveTask("Deleted", clone!, Find(taskId), committed));
+        RemoveAndAnnounce((clone, committed) =>
+            RemoveTask("Deleted", clone ?? throw new NoRepositoryFolderException(), Find(taskId), committed));
     }
 
     /// <summary>Deletes the task's file, then its images. Call under the lock; <paramref name="committed"/> runs once the file is gone. Logs the removal as <paramref name="how"/>.</summary>
@@ -323,23 +344,27 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         var written = false;
         var result = repository.LockedChange(clone =>
         {
+            var root = clone ?? throw new NoRepositoryFolderException();
             var task = Find(taskId);
             var saved = change(task);
             if (ReferenceEquals(saved, task))
                 return task;
-            folder.Write(clone!, saved);
+            folder.Write(root, saved);
             set = set.ReplacingTask(saved);
             written = true;
             return saved;
         });
 
         if (written)
-        {
-            logger.Information("{How} task {TaskId} {Title}", how, result.Id, result.Title);
-            Announce(Notice.Tasks | Notice.LocalSaved);
-        }
-
+            Saved(how, result);
         return result;
+    }
+
+    /// <summary>Logs the saved task as <paramref name="how"/> and raises the notices of a saved change. Call after leaving the lock.</summary>
+    private void Saved(string how, TaskItem task)
+    {
+        logger.Information("{How} task {TaskId} {Title}", how, task.Id, task.Title);
+        Announce(Notice.Tasks | Notice.LocalSaved);
     }
 
     /// <summary>The task in <see cref="All"/>. Call under the lock.</summary>
@@ -354,6 +379,14 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     {
         var now = time.GetUtcNow();
         return new DateTimeOffset(now.Ticks - now.Ticks % TimeSpan.TicksPerMillisecond, now.Offset);
+    }
+
+    /// <summary>The Updated for a change to <paramref name="task"/>: now, or one millisecond after its current Updated when the clock hasn't passed that, so every change moves Updated strictly forward.</summary>
+    private DateTimeOffset NextUpdated(TaskItem task)
+    {
+        var now = Now();
+        var after = task.Updated + TimeSpan.FromMilliseconds(1);
+        return now > task.Updated ? now : after;
     }
 
     public string LinkAddress(string taskId)

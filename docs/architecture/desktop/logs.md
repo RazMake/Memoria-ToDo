@@ -95,7 +95,7 @@ public static class LogsWindow
 }
 ```
 
-`TimeProvider` gives "now" for the time presets. The window logs its own failures through `logger`, as the [log](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. The window's filtering lives in an internal view model, so unit tests check every filter with a fake log source and no window, as [the desktop app](README.md#eight-modules-make-up-the-desktop-app) does for every window module. The `ILogSource` fake, for Logs' tests, and the `ILogsWindow` fake, for Shell's, live in the desktop fakes project beside the other window fakes.
+`TimeProvider` gives "now" for the time presets. The window logs its own failures through `logger`, as the [log](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. The window's filtering lives in an internal view model, so unit tests check every filter with a fake log source and no window, as [the desktop app](README.md#nine-modules-make-up-the-desktop-app) does for every window module. The `ILogSource` fake, for Logs' tests, and the `ILogsWindow` fake, for Shell's, live in the desktop fakes project beside the other window fakes.
 
 ## Failure modes
 
