@@ -42,6 +42,19 @@ internal sealed class TaskSet
 
     public TaskSet WithoutTask(string id) => new(Items.Where(item => item.Id != id));
 
+    /// <summary>
+    /// The place in <see cref="Items"/> of the first task beyond <paramref name="neighbor"/> in the given direction (1 after, -1 before)
+    /// whose rank differs from the neighbor's, ignoring <paramref name="movedId"/>. <see cref="Items"/>' length after the end, and -1
+    /// before the start, when there is none.
+    /// </summary>
+    public int IndexBeyond(TaskItem neighbor, int direction, string movedId)
+    {
+        var i = IndexOf(neighbor.Id) + direction;
+        while (i >= 0 && i < Items.Count && (Items[i].Id == movedId || Items[i].Rank == neighbor.Rank))
+            i += direction;
+        return Math.Clamp(i, -1, Items.Count);
+    }
+
     /// <summary><see cref="Search(string)"/>, narrowed to the tasks that have <paramref name="tag"/>, ignoring case.</summary>
     public IReadOnlyList<TaskItem> Search(string text, string tag) =>
         Search(text).Where(task => TagCatalog.Has(task.Tags, tag)).ToList();

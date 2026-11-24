@@ -16,28 +16,29 @@ public class TaskViewReorderPathTests
     public void Alt_Down_and_drops_move_a_task_within_its_group_and_a_group_among_the_groups()
     {
         var services = new ListServices();
+        // A millisecond between adds orders the IDs as added, so a moved task that took another group's rank would show after it.
         services.Add("Home one", "", "home");
+        services.Time.Advance(TimeSpan.FromMilliseconds(1));
         services.Add("C", "", "work");
+        services.Time.Advance(TimeSpan.FromMilliseconds(1));
         services.Add("B", "", "work");
+        services.Time.Advance(TimeSpan.FromMilliseconds(1));
         services.Add("A", "", "work");
         services.TagOrder.Seed("home", "work");
         using var screen = new TaskListScreen(services);
 
         screen.PressOn("A", Key.LeftAlt, Key.Down);
         Assert.Equal(["B", "A", "C"], screen.RowTitlesIn("work"));
-        Assert.Equal(["B", "A", "C"], StoredWorkTitlesInRankOrder(services));
+        Assert.Equal(["B", "A", "C", "Home one"], services.OpenTitlesInRankOrder());
 
         var taken = screen.Drop(services.Stored("A"), "C", lowerHalf: true, onGroup: "work");
         Assert.True(taken);
         Assert.Equal(["B", "C", "A"], screen.RowTitlesIn("work"));
-        Assert.Equal(["B", "C", "A"], StoredWorkTitlesInRankOrder(services));
+        Assert.Equal(["B", "C", "A", "Home one"], services.OpenTitlesInRankOrder());
 
         screen.DropGroup("work", "home");
         Assert.Equal(["work", "home"], screen.GroupNames);
         Assert.Equal([("work", (string?)null, (string?)"home")], services.TagOrder.Moves);
         Assert.False(screen.HasButton("Undo"));
     }
-
-    private static IEnumerable<string> StoredWorkTitlesInRankOrder(ListServices services) =>
-        services.OpenTitlesInRankOrder().Where(title => title != "Home one");
 }

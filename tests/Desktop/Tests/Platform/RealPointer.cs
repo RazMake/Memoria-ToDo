@@ -41,13 +41,13 @@ internal static class RealPointer
         }
 
         // WPF must observe the step away before the pointer returns, or Windows can coalesce both moves.
-        var current = Win32.CursorPosition();
-        if (InjectedMoveReceipt.IsAtTarget(current, target))
+        // The step is far enough that it starts, as the move back does, more than one pixel from its own target.
+        if (InjectedMoveReceipt.IsAtTarget(Win32.CursorPosition(), target))
         {
-            var away = new Win32.Point { X = target.X + 2, Y = target.Y };
+            var away = new Win32.Point { X = target.X + 3, Y = target.Y };
             if (!Win32.IsOnScreen(away))
             {
-                away.X = target.X - 2;
+                away.X = target.X - 3;
             }
 
             if (PresentationSource.FromVisual(element)?.RootVisual is not UIElement root)
@@ -70,8 +70,9 @@ internal static class RealPointer
             throw new InvalidOperationException("The pointer move markers of this process ran out.");
         }
 
+        var start = Win32.CursorPosition();
         var move = NativeInput.Move(target, marker);
-        var receipt = new InjectedMoveReceipt(marker, target);
+        var receipt = new InjectedMoveReceipt(marker, start, target);
         var frame = new DispatcherFrame();
         var observed = false;
         Win32.Point? last = null;

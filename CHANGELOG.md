@@ -24,6 +24,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - In Logs, the Severity list now offers "Debug and up", which also shows the app's detailed entries that explain its choices, such as where a window opened. The log files now keep these entries too.
 - A contact card no longer closes immediately when you move the pointer out of the text toward the card. It gives you the same short time to cross as when you leave the mention itself.
 - Task titles now stay on one line when you press an Enter combination that is not assigned to Save.
+- Fixed: in Task View, the window that lists your tasks, moving a task within its group could give it the same place in the overall order as a task in another group. The list of resolved tasks, which shows them all in one list, could then show the two in an order you didn't choose. A moved task now always gets a place of its own.
 
 
 ## 1.1.1

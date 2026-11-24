@@ -265,11 +265,28 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             var after = next is null ? set.Items.Count : set.IndexOf(next.Id);
             if (before >= after)
                 throw new ArgumentException("The previous task doesn't show before the next.");
+            var givenBoth = previous is not null && next is not null;
+            // A side left open is bounded by the next rank there. With both given, the task already shows there anywhere between them.
+            if (previous is null && next is not null)
+                before = set.IndexBeyond(next, -1, taskId);
+            else if (next is null && previous is not null)
+                after = set.IndexBeyond(previous, 1, taskId);
+            var items = set.Items;
             if (before < place && place < after)
+            {
+                logger.Debug("Move of task {TaskId} between {PreviousTaskId} and {NextTaskId} changed nothing: it already shows there", taskId, previousTaskId, nextTaskId);
                 return task;
-            if (previous is not null && next is not null && previous.Rank == next.Rank)
+            }
+            if (givenBoth && previous!.Rank == next!.Rank)
                 throw new ArgumentException("The neighbors share a rank, so no rank of the task's own shows it between them.");
-            return task with { Rank = RankKey.Between(previous?.Rank, next?.Rank), Updated = Now() };
+            // Right after the previous neighbor, the new rank stops at the first different rank there, so no other task holds it.
+            if (previous is not null)
+                after = set.IndexBeyond(previous, 1, taskId);
+            var lower = before < 0 ? null : items[before].Rank;
+            var upper = after >= items.Count ? null : items[after].Rank;
+            var rank = RankKey.Between(lower, upper);
+            logger.Debug("Move of task {TaskId} between {PreviousTaskId} and {NextTaskId} chose a rank between {LowerRank} and {UpperRank}: {Rank}", taskId, previousTaskId, nextTaskId, lower, upper, rank);
+            return task with { Rank = rank, Updated = Now() };
         });
     }
 

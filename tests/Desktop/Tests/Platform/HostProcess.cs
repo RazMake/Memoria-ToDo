@@ -39,6 +39,7 @@ internal sealed class HostProcess : IDisposable
 
     public static HostProcess Start(string scenario)
     {
+        ScreenTests.RequireScreenTest("starts the platform test program");
         var process = new Process
         {
             StartInfo = new ProcessStartInfo(HostPath(), scenario)

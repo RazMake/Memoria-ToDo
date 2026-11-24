@@ -68,6 +68,8 @@ Proposed: [Rendering's browser check](rendering.md#only-web-links-open-in-the-br
 
 Each task's rank is a text key that sorts between the keys of the tasks before and after it, a fractional index ([Figma](https://www.figma.com/blog/realtime-editing-of-ordered-sequences/)). Moving a task changes only its own file, so two offline devices that move different tasks never conflict. When two keys are equal, the task IDs set the order. A new task gets a key before all others, so it goes to the top, as the [Task editor](desktop/task-editor.md#a-new-task-goes-to-the-top) decides.
 
+Adding or moving a task never gives it a key another task holds. Every move bounds its new key by the tasks really next to it among every task, open or resolved, including those in other groups or hidden by a filter, even when a task of another group sits between the two neighbors a screen gives, as [`Move`](#public-interface) says. So equal keys come only from two devices that add or move tasks while offline.
+
 Keys use the 62 digits and letters, compare character by character, and are never renumbered. Adding at the top keeps keys short; only repeated moves into one gap lengthen a key, by about one character per six moves.
 
 Proposed: a key starts with a letter that says how long its whole-number part is, as the [fractional-indexing](https://github.com/rocicorp/fractional-indexing) library's keys do. The first task gets `a0`, and each new task at the top lowers the whole number by one, so the first 63 tasks get 2-character keys and the next 3,844 get 3. Characters compare by their code, so digits sort before capitals, and capitals before small letters. This is a decision to confirm.
@@ -444,8 +446,13 @@ public interface ITasks
     TaskItem SaveEdit(TaskItem started, TaskDraft edited);
 
     /// Gives the task a rank that shows it after previousTaskId and before nextTaskId; a null ID
-    /// leaves that side open, so Move(taskId, null, null) changes nothing. Changes only the task's own
-    /// file and sets Updated. Changes nothing when the task already shows there. Returns the task as saved.
+    /// leaves that side open, so Move(taskId, null, null) changes nothing. The new rank is never one another
+    /// task holds: with a previous task, it sorts after that task's rank and before the first rank after it in
+    /// All that differs from it, which is never past the next task; with only a next task, before that task's
+    /// rank and after the last rank before it in All that differs from it. Both skip the moved task.
+    /// Changes only the task's own file and sets Updated. Changes nothing when the task already shows
+    /// there: between the two given tasks, or, with a side open, next to the given task, with only tasks
+    /// sharing its rank between them. Returns the task as saved.
     /// Throws TaskNotFoundException when any ID isn't in All, and ArgumentException when a neighbor
     /// is the task itself, previousTaskId doesn't show before nextTaskId, or the neighbors share a rank,
     /// so no rank of the task's own shows it between them.
@@ -558,7 +565,9 @@ Also proposed for step 4, each a decision to confirm:
 - `SaveEdit` compares a Title after trimming, and a Description after storing its line breaks as `\n`, so only a real change counts. It replaces the tags as [A task has at most one tag](#a-task-has-at-most-one-tag) says, spelling the new one as `WithTag` spells it.
 - `SaveEdit` of a task that's no longer in `All` throws, so a save never undoes a deletion that arrived while the edit was open. The editor keeps the text, so the user can copy it.
 - `SaveEdit` moves the edit's images first, so a failed write leaves them in the task's folder, and a retry works. An image in the task's folder with no link is kept, as the rule above says.
-- When `Move`'s neighbors share a rank, which only two offline devices adding tasks can cause, no key sorts between them, and a move changes only its own file. So `Move` refuses, unless the task already shows there, and the Task list shows the move failed. A later design can re-rank a neighbor instead.
+- When `Move`'s two given neighbors share a rank, which only [two devices changing tasks offline](#rank-is-a-text-key-that-sorts-between-its-neighbors) can cause, no key sorts between them, and a move changes only its own file. So `Move` refuses, unless the task already shows there, and the Task list shows the move failed. A later design can re-rank a neighbor instead.
+- The user decided that every `Move` bounds the new rank by the task really next to it in `All`, so a drop at the end of a tag group can't take the rank of the first task in the next group, and a move between two tasks of one group can't take the rank of another group's task between them. With a previous neighbor, the bound is the first rank after it that differs from its own, past the moved task and the tasks sharing the previous neighbor's rank, so it's never past the given next neighbor. With only a next neighbor, it's the last rank before it that differs from its own, past the moved task. Skipping the tasks that share a neighbor's rank still honors the request, where refusing would fail a drop because of tasks the user may not see.
+- Proposed, a decision to confirm: with both neighbors given, the task already "shows there" when it sits anywhere between them in `All`, as before, so a drop that doesn't change its group's order writes nothing, even with another group's task between it and a neighbor. With a side open, it shows there only when it's next to the given neighbor, with only tasks sharing that neighbor's rank between them, as the open-side rule already does.
 - `Move` with no neighbors changes nothing, even when other tasks exist, such as hidden by a filter that shows only this task.
 - `Search(text, tag)` refuses an empty tag instead of treating it as no filter, so a caller's mistake shows; a screen with no tag filter calls `Search(text)`.
 - `Delete` stops at the first step that fails and throws its error, with no new exception type. Deleting the file is the step that deletes the task: if it fails, the task and its images stay as they were; once it succeeds, the task is deleted even when removing its images then fails, and those images stay in the clone. A caller tells the two apart by whether the task is still in `All`. Like every call, `Delete` does all its file work while no other call's file work runs, so its last step can't delete an image saved after the file was deleted, such as for a task with the same ID in another repository. Then it raises `Changed`, including when a step after the file's deletion failed. As with every call, `Changed` is raised once other calls can run again, so another call may run before the handlers do; Tasks never holds other calls back while handlers run.
@@ -721,6 +730,10 @@ The options below were considered and rejected, grouped by decision.
 - Rank:
   - **Whole numbers with gaps**: renumbering touches many files and invites conflicts.
   - **One order file listing the IDs**: every move and add changes it, so offline devices conflict.
+- How a move picks its rank:
+  - **Bounded only by the given neighbors**: the new rank could equal that of a task in another group or hidden by a filter, and then random parts of their IDs would set their order.
+  - **Bounding only an open side, and narrowing the promise to open sides**: a move between two tasks of one group could still take the rank of another group's task between them, and the resolved tasks, which show in one list, could show the two in an order the user didn't choose.
+  - **Refusing when tasks next to the given neighbor share its rank**: a drop would fail because of tasks the user may not see, though a rank past them honors the request.
 - Merging:
   - **The later edit wins, and the other Description is kept in a warning block**: not chosen.
   - **A line-by-line merge with conflict markers**: it needs a diff library, and the markers end up in the task.
