@@ -55,42 +55,44 @@ public class LogsWindowCreateTests
     }
 }
 
-/// <summary>The Logs window's common scenarios on its one screen, with a fake log source. Filters and their edge cases are in the unit tests of the model.</summary>
-[UX]
+/// <summary>
+/// The Logs window's common paths on its one screen, with a fake log source. The model's filters, rows, status line and edge cases
+/// are in the unit tests of the model.
+/// </summary>
+[UX("Logs")]
 [Collection(ScreenTests.Collection)]
 public class LogsWindowTests
 {
     private readonly LogsServices _services = new();
 
     [WpfFact]
-    public void Opening_shows_the_entries_newest_first_and_says_how_many_show()
-    {
-        _services.With(
-            LogsServices.Entry("2026-03-14 10:00", message: "Oldest"),
-            LogsServices.Entry("2026-03-14 12:00", message: "Newest"),
-            LogsServices.Entry("2026-03-14 11:00", message: "Middle"));
-
-        using var screen = new LogsScreen(_services);
-
-        Assert.Equal(["Newest", "Middle", "Oldest"], screen.RowMessages);
-        Assert.Contains(screen.Texts, text => text.Contains("Showing 3 of 3 entries", StringComparison.Ordinal));
-    }
-
-    [WpfFact]
-    public void Typing_in_the_quick_search_leaves_only_the_rows_that_match()
+    public void Open_the_log_narrow_it_with_the_quick_search_and_refresh_to_see_a_new_entry()
     {
         _services.With(
             LogsServices.Entry("2026-03-14 10:00", message: "Pushed three files"),
+            LogsServices.Entry("2026-03-14 12:00", message: "Newest"),
             LogsServices.Entry("2026-03-14 11:00", message: "Fetched nothing"));
         using var screen = new LogsScreen(_services);
+
+        Assert.Equal(["Newest", "Fetched nothing", "Pushed three files"], screen.RowMessages);
+        Assert.Contains(screen.Texts, text => text.Contains("Showing 3 of 3 entries", StringComparison.Ordinal));
 
         screen.Search("PUSHED");
 
         Assert.Equal(["Pushed three files"], screen.RowMessages);
+
+        screen.Search("");
+
+        Assert.Equal(["Newest", "Fetched nothing", "Pushed three files"], screen.RowMessages);
+
+        _services.Source.Entries.Add(LogsServices.Entry("2026-03-14 13:00", message: "Brand new"));
+        screen.ClickRefresh(2);
+
+        Assert.Equal(["Brand new", "Newest", "Fetched nothing", "Pushed three files"], screen.RowMessages);
     }
 
     [WpfFact]
-    public void Showing_again_brings_the_same_window_forward_without_reading_the_log_again()
+    public void Showing_the_open_window_again_brings_the_same_window_forward_without_reading_the_log_again()
     {
         _services.With(LogsServices.Entry("2026-03-14 10:00", message: "Once"));
         using var screen = new LogsScreen(_services);
@@ -104,29 +106,31 @@ public class LogsWindowTests
     }
 
     [WpfFact]
-    public void Refresh_reads_the_log_again_and_shows_the_new_entries_above_the_old_ones()
-    {
-        _services.With(LogsServices.Entry("2026-03-14 10:00", message: "Old"));
-        using var screen = new LogsScreen(_services);
-        _services.Source.Entries.Add(LogsServices.Entry("2026-03-14 11:00", message: "New"));
-
-        screen.ClickRefresh(2);
-
-        Assert.Equal(["New", "Old"], screen.RowMessages);
-    }
-
-    [WpfTheory]
-    [InlineData("All", false, false)]
-    [InlineData("Last hour", true, false)]
-    [InlineData("Today", true, false)]
-    [InlineData("Custom", true, true)]
-    public void The_time_range_shows_only_the_bounds_its_choice_uses(string preset, bool from, bool to)
+    public void Picking_each_time_range_shows_only_the_date_boxes_it_uses()
     {
         using var screen = new LogsScreen(_services);
 
-        screen.ChoosePreset(preset);
+        Assert.False(screen.ShowsBound("From"));
+        Assert.False(screen.ShowsBound("To"));
 
-        Assert.Equal(from, screen.ShowsBound("From"));
-        Assert.Equal(to, screen.ShowsBound("To"));
+        screen.ChoosePreset("Last hour");
+
+        Assert.True(screen.ShowsBound("From"));
+        Assert.False(screen.ShowsBound("To"));
+
+        screen.ChoosePreset("Today");
+
+        Assert.True(screen.ShowsBound("From"));
+        Assert.False(screen.ShowsBound("To"));
+
+        screen.ChoosePreset("Custom");
+
+        Assert.True(screen.ShowsBound("From"));
+        Assert.True(screen.ShowsBound("To"));
+
+        screen.ChoosePreset("All");
+
+        Assert.False(screen.ShowsBound("From"));
+        Assert.False(screen.ShowsBound("To"));
     }
 }

@@ -230,7 +230,7 @@ public sealed class SaveThroughChangeTests
         f.ForgetWrites();
         var called = false;
 
-        Assert.Throws<InvalidOperationException>(() => f.Contacts.Save("broken", "1", current => { called = true; return current!; }));
+        Assert.Throws<SkippedFileException>(() => f.Contacts.Save("broken", "1", current => { called = true; return current!; }));
 
         Assert.False(called);
         f.AssertNothingWritten();

@@ -65,7 +65,7 @@ The Android design relies on the [technology stack](../technology-stack.md), a l
 
 | Needed | Used by | Answered by |
 | --- | --- | --- |
-| The release step that publishes the APK to GitHub Releases, reusing the desktop's | Shell | [Technology stack](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) |
+| The release step that publishes the APK to GitHub Releases, reusing the desktop's | Shell | [Technology stack](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) |
 | The build of libgit2 with the NDK for each ABI, and where it lives | Sync, on Android | [Technology stack](../technology-stack.md#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), which resolves the [risk](../overview.md#risks-the-later-rows-must-resolve) |
 | Where the key that signs each APK is kept. Android's update model needs every update signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)). | Shell | [Technology stack](../technology-stack.md#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline) |
 | How a task's [mention of a contact](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) shows, and the phone's "@" list. The user decided the phone gets the full "@" list and the chips, as the desktop does. | Task list, Task editor | [Task editor](task-editor.md#typing-an-at-sign-mentions-a-contact) and [Task list](task-list.md#mentions-show-each-contacts-current-details) |

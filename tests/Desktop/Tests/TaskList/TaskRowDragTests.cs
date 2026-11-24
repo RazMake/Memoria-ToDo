@@ -8,12 +8,11 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
 /// A press on a task row that moves past the system's drag distance drags the task, and a press that ended outside the row, or
-/// on it, never starts a drag later. Mouse events are raised on a row in a bare container with no window (a screen test only
+/// on it, never starts a drag later. Mouse events are raised on a row in a bare container with no window (a WPF fact only
 /// because WPF elements need a thread of their own), and the pointer is a <see cref="FakeDragPointer"/> because the mouse of the
 /// PC can't be told where to be.
 /// </summary>
-[UX]
-[Collection(ScreenTests.Collection)]
+[Unit]
 public class TaskRowDragTests
 {
     private static readonly double Far = SystemParameters.MinimumHorizontalDragDistance + 20;

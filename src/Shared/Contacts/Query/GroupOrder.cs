@@ -7,10 +7,17 @@ internal static class GroupOrder
 
     /// <summary>
     /// The groups, with their new positions, to write; none when the group is already there. The groups are in display order.
-    /// Throws <see cref="ArgumentException"/> for an unknown group, or neighbors that aren't next to each other once the group is out.
+    /// Throws <see cref="SkippedFileException"/> first, for the moved group, then the previous, then the next, whose file was skipped;
+    /// then <see cref="ArgumentException"/> for an unknown group, or neighbors that aren't next to each other once the group is out.
     /// </summary>
-    public static IReadOnlyList<GroupFile> Plan(IReadOnlyList<GroupFile> ordered, string name, string? previous, string? next)
+    public static IReadOnlyList<GroupFile> Plan(ContactSnapshot current, string name, string? previous, string? next)
     {
+        current.ThrowIfSkipped(name);
+        if (previous is not null)
+            current.ThrowIfSkipped(previous);
+        if (next is not null)
+            current.ThrowIfSkipped(next);
+        var ordered = current.GroupFiles;
         var moved = Find(ordered, name) ?? throw new ArgumentException($"There is no group '{name}'.", nameof(name));
         var rest = ordered.Where(group => !ReferenceEquals(group, moved)).ToList();
         var low = previous is null ? -1 : IndexOf(rest, previous, nameof(previous));

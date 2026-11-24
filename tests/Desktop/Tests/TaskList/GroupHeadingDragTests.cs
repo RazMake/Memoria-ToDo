@@ -10,10 +10,9 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 /// <summary>
 /// A press on a tag's heading that moves past the system's drag distance drags the group; a release before that is a click; and a
 /// press that ended outside the heading never starts a drag later. Mouse events are raised on a heading in a bare container
-/// with no window (a screen test only because WPF elements need a thread of their own), and the pointer is a <see cref="FakeDragPointer"/> because the mouse of the PC can't be told where to be.
+/// with no window (a WPF fact only because WPF elements need a thread of their own), and the pointer is a <see cref="FakeDragPointer"/> because the mouse of the PC can't be told where to be.
 /// </summary>
-[UX]
-[Collection(ScreenTests.Collection)]
+[Unit]
 public class GroupHeadingDragTests
 {
     private static readonly double Far = SystemParameters.MinimumHorizontalDragDistance + 20;

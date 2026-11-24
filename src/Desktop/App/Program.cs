@@ -1,6 +1,8 @@
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Api.Contract;
+using Memoria.ToDo.Desktop.LocalAPI;
 using Memoria.ToDo.Desktop.Logs;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Shell;
@@ -101,8 +103,8 @@ internal static class Program
             var logSource = new LogFileSource(AppLog.Folder, () => log.WriteProblem, appLog);
             var logs = LogsWindow.Create(logSource, theme, closeWindowKeys, TimeProvider.System, log.ForModule("Logs"));
             var startWithWindows = StartWithWindows(appLog);
-            var mcpServer = McpServer.McpServer.Create(
-                tasks, tasks.TagColors, tasks.TagOrder, tasks.Settings, contacts.Contacts, sync, updates, startWithWindows, logSource, files,
+            var mcpServer = MCPServer.McpServer.Create(
+                tasks, tasks.Direct, tasks.TagColors, tasks.TagOrder, tasks.Settings, contacts.Contacts, sync, updates, startWithWindows, logSource, files,
                 deviceFolder, PipeName.ForCurrentUser(), Environment.ProcessPath!, TimeProvider.System, log.ForModule("MCP server"));
             return TrayApp.Create(
                 new TrayIcon(),
@@ -122,6 +124,7 @@ internal static class Program
                     log.ForModule("Configure")),
                 logs,
                 updates,
+                LocalApiServer.Create(tasks, contacts.Contacts, sync, LocalApiPipe.ForCurrentUser(), log.ForModule("Local API")),
                 mcpServer,
                 new HotKeyShortcut(),
                 new NamedSignalOneInstance(NamedSignalOneInstance.AppSignalName),

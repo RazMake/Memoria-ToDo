@@ -84,7 +84,7 @@ The table lists each pattern the design uses, where, the requirement it serves, 
 | Modular monolith, one per app | Each app is one deployable built from [modules](modules.md) | A change stays inside one module | Boundaries need enforcement, which costs one C# project per module |
 | Model-View-ViewModel (MVVM) | Each app's screens, with thin view models of its own | Screen logic tested without a screen; WPF binds views to view models natively | Android views are updated from view models by hand-written code |
 
-The design doesn't use client-server or microservices, since there's no remote server: the desktop app's [MCP server](desktop/mcp-server.md) is a module inside the app, which only the user's own programs on that PC reach, through a named pipe. It doesn't use an event broker, since each device runs one process, or plugins, since nothing is extended at run time. It doesn't split code into technical layers, since modules split by capability.
+The design doesn't use client-server or microservices between devices, since there's no server. It doesn't use an event broker, since each device runs one process, or plugins, since nothing is extended at run time. It doesn't split code into technical layers, since modules split by capability. The only client-server boundaries are local: the desktop app serves your own programs on the same PC through its [Local API](local-api.md), and AI assistants through its [MCP server](desktop/mcp-server.md), each over a named pipe only the user's account reaches. Both are adapters over the shared modules, as Ports and Adapters places adapters.
 
 ### Risks the later rows must resolve
 

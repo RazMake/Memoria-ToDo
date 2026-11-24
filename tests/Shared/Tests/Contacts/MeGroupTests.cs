@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -76,7 +77,7 @@ public sealed class MeGroupTests
         Assert.Equal(
             [$"{ContactsFixture.Folder}/Me.json", ContactsFixture.MeFile],
             f.SkippedPaths.Order(StringComparer.Ordinal));
-        Assert.Throws<InvalidOperationException>(() => f.Contacts.Save(valid, new Contact("42", "Me Myself")));
+        Assert.Throws<SkippedFileException>(() => f.Contacts.Save(valid, new Contact("42", "Me Myself")));
         f.AssertNothingWritten();
     }
 

@@ -46,7 +46,7 @@ Each task file is a JSON object with the nine fields in the table. Every time is
 | `resolved` | When the task was resolved, or `null` while it's open |
 | `version` | The file format's version, starting at 1 |
 
-- Times are written to the millisecond, so two edits rarely carry the same time.
+- Times are written to the millisecond, and each change on a device [moves `updated` strictly forward](#direct-task-changes-are-a-capability-of-their-own).
 - A newer app reads every older `version`. An app that finds a newer `version` skips the file and leaves it unchanged, by the platform's [version and skip rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules).
 
 Proposed, each a decision to confirm:
@@ -67,6 +67,8 @@ Proposed: [Rendering's browser check](rendering.md#only-web-links-open-in-the-br
 ### Rank is a text key that sorts between its neighbors
 
 Each task's rank is a text key that sorts between the keys of the tasks before and after it, a fractional index ([Figma](https://www.figma.com/blog/realtime-editing-of-ordered-sequences/)). Moving a task changes only its own file, so two offline devices that move different tasks never conflict. When two keys are equal, the task IDs set the order. A new task gets a key before all others, so it goes to the top, as the [Task editor](desktop/task-editor.md#a-new-task-goes-to-the-top) decides.
+
+Adding or moving a task never gives it a key another task holds. Every move bounds its new key by the tasks really next to it among every task, open or resolved, including those in other groups or hidden by a filter, even when a task of another group sits between the two neighbors a screen gives, as [`Move`](#public-interface) says. So equal keys come only from two devices that add or move tasks while offline.
 
 Keys use the 62 digits and letters, compare character by character, and are never renumbered. Adding at the top keeps keys short; only repeated moves into one gap lengthen a key, by about one character per six moves.
 
@@ -241,16 +243,6 @@ Proposed, each a decision to confirm:
 
 Git history keeps every task and image ever saved, so the repository only grows. This is an [accepted risk](overview.md#risks-the-later-rows-must-resolve); the 1 MB cap limits each image.
 
-### An assistant adds tasks and images without touching the draft or an open edit
-
-The desktop's [MCP server](desktop/mcp-server.md) lets an AI assistant add tasks and images while the user may have a draft kept or an edit open. The user decided that two operations of their own do this, so the assistant's work never passes through the user's:
-
-- **Adding a task from a title, a description, and a tag** adds it at the top, with a new task ID, through the same step `Add` with a draft uses: the same checks, rank, file, log entry, notices, and local save report. It never reads, keeps, or deletes the draft, and moves no images. It writes one file, so it has nothing to undo when that fails.
-- **Adding an image to a task** shrinks it by the [rules above](#images-are-at-most-1-mb-and-live-beside-their-task), the same way `SaveImage` does, and writes it straight into the task's folder in the clone. It returns the image's Markdown, as `SaveImage` does. It never touches the task's file, the images waiting for its open edit, or the draft, so the user's Save or discard of an open edit neither moves nor deletes it. It reports a local save and raises no `Changed`, since the task list didn't change. The task must exist.
-- An image added this way and never linked stays until its task is deleted, as every image does.
-
-The user decided that the operations are named `Add`, beside `Add` with a draft, and `AddImage`, as the [public interface](#public-interface) shows.
-
 ### A draft waits on this device until it's saved
 
 Each device keeps at most one draft of a new task, and Tasks owns all of it, so both apps keep drafts the same way. The draft lives outside the clone, in a folder the app gives Tasks; the desktop app's is [`%LocalAppData%\Memoria-ToDo\draft\`](desktop/task-editor.md#closing-without-saving-keeps-a-draft-on-this-device). It's one JSON file with the fields `version`, `id`, `title`, `description`, and `tags`, where `id` is the task ID the draft got when it started. The draft's images sit beside it. Adding the task writes its file, moves the draft's images into the clone, and then deletes the draft.
@@ -366,11 +358,12 @@ When a neighbor has no place yet, or both neighbors share one, the move first gi
 Each app's modules and Sync use these parts:
 
 - **The task list**: every task, open and resolved, in rank order, with a notice when any task changes here or through sync.
-- **Task operations**: add a task at the top, from the draft or from a title, description, and tag; save an edit, move, resolve, reopen, and delete. Each writes the task's file at once.
+- **Task operations**: add the draft's task at the top; save an edit, move, resolve, reopen, and delete. Each writes the task's file at once.
+- **[Direct task changes](#direct-task-changes-are-a-capability-of-their-own)**: add a task from a title, description, and tag, update it, and add an image to it, for a caller with no editor, without touching the draft or an open edit.
 - **Tags and search**: the tags in use with how many tasks use each, and the tasks matching a search and a tag.
 - **Task links**: a task's link, and the task ID in a link's address, if it's a task link.
 - **Drafts**: start, load, keep, and discard this device's draft of a new task, with its images.
-- **Images**: save an image for a draft or an open edit and get its Markdown, add an image straight to a task, discard an open edit's images, and the folder where an open edit's images wait.
+- **Images**: save an image for a draft or an open edit and get its Markdown, discard an open edit's images, and the folder where an open edit's images wait.
 - **[Shared settings](../../src/Shared/Tasks/ISharedTaskSettings.cs)**: the typed settings capability used by Configure.
 - **[Tag colors](#tag-colors-are-a-capability-of-their-own)**: the color name kept for a tag, and keeping a new one.
 - **[Tag order](#tag-order-is-a-capability-of-its-own)**: tags sorted in the user's order, and moving a tag to a new place.
@@ -378,7 +371,7 @@ Each app's modules and Sync use these parts:
 
 The same three versions always merge to the same result, on every device. Tasks reads and writes files through the shared platform's [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files), takes the time from .NET's TimeProvider, and publishes an interface for image shrinking. Each app implements the interfaces and passes the system's time, as [How the apps fit together](overview.md#two-apps-share-one-c-library) says.
 
-Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the part below, in `Memoria.ToDo.Shared.Tasks`; its calls are synchronous. Step 4 renames `SaveDraftImage` to `SaveImage`, and adds `DiscardEditImages`, `SaveEdit`, `Move`, `Resolve`, `Reopen`, `Delete`, the tag filter's `Search`, and `TaskNotFoundException`, all shown below. Step 5 adds the [separate settings and synchronization capabilities](#step-5-publishes-small-capabilities-without-growing-task-operations). Step 19 adds `Add` without a draft, and `AddImage`, for the [MCP server](desktop/mcp-server.md). `All` and `Search` hold resolved tasks too, in rank order; each screen picks open or resolved tasks by `Resolved`.
+Step 3 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) builds the part below, in `Memoria.ToDo.Shared.Tasks`; its calls are synchronous. Step 4 renames `SaveDraftImage` to `SaveImage`, and adds `DiscardEditImages`, `SaveEdit`, `Move`, `Resolve`, `Reopen`, `Delete`, the tag filter's `Search`, and `TaskNotFoundException`, all shown below. Step 5 adds the [separate settings and synchronization capabilities](#step-5-publishes-small-capabilities-without-growing-task-operations). `All` and `Search` hold resolved tasks too, in rank order; each screen picks open or resolved tasks by `Resolved`.
 
 ```csharp
 namespace Memoria.ToDo.Shared.Tasks;
@@ -402,13 +395,6 @@ public interface ITasks
     /// then deletes the kept draft. Throws NoRepositoryFolderException when no folder is set,
     /// and ArgumentException for an empty or multi-line title or an invalid tag.
     TaskItem Add(TaskDraft draft);
-
-    /// Adds a new task at the top, with a new task ID, and writes its file, through the same checks,
-    /// notices, and local save report as Add(TaskDraft). Never touches the draft or any images.
-    /// A null tag adds no tag; the caller spells it through WithTag. Throws, before any change:
-    /// NoRepositoryFolderException when no folder is set, and ArgumentException for an empty or
-    /// multi-line title or an invalid tag.
-    TaskItem Add(string title, string description, string? tag);
 
     /// The tags in use and how many tasks have each, most-used first, ties in alphabetical order.
     IReadOnlyList<TagUse> TagsInUse();
@@ -447,14 +433,6 @@ public interface ITasks
     /// isn't an image, and ImageTooLargeException when it can't be shrunk to 1 MB.
     string SaveImage(string taskId, byte[] image, string altText);
 
-    /// Shrinks the image by SaveImage's rules, writes it into the task's folder in the clone,
-    /// images/<task-id>/, and returns its Markdown. Reports a local save; raises no Changed.
-    /// Never touches the task's file, its open edit's images, or the draft. Throws, before any
-    /// change: NoRepositoryFolderException when no folder is set; TaskNotFoundException when the
-    /// task isn't in All; InvalidDataException when it isn't an image; and ImageTooLargeException
-    /// when it can't be shrunk to 1 MB.
-    string AddImage(string taskId, byte[] image, string altText);
-
     /// Deletes the images kept for the task's open edit. Never touches the draft.
     void DiscardEditImages(string taskId);
 
@@ -469,8 +447,13 @@ public interface ITasks
     TaskItem SaveEdit(TaskItem started, TaskDraft edited);
 
     /// Gives the task a rank that shows it after previousTaskId and before nextTaskId; a null ID
-    /// leaves that side open, so Move(taskId, null, null) changes nothing. Changes only the task's own
-    /// file and sets Updated. Changes nothing when the task already shows there. Returns the task as saved.
+    /// leaves that side open, so Move(taskId, null, null) changes nothing. The new rank is never one another
+    /// task holds: with a previous task, it sorts after that task's rank and before the first rank after it in
+    /// All that differs from it, which is never past the next task; with only a next task, before that task's
+    /// rank and after the last rank before it in All that differs from it. Both skip the moved task.
+    /// Changes only the task's own file and sets Updated. Changes nothing when the task already shows
+    /// there: between the two given tasks, or, with a side open, next to the given task, with only tasks
+    /// sharing its rank between them. Returns the task as saved.
     /// Throws TaskNotFoundException when any ID isn't in All, and ArgumentException when a neighbor
     /// is the task itself, previousTaskId doesn't show before nextTaskId, or the neighbors share a rank,
     /// so no rank of the task's own shows it between them.
@@ -583,7 +566,9 @@ Also proposed for step 4, each a decision to confirm:
 - `SaveEdit` compares a Title after trimming, and a Description after storing its line breaks as `\n`, so only a real change counts. It replaces the tags as [A task has at most one tag](#a-task-has-at-most-one-tag) says, spelling the new one as `WithTag` spells it.
 - `SaveEdit` of a task that's no longer in `All` throws, so a save never undoes a deletion that arrived while the edit was open. The editor keeps the text, so the user can copy it.
 - `SaveEdit` moves the edit's images first, so a failed write leaves them in the task's folder, and a retry works. An image in the task's folder with no link is kept, as the rule above says.
-- When `Move`'s neighbors share a rank, which only two offline devices adding tasks can cause, no key sorts between them, and a move changes only its own file. So `Move` refuses, unless the task already shows there, and the Task list shows the move failed. A later design can re-rank a neighbor instead.
+- When `Move`'s two given neighbors share a rank, which only [two devices changing tasks offline](#rank-is-a-text-key-that-sorts-between-its-neighbors) can cause, no key sorts between them, and a move changes only its own file. So `Move` refuses, unless the task already shows there, and the Task list shows the move failed. A later design can re-rank a neighbor instead.
+- The user decided that every `Move` bounds the new rank by the task really next to it in `All`, so a drop at the end of a tag group can't take the rank of the first task in the next group, and a move between two tasks of one group can't take the rank of another group's task between them. With a previous neighbor, the bound is the first rank after it that differs from its own, past the moved task and the tasks sharing the previous neighbor's rank, so it's never past the given next neighbor. With only a next neighbor, it's the last rank before it that differs from its own, past the moved task. Skipping the tasks that share a neighbor's rank still honors the request, where refusing would fail a drop because of tasks the user may not see.
+- Proposed, a decision to confirm: with both neighbors given, the task already "shows there" when it sits anywhere between them in `All`, as before, so a drop that doesn't change its group's order writes nothing, even with another group's task between it and a neighbor. With a side open, it shows there only when it's next to the given neighbor, with only tasks sharing that neighbor's rank between them, as the open-side rule already does.
 - `Move` with no neighbors changes nothing, even when other tasks exist, such as hidden by a filter that shows only this task.
 - `Search(text, tag)` refuses an empty tag instead of treating it as no filter, so a caller's mistake shows; a screen with no tag filter calls `Search(text)`.
 - `Delete` stops at the first step that fails and throws its error, with no new exception type. Deleting the file is the step that deletes the task: if it fails, the task and its images stay as they were; once it succeeds, the task is deleted even when removing its images then fails, and those images stay in the clone. A caller tells the two apart by whether the task is still in `All`. Like every call, `Delete` does all its file work while no other call's file work runs, so its last step can't delete an image saved after the file was deleted, such as for a task with the same ID in another repository. Then it raises `Changed`, including when a step after the file's deletion failed. As with every call, `Changed` is raised once other calls can run again, so another call may run before the handlers do; Tasks never holds other calls back while handlers run.
@@ -717,13 +702,109 @@ The file rules keep their `TagColorsFileName` and `MergeTagColors` names; their 
 
 Proposed: the file rules keep their `TagColors` names, though `tags.json` now holds places too. Renaming them would change Sync's code and two published names for no change in behavior. This is a decision to confirm.
 
+### Direct task changes are a capability of their own
+
+The user decided, for the [local API](local-api-contract.md#task-calls-never-touch-your-draft-or-open-edit): a fourth capability adds and changes tasks for a caller with no editor. `Add` deletes the kept draft, `SaveImage` keeps images with the open edit or the draft, and `SaveEdit` moves the open edit's images, so a program using them would change what you're typing. Direct changes never touch the draft or an open edit. A task has one tag here, as in the editor.
+
+It has two callers, the local API and the desktop's [MCP server](desktop/mcp-server.md#adding-and-editing-never-touch-the-users-open-work). The user decided that the MCP server uses all three changes: `Add` for its new tasks, `Update` for `edit_task`, and `AddImage` for its images. So changing a task without an editor has one home, and `ITasks` has no members of its own for that. `edit_task` passes the `Updated` of the task it read just before, so the assistant never sends a time.
+
+An open edit still [merges](#two-versions-of-a-task-merge-field-by-field) with a direct change, as it does with a sync: its save replaces only the fields the edit changed. So when an edit saves a changed description, an image's link that `AddImage` appended while the edit was open is dropped; the image itself stays in the task's folder until the task is deleted, as every image does. A link appended after the save, or during an edit that doesn't change the description, stays.
+
+The declarations below add to the existing contracts:
+
+```csharp
+namespace Memoria.ToDo.Shared.Tasks;
+
+public interface ITaskStore : ITasks
+{
+    // The existing members stay as they are.
+
+    /// <summary>Adds and changes tasks without touching the kept draft or any open edit.</summary>
+    IDirectTaskChanges Direct { get; }
+}
+
+/// <summary>
+/// Task changes for a caller with no editor, such as the local API and the MCP server. Never reads or changes the kept draft or an open
+/// edit's waiting images. Safe to call from any thread; uses the task store's lock. Each change writes the task's file,
+/// then raises Changed on the calling thread and reports the local save, as ITasks' changes do.
+/// </summary>
+public interface IDirectTaskChanges
+{
+    /// <summary>
+    /// Adds an open task with a new ID, at the top, with Created and Updated set to now; a null or empty tag means none. Returns it.
+    /// Throws, before writing: ArgumentException for an empty or multi-line title, or an invalid tag;
+    /// NoRepositoryFolderException when no folder is set.
+    /// </summary>
+    TaskItem Add(string title, string description, string? tag);
+
+    /// <summary>
+    /// Replaces each field that isn't null; an empty tag removes every tag. Sets Updated, unless nothing changed, which
+    /// writes nothing. Returns the task as saved. Throws, before writing: StaleTaskException when the task's Updated isn't
+    /// baseUpdated; TaskNotFoundException; ArgumentException for an empty or multi-line title or an invalid tag;
+    /// NoRepositoryFolderException.
+    /// </summary>
+    TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, string? tag);
+
+    /// <summary>
+    /// Shrinks the image to at most 1 MB, writes it into the task's image folder in the clone, and appends its Markdown on
+    /// a new line at the end of the description, or as the whole description when it's empty, in one save that sets
+    /// Updated. Deletes the image again when the save
+    /// fails. Returns the task as saved. Throws, before writing: TaskNotFoundException; InvalidDataException when it
+    /// isn't an image; ImageTooLargeException; NoRepositoryFolderException.
+    /// </summary>
+    TaskItem AddImage(string taskId, byte[] image, string altText);
+}
+
+/// <summary>The task changed since the caller read it. Current is the task as it is now.</summary>
+public sealed class StaleTaskException : InvalidOperationException
+{
+    public StaleTaskException(TaskItem current);
+
+    public TaskItem Current { get; }
+}
+```
+
+Moving, resolving, reopening, and deleting use `ITasks` as they are, since none touches the draft.
+
+The user decided: `Update` compares `Updated` exactly, to the millisecond it's stored to, so a caller that read a task before any change passes. No update without a time to compare is offered, since a program would undo a change it never saw.
+
+**Every change to a task moves `Updated` strictly forward.** An editor save, a move, a resolve, a reopen, a direct update, and an added image each set it to now, cut to the millisecond, or to one millisecond after its last value when now isn't later. So two changes in the same millisecond still leave different times, and an `Update` that read the first fails with `StaleTaskException`.
+
+Decided by the implementation, to confirm: `Add` treats an empty tag as no tag, as `Update` treats it as a cleared tag, so a program that sends an empty tag gets the same result from both. `AddImage` on an empty description makes the image's Markdown the whole description, with no blank first line.
+
+### A caller can require readable settings files
+
+The user decided that Tasks, which owns `settings.json` and `tags.json`, says when either was skipped, with the platform's [`SkippedFileException`](modules.md#a-call-that-needs-a-skipped-file-throws-one-type). The [local API's settings calls](local-api-contract.md#four-services-cover-version-1) need it: tag colors and places fall back to defaults while `tags.json` can't be read, so a reply would hide the problem, and a write to one file must not happen while the other is skipped. The existing reads and writes keep their contracts.
+
+Proposed, a decision to confirm: this declaration.
+
+```csharp
+namespace Memoria.ToDo.Shared.Tasks;
+
+public interface ITaskStore : ITasks
+{
+    // The existing members stay as they are.
+
+    /// <summary>
+    /// Throws SkippedFileException when the latest load skipped settings.json or tags.json, naming settings.json
+    /// when both were. Does nothing otherwise, including when either file is missing or no repository is selected.
+    /// Writes nothing and raises nothing.
+    /// </summary>
+    void RequireReadableSettings();
+}
+```
+
+The check and a later call each take the lock on their own, so a sync that skips a file between them makes the later call fail as its own contract says, or a read answer from defaults. Proposed: this is an accepted risk, a decision to confirm.
+
 ## Failure modes
 
 - **No clone folder is set**: adding a task fails before any file is written, and the screen that asked keeps the text and points to where the folder is set.
 - **A task file can't be read**, such as broken JSON from the remote: Tasks skips the task and never deletes its file, and the sync status names it.
 - **A task file has a newer `version`**: Tasks skips it and leaves it unchanged, and the sync status asks the user to update the app.
 - **A task file can't be written**, such as on a full disk: the screen that asked shows the error and keeps the user's text, and the draft stays.
-- **An image can't be read, or can't be shrunk to 1 MB**: nothing is saved, and the editor, or the assistant's tool, says why.
+- **A direct update names a task that changed since the caller read it**: it throws `StaleTaskException` and writes nothing, as [direct task changes](#direct-task-changes-are-a-capability-of-their-own) say.
+- **An image can't be read, or can't be shrunk to 1 MB**: nothing is saved, and the editor, the local API, or the assistant's tool says why.
+- **A direct image's task can't be saved**: Tasks deletes the image it wrote, so nothing changes, and the caller gets the save's error, as [direct task changes](#direct-task-changes-are-a-capability-of-their-own) say.
 - **The kept draft can't be read**: loading it fails with `InvalidDataException` (a read failure keeps its cause inside), and the file stays as it is until the next keep or discard. The Add window then opens empty and says so.
 - **Adding a task fails after its file is written**, while moving images or deleting the draft: Tasks undoes what it did, moving the images back and deleting the new task file, and rethrows the original error, so the draft stays whole, nothing is left in the repository, and a retry works. The draft's images folder is deleted before its file, so a failed draft delete is undone the same way. If the undo itself fails, Tasks throws an `AggregateException` with both errors. Adding never overwrites: if the task file's path is already occupied, even by a file that was skipped on load, it throws `ArgumentException`.
 - **The top task's rank isn't a valid key**: adding fails with `InvalidDataException` rather than guess an order.
@@ -746,6 +827,10 @@ The options below were considered and rejected, grouped by decision.
 - Rank:
   - **Whole numbers with gaps**: renumbering touches many files and invites conflicts.
   - **One order file listing the IDs**: every move and add changes it, so offline devices conflict.
+- How a move picks its rank:
+  - **Bounded only by the given neighbors**: the new rank could equal that of a task in another group or hidden by a filter, and then random parts of their IDs would set their order.
+  - **Bounding only an open side, and narrowing the promise to open sides**: a move between two tasks of one group could still take the rank of another group's task between them, and the resolved tasks, which show in one list, could show the two in an order the user didn't choose.
+  - **Refusing when tasks next to the given neighbor share its rank**: a drop would fail because of tasks the user may not see, though a rank past them honors the request.
 - Merging:
   - **The later edit wins, and the other Description is kept in a warning block**: not chosen.
   - **A line-by-line merge with conflict markers**: it needs a diff library, and the markers end up in the task.
@@ -769,9 +854,10 @@ The options below were considered and rejected, grouped by decision.
 - Images for an open edit:
   - **The editor says whether it holds a draft or a task, and calls a separate image part for edits**: an extra setting on the editor, and two image parts that shrink images the same way.
   - **Images added during an edit go straight into the clone**: a sync during the edit could push images that a discard then deletes, and git history would keep them.
-- How an assistant adds a task and an image:
+- How a caller with no editor adds a task and an image:
   - **`Add` with a draft deletes the kept draft only when it's the draft being added, matched by task ID**: the user chose an operation of its own, so `Add` with a draft keeps its one rule.
   - **An assistant's image waits with the task's open edit through `SaveImage`**: the user's discard of the edit would delete it, and the user's Save would publish it unseen.
+  - **`ITasks` members of their own for the MCP server, `Add` without a draft and an `AddImage` that only writes the image and returns its Markdown**: a second home for adding without a draft, beside direct task changes. The user unified them.
 - How the desktop's web view finds an open edit's waiting images:
   - **A call that reads a waiting image's bytes for a link**: a bigger interface, and Tasks would serve the web view's requests one by one, for what one folder path gives.
   - **The composition root joins the draft folder and `edits` itself**: the folder's layout would then live in two places that must change together.

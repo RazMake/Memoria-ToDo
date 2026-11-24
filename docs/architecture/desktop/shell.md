@@ -90,7 +90,7 @@ Proposed, each a decision to confirm:
 
 Proposed, each a decision to confirm:
 
-- **The one-instance signal is a named semaphore, named with the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag), not the [installer's ID](#velopack-installs-the-app-and-keeps-it-up-to-date).** A copy run from a build folder has no installer ID. A semaphore counts each later start, so several quick starts each show Task View.
+- **The one-instance signal is a named semaphore, named with the [app's name](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases), not the [installer's ID](#velopack-installs-the-app-and-keeps-it-up-to-date).** A copy run from a build folder has no installer ID. A semaphore counts each later start, so several quick starts each show Task View.
 - **A later instance lets any process come to the front**, since it doesn't know the running instance's process ID. Letting only that process come forward would need the running instance to publish its ID.
 
 Not confirmed by a run:
@@ -156,8 +156,8 @@ Shell starts the [MCP server](mcp-server.md#it-runs-while-the-app-runs-through-t
 
 [`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) replaces synchronous Stop.
 The first call detaches sync notices, cancels and observes Shell's pending waits and startup navigation, disposes Configure, and releases
-every shortcut and the tray on the UI thread. It then awaits the MCP server's stop, then the shared Sync service's disposal, then Updates' stop, and only then releases the one-instance claim. The user decided that the MCP server stops before Sync, so no assistant's call changes the clone while Sync stops. Proposed by [Updates](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it): Updates stops after Sync, since Updates' stop starts Velopack's updater when an update ended the app, and the updater waits only 60 seconds for the app to end. This is a decision to confirm. Cleanup attempts every step and retains
-all failures. Repeated calls join the same cleanup; cancelling a caller's wait does not abandon it.
+every shortcut and the tray on the UI thread. It then awaits the Local API's stop, then the MCP server's stop, then the shared Sync service's disposal, then Updates' stop, and only then releases the one-instance claim. The user decided that the MCP server stops before Sync, so no assistant's call changes the clone while Sync stops. Proposed by [Updates](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it): Updates stops after Sync, since Updates' stop starts Velopack's updater when an update ended the app, and the updater waits only 60 seconds for the app to end. This is a decision to confirm. Cleanup attempts every step and retains
+all failures. Repeated calls join the same cleanup; cancelling a caller's wait does not abandon it. The user decided, with the [Local API](../local-api.md#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread): the Local API's stop comes before Sync's disposal.
 
 Updates retains its run Task instead of discarding it, and observes a check that
 outlives cancellation, as [Updates](updates.md#a-check-runs-at-start-and-each-night-at-3-am) says. Shell never waits synchronously for either update or sync work.
@@ -170,13 +170,13 @@ The app installs with [Velopack](https://www.nuget.org/packages/Velopack/1.2.0) 
 
 The composition root runs Velopack's own startup step first each time the app starts, before anything else, as Velopack requires ([Velopack integration](https://docs.velopack.io/integrating/overview)). When Velopack starts the app to install, update, or uninstall it, that step does the work and ends the app. Its install and uninstall steps also turn [Start with Windows](configure.md#start-with-windows-is-the-run-key-itself) on and off.
 
-The [release workflow](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) puts each version on GitHub Releases.
+The [release workflow](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) puts each version on GitHub Releases.
 
 **The installer's ID is `MemoriaToDo`, and it never changes.** Velopack installs the app in `%LocalAppData%\MemoriaToDo`, and uninstalling deletes that whole folder ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). The repository's name, `Memoria-ToDo`, can't be the ID: each developer PC keeps the [pinned SDK](../technology-stack.md#three-files-pin-every-version) in `%LocalAppData%\Memoria-ToDo\dotnet`, which uninstalling would delete. Installed copies keep their ID, so changing it after the first release would strand them.
 
 Proposed, each a decision to confirm:
 
-- The installer shows the [app's name](../technology-stack.md#a-github-actions-workflow-checks-each-push-and-publishes-each-version-tag) in its Start menu shortcut and in Windows' list of installed apps.
+- The installer shows the [app's name](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) in its Start menu shortcut and in Windows' list of installed apps.
 - The installer adds a Start menu shortcut and no desktop shortcut, since the app starts with Windows and lives in the tray. Velopack adds both by default ([vpk options](https://docs.velopack.io/reference/cli/content/vpk-windows)).
 - The installer isn't code-signed, so Windows may warn when it's first run. Velopack recommends signing, since an unsigned app may be flagged as a virus ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)).
 
@@ -210,12 +210,13 @@ No module uses Shell. Only the composition root does, through one part:
         IContactsWindow contacts, IConfigureWindow configure, ILogsWindow logs, IUpdateLifetime updates,
         IGlobalShortcut shortcut, IOneInstance oneInstance, bool startedAtSignIn, ISyncService sync, ILogger logger);
     ```
-  - **Create the tray app takes the [MCP server's](mcp-server.md#public-interface) lifetime, `IMcpServerLifetime mcpServer`, after `updates`**, as the user's choice that Shell starts and stops the server needs. Starting calls its Start as [above](#the-mcp-server-starts-once-the-clone-has-loaded), and Stopping awaits its stop before Sync's, as the [shutdown order](#shutdown-joins-owned-work-without-blocking-the-dispatcher) says. The internal overload that takes the UI thread gets the same argument in the same place. The user decided this place.
+  - The user decided, with the [Local API](../local-api.md#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread): **Create the tray app takes the Local API's lifetime, `ILocalApiLifetime localApi`, after `IUpdateLifetime updates`.** The MCP server's lifetime comes right after it, as the next bullet says. Starting starts it only after the claim is won and after Sync's initial local publication, even when initialization failed; its start returns at once. Stopping stops it first, before Sync's disposal, so no call reaches a disposed Sync and the pipe is free before the claim is released.
+  - **Create the tray app takes the [MCP server's](mcp-server.md#public-interface) lifetime, `IMcpServerLifetime mcpServer`, after `ILocalApiLifetime localApi`**, as the user's choice that Shell starts and stops the server needs. Starting calls its Start as [above](#the-mcp-server-starts-once-the-clone-has-loaded), and Stopping awaits its stop before Sync's, as the [shutdown order](#shutdown-joins-owned-work-without-blocking-the-dispatcher) says. The internal overload that takes the UI thread gets the same argument in the same place. The user decided this place.
 
     ```csharp
     public static IAppLifetime Create(ITrayIcon trayIcon, IAddWindow add, IViewTasksWindow viewTasks,
         IContactsWindow contacts, IConfigureWindow configure, ILogsWindow logs, IUpdateLifetime updates,
-        IMcpServerLifetime mcpServer, IGlobalShortcut shortcut, IOneInstance oneInstance, bool startedAtSignIn,
+        ILocalApiLifetime localApi, IMcpServerLifetime mcpServer, IGlobalShortcut shortcut, IOneInstance oneInstance, bool startedAtSignIn,
         ISyncService sync, ILogger logger);
     ```
 

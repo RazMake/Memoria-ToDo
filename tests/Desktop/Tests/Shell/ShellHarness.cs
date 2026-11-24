@@ -80,6 +80,7 @@ internal sealed class ShellHarness
     public InMemoryLogSink Log { get; } = new();
 
     public FakeUpdateLifetime Updates { get; } = new();
+    public FakeLocalApiLifetime LocalApi { get; } = new();
     public FakeMcpServerLifetime McpServer { get; } = new();
     public FakeGlobalShortcut GlobalShortcut { get; } = new();
     public FakeOneInstance OneInstance { get; } = new();
@@ -108,7 +109,7 @@ internal sealed class ShellHarness
         Configure = new FakeConfigureWindow(Shown);
         Logs = new FakeLogsWindow(Shown);
         Lifetime = TrayApp.Create(
-            TrayIcon, Add, ViewTasks, Contacts, Configure, Logs, Updates, McpServer, GlobalShortcut, OneInstance, startedAtSignIn, Sync,
+            TrayIcon, Add, ViewTasks, Contacts, Configure, Logs, Updates, LocalApi, McpServer, GlobalShortcut, OneInstance, startedAtSignIn, Sync,
             Log.CreateLogger(), realUiThread ?? (() => UiThread));
     }
 

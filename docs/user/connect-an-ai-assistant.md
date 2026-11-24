@@ -20,7 +20,7 @@ The copied text starts the app's own program with `--mcp`. If the app isn't runn
 
 - **Only your own programs on this PC can connect.** Other users on the PC and other computers can't.
 - **The assistant's changes are real and sync to your other devices.** Deleting a task or a contact can't be undone. A resolved task can be reopened. Most assistants ask you before they delete.
-- **The assistant never touches the task you're typing in Add, or the text you haven't saved in an edit.** It can change a task you're editing, and both changes are kept, [field by field](../architecture/tasks.md#two-versions-of-a-task-merge-field-by-field). When you both change the same field, the later save wins.
+- **The assistant never touches the task you're typing in Add, or the text and images you haven't saved in an edit.** It can change a task you're editing, and both changes are kept, [field by field](../architecture/tasks.md#two-versions-of-a-task-merge-field-by-field). When you both change the same field, the later save wins.
 - **An assistant running as administrator can't connect**, because the app doesn't run as administrator.
 - **When the app updates, the assistant loses its connection.** It reconnects the next time it needs Memoria-ToDo.
 

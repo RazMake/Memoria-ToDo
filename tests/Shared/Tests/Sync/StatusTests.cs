@@ -861,8 +861,9 @@ public sealed class StatusTests
         f.Tasks.RepositoryFolder = Path.GetDirectoryName(f.DeviceFolder)!;
         await using var sync = f.Create();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.SyncNowAsync(CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<SyncNotReadyException>(() => sync.SyncNowAsync(CancellationToken.None));
 
+        Assert.Contains("device folder", failure.Message);
         Assert.Equal(SyncFailure.Repository, sync.Status.Failure);
         Assert.Equal(0, f.Git.ConnectionsOpened);
         Assert.Equal(0, f.Keys.OpenCalls);
@@ -874,8 +875,10 @@ public sealed class StatusTests
         f.WithKey();
         await using var sync = f.Create();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.SyncNowAsync(CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<SyncNotReadyException>(() => sync.SyncNowAsync(CancellationToken.None));
 
+        Assert.Equal("No repository is selected.", failure.Message);
+        Assert.Equal(0, f.Git.PassesStarted);
         Assert.Equal(0, f.Git.ConnectionsOpened);
     }
 
@@ -885,8 +888,10 @@ public sealed class StatusTests
         f.Tasks.RepositoryFolder = f.CloneFolder;
         await using var sync = f.Create();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sync.SyncNowAsync(CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<SyncNotReadyException>(() => sync.SyncNowAsync(CancellationToken.None));
 
+        Assert.Equal("The device has no key yet.", failure.Message);
+        Assert.Equal(0, f.Git.PassesStarted);
         Assert.Equal(0, f.Git.ConnectionsOpened);
     }
 }

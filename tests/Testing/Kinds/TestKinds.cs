@@ -6,6 +6,7 @@ namespace Memoria.ToDo.Testing
     internal static class TestKinds
     {
         public const string TraitName = "Category";
+        public const string ScreenTrait = "Screen";
 
         public const string UnitKind = "Unit";
         public const string UxKind = "UX";

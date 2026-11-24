@@ -8,7 +8,7 @@ internal static class StartArguments
 
     public static bool IsStartAtSignIn(string[] args) => Contains(args, AtSignIn);
 
-    public static bool IsMcpBridge(string[] args) => Contains(args, McpServer.McpServer.BridgeArgument);
+    public static bool IsMcpBridge(string[] args) => Contains(args, MCPServer.McpServer.BridgeArgument);
 
     private static bool Contains(string[] args, string argument)
     {

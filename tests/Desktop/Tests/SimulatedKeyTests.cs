@@ -9,9 +9,10 @@ namespace Memoria.ToDo.Desktop.Tests;
 
 /// <summary>
 /// A key sent by <see cref="SimulatedKey"/> is the only input a screen test describes, so the real keyboard never changes
-/// what the control under test sees. It is a screen test because a key event needs a showing window to come from.
+/// what the control under test sees. It is an integration test: it checks the fake against the real thread keyboard
+/// state, and a key event needs a showing window to come from.
 /// </summary>
-[UX]
+[Integration]
 [Collection(ScreenTests.Collection)]
 public class SimulatedKeyTests
 {

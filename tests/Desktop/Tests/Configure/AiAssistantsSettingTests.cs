@@ -1,6 +1,6 @@
 using System.IO;
 using Memoria.ToDo.Desktop.Fakes;
-using Memoria.ToDo.Desktop.McpServer;
+using Memoria.ToDo.Desktop.MCPServer;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Serilog.Core;

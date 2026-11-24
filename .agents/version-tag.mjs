@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Makes the next version tag and pushes it, clears a version tag, or checks a tag's form, as
 // docs/architecture/version-tags.md describes. It needs only Node.js's own modules, so the release job runs it as is.
-// Usage: node .agents/version-tag.mjs [major|minor|patch] [--dry-run | --expect <tag> --commit <id>]
+// Usage: node .agents/version-tag.mjs [major|minor|patch] --commit <id> [--expect <tag>] [--dry-run]   (a make needs --commit or --dry-run)
+//        node .agents/version-tag.mjs [major|minor|patch] --dry-run                                     (a preview of the newest commit on origin)
 //        node .agents/version-tag.mjs --clear [<tag>] [--dry-run | --here <id> --origin <id>]
 //        node .agents/version-tag.mjs --check <tag>
 //        node .agents/version-tag.mjs --notes <tag>
@@ -11,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'usage: node .agents/version-tag.mjs [major|minor|patch] [--dry-run | --expect <tag> --commit <id>] | --clear [<tag>] [--dry-run | --here <id> --origin <id>] | --check <tag> | --notes <tag>';
+const usage = 'usage: node .agents/version-tag.mjs [major|minor|patch] --commit <id> [--expect <tag>] [--dry-run] | [major|minor|patch] --dry-run | --clear [<tag>] [--dry-run | --here <id> --origin <id>] | --check <tag> | --notes <tag>';
 export const parts = Object.freeze(['major', 'minor', 'patch']);
 export const defaultPart = 'minor';
 const versionTag = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -68,11 +69,11 @@ function parseArguments(args) {
   }
   const dryRun = flags.has('--dry-run');
   const [expect, commit, here, origin] = ['--expect', '--commit', '--here', '--origin'].map((option) => values.get(option));
-  if ((expect === undefined) !== (commit === undefined)) refuse(`--expect and --commit go together; ${usage}`);
-  if (dryRun && values.size) refuse(`--dry-run can't be combined with an approval option; ${usage}`);
+  if (expect !== undefined && commit === undefined) refuse(`--expect needs --commit; ${usage}`);
+  if (dryRun && (here !== undefined || origin !== undefined)) refuse(`--dry-run can't be combined with an approval option; ${usage}`);
 
   if (flags.has('--clear')) {
-    if (expect !== undefined) refuse(`--expect and --commit are for making a tag; ${usage}`);
+    if (expect !== undefined || commit !== undefined) refuse(`--expect and --commit are for making a tag; ${usage}`);
     if (words.length > 1 || parts.includes(words[0])) refuse(`--clear takes at most one tag; ${usage}`);
     const tag = words[0] === undefined ? undefined : clearTagOf(words[0]);
     if ((here !== undefined || origin !== undefined) && words.length === 0) refuse(`--here and --origin need the tag to clear; ${usage}`);
@@ -80,6 +81,7 @@ function parseArguments(args) {
   }
   if (here !== undefined || origin !== undefined) refuse(`--here and --origin are for --clear; ${usage}`);
   if (words.length > 1 || (words.length === 1 && !parts.includes(words[0]))) refuse(`give at most one of major, minor, patch; ${usage}`);
+  if (!dryRun && commit === undefined) refuse(`a tag is made by a release run on GitHub, on a commit it names; start one with node .agents/release.mjs, or give --commit; ${usage}`);
   return { command: 'make', part: words[0] ?? defaultPart, dryRun, expect, commit };
 }
 
@@ -142,6 +144,11 @@ async function fetchDefaultBranch(git) {
   return branch;
 }
 
+function checkTagsOnOrigin(local, remote) {
+  const mismatched = versionTagsOf(local).filter((tag) => remote.get(tag)?.commit !== local.get(tag).commit);
+  if (mismatched.length) refuse(`version tags missing on origin or pointing to another commit there: ${mismatched.join(', ')}; fix or clear them`);
+}
+
 async function checkReadyToTag(git, branch, local, remote) {
   const current = await git.currentBranch();
   if (current === undefined) refuse(`HEAD is not on a branch; check out ${branch}`);
@@ -152,19 +159,27 @@ async function checkReadyToTag(git, branch, local, remote) {
   if (ahead && behind) refuse(`${branch} has diverged from origin/${branch}: ${ahead} ahead and ${behind} behind`);
   if (behind) refuse(`${branch} is ${behind} behind origin/${branch}; update it first`);
   if (ahead) refuse(`${branch} is ${ahead} ahead of origin/${branch}; push or discard those commits first`);
-
-  const mismatched = versionTagsOf(local).filter((tag) => remote.get(tag)?.commit !== local.get(tag).commit);
-  if (mismatched.length) refuse(`version tags missing on origin or pointing to another commit there: ${mismatched.join(', ')}; fix or clear them`);
+  checkTagsOnOrigin(local, remote);
 }
 
-async function make(git, { part, dryRun, expect, commit: approvedCommit }) {
+// Without --commit (a preview), the clone must be ready and the commit is origin's newest; with it, the commit only has to be on origin's branch.
+async function commitToTag(git, branch, given, local, remote) {
+  if (given === undefined) {
+    await checkReadyToTag(git, branch, local, remote);
+    return git.originCommit(branch);
+  }
+  if (!(await git.isOnOriginBranch(given, branch))) refuse(`${given} is not on origin's ${branch}, the only branch a version is made from`);
+  checkTagsOnOrigin(local, remote);
+  return given;
+}
+
+async function make(git, { part, dryRun, expect, commit: given }) {
   const branch = await fetchDefaultBranch(git);
   const [local, remote] = [await git.localTags(), await git.remoteTags()];
-  await checkReadyToTag(git, branch, local, remote);
+  const commit = await commitToTag(git, branch, given, local, remote);
   const tag = next(latestOf(versionTagsOf(local, remote)), part);
-  const commit = await git.originCommit(branch);
-  if (expect !== undefined && (tag !== expect || commit !== approvedCommit)) {
-    refuse(`${part} would now make ${tag} on ${commit}, not the approved ${expect} on ${approvedCommit}; nothing was changed, preview again`);
+  if (expect !== undefined && tag !== expect) {
+    refuse(`${part} would now make ${tag}, not the approved ${expect}; nothing was changed, preview again`);
   }
   const version = tag.slice(1);
   const { hasUnreleased } = notesOf(await git.changelogAt(commit), version);
@@ -298,6 +313,10 @@ export function createGit(cwd, execute) {
     },
     async originCommit(branch) {
       return (await git('rev-parse', '--verify', `refs/remotes/origin/${branch}^{commit}`)).trim();
+    },
+    // The commits reachable from the commit but not from origin's branch; none means the commit is on the branch. An unknown commit rejects.
+    async isOnOriginBranch(commit, branch) {
+      return (await git('rev-list', '-n', '1', commit, '--not', `refs/remotes/origin/${branch}`)).trim() === '';
     },
     async localTags() {
       // %(*objectname) is empty for a lightweight tag, whose own ID is its commit's.

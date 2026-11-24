@@ -51,13 +51,6 @@ internal sealed partial class ConfigureScreen
     public static string BoldPart(TextBlock block) =>
         string.Concat(Leaves(block.Inlines).Where(run => run.FontWeight == FontWeights.Bold).Select(run => run.Text));
 
-    /// <summary>The color the text block paints its first part with.</summary>
-    public static Color ColorOf(TextBlock block)
-    {
-        var first = Leaves(block.Inlines).FirstOrDefault();
-        return ((SolidColorBrush)(first?.Foreground ?? block.Foreground)).Color;
-    }
-
     /// <summary>The button of the card with the text, or null when the card has none; it may be hidden.</summary>
     public Button? CardButton(string text) =>
         OpenWindows.Descendants(Card).OfType<Button>().SingleOrDefault(button => button.Content as string == text);
@@ -76,21 +69,8 @@ internal sealed partial class ConfigureScreen
         Settle();
     }
 
-    /// <summary>The color of a brush of the window's theme, such as SystemFillColorCautionBackgroundBrush.</summary>
-    public Color ThemeColor(string brushKey) => ((SolidColorBrush)Window.FindResource(brushKey)).Color;
-
     /// <summary>The card's background color, or null when it has none.</summary>
     public Color? CardBackground => Card.Background is SolidColorBrush { Color.A: > 0 } brush ? brush.Color : null;
-
-    /// <summary>The window's y of the title's top edge.</summary>
-    public double TitleTop(string heading) => Title(heading).TranslatePoint(new Point(0, 0), Window).Y;
-
-    /// <summary>The window's y of the title's bottom edge.</summary>
-    public double TitleBottom(string heading) =>
-        Title(heading).TranslatePoint(new Point(0, Title(heading).ActualHeight), Window).Y;
-
-    /// <summary>The window's y of the card's top edge.</summary>
-    public double CardTop => Card.TranslatePoint(new Point(0, 0), Window).Y;
 
     /// <summary>The window's y of the text block with exactly the text.</summary>
     public double TextTop(string text) =>

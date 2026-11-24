@@ -1,0 +1,102 @@
+// Design: docs/architecture/local-api-contract.md.
+syntax = "proto3";
+
+package memoria.todo.v1;
+
+option csharp_namespace = "Memoria.ToDo.Api.V1";
+
+import "google/protobuf/timestamp.proto";
+import "memoria/todo/v1/common.proto";
+
+service Tasks {
+  rpc ListTasks(ListTasksRequest) returns (TaskList);
+  rpc GetTask(GetTaskRequest) returns (TaskItem);
+  rpc CreateTask(CreateTaskRequest) returns (TaskItem);
+  rpc UpdateTask(UpdateTaskRequest) returns (TaskItem);
+  rpc MoveTask(MoveTaskRequest) returns (TaskItem);
+  rpc ResolveTask(ResolveTaskRequest) returns (TaskItem);
+  rpc ReopenTask(ReopenTaskRequest) returns (TaskItem);
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
+  rpc AddImage(AddImageRequest) returns (TaskItem);
+  rpc ListTags(ListTagsRequest) returns (TagList);
+  rpc WatchTasks(WatchTasksRequest) returns (stream ChangeNotice);
+}
+
+message TaskItem {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  optional string tag = 4;
+  google.protobuf.Timestamp created = 5;
+  google.protobuf.Timestamp updated = 6;
+  google.protobuf.Timestamp resolved = 7;
+  string link = 8;
+}
+
+message TaskList {
+  repeated TaskItem tasks = 1;
+}
+
+message ListTasksRequest {
+  string query = 1;
+  optional string tag = 2;
+  bool include_resolved = 3;
+}
+
+message GetTaskRequest {
+  string id = 1;
+}
+
+message CreateTaskRequest {
+  string title = 1;
+  string description = 2;
+  optional string tag = 3;
+}
+
+// A field left out keeps its value; an empty tag clears the tag.
+message UpdateTaskRequest {
+  string id = 1;
+  google.protobuf.Timestamp base_updated = 2;
+  optional string title = 3;
+  optional string description = 4;
+  optional string tag = 5;
+}
+
+message MoveTaskRequest {
+  string id = 1;
+  optional string previous_id = 2;
+  optional string next_id = 3;
+}
+
+message ResolveTaskRequest {
+  string id = 1;
+}
+
+message ReopenTaskRequest {
+  string id = 1;
+}
+
+message DeleteTaskRequest {
+  string id = 1;
+}
+
+message DeleteTaskResponse {}
+
+message AddImageRequest {
+  string id = 1;
+  bytes image = 2;
+  string alt_text = 3;
+}
+
+message ListTagsRequest {}
+
+message TagList {
+  repeated TagCount tags = 1;
+}
+
+message TagCount {
+  string tag = 1;
+  int32 count = 2;
+}
+
+message WatchTasksRequest {}

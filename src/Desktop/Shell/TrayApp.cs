@@ -1,7 +1,8 @@
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
+using Memoria.ToDo.Desktop.LocalAPI;
 using Memoria.ToDo.Desktop.Logs;
-using Memoria.ToDo.Desktop.McpServer;
+using Memoria.ToDo.Desktop.MCPServer;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
@@ -37,13 +38,14 @@ public static class TrayApp
         IConfigureWindow configure,
         ILogsWindow logs,
         IUpdateLifetime updates,
+        ILocalApiLifetime localApi,
         IMcpServerLifetime mcpServer,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
         ISyncService sync,
         ILogger logger) =>
-        Create(trayIcon, add, viewTasks, contacts, configure, logs, updates, mcpServer, shortcut, oneInstance, startedAtSignIn, sync, logger, () => new WpfUiThread());
+        Create(trayIcon, add, viewTasks, contacts, configure, logs, updates, localApi, mcpServer, shortcut, oneInstance, startedAtSignIn, sync, logger, () => new WpfUiThread());
 
     internal static IAppLifetime Create(
         ITrayIcon trayIcon,
@@ -53,6 +55,7 @@ public static class TrayApp
         IConfigureWindow configure,
         ILogsWindow logs,
         IUpdateLifetime updates,
+        ILocalApiLifetime localApi,
         IMcpServerLifetime mcpServer,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
@@ -68,6 +71,7 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(configure);
         ArgumentNullException.ThrowIfNull(logs);
         ArgumentNullException.ThrowIfNull(updates);
+        ArgumentNullException.ThrowIfNull(localApi);
         ArgumentNullException.ThrowIfNull(mcpServer);
         ArgumentNullException.ThrowIfNull(shortcut);
         ArgumentNullException.ThrowIfNull(oneInstance);
@@ -118,6 +122,7 @@ public static class TrayApp
                 logger),
             startup,
             updates,
+            localApi,
             new McpServerStart(sync.Setup, mcpServer, uiThread, logger),
             mcpServer,
             endApp => new ShellExit(add, viewTasks, contacts, configure, endApp),

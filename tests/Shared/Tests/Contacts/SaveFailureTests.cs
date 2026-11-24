@@ -26,7 +26,7 @@ public sealed class SaveFailureTests
         f.Load();
         f.ForgetWrites();
 
-        Assert.Throws<InvalidOperationException>(() => f.Contacts.Save("broken", new Contact("1", "Ana")));
+        Assert.Throws<SkippedFileException>(() => f.Contacts.Save("broken", new Contact("1", "Ana")));
 
         f.AssertNothingWritten();
         Assert.Equal("{ not json", f.Text(BrokenFile));
@@ -39,7 +39,7 @@ public sealed class SaveFailureTests
         f.Load();
         f.ForgetWrites();
 
-        Assert.Throws<InvalidOperationException>(() => f.Contacts.Save("me", new Contact("42", "Me")));
+        Assert.Throws<SkippedFileException>(() => f.Contacts.Save("me", new Contact("42", "Me")));
 
         f.AssertNothingWritten();
     }
@@ -112,7 +112,7 @@ public sealed class SaveFailureTests
         f.ForgetWrites();
 
         f.Contacts.Save("Team", new Contact("1", "Ana Popa"));
-        Assert.Throws<InvalidOperationException>(() => f.Contacts.Save("team", new Contact("1", "Ana Popa")));
+        Assert.Throws<SkippedFileException>(() => f.Contacts.Save("team", new Contact("1", "Ana Popa")));
 
         Assert.Equal([ContactsFixture.Folder + "/Team.json"], f.Written);
         Assert.Equal("{ not json", f.Text(ContactsFixture.TeamFile));

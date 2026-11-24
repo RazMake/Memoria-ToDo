@@ -1,7 +1,8 @@
 using System.Runtime.ExceptionServices;
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
-using Memoria.ToDo.Desktop.McpServer;
+using Memoria.ToDo.Desktop.LocalAPI;
+using Memoria.ToDo.Desktop.MCPServer;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
 using Memoria.ToDo.Shared.Sync;
@@ -27,6 +28,7 @@ internal sealed class ShellLifetime(
     ContactsShortcutAction contactsShortcut,
     StartupNavigation startup,
     IUpdateLifetime updates,
+    ILocalApiLifetime localApi,
     McpServerStart mcpStart,
     IMcpServerLifetime mcpServer,
     Func<Action, IAppExit> createExit,
@@ -36,6 +38,9 @@ internal sealed class ShellLifetime(
 {
     private readonly SyncTray syncTray = new SyncTray(sync, trayIcon, startup.ByUser(showLogs), logger);
     private readonly object stopGate = new();
+    private readonly object apiGate = new();
+    private bool apiStarted;
+    private bool apiClosed;
     private Task? stopping;
     private bool claimed;
     private EventHandler? followAvailability;
@@ -84,7 +89,37 @@ internal sealed class ShellLifetime(
             contactsShortcut.AvailabilityChanged();
         };
         contacts.AvailableChanged += followAvailability;
+        sync.Setup.Changed += StartLocalApi;
         sync.Start();
+    }
+
+    // Runs on Sync's first setup publication, whether its initialization succeeded or failed; later ones change nothing.
+    private void StartLocalApi(object? sender, EventArgs e)
+    {
+        sync.Setup.Changed -= StartLocalApi;
+        lock (apiGate)
+        {
+            if (apiClosed)
+            {
+                logger.Debug("The Local API was not started: the app is stopping");
+                return;
+            }
+
+            apiStarted = true;
+            logger.Information("Starting the Local API after Sync's first local load");
+            localApi.Start();
+        }
+    }
+
+    // Closes the start for good and reports whether the API runs, so a start racing the stop can't follow it.
+    private bool CloseLocalApi()
+    {
+        sync.Setup.Changed -= StartLocalApi;
+        lock (apiGate)
+        {
+            apiClosed = true;
+            return apiStarted;
+        }
     }
 
     /// <inheritdoc />
@@ -113,9 +148,16 @@ internal sealed class ShellLifetime(
         Attempt(contactsShortcut.Unregister, failures);
         Attempt(trayIcon.Remove, failures);
 
-        // Before Sync, so no assistant's call changes the clone while Sync stops.
         if (claimed)
         {
+            // First, so no call reaches a disposed Sync and the pipe is free before the claim is released.
+            if (CloseLocalApi())
+            {
+                logger.Information("Stopping the Local API");
+                await Attempt(localApi.StopAsync, failures);
+            }
+
+            // Before Sync, so no assistant's call changes the clone while Sync stops.
             await Attempt(mcpServer.StopAsync, failures);
             await Attempt(() => sync.StopAsync(CancellationToken.None), failures);
             await Attempt(() => sync.DisposeAsync().AsTask(), failures);

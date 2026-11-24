@@ -37,16 +37,19 @@ public class NamedPipeBridgePipeTests
         await accepted.WaitAsync(Limit, TestContext.Current.CancellationToken);
 
         Assert.NotNull(stream);
-        await stream.WriteAsync("ping\n"u8.ToArray(), TestContext.Current.CancellationToken);
-        await stream.FlushAsync(TestContext.Current.CancellationToken);
+        // A pipe's flush waits until the other end has read, so each read starts before the write it waits for.
         var received = new byte[5];
-        await server.ReadExactlyAsync(received, TestContext.Current.CancellationToken).AsTask().WaitAsync(Limit, TestContext.Current.CancellationToken);
+        var receiving = server.ReadExactlyAsync(received, TestContext.Current.CancellationToken).AsTask();
+        await stream.WriteAsync("ping\n"u8.ToArray(), TestContext.Current.CancellationToken);
+        await stream.FlushAsync(TestContext.Current.CancellationToken).WaitAsync(Limit, TestContext.Current.CancellationToken);
+        await receiving.WaitAsync(Limit, TestContext.Current.CancellationToken);
         Assert.Equal("ping\n"u8.ToArray(), received);
 
-        await server.WriteAsync("pong\n"u8.ToArray(), TestContext.Current.CancellationToken);
-        await server.FlushAsync(TestContext.Current.CancellationToken);
         var answer = new byte[5];
-        await stream.ReadExactlyAsync(answer, TestContext.Current.CancellationToken).AsTask().WaitAsync(Limit, TestContext.Current.CancellationToken);
+        var answering = stream.ReadExactlyAsync(answer, TestContext.Current.CancellationToken).AsTask();
+        await server.WriteAsync("pong\n"u8.ToArray(), TestContext.Current.CancellationToken);
+        await server.FlushAsync(TestContext.Current.CancellationToken).WaitAsync(Limit, TestContext.Current.CancellationToken);
+        await answering.WaitAsync(Limit, TestContext.Current.CancellationToken);
         Assert.Equal("pong\n"u8.ToArray(), answer);
     }
 

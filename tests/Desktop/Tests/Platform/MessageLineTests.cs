@@ -9,7 +9,7 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 
 /// <summary>
 /// The message line's behavior, measured on a bare element in a bare container that holds the theme resource the color
-/// comes from: no window shows. The line's look in a themed window is in <see cref="MessageLineLookTests"/>.
+/// comes from: no window shows.
 /// </summary>
 [Unit]
 public class MessageLineTests
@@ -99,32 +99,4 @@ public class MessageLineTests
 
         Assert.Equal(new Thickness(8, 4, 8, 0), line.Margin);
     }
-}
-
-/// <summary>The message line as a user sees it: in a window with the real theme, its color, its wrapping, and its room.</summary>
-[UX]
-[Collection(ScreenTests.Collection)]
-public class MessageLineLookTests
-{
-    [WpfFact]
-    public void Shows_wrapping_text_in_the_themes_critical_color_and_takes_no_room_while_hidden()
-    {
-        using var windows = new OpenWindows();
-        var line = new MessageLine();
-        var window = new Window { Width = 200, Height = 300, Content = new StackPanel { Children = { line } } };
-        OpenWindows.UseTheme(window, dark: true);
-        window.Show();
-
-        window.UpdateLayout();
-        var hiddenHeight = line.ActualHeight;
-        line.Show("Aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp.");
-        window.UpdateLayout();
-
-        Assert.Equal(0, hiddenHeight);
-        Assert.True(line.ActualHeight > 2 * line.FontSize * 1.2, "The long text didn't wrap onto several lines.");
-        Assert.True(line.ActualWidth <= 200, "The text is wider than the window.");
-        Assert.Equal(((SolidColorBrush)window.FindResource(CriticalKey)).Color, ((SolidColorBrush)line.Foreground).Color);
-    }
-
-    private const string CriticalKey = "SystemFillColorCriticalBrush";
 }

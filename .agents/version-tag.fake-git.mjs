@@ -62,6 +62,7 @@ export function createFakeGit(options = {}) {
     ahead: 0,
     behind: 0,
     originHead: 'c1',
+    offBranch: [],
     local: {},
     remote: {},
     afterFetch: {},
@@ -110,6 +111,8 @@ export function createFakeGit(options = {}) {
     isClean: track('isClean', async () => state.clean),
     aheadBehind: track('aheadBehind', async () => ({ ahead: state.ahead, behind: state.behind })),
     originCommit: track('originCommit', async () => state.originHead),
+    // Whether a commit is an ancestor of origin's branch; `offBranch` lists the commits that aren't.
+    isOnOriginBranch: track('isOnOriginBranch', async (commit) => !state.offBranch.includes(commit)),
     localTags: track('localTags', async () => {
       const listing = new Map([...local].map(([name, entry]) => [name, { ...entry }]));
       if (!localRead) {

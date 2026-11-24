@@ -1,4 +1,4 @@
-using Memoria.ToDo.Desktop.McpServer;
+using Memoria.ToDo.Desktop.MCPServer;
 using Memoria.ToDo.Shared.Sync;
 using Serilog;
 

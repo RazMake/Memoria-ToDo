@@ -22,10 +22,9 @@ internal static class FirstShowCloak
     public static void Start(Window window, Serilog.ILogger logger)
     {
         var handle = new WindowInteropHelper(window).EnsureHandle();
+        var source = HwndSource.FromHwnd(handle)
+            ?? throw new InvalidOperationException("The window has no WPF message source.");
         WindowCloak.Set(handle, true);
-
-        var closed = false;
-        window.Closed += (_, _) => closed = true;
 
         void OnLoaded(object sender, RoutedEventArgs e)
         {
@@ -34,13 +33,13 @@ internal static class FirstShowCloak
             // BeginInvoke, not InvokeAsync: a failure must reach the dispatcher's unhandled-error handling.
             window.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
             {
-                // A closed window's handle is gone, and the window is already off the screen.
-                if (!closed)
+                // The native handle can be disposed before Window.Closed is raised.
+                if (!source.IsDisposed)
                 {
                     WindowCloak.Set(handle, false);
                 }
 
-                logger.Debug("Finished the first show of the window {Window}; Uncloaked {Uncloaked}", window.GetType().Name, !closed);
+                logger.Debug("Finished the first show of the window {Window}; Uncloaked {Uncloaked}", window.GetType().Name, !source.IsDisposed);
             }));
         }
 

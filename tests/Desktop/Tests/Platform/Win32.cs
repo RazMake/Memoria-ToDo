@@ -33,8 +33,13 @@ internal static class Win32
 
     public delegate void WinEventProc(nint hook, uint eventType, nint window, int objectId, int childId, uint thread, uint time);
 
+    public delegate nint MouseMessageHook(int code, nint message, nint data);
+
     [StructLayout(LayoutKind.Sequential)]
-    private struct Message { public nint Window; public uint Id; public nint WParam; public nint LParam; public uint Time; public Point Point; }
+    public struct MouseHook { public Point Point; public nint Window; public uint HitTest; public nint ExtraInfo; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Message { public nint Window; public uint Id; public nint WParam; public nint LParam; public uint Time; public Point Point; }
 
     public const uint EventSystemDialogStart = 0x0010;
     private const uint EventObjectShow = 0x8002;
@@ -49,7 +54,9 @@ internal static class Win32
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point point);
-    [DllImport("user32.dll")] private static extern nint GetMessageExtraInfo();
+    [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern nint SetWindowsHookEx(int kind, MouseMessageHook callback, nint module, uint threadId);
+    [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern bool UnhookWindowsHookEx(nint hook);
+    [RealInput, DllImport("user32.dll")] private static extern nint CallNextHookEx(nint hook, int code, nint message, nint data);
     [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] private static extern bool IsChild(nint parent, nint window);
@@ -82,7 +89,25 @@ internal static class Win32
 
     public static Point CursorPosition() => GetCursorPos(out var point) ? point : throw new InvalidOperationException("No pointer position.");
 
-    public static nint MessageExtraInfo() => GetMessageExtraInfo();
+    [RealInput]
+    public static nint HookMouseMessages(MouseMessageHook callback)
+    {
+        const int whMouse = 7;
+        var hook = SetWindowsHookEx(whMouse, callback, 0, GetCurrentThreadId());
+        return hook != 0 ? hook : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+
+    [RealInput]
+    public static void UnhookMouseMessages(nint hook)
+    {
+        if (!UnhookWindowsHookEx(hook))
+        {
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        }
+    }
+
+    [RealInput]
+    public static nint NextMouseMessage(int code, nint message, nint data) => CallNextHookEx(0, code, message, data);
 
     /// <summary>
     /// Puts the pointer at the point. Throws when Windows refuses, or puts the pointer more than a pixel away, as it does past a

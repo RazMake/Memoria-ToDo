@@ -13,9 +13,15 @@ internal sealed class InjectedMoveReceipt
     private bool _eligible;
     private bool _taken;
 
-    public InjectedMoveReceipt(nint marker, Win32.Point target)
+    public InjectedMoveReceipt(nint marker, Win32.Point start, Win32.Point target)
     {
         ArgumentOutOfRangeException.ThrowIfZero(marker);
+        if (IsAtTarget(start, target))
+        {
+            throw new ArgumentException(
+                "A move must start more than one pixel from its target, or Windows may drop it as no movement.", nameof(start));
+        }
+
         _marker = marker;
         _target = target;
     }
@@ -23,18 +29,31 @@ internal sealed class InjectedMoveReceipt
     public bool Received { get; private set; }
     public Win32.Point? MisplacedAt { get; private set; }
 
+    public static bool IsAtTarget(Win32.Point observed, Win32.Point target) =>
+        Math.Abs((long)observed.X - target.X) <= Tolerance && Math.Abs((long)observed.Y - target.Y) <= Tolerance;
+
     public void Observe(ObservedMessage message)
     {
         _eligible = false;
-        if (message.Id != WmMouseMove || message.ExtraInfo != _marker || !message.InExpectedWindow)
+        // Windows replaces a pending move with an unmarked one (extra info 0) when any window shows, hides, or moves.
+        var own = message.ExtraInfo == _marker;
+        if (message.Id != WmMouseMove || !message.InExpectedWindow || (!own && message.ExtraInfo != 0))
         {
             return;
         }
 
-        Received = true;
-        if (Math.Abs((long)message.Screen.X - _target.X) > Tolerance || Math.Abs((long)message.Screen.Y - _target.Y) > Tolerance)
+        var atTarget = IsAtTarget(message.Screen, _target);
+        if (own)
         {
-            MisplacedAt = message.Screen;
+            Received = true;
+            if (!atTarget)
+            {
+                MisplacedAt = message.Screen;
+                return;
+            }
+        }
+        else if (!atTarget)
+        {
             return;
         }
 

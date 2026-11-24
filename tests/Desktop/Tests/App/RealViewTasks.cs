@@ -32,6 +32,7 @@ internal sealed class RealViewTasks : IDisposable
     private readonly TaskCompletionSource<CoreWebView2> _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Channel<bool> _pages = Channel.CreateUnbounded<bool>();
     private Process? _browser;
+    private Task? _browserExited;
 
     public RealViewTasks()
     {
@@ -110,7 +111,7 @@ internal sealed class RealViewTasks : IDisposable
     public void Dispose()
     {
         // The test's own cleanup of what it made, whatever the window did on close: the web views first, then the windows.
-        WebViewTeardown.Run(_made, _windows.Dispose, _browser, _root);
+        WebViewTeardown.Run(_made, _windows.Dispose, _browser, _browserExited, _root);
 
         if (Directory.Exists(_root))
         {
@@ -132,6 +133,7 @@ internal sealed class RealViewTasks : IDisposable
                 return;
             }
 
+            _browserExited ??= WebViewTeardown.WatchExit(control.CoreWebView2.Environment);
             control.CoreWebView2.NavigationCompleted += (_, _) => _pages.Writer.TryWrite(true);
             _started.TrySetResult(control.CoreWebView2);
         };

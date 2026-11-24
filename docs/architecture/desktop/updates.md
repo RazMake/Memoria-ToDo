@@ -90,7 +90,7 @@ Proposed, each a decision to confirm:
 
 What is new on the update card, and the status bar's "Update available" text, open a dialog with the notes of every release after the running version, up to the new one, newest first. Each release's notes sit under a heading with its version.
 
-The user decided that **the notes come from the [changelog](../../contributing/changelog.md)**, `CHANGELOG.md` at the repository's root, written for people who use the app. Each release's notes are its version's section there. The release job packs that section into the release's Velopack files with `vpk pack --releaseNotes` ([release notes](https://docs.velopack.io/integrating/release-notes)), and refuses to publish without it, as [Version tags](../version-tags.md#a-version-is-tagged-only-when-the-changelog-has-its-notes) says.
+The user decided that **the notes come from the [changelog](../../contributing/changelog.md)**, `CHANGELOG.md` at the repository's root, written for people who use the app. Each release's notes are its version's section there. The release run's Publish job packs that section into the release's Velopack files with `vpk pack --releaseNotes` ([release notes](https://docs.velopack.io/integrating/release-notes)), and refuses to publish without it, as [Version tags](../version-tags.md#a-version-is-tagged-only-when-the-changelog-has-its-notes) says.
 
 Proposed, each a decision to confirm:
 

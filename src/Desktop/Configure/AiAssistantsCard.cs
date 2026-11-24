@@ -1,6 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
-using Memoria.ToDo.Desktop.McpServer;
+using Memoria.ToDo.Desktop.MCPServer;
 
 namespace Memoria.ToDo.Desktop.Configure;
 

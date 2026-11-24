@@ -8,10 +8,10 @@ The MCP server lets an AI assistant on this PC, such as GitHub Copilot in VS Cod
 
 ### It runs while the app runs, through the services the windows use
 
-The user decided that the MCP server is a desktop module of its own, `Memoria.ToDo.Desktop.McpServer`, which [Shell](shell.md#public-interface) starts and stops, as it does [Updates](updates.md).
+The user decided that the MCP server is a desktop module of its own, `Memoria.ToDo.Desktop.MCPServer`, which [Shell](shell.md#public-interface) starts and stops, as it does [Updates](updates.md).
 
 - **It starts once the app holds its [one-instance claim](shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view) and the clone has loaded**, when [Shell starts it](shell.md#the-mcp-server-starts-once-the-clone-has-loaded), so no call sees the task list before it's read.
-- **It stops first in [Shell's shutdown](shell.md#shutdown-joins-owned-work-without-blocking-the-dispatcher)**, before Sync, so no call changes the clone while Sync stops.
+- **It stops before Sync in [Shell's shutdown](shell.md#shutdown-joins-owned-work-without-blocking-the-dispatcher)**, so no call changes the clone while Sync stops.
 - **It uses the same Tasks, Contacts, Sync, and Updates objects as the windows.** A change an assistant makes raises the same change notices a sync does, so an open Task View or Contacts window shows it at once. The windows already update on notices from other threads, since Sync's changes arrive that way ([Task View](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button)).
 - **An assistant's change syncs like the user's.** Tasks' and Contacts' saves already start [sync soon after a change](../sync.md#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes).
 - **It never opens a window or moves the user's screen.**
@@ -58,20 +58,20 @@ The table lists every operation a user can do in the desktop app, the public ope
 | Tasks | Read one task, with its description | [`ITasks.All`](../../../src/Shared/Tasks/ITasks.cs#L9) | Read; an unknown ID gets a not-found error |
 | Tasks | Search by words, optionally within one tag | [`ITasks.Search`](../../../src/Shared/Tasks/ITasks.cs#L34), [with a tag](../../../src/Shared/Tasks/ITasks.cs#L37) | Read |
 | Tasks | See the tags in use, with counts, colors, and the user's order | [`ITasks.TagsInUse`](../../../src/Shared/Tasks/ITasks.cs#L22), [`ITagColors.ColorOf`](../../../src/Shared/Tasks/ITagColors.cs#L13), [`ITagOrder.Sort`](../../../src/Shared/Tasks/ITagOrder.cs#L15) | Read |
-| Tasks | Add a task with a title, a description, and a tag | `ITasks.Add` without a draft, [below](#adding-and-editing-never-touch-the-users-open-work) | Change |
-| Tasks | Edit a task's title, description, or tag | [`ITasks.SaveEdit`](../../../src/Shared/Tasks/ITasks.cs#L78) | Change, as [below](#adding-and-editing-never-touch-the-users-open-work) |
-| Tasks | Add an image to a task | `ITasks.AddImage`, [below](#adding-and-editing-never-touch-the-users-open-work) | Change |
+| Tasks | Add a task with a title, a description, and a tag | [`IDirectTaskChanges.Add`](../../../src/Shared/Tasks/IDirectTaskChanges.cs), [below](#adding-and-editing-never-touch-the-users-open-work) | Change |
+| Tasks | Edit a task's title, description, or tag | [`IDirectTaskChanges.Update`](../../../src/Shared/Tasks/IDirectTaskChanges.cs), [below](#adding-and-editing-never-touch-the-users-open-work) | Change |
+| Tasks | Add an image to a task | [`IDirectTaskChanges.AddImage`](../../../src/Shared/Tasks/IDirectTaskChanges.cs), [below](#adding-and-editing-never-touch-the-users-open-work) | Change: appends the image to the description and returns the task |
 | Tasks | Link to another task | [`ITasks.LinkAddress`](../../../src/Shared/Tasks/ITasks.cs#L40) | Read: returns the address to put in a description |
 | Tasks | Move a task between two others | [`ITasks.Move`](../../../src/Shared/Tasks/ITasks.cs#L87) | Change |
 | Tasks | Resolve, or reopen | [`ITasks.Resolve`](../../../src/Shared/Tasks/ITasks.cs#L90), [`Reopen`](../../../src/Shared/Tasks/ITasks.cs#L93) | Change |
 | Tasks | Delete a task | [`ITasks.Delete`](../../../src/Shared/Tasks/ITasks.cs#L100) | Change, destructive, as [below](#deleting-acts-at-once-and-resolving-is-the-undoable-path) |
 | Tasks | Keep, load, or discard Add's draft | [`StartDraft`, `LoadDraft`, `KeepDraft`, `DiscardDraft`](../../../src/Shared/Tasks/ITasks.cs#L46) | Excluded: the draft is the Add window's own text |
-| Tasks | Paste an image into Add or an open edit | [`ITasks.SaveImage`](../../../src/Shared/Tasks/ITasks.cs#L63) | Excluded: those images wait with the user's open work; assistants add images through `AddImage` |
+| Tasks | Paste an image into Add or an open edit | [`ITasks.SaveImage`](../../../src/Shared/Tasks/ITasks.cs#L63) | Excluded: those images wait with the user's open work; assistants add images through `IDirectTaskChanges.AddImage` |
 | Tags | Change a tag's color | [`ITagColors.SetColor`](../../../src/Shared/Tasks/ITagColors.cs#L22) | Change |
 | Tags | Move a tag group among the groups | [`ITagOrder.Move`](../../../src/Shared/Tasks/ITagOrder.cs#L26) | Change |
 | Settings | Read and change the days before a resolved task is deleted | [`ISharedTaskSettings.DeletionDelayDays`](../../../src/Shared/Tasks/ISharedTaskSettings.cs#L11) | Read; Change, destructive, since it changes every device |
 | Settings | Change the global, Close window, and Save shortcuts | [`ISharedTaskSettings`' shortcut setters](../../../src/Shared/Tasks/ISharedTaskSettings.cs#L47) | Excluded: Configure's [shortcut check](configure.md#a-new-shortcut-is-checked-at-once) isn't a public part a second caller can use, and a bad shortcut breaks the user's keys on every device |
-| Settings | Read and switch Start with Windows | [`IStartWithWindows`](../../../src/Desktop/Configure/IStartWithWindows.cs#L4), which moves to the [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes) | Read; Change |
+| Settings | Read and switch Start with Windows | [`IStartWithWindows`](../../../src/Desktop/Platform/IStartWithWindows.cs#L4), which the [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes) publishes | Read; Change |
 | Contacts | List groups and contacts, the user's own contact, and the files that couldn't be read | [`IContacts.Groups`](../../../src/Shared/Contacts/IContacts.cs#L12), [`Me`](../../../src/Shared/Contacts/IContacts.cs#L15), [`SkippedFiles`](../../../src/Shared/Contacts/IContacts.cs#L101) | Read |
 | Contacts | Find one; search | [`IContacts.Find`](../../../src/Shared/Contacts/IContacts.cs#L27), [`Search`](../../../src/Shared/Contacts/IContacts.cs#L36) | Read |
 | Contacts | See a contact's manager and direct reports | [`ManagerOf`](../../../src/Shared/Contacts/IContacts.cs#L30), [`DirectReportsOf`](../../../src/Shared/Contacts/IContacts.cs#L33) | Read |
@@ -101,14 +101,17 @@ The contact tools follow these rules:
 
 ### Adding and editing never touch the user's open work
 
-The user decided that an assistant's task and image go straight to the task list, never through the Add window's draft or an open edit. Tasks owns both operations, as its [design](../tasks.md#an-assistant-adds-tasks-and-images-without-touching-the-draft-or-an-open-edit) says.
+The user decided that an assistant's new task, edit, and image go straight to the task list, never through the Add window's draft or an open edit. The user decided that all three go through Tasks' [direct task changes](../tasks.md#direct-task-changes-are-a-capability-of-their-own), which the [local API](../local-api.md) uses too, so changing a task without an editor has one home.
 
-- **Adding a task** takes a title, and optionally a description and a tag, and calls Tasks' `Add` without a draft. The draft the user left in Add stays as it is. The tag is spelled as a matching tag in use, through [`ITasks.WithTag`](../../../src/Shared/Tasks/ITasks.cs#L28), as the Add window does. It returns the new task.
-- **Editing a task takes only the fields to change**: its ID, and any of title, description, and tag. The user decided that the server reads the task as it is now and saves only those fields, through `SaveEdit`, with the task it read as the started version. So an assistant's edit of the title and the user's open edit of the description both survive, as [two versions of a task merge field by field](../tasks.md#two-versions-of-a-task-merge-field-by-field). When both change the same field, the later save wins, as with a sync. The user decided that an empty tag removes the task's tag.
-- **Adding an image** takes a task's ID, the image's bytes, and its alt text, and calls Tasks' `AddImage`, which saves it in the task's folder in the clone at once. The user decided this. The image is shrunk by Tasks' [image rules](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task), so it accepts any format the PC's image tools read, and keeps it at most 1 MB.
-- **The image tool returns the image's Markdown**, such as `![alt](images/<task-id>/<image-id>.png)`, and the assistant adds it to the description with the edit tool. The user decided that the image tool doesn't change the description itself, so one tool changes one thing, and the assistant picks where the image goes.
+- **Adding a task** takes a title, and optionally a description and a tag, and calls `IDirectTaskChanges.Add`. The draft the user left in Add stays as it is. Tasks spells the tag as a matching tag in use, by [its tag rules](../tasks.md#tags-and-search-ignore-case), as for the Add window. It returns the new task.
+- **Editing a task takes only the fields to change**: its ID, and any of title, description, and tag. The user decided that the server reads the task as it is now and calls `IDirectTaskChanges.Update` with only those fields and that task's `Updated` time, so the assistant never sends a time. A field left out stays as it is. It returns the task as saved, with its description; when nothing would change, Tasks writes nothing and it returns the task as it is.
+- **The tag input sets the task's one tag.** Left out, every tag the task has stays. The user decided that an empty tag removes the task's tag; on an older task with [several tags](../tasks.md#a-task-has-at-most-one-tag), it removes them all. Any other tag is spelled by Tasks, as adding does, and replaces every tag the task has. Proposed, a decision to confirm: a tag that matches the task's own except in case is saved with the spelling in use, so a task holding a rarer spelling takes the common one.
+- **The edit never touches the user's open edit.** The images the user pasted into an open edit of the task keep waiting with it, unsaved, until the user saves or discards. The user's later save still [merges field by field](../tasks.md#two-versions-of-a-task-merge-field-by-field): it replaces only the fields the user changed. So an assistant's new title and the user's new description both survive; when both changed the same field, the user's later save wins.
+- **A change that lands between the server's read and its save fails the edit.** Tasks refuses it as stale before writing, and the tool returns an error that says the task changed meanwhile, so the assistant reads it again and retries. That window is a few milliseconds, such as when a sync or the user's save lands in it. Proposed, a decision to confirm: the server never retries on its own, since a retry would write the assistant's fields over a change the assistant hasn't seen.
+- **Adding an image** takes a task's ID, the image's bytes, and its alt text, and calls `IDirectTaskChanges.AddImage`. Tasks shrinks the image by its [image rules](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task), so it accepts any format the PC's image tools read, and keeps it at most 1 MB. It writes the image into the task's folder in the clone and appends its Markdown on a new line at the end of the description, in one save that sets the task's `Updated`. When that save fails, Tasks deletes the image again, so nothing changes.
+- **The image tool returns the task as saved**, with its description, as the add tool does. The user decided this, so the image and its link arrive together, and no image is left in the clone, synced but unlinked, when an assistant never makes the edit. An assistant that wants the image elsewhere moves its Markdown with the edit tool.
+- **An image the user is editing around**: an assistant's image changes the task's file, so it meets an open edit as any change does. When the user then saves a changed description in the Task list, the user's text wins and the image's link is dropped; the image stays in the task's folder until the task is deleted, by Tasks' rule that [an image is deleted only with its task](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task). An edit that leaves the description as it was keeps the link.
 - **An image's bytes over 20 MB are refused** before Tasks sees them, so one call can't hold the app's memory. The user decided on 20 MB, which keeps any screenshot or phone photo.
-- An image an assistant adds and never links stays until its task is deleted, by Tasks' rule that [an image is deleted only with its task](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task).
 
 ### Deleting acts at once, and resolving is the undoable path
 
@@ -158,6 +161,7 @@ The user decided that the server is on by default, and that a switch in [Configu
 The server logs what [Logging's table](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) lists for it, under the component name "MCP server". The module each tool calls logs its own change, as it does for a window.
 
 - **A refused or failed call's log entry names the tool, the IDs, and the exception's type, never the module's message**, since a message can quote a contact's fields, such as an alias another contact holds. The assistant still gets the whole message. An Error entry, for an operation that failed, also carries the exception, so its stack trace explains the failure; invalid input, which is what quotes a contact's fields, is logged at Warning with the type only.
+- **An edit refused as stale is logged at Warning** with the exception's type, as invalid input is, since the assistant fixes it by reading the task again.
 - **Input the SDK refuses before a tool runs**, such as a number where a name is asked, or a missing required input, is logged at Warning with the tool's name, like any other invalid input.
 - **`read_log` writes a Debug entry with its effective level, bounds, components, and limit, and the counts read, matched, and returned**, so a short answer can be told from a cut one. It never logs the searched text or the entries it returns.
 
@@ -194,10 +198,10 @@ The user decided the tests, following the [test kinds](../technology-stack.md#at
 
 ## Public interface
 
-Shell, Configure, and the composition root use the module, `Memoria.ToDo.Desktop.McpServer`. Its shape follows [Updates'](../../../src/Desktop/Updates/PublicAPI.Unshipped.txt): one object with a part for Shell and a part for Configure.
+Shell, Configure, and the composition root use the module, `Memoria.ToDo.Desktop.MCPServer`. Its shape follows [Updates'](../../../src/Desktop/Updates/PublicAPI.Unshipped.txt): one object with a part for Shell and a part for Configure.
 
 ```csharp
-namespace Memoria.ToDo.Desktop.McpServer;
+namespace Memoria.ToDo.Desktop.MCPServer;
 
 /// What Shell uses.
 public interface IMcpServerLifetime
@@ -243,20 +247,21 @@ public static class McpServer
 
     /// deviceFolder holds the switch's file. pipeName is the pipe the bridge connects to, and
     /// bridgePath the program the bridge runs. time gives the time now and this PC's time zone, for the log tool.
+    /// direct adds and edits tasks and adds images, as ITaskStore.Direct gives it.
     /// Throws ArgumentNullException for a missing argument,
     /// and ArgumentException for a deviceFolder that isn't fully qualified, before anything starts.
-    public static IMcpServer Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder,
+    public static IMcpServer Create(ITasks tasks, IDirectTaskChanges direct, ITagColors tagColors, ITagOrder tagOrder,
         ISharedTaskSettings settings, IContacts contacts, ISyncService sync, IUpdateStatus updates,
         IStartWithWindows startWithWindows, ILogSource logs, IFileSystem files, string deviceFolder,
         string pipeName, string bridgePath, TimeProvider time, ILogger logger);
 }
 ```
 
-The user decided on these declarations, and on `IStartWithWindows` from the [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes).
+The user decided on these declarations, and on `IStartWithWindows` from the [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes). The user decided that adding a task, editing one, and adding an image go through [direct task changes](../tasks.md#direct-task-changes-are-a-capability-of-their-own), and that `Create` takes them as `IDirectTaskChanges direct`, after `tasks`, which the composition root passes as the store's `Direct`. `Create` already takes each of the store's capabilities it uses, `ITagColors`, `ITagOrder`, and `ISharedTaskSettings`, on its own; taking the whole `ITaskStore` instead would give two ways to reach them, and hand the server `Synchronization`, which it never uses.
 
 The [module map](../modules.md#module-map) has the module's row. The user's decisions also change four other designs:
 
-- **[Tasks](../tasks.md#an-assistant-adds-tasks-and-images-without-touching-the-draft-or-an-open-edit)** adds a task without a draft, and an image straight to a task.
+- **[Tasks](../tasks.md#direct-task-changes-are-a-capability-of-their-own)** names the MCP server as the second caller of its direct task changes, beside the local API.
 - **[Shell](shell.md#public-interface)** starts and stops the server, and takes its lifetime.
 - **[Configure](configure.md#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them)** shows the switch, the state, and the lines to copy, and takes the server's status.
 - **The [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes)** publishes Start with Windows, which Configure and the server both use.
@@ -269,6 +274,7 @@ The composition root makes the pipe's name, the server, and the bridge mode, and
 - **The switch can't be read**: the server stays off, logs it at Warning, and Configure shows why. **It can't be saved**: the switch keeps its previous value, and Configure shows why.
 - **A tool's input is invalid**, such as an empty title, an unknown task ID, an image's bytes that aren't valid or are over 20 MB, or a log From later than its To: the server or the module refuses it before any change, and the tool returns the message as an error. The server logs it at Warning.
 - **An operation fails**, such as a file that can't be written: the tool returns the module's message as an error, and the server logs it at Error.
+- **The task changed between the edit tool's read and its save**, such as by a sync: Tasks refuses the edit before writing, the tool returns an error that says the task changed meanwhile and to read it again, and the server logs it at Warning.
 - **The task or contact was deleted meanwhile**, such as by a sync: the tool returns the module's not-found error. `save_contact` is the exception: it treats the contact as new, so a full name adds it back and no full name is refused, as a save from the window adds it back.
 - **No clone is selected**: every tool that reads or changes tasks or contacts returns an error that says to choose a repository in Configure, the same message [the windows show](README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them).
 - **The app stops during a call**: the server stops taking calls, cancels the calls in progress, and waits for them, then Shell stops Sync. A call that arrives meanwhile gets an error that the app is closing, and the bridge ends when the pipe closes.
@@ -302,10 +308,13 @@ The options below were considered and rejected, grouped by decision.
   - **The app asks in a dialog before an assistant's delete**: a window pops up over the user's work, and the assistant waits on it.
   - **No delete tools**: contacts couldn't be deleted, and the user asked for every operation.
 - Adding a task without touching the draft:
-  - **`Add` deletes the kept draft only when the draft it adds is the kept one, matched by task ID**: the user chose a separate member, so `Add` with a draft keeps its rule.
+  - **`Add` deletes the kept draft only when the draft it adds is the kept one, matched by task ID**: the user chose a separate operation, now [direct task changes](../tasks.md#direct-task-changes-are-a-capability-of-their-own)' `Add`, so `Add` with a draft keeps its rule.
   - **No add tool**: it rules out the most common use.
-- An edit while the user edits the same task:
-  - **The tool also takes the task's `Updated` time and fails when the task changed since the assistant read it**: assistants would re-read and retry more often, unlike how a sync's change meets an open edit.
+- Which operation the edit tool uses:
+  - **`ITasks.SaveEdit`, with the task the server read as the started version**: it moves the images waiting in the user's open edit into the clone, so an assistant's edit would publish images the user pasted but hasn't saved, and the user's discard couldn't remove them. The user chose direct task changes' `Update`.
+- An edit while the task changes:
+  - **The assistant sends the task's `Updated` time, and the edit fails when the task changed since the assistant read it**: assistants would re-read and retry more often, unlike how a sync's change meets an open edit. The server reads the time itself, just before the save.
+  - **The server retries a stale edit on its own**: it would write the assistant's fields over a change the assistant hasn't seen.
 - Saving part of a contact:
   - **The tool reads the contact from `Groups`, then calls `Save`**: a sync's reload or a window's save between the two is undone for the fields left out.
   - **A required full name**: an edit couldn't leave it out.
@@ -314,6 +323,7 @@ The options below were considered and rejected, grouped by decision.
   - **A few broad tools, such as one `tasks` tool with an action argument**: each tool's input is vaguer and harder for the model to use.
 - Images:
   - **No image tools**: the user wanted assistants to add images.
+  - **The image tool writes only the image and returns its Markdown, which the assistant links with the edit tool**: an image whose edit never comes stays in the clone and syncs, unlinked, and it needed a second `ITasks` operation beside direct task changes. The user chose direct task changes' `AddImage`.
 - Reading the log:
   - **An earliest time only, with the assistant filtering the newest 500 itself**: the user decided the tool filters as the Logs window does.
   - **The window's time presets as an input**: they fill the window's boxes from "now"; moments and the result's time now do the same job.

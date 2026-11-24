@@ -48,7 +48,7 @@ internal sealed partial class ContactService
     public void MoveGroup(string groupName, string? previousGroup, string? nextGroup)
     {
         ArgumentNullException.ThrowIfNull(groupName);
-        Change(current => GroupOrder.Plan(current.GroupFiles, groupName, previousGroup, nextGroup), _ =>
+        Change(current => GroupOrder.Plan(current, groupName, previousGroup, nextGroup), _ =>
             logger.Information("Moved the group in {GroupFile}", ContactLayout.GroupRelativePath(groupName)));
     }
 
@@ -115,10 +115,11 @@ internal sealed partial class ContactService
             : group.Members.Select(member => ReferenceEquals(member, existing) ? member.With(contact) : member));
     }
 
-    private static GroupFile WritableGroup(ContactSnapshot current, string groupName) =>
-        current.GroupNamed(groupName) ?? throw (current.IsSkipped(groupName)
-            ? new InvalidOperationException($"The file of group '{groupName}' was skipped, so it can't be changed.")
-            : new ArgumentException($"There is no group '{groupName}'.", nameof(groupName)));
+    private static GroupFile WritableGroup(ContactSnapshot current, string groupName)
+    {
+        current.ThrowIfSkipped(groupName);
+        return current.GroupNamed(groupName) ?? throw new ArgumentException($"There is no group '{groupName}'.", nameof(groupName));
+    }
 
     private static StoredContact? MemberWithId(GroupFile group, string id) =>
         group.Members.FirstOrDefault(member => member.Contact.Id.Equals(id, StringComparison.OrdinalIgnoreCase));

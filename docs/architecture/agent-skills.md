@@ -6,7 +6,7 @@ A skill's one home is `.agents/skills/<name>/SKILL.md`, as [AGENTS.md](../../AGE
 
 ## Behavior
 
-The user asked that each skill work in Codex, Claude Code, and Copilot with no copy. So the generator gives a skill only to a tool that can't read `.agents/skills/`, as it gives each tool its agents. The generator belongs to no [module](modules.md), since it serves AI tools, not the apps. What a skill does is its own design's, such as the [`version-tag` skill's](version-tags.md#the-skill-previews-asks-you-then-runs-the-script).
+The user asked that each skill work in Codex, Claude Code, and Copilot with no copy. So the generator gives a skill only to a tool that can't read `.agents/skills/`, as it gives each tool its agents. The generator belongs to no [module](modules.md), since it serves AI tools, not the apps. What a skill does is its own design's, such as the [`version-tag` skill's](version-tags.md#the-skill-clears-a-tag-after-you-approve-its-preview).
 
 ### Each AI tool reads skills from its own folders
 

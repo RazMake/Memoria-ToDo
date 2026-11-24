@@ -174,6 +174,107 @@ public sealed class MoveTaskTests
         Assert.Equal(file, f.ReadText(f.TaskFile(D)));
     }
 
+    // A side left open is still bounded by the next task on that side, so the new rank is never one another task holds.
+
+    private bool EveryRankIsDistinct() => f.Tasks.All.Select(t => t.Rank).Distinct().Count() == f.Tasks.All.Count;
+
+    [Fact]
+    public void Gives_a_task_moved_after_a_neighbor_with_the_bottom_open_a_rank_no_other_task_holds()
+    {
+        f.Tasks.Move(A, C, null);
+
+        Assert.Equal(["B", "C", "A", "D"], Order);
+        Assert.True(EveryRankIsDistinct());
+    }
+
+    [Fact]
+    public void Gives_a_task_moved_before_a_neighbor_with_the_top_open_a_rank_no_other_task_holds()
+    {
+        f.Tasks.Move(D, null, B);
+
+        Assert.Equal(["A", "D", "B", "C"], Order);
+        Assert.True(EveryRankIsDistinct());
+    }
+
+    [Fact]
+    public void With_the_bottom_open_moves_a_task_past_the_tasks_that_share_the_previous_neighbors_rank()
+    {
+        ThreeSharingARank();
+
+        f.Tasks.Move(D, B, null);
+
+        Assert.Equal(["A", "B", "X", "Y", "Z", "D", "C"], Order);
+        var moved = f.Tasks.All.Single(t => t.Id == D);
+        Assert.DoesNotContain(f.Tasks.All.Where(t => t.Id != D), t => t.Rank == moved.Rank);
+    }
+
+    [Fact]
+    public void With_the_top_open_moves_a_task_past_the_tasks_that_share_the_next_neighbors_rank()
+    {
+        var (_, _, z) = ThreeSharingARank();
+
+        f.Tasks.Move(D, null, z);
+
+        Assert.Equal(["A", "D", "B", "X", "Y", "Z", "C"], Order);
+        var moved = f.Tasks.All.Single(t => t.Id == D);
+        Assert.DoesNotContain(f.Tasks.All.Where(t => t.Id != D), t => t.Rank == moved.Rank);
+    }
+
+    // With both neighbors given, another task between them in All bounds the new rank too.
+
+    [Fact]
+    public void Moves_a_task_between_two_neighbors_with_another_task_between_them_to_right_after_the_previous_one_with_a_rank_no_other_task_holds()
+    {
+        f.Tasks.Move(D, A, C);
+
+        Assert.Equal(["A", "D", "B", "C"], Order);
+        Assert.True(EveryRankIsDistinct());
+    }
+
+    [Fact]
+    public void Moves_a_task_between_two_neighbors_past_the_tasks_that_share_the_previous_neighbors_rank()
+    {
+        ThreeSharingARank();
+
+        f.Tasks.Move(A, B, D);
+
+        Assert.Equal(["B", "X", "Y", "Z", "A", "C", "D"], Order);
+        var moved = f.Tasks.All.Single(t => t.Id == A);
+        Assert.DoesNotContain(f.Tasks.All.Where(t => t.Id != A), t => t.Rank == moved.Rank);
+    }
+
+    [Fact]
+    public void Changes_nothing_when_the_task_already_shows_between_its_two_given_neighbors_with_another_task_between_it_and_the_next_one()
+    {
+        var before = f.Tasks.All.ToList();
+        var file = f.ReadText(f.TaskFile(B));
+        f.Time.Advance(TimeSpan.FromMinutes(5));
+        var changes = f.CountChanges();
+
+        f.Tasks.Move(B, A, D);
+
+        Assert.Equal(["A", "B", "C", "D"], Order);
+        Assert.Equal(before.Select(t => t.Rank), f.Tasks.All.Select(t => t.Rank));
+        Assert.Equal(file, f.ReadText(f.TaskFile(B)));
+        Assert.Equal(0, changes.Count);
+    }
+
+    [Fact]
+    public void Changes_nothing_when_the_task_already_shows_between_its_two_given_neighbors_with_another_task_between_it_and_the_previous_one()
+    {
+        var before = f.Tasks.All.ToList();
+        var file = f.ReadText(f.TaskFile(C));
+        f.Time.Advance(TimeSpan.FromMinutes(5));
+        var changes = f.CountChanges();
+
+        f.Tasks.Move(C, A, D);
+
+        Assert.Equal(["A", "B", "C", "D"], Order);
+        Assert.Equal(before.Select(t => t.Rank), f.Tasks.All.Select(t => t.Rank));
+        Assert.Equal(file, f.ReadText(f.TaskFile(C)));
+        Assert.Equal(0, changes.Count);
+    }
+
     [Fact]
     public void Changes_nothing_when_the_task_already_shows_between_neighbors_that_share_a_rank()
     {

@@ -102,37 +102,6 @@ internal static class EditorFields
     public static IReadOnlyList<string> ShownPopupMentions() =>
         ShownPopupMentionList() is System.Windows.Controls.ItemsControl list ? [.. list.Items.Cast<string>()] : [];
 
-    /// <summary>The texts a card shows, read by showing it in a window of its own for a moment.</summary>
-    public static IReadOnlyList<string> TextsOfCard(FrameworkElement card)
-    {
-        var window = new Window { Content = card, SizeToContent = SizeToContent.WidthAndHeight, ShowActivated = false };
-        window.Show();
-        try
-        {
-            window.UpdateLayout();
-            return
-            [
-                .. VisualTree.Visuals(card).OfType<System.Windows.Controls.TextBlock>().Select(OpenWindows.TextOf).Where(text => text.Length > 0),
-            ];
-        }
-        finally
-        {
-            window.Content = null;
-            window.Close();
-        }
-    }
-
-    /// <summary>A point in the editor's coordinates just inside the text at the offset, halfway down its line.</summary>
-    public static Point InsideAt(StyledTextEditor editor, int offset)
-    {
-        editor.UpdateLayout();
-        var view = editor.TextArea.TextView;
-        var location = editor.Document.GetLocation(offset);
-        var position = new ICSharpCode.AvalonEdit.TextViewPosition(location.Line, location.Column);
-        var inView = view.GetVisualPosition(position, ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineMiddle) - view.ScrollOffset;
-        return view.TranslatePoint(new Point(inView.X + 4, inView.Y), editor);
-    }
-
     /// <summary>The colors on offer, in order: empty while the color list is closed.</summary>
     public static IReadOnlyList<string> ShownColors(DependencyObject root) => ShownItems(root, ColorList);
 

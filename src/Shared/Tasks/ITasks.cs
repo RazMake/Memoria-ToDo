@@ -18,14 +18,6 @@ public interface ITasks
     /// </summary>
     TaskItem Add(TaskDraft draft);
 
-    /// <summary>
-    /// Adds a new task at the top, with a new task ID, and writes its file, through the same checks, notices, and local save
-    /// report as <see cref="Add(TaskDraft)"/>. Never touches the draft or any images. A null <paramref name="tag"/> adds no tag;
-    /// the caller spells it through <see cref="WithTag"/>. Throws, before any change: <see cref="NoRepositoryFolderException"/>
-    /// when no folder is set, and <see cref="ArgumentException"/> for an empty or multi-line title or an invalid tag.
-    /// </summary>
-    TaskItem Add(string title, string description, string? tag);
-
     /// <summary>The tags in use and how many tasks have each, most-used first, ties in alphabetical order.</summary>
     IReadOnlyList<TagUse> TagsInUse();
 
@@ -70,16 +62,6 @@ public interface ITasks
     /// </summary>
     string SaveImage(string taskId, byte[] image, string altText);
 
-    /// <summary>
-    /// Shrinks the image by <see cref="SaveImage"/>'s rules, writes it into the task's folder in the clone,
-    /// <c>images/&lt;task-id&gt;/</c>, and returns its Markdown. Reports a local save; raises no <see cref="Changed"/>.
-    /// Never touches the task's file, its open edit's images, or the draft. Throws, before any change:
-    /// <see cref="NoRepositoryFolderException"/> when no folder is set; <see cref="TaskNotFoundException"/> when the task
-    /// isn't in <see cref="All"/>; <see cref="InvalidDataException"/> when it isn't an image; and
-    /// <see cref="ImageTooLargeException"/> when it can't be shrunk to 1 MB.
-    /// </summary>
-    string AddImage(string taskId, byte[] image, string altText);
-
     /// <summary>Deletes the images kept for the task's open edit. Never touches the draft.</summary>
     void DiscardEditImages(string taskId);
 
@@ -97,22 +79,27 @@ public interface ITasks
 
     /// <summary>
     /// Gives the task a rank that shows it after <paramref name="previousTaskId"/> and before <paramref name="nextTaskId"/>; null
-    /// means the top or the bottom. Changes only the task's own file and sets Updated. Changes nothing when the task already shows
-    /// there. Returns the task as saved. Throws <see cref="TaskNotFoundException"/> when any ID isn't in <see cref="All"/>, and
+    /// leaves that side open. The new rank is never one another task holds: with a previous task, it sorts after that task's rank
+    /// and before the first rank after it in <see cref="All"/> that differs from it, which is never past the next task; with only a
+    /// next task, before that task's rank and after the last rank before it in <see cref="All"/> that differs from it. Both skip the
+    /// moved task. Changes only the task's own file and sets Updated. Changes nothing when the task already shows there: between the
+    /// two given tasks, or, with a side open, next to the given task, with only tasks sharing its rank between them. Returns the task
+    /// as saved. Throws <see cref="NoRepositoryFolderException"/> when no folder is set,
+    /// <see cref="TaskNotFoundException"/> when any ID isn't in <see cref="All"/>, and
     /// <see cref="ArgumentException"/> when a neighbor is the task itself, the previous task doesn't show before the next, or the
     /// neighbors share a rank, so no rank of the task's own shows it between them.
     /// </summary>
     TaskItem Move(string taskId, string? previousTaskId, string? nextTaskId);
 
-    /// <summary>Sets Resolved and Updated to now. A resolved task stays as it is. Returns the task as saved. Throws <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
+    /// <summary>Sets Resolved to now and advances Updated. A resolved task stays as it is. Returns the task as saved. Throws <see cref="NoRepositoryFolderException"/> when no folder is set, and <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
     TaskItem Resolve(string taskId);
 
-    /// <summary>Clears Resolved and sets Updated to now. An open task stays as it is. Returns the task as saved. Throws <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
+    /// <summary>Clears Resolved and advances Updated. An open task stays as it is. Returns the task as saved. Throws <see cref="NoRepositoryFolderException"/> when no folder is set, and <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>.</summary>
     TaskItem Reopen(string taskId);
 
     /// <summary>
     /// Deletes the task's file, then its images in the clone, then any images kept for its open edit. Throws
-    /// <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>. Stops at the first step that fails and
+        /// <see cref="NoRepositoryFolderException"/> when no folder is set, and <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>. Stops at the first step that fails and
     /// throws its error; once the file is deleted, the task leaves <see cref="All"/> and <see cref="Changed"/> is raised even if a later step fails.
     /// </summary>
     void Delete(string taskId);

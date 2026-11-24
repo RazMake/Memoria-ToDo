@@ -47,7 +47,7 @@ internal sealed partial class ConfigureScreen : IDisposable
         ContactsAction = contacts ?? new FakeShortcutAction();
         initialSettings?.Invoke(Store.Settings);
         this.configure = services.Create();
-        Connected = this.configure.ConnectShortcuts(AddNewTask, ManageTasks, ConfigureAction, ContactsAction);
+        this.configure.ConnectShortcuts(AddNewTask, ManageTasks, ConfigureAction, ContactsAction);
         ClearActionCalls();
     }
 
@@ -104,9 +104,6 @@ internal sealed partial class ConfigureScreen : IDisposable
     /// <summary>The Contacts action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction ContactsAction { get; }
 
-    /// <summary>What connecting the shortcuts answered.</summary>
-    public bool Connected { get; }
-
     public Window Window => Assert.Single(windows.Visible());
 
     /// <summary>Whether the window is showing.</summary>
@@ -140,9 +137,6 @@ internal sealed partial class ConfigureScreen : IDisposable
 
     /// <summary>The Save row's shortcut box, the sixth of the six.</summary>
     public TextBox SaveField => ShortcutFields[5];
-
-    /// <summary>The Close window keys the window was given.</summary>
-    public CloseWindowKeys CloseWindowKeys => services.CloseWindowKeys;
 
     /// <summary>The Save keys the window was given.</summary>
     public SaveKeys SaveKeys => services.SaveKeys;
@@ -205,9 +199,6 @@ internal sealed partial class ConfigureScreen : IDisposable
         ConfigureAction.ClearCalls();
         ContactsAction.ClearCalls();
     }
-
-    /// <summary>Closes the window, as its close button does.</summary>
-    public void CloseWindow() => Window.Close();
 
     /// <summary>Presses the keys in order and releases them in reverse order, on the shortcut box.</summary>
     public void Chord(TextBox field, params Key[] keys)

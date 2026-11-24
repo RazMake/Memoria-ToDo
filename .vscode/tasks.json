@@ -34,6 +34,25 @@
       "problemMatcher": []
     },
     {
+      "label": "run all tests",
+      "type": "shell",
+      "command": "node",
+      "args": ["${workspaceFolder}\\.agents\\run-all-tests.mjs"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "DOTNET_ROOT": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet",
+          "PATH": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet;${env:PATH}"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "clear a version tag",
       "type": "process",
       "command": "node",

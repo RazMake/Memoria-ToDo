@@ -30,6 +30,13 @@ internal sealed class TitleField
         FormattingKeys.AddInline(Keys, Editor, () => lists.Colors.Open(Editor));
         SnippetKeys.AddTo(Keys, Editor, isTitle: true, snippets);
         router.Route(Editor, lists.Keys, Keys);
+        Editor.TextArea.TextEntering += (_, e) =>
+        {
+            if (e.Text.Contains('\r') || e.Text.Contains('\n'))
+            {
+                e.Handled = true;
+            }
+        };
         Editor.TextChanged += (_, _) => ShowMissing(false);
         DataObject.AddPastingHandler(Editor.TextArea, TextPaste.JoinLines);
     }
