@@ -218,6 +218,30 @@ Proposed, each a decision to confirm:
 
 Ruled out: a low-level mouse hook, which sees every program's input and isn't needed before this trace shows a gap; uploading the whole results folder, which holds memory dumps; an automatic cause classifier, which the evidence can't support; and a longer wait or a retry, which would hide the failure.
 
+### A real click the window never sees released reports what it saw
+
+Tests that click a page with the real mouse share one helper, which reports what it saw when the window doesn't see the button's release in time. The user approved this on 2026-11-25, after [run 45688909919](https://github.com/RazMake/Memoria-ToDo/actions/runs/45688909919) timed out waiting for that release in `WpfDescriptionWebViewKeyHandOffTests`, before the test sent any key. The same test passed locally. The report only describes; it names no cause, and it changes nothing a passing click does.
+
+Not confirmed: why the window didn't see the release. This failure is a click, not a move, so it's separate from the [pointer-input investigation](../investigations/pointer-input.md).
+
+- **One helper sends every complete click.** The description web view's [key hand-off tests](../../tests/Desktop/Tests/App/WpfDescriptionWebViewKeyHandOffTests.cs) and Task View's [Esc test](../../tests/Desktop/Tests/App/ViewTasksEscWithRealWebViewTests.cs) each bring the window to the front, press and release the left button at a point in an element, and wait for the window's `PreviewMouseLeftButtonUp`. Both use the helper instead. The [image resize tests'](../../tests/Desktop/Tests/App/WpfDescriptionWebViewImageResizeTests.cs) held button isn't a complete click, so it stays as it is.
+- **Input and the wait don't change.** The window comes to the front the same way, the press goes to the same pixel, and the release always follows the press, even when the press fails. Success is still the window's preview release event. The wait keeps each caller's bound, with no retry, no extra wait, and no new refusal.
+- **A timeout reports three things in the failure message, as plain text.** The failure stays a `TimeoutException`, with the original timeout as its inner exception.
+  - **Where the click aimed**: the element's type and size, the point in it, that point on screen and the pixel sent, the element's rectangle on screen, whether the element's window is the window brought to the front, and whether that window is active.
+  - **Window and capture state**, from the [pointer move's readings](#a-failed-real-pointer-move-reports-what-each-step-saw), taken just after the press and at the timeout. The [mouse sender](../../tests/Desktop/Tests/Platform/NativeInput/MouseInput.cs) returns the pixel it sent, so the report reuses its rounding instead of copying it. Only at the timeout does it also read the input still waiting in the test thread's queue.
+  - **What each input stage saw**: whether the press and the release were sent; the left-button-down, left-button-up, and move messages the test thread fetched; and the button-down, button-up, and capture changes WPF routed through the window. Each stage keeps its count, its first and last time from the press, and its latest point, window match, or element type.
+- **The report has a fixed size and records nothing private.** Each stage keeps a count and its latest details, never a list, however long the wait. A hook on the test's own thread sees only that thread's mouse messages, as the move trace's hook does. It records no window titles or text, no keys, no screenshots, and no page content.
+- **Cleanup always runs and never hides the failure.** The hook and handlers are removed whether the click passes or fails. Cleanup failures are thrown after the click's own failure, by the platform's [`FailureList`](modules.md#steps-that-must-all-run-throw-their-failures-together). When both the press and the release fail, both are thrown, the press first.
+
+Proposed, each a decision to confirm:
+
+- **The diagnostics never stop a click.** A reading Windows refuses shows as unavailable. When Windows refuses the hook, the report says the fetched messages are unavailable, and the click goes on.
+- **A defect in the helper's own recording fails the test**, after cleanup and behind the click's own failure, as the move trace's recording does.
+- **Only the release wait's timeout gets the report.** A failed press or release keeps the error Windows gave it, and a window that won't come to the front keeps its existing failure.
+- **The helper lives with the App tests**, the only tests that click today, and moves to the platform's tests when a platform test needs it.
+
+Ruled out: a retry or a longer wait, which would hide the failure; refusing a click whose point hits another window, as moves are refused, which would change what passes; reusing the move trace, whose markers, entries, and send check fit moves, while a click's stages are few and fixed; and a hook on the whole desktop, or screenshots, which would record other programs.
+
 ### Plain `dotnet test` runs only unit tests, and final validation runs every kind of test
 
 `Directory.Build.props` at the repository root sets one default filter for every test project: xUnit.net's `--filter-trait "Category=Unit"` ([xUnit.net on MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform)). It's passed through `TestingPlatformCommandLineArguments`, the property `dotnet test` forwards to each test application in Microsoft.Testing.Platform mode, and a property given with `-p:` can change it ([`dotnet test`](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test)).
@@ -614,6 +638,7 @@ None. No module uses the build tools.
 - **A run with screen tests starts with no unlocked, connected Windows desktop**, such as a locked PC or a disconnected Remote Desktop session: dozens of desktop screen tests fail with `Win32Exception: Access is denied` from `PointerScreen.Current`, since Windows hides the pointer then. A run on 2026-11-14 failed 45 that way. [The agents' desktop check](#agents-check-the-desktop-before-they-start-screen-tests) catches this before a run starts. Proposed, a decision to confirm: [the in-test desktop check](#screen-tests-fail-at-once-when-windows-cant-give-them-the-desktop) also fails each screen test at once, with a message that names the cause, when the desktop is lost mid-run. The code is right, so nothing gets fixed: the session stops and asks you to unlock the desktop or reconnect, then runs the same commands again.
 - **The Remote Desktop window is minimized during a run with screen tests**: they wait out their bounds, then fail with lost focus or missing input, since the check [can't detect it](#screen-tests-fail-at-once-when-windows-cant-give-them-the-desktop). The session asks you to keep the window open, or to set the registry value that section names, then runs the same commands again.
 - **A real pointer move fails in Run All tests**: the job's log and the run's `full-test-reports` artifact show the move's [trace](#a-failed-real-pointer-move-reports-what-each-step-saw). It describes what each step saw, not the cause; nothing retries or skips the test.
+- **A real click's release isn't seen in time**: the failure message reports [where the click aimed, the window and capture state, and what each input stage saw](#a-real-click-the-window-never-sees-released-reports-what-it-saw). It describes what happened, not the cause; nothing retries or skips the test.
 - **A test waits on something that never finishes, despite [its bounds](#every-wait-in-a-test-has-a-bound)**: after 2 minutes in which no test in its test application finishes, the [hang dump](#a-hang-dump-stops-a-test-application-that-hangs-despite-its-bounds) saves a memory dump and ends the test application, so its unfinished tests fail and the run fails, and its hang log names the hung test. It's a code defect: find the wait the bounds missed, and fix it test first.
 - **Two desktop tests build their first control of a type at the same time, and the type is outside the warm-up's rule**: the run hangs. The hang dump shows many tests stuck in class constructors and in WPF's theme reading, such as `SystemResources` and `Baml2006Reader`. Widen the [warm-up's](#wpfs-first-uses-run-on-one-thread-before-any-desktop-test) rule, test first.
 - **A test application crashes**, as the .NET runtime did on 2026-11-25: the run fails. The [crash dump](#a-crash-dump-saves-a-test-application-that-crashes) and its sequence file show where it crashed and which tests were running. A crash inside the runtime doesn't prove the runtime is at fault: our code or a library can corrupt memory, for example through native calls, and the runtime trips over it later. The session reports the crash with the dump's path and what the dump shows, and calls the cause unknown until the dump explains it. You decide whether to file an issue with dotnet/runtime.
@@ -782,4 +807,23 @@ The options below were considered and rejected, grouped by the decision they bel
 
 ## Open questions
 
-None.
+### How does the unit run get back under its limit?
+
+Making the slowest desktop tests cheaper, as [issue #5](https://github.com/RazMake/Memoria-ToDo/issues/5) first planned, can't bring the [timed unit run](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue) under its limit alone. The four test applications run side by side, so the run lasts as long as the slowest one, and two of them are slow. The push workflow's logs show when each one ended, in seconds after the timed run started:
+
+| Run | Timed run | Shared tests ended | Desktop tests ended |
+| --- | --- | --- | --- |
+| [45544367589](https://github.com/RazMake/Memoria-ToDo/actions/runs/45544367589), before the [WPF warm-up](#wpfs-first-uses-run-on-one-thread-before-any-desktop-test) | 15.8 | 15.7 | 15.8 |
+| [45555757917](https://github.com/RazMake/Memoria-ToDo/actions/runs/45555757917), before the warm-up | 17.6 | 17.4 | 17.6 |
+| [45688738239](https://github.com/RazMake/Memoria-ToDo/actions/runs/45688738239), with the warm-up | 18.7 | 13.7 | 18.7 |
+| [45688913494](https://github.com/RazMake/Memoria-ToDo/actions/runs/45688913494), with the warm-up | 20.1 | 15.9 | 20.1 |
+
+- **The Shared tests alone take 13.7 to 17.4 seconds**, so no desktop change reaches the limit.
+- **The desktop tests became the slowest after the warm-up**, against the estimate in its section. Their test application also logs its start about 4 seconds into the run, against about 1.5 for the others, before and after the warm-up. Not confirmed: why.
+- **Those tests cost little of the run.** The stuck log writer's test waits 2 real seconds, the warm-up's timeout test 1, and the key store's tests spent about 1 second in all. Spread over 4 processors, that's likely under 1.5 seconds of the run. Not measured.
+
+Options:
+
+1. **Make the log writer's and key store's tests cheaper now, and measure before changing anything else.** Recommended. Issue #5 stays open. A later request finds what the desktop test application does in its first 4 seconds and in the warm-up, and which Shared tests hold up its run, from the workflow's logs and test times. It costs time before the issue closes, and adds no change that evidence doesn't support.
+2. **Also cut the warm-up's scope and the slowest Sync tests now.** Nothing yet shows what makes them slow. Warming up fewer types risks the WPF deadlock that hung a final validation run.
+3. **Switch xUnit.net to its `aggressive` parallel algorithm in `tests/xunit.runner.json`.** The default, `conservative`, starts a new test only when one finishes, so a test that awaits keeps its place ([parallelism](https://xunit.net/docs/running-tests-in-parallel)). The file is shared, so every test project and every kind changes at once. xUnit.net made `conservative` the default because `aggressive` times tests less accurately and sometimes deadlocked large projects. Its gain shows only in the cloud.

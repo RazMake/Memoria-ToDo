@@ -112,21 +112,6 @@ public class WpfDescriptionWebViewKeyHandOffTests
         return keys;
     }
 
-    // Presses and releases the real left button on a blank part of the page, and returns once the window has seen the release.
-    private static async Task ClickPage(DescriptionWebViewHarness harness)
-    {
-        var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        harness.Window.PreviewMouseLeftButtonUp += (_, _) => released.TrySetResult();
-        KeyboardInput.BringToFront(new System.Windows.Interop.WindowInteropHelper(harness.Window).Handle);
-        try
-        {
-            MouseInput.Press(harness.Control.PointToScreen(new System.Windows.Point(harness.Control.ActualWidth - 6, 4)));
-        }
-        finally
-        {
-            MouseInput.Release();
-        }
-
-        await released.Task.WaitAsync(DescriptionWebViewHarness.Limit);
-    }
+    private static Task ClickPage(DescriptionWebViewHarness harness) => RealClick.OnAsync(
+        harness.Window, harness.Control, new System.Windows.Point(harness.Control.ActualWidth - 6, 4), DescriptionWebViewHarness.Limit);
 }

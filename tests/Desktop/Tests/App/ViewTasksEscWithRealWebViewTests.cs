@@ -26,19 +26,7 @@ public class ViewTasksEscWithRealWebViewTests
         var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         window.Closed += (_, _) => closed.TrySetResult();
         var web = (WebView2CompositionControl)view.WebViews.Single().Element;
-        var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        window.PreviewMouseLeftButtonUp += (_, _) => released.TrySetResult();
-        KeyboardInput.BringToFront(new System.Windows.Interop.WindowInteropHelper(window).Handle);
-        try
-        {
-            MouseInput.Press(web.PointToScreen(new System.Windows.Point(web.ActualWidth - 6, 4)));
-        }
-        finally
-        {
-            MouseInput.Release();
-        }
-
-        await released.Task.WaitAsync(RealViewTasks.Limit);
+        await RealClick.OnAsync(window, web, new System.Windows.Point(web.ActualWidth - 6, 4), RealViewTasks.Limit);
 
         KeyboardInput.Chord(KeyboardInput.Escape);
 
