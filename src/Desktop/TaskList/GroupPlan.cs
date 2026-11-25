@@ -2,7 +2,7 @@ using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
-/// <summary>A row's place in the list: the group it shows in, and its task. A task in two groups has two places.</summary>
+/// <summary>A row's place in the list: the group it shows in, and its task. A task shows in one group, so it has one place.</summary>
 internal readonly record struct RowPosition(string? Tag, string TaskId);
 
 /// <summary>One group as the left side shows it: its rows when expanded, none when collapsed, and how many tasks it holds.</summary>
@@ -36,7 +36,7 @@ internal static class GroupPlan
     {
         for (var g = 0; g < plan.Count; g++)
         {
-            if (!string.Equals(plan[g].Tag, from.Tag, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(plan[g].Tag, from.Tag, StringComparison.Ordinal))
             {
                 continue;
             }

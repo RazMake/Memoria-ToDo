@@ -115,5 +115,5 @@ internal static class DropTargets
 
     private static bool Holds(double top, double bottom, double y) => y >= top && y < bottom;
 
-    private static bool SameTag(string? left, string? right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+    private static bool SameTag(string? left, string? right) => string.Equals(left, right, StringComparison.Ordinal);
 }

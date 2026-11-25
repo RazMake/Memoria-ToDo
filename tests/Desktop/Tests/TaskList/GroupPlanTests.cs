@@ -89,17 +89,31 @@ public class GroupPlanTests
     }
 
     [Fact]
-    public void A_task_in_two_groups_is_hidden_only_from_the_collapsed_one()
+    public void A_task_with_several_tags_is_hidden_by_collapsing_its_first_tags_group_only()
     {
-        _tasks.AddOlder("Buy milk", "", "home", "errand");
+        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Errands", "", "errand");
         _collapse.Toggle("home");
 
         var plan = Plan();
 
         Assert.Equal(["errand", "home"], plan.Select(group => group.Tag));
-        Assert.Equal(["Buy milk"], Titles(plan[0]));
+        Assert.Equal(["Errands"], Titles(plan[0]));
         Assert.Empty(plan[1].Rows);
         Assert.Equal(1, plan[1].TaskCount);
+    }
+
+    [Fact]
+    public void Collapsing_a_tag_that_is_second_on_a_task_leaves_the_task_showing_in_its_first_tags_group()
+    {
+        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Errands", "", "errand");
+        _collapse.Toggle("errand");
+
+        var plan = Plan();
+
+        Assert.Equal(["Buy milk"], Titles(plan.Single(group => group.Tag == "home")));
+        Assert.Empty(plan.Single(group => group.Tag == "errand").Rows);
     }
 
     // ---- Up and Down ----
@@ -179,15 +193,16 @@ public class GroupPlanTests
     }
 
     [Fact]
-    public void A_task_in_two_groups_has_a_place_in_each_and_the_group_decides_where_Down_goes()
+    public void A_task_with_several_tags_has_a_place_only_in_its_first_tags_group_where_Down_goes()
     {
         _tasks.Add("Z", "", "work");
-        _tasks.AddOlder("Buy milk", "", "home", "errand");
+        _tasks.Add("Buy milk", "", "home", "errand");
         _tasks.Add("Next", "", "errand");
 
-        // errand shows "Next" then "Buy milk"; home shows "Buy milk" only.
+        // errand shows "Next" only; home shows "Buy milk" only.
         Assert.Equal("Buy milk", NeighborTitle(At("errand", "Next"), 1));
         Assert.Equal("Z", NeighborTitle(At("home", "Buy milk"), 1));
+        Assert.Null(NeighborTitle(At("errand", "Buy milk"), 1));
     }
 
     [Fact]

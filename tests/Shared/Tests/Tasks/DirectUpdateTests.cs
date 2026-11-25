@@ -24,13 +24,13 @@ public sealed class DirectUpdateTests
     private static DateTimeOffset Read => DirectChangeChecks.SeededTime;
 
     [Fact]
-    public void Replaces_the_title_description_and_tag_and_sets_updated_to_now()
+    public void Replaces_the_title_description_and_tags_and_sets_updated_to_now()
     {
-        var saved = Direct.Update(id, Read, " New title ", "New body", "work");
+        var saved = Direct.Update(id, Read, " New title ", "New body", ["work", "errand"]);
 
         Assert.Equal("New title", saved.Title);
         Assert.Equal("New body", saved.Description);
-        Assert.Equal(["work"], saved.Tags);
+        Assert.Equal(["work", "errand"], saved.Tags);
         Assert.Equal(f.Time.GetUtcNow(), saved.Updated);
         TaskAssert.SameTask(saved, Assert.Single(f.Tasks.All));
     }
@@ -64,24 +64,112 @@ public sealed class DirectUpdateTests
     }
 
     [Fact]
-    public void Clears_the_tag_when_the_tag_is_empty()
+    public void Clears_every_tag_when_the_list_is_empty()
     {
-        var saved = Direct.Update(id, Read, null, null, "");
+        var saved = Direct.Update(id, Read, null, null, []);
 
         Assert.Empty(saved.Tags);
         Assert.Equal("Original", saved.Title);
     }
 
     [Fact]
-    public void Clears_every_tag_of_an_older_task_that_has_several()
+    public void Clears_every_tag_of_a_task_that_has_several()
     {
         var older = TasksFixture.Id(6);
         f.Seed(older, "Older", tags: ["one", "two"]);
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var saved = Direct.Update(older, Read, null, null, "");
+        var saved = Direct.Update(older, Read, null, null, []);
 
         Assert.Empty(saved.Tags);
+    }
+
+    [Fact]
+    public void Normalizes_the_tags_and_drops_repeats_keeping_the_first_place()
+    {
+        var saved = Direct.Update(id, Read, null, null, [" Work ", "My  Home", "WORK"]);
+
+        Assert.Equal(["work", "my-home"], saved.Tags);
+    }
+
+    [Fact]
+    public void Counts_a_reorder_of_the_tags_as_a_change()
+    {
+        var older = TasksFixture.Id(6);
+        f.Seed(older, "Older", tags: ["one", "two"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+        var changes = f.CountChanges();
+
+        var saved = Direct.Update(older, Read, null, null, ["two", "one"]);
+
+        Assert.Equal(["two", "one"], saved.Tags);
+        Assert.Equal(f.Time.GetUtcNow(), saved.Updated);
+        Assert.Equal(1, changes.Count);
+    }
+
+    [Fact]
+    public void Writes_nothing_when_the_list_equals_the_current_tags_in_order_once_normalized()
+    {
+        var older = TasksFixture.Id(6);
+        f.Seed(older, "Older", tags: ["one", "two"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+        var before = f.Snapshot();
+        var changes = f.CountChanges();
+
+        var returned = Direct.Update(older, Read, null, null, ["ONE", " two", "one"]);
+
+        Assert.Equal(Read, returned.Updated);
+        Assert.Equal(before, f.Snapshot());
+        Assert.Equal(0, changes.Count);
+    }
+
+    [Fact]
+    public void Refuses_more_than_fifteen_tags_and_writes_nothing()
+    {
+        var before = f.Snapshot();
+
+        Assert.Throws<ArgumentException>(() => Direct.Update(id, Read, "Other", null, Enumerable.Range(1, 16).Select(n => $"tag{n}").ToArray()));
+
+        Assert.Equal(before, f.Snapshot());
+    }
+
+    [Fact]
+    public void Saves_fifteen_tags()
+    {
+        var tags = Enumerable.Range(1, 15).Select(n => $"tag{n}").ToArray();
+
+        Assert.Equal(tags, Direct.Update(id, Read, null, null, tags).Tags);
+    }
+
+    [Fact]
+    public void Keeps_every_tag_of_a_task_with_more_than_fifteen_when_the_tags_are_left_out()
+    {
+        var many = TasksFixture.Id(6);
+        var tags = Enumerable.Range(1, 20).Select(n => $"tag{n}").ToArray();
+        f.Seed(many, "Many", tags: tags);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = Direct.Update(many, Read, "Renamed", null, null);
+
+        Assert.Equal(tags, saved.Tags);
+    }
+
+    [Fact]
+    public void Accepts_the_identical_list_of_more_than_fifteen_tags_and_writes_nothing()
+    {
+        var many = TasksFixture.Id(6);
+        var tags = Enumerable.Range(1, 20).Select(n => $"tag{n}").ToArray();
+        f.Seed(many, "Many", tags: tags);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+        var before = f.Snapshot();
+        var changes = f.CountChanges();
+
+        var returned = Direct.Update(many, Read, null, null, tags);
+
+        Assert.Equal(Read, returned.Updated);
+        Assert.Equal(tags, returned.Tags);
+        Assert.Equal(before, f.Snapshot());
+        Assert.Equal(0, changes.Count);
     }
 
     [Fact]
@@ -124,7 +212,7 @@ public sealed class DirectUpdateTests
         var changes = f.CountChanges();
         var saves = f.CountLocalSaves();
 
-        var returned = Direct.Update(id, Read, "Original", "Body", "home");
+        var returned = Direct.Update(id, Read, "Original", "Body", ["home"]);
 
         Assert.Equal(Read, returned.Updated);
         Assert.Equal(before, f.Snapshot());
@@ -220,12 +308,15 @@ public sealed class DirectUpdateTests
         Assert.Equal(before, f.Snapshot());
     }
 
-    [Fact]
-    public void Refuses_a_tag_with_a_line_break_and_writes_nothing()
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(" \r\n ")]
+    public void Refuses_a_tag_that_is_empty_once_normalized_and_writes_nothing(string tag)
     {
         var before = f.Snapshot();
 
-        Assert.ThrowsAny<ArgumentException>(() => Direct.Update(id, Read, "Other", null, "two\nlines"));
+        Assert.ThrowsAny<ArgumentException>(() => Direct.Update(id, Read, "Other", null, ["work", tag]));
 
         Assert.Equal(before, f.Snapshot());
     }
@@ -258,7 +349,7 @@ public sealed class DirectUpdateTests
         f.Tasks.KeepDraft(draft);
         var deviceBefore = f.DeviceSnapshot();
 
-        Direct.Update(id, Read, "Direct", "changed", "work");
+        Direct.Update(id, Read, "Direct", "changed", ["work"]);
 
         f.AssertDraftKept(draft);
         Assert.Equal(deviceBefore, f.DeviceSnapshot());
@@ -270,7 +361,7 @@ public sealed class DirectUpdateTests
         f.Tasks.SaveImage(id, TasksFixture.TinyPng(), "pic");
         var deviceBefore = f.DeviceSnapshot();
 
-        Direct.Update(id, Read, "Direct", "changed", "work");
+        Direct.Update(id, Read, "Direct", "changed", ["work"]);
 
         Assert.Equal(deviceBefore, f.DeviceSnapshot());
     }

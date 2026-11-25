@@ -85,6 +85,15 @@ public sealed class DraftTests
     }
 
     [Fact]
+    public void Writes_the_kept_draft_with_its_tags_normalized_and_repeats_dropped()
+    {
+        f.Tasks.KeepDraft(f.Draft("Title", "", "Work", "my  Home", "WORK", "my-home", "errand"));
+
+        using var json = f.ReadJson(f.DraftFile);
+        Assert.Equal(["work", "my-home", "errand"], json.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetString()));
+    }
+
+    [Fact]
     public void Keeps_a_draft_with_only_tags()
     {
         f.Tasks.KeepDraft(f.Draft("", "", "tag"));
@@ -92,7 +101,7 @@ public sealed class DraftTests
         Assert.Equal(["tag"], f.Tasks.LoadDraft()!.Tags);
     }
 
-    // A draft kept before the one-tag rule can hold several tags. It never leaves the device, so it loads with its first tag only.
+    // A draft keeps every tag in order. Reading normalizes them and drops repeats, and never rewrites the file.
 
     private TaskDraft SeedOlderDraft(params string[] tags)
     {
@@ -114,24 +123,43 @@ public sealed class DraftTests
     [Theory]
     [InlineData("work", "home")]
     [InlineData("work", "home", "errand")]
-    public void Loads_a_kept_draft_with_two_or_more_tags_with_its_first_tag_only(params string[] tags)
+    public void Loads_a_kept_draft_with_every_tag_in_order(params string[] tags)
     {
         var draft = SeedOlderDraft(tags);
 
         var loaded = f.Tasks.LoadDraft()!;
 
-        Assert.Equal(["work"], loaded.Tags);
+        Assert.Equal(tags, loaded.Tags);
         Assert.Equal(draft.TaskId, loaded.TaskId);
         Assert.Equal("Older", loaded.Title);
         Assert.Equal("Body", loaded.Description);
     }
 
     [Fact]
-    public void Loads_the_first_tag_only_after_the_app_restarts()
+    public void Loads_a_kept_draft_with_its_tags_normalized_and_repeats_dropped()
     {
-        SeedOlderDraft("work", "home");
+        SeedOlderDraft("Work", "my  Home", "WORK", "my-home", "errand");
 
-        Assert.Equal(["work"], f.Restarted().LoadDraft()!.Tags);
+        Assert.Equal(["work", "my-home", "errand"], f.Tasks.LoadDraft()!.Tags);
+    }
+
+    [Fact]
+    public void Loads_the_normalized_tags_after_the_app_restarts()
+    {
+        SeedOlderDraft("Work", "home");
+
+        Assert.Equal(["work", "home"], f.Restarted().LoadDraft()!.Tags);
+    }
+
+    [Fact]
+    public void Does_not_rewrite_the_draft_file_when_loading_it()
+    {
+        SeedOlderDraft("Work", "work");
+        var before = f.ReadText(f.DraftFile);
+
+        f.Tasks.LoadDraft();
+
+        Assert.Equal(before, f.ReadText(f.DraftFile));
     }
 
     [Fact]
@@ -145,7 +173,7 @@ public sealed class DraftTests
     }
 
     [Fact]
-    public void Adds_a_task_from_a_loaded_older_draft_because_it_holds_one_tag()
+    public void Adds_a_task_from_a_loaded_draft_with_all_its_tags()
     {
         var draft = SeedOlderDraft("work", "home");
         f.Tasks.UseRepositoryFolder(f.Clone);
@@ -153,7 +181,7 @@ public sealed class DraftTests
         var task = f.Tasks.Add(f.Tasks.LoadDraft()!);
 
         Assert.Equal(draft.TaskId, task.Id);
-        Assert.Equal(["work"], task.Tags);
+        Assert.Equal(["work", "home"], task.Tags);
     }
 
     [Fact]

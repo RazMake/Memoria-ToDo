@@ -10,7 +10,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// The left side's content: a heading and the rows of each tag group, unless the group is collapsed, then the "N resolved"
-/// button and, when chosen, the resolved tasks in one list. A task in two groups has a row in each. Rows and headings are
+/// button and, when chosen, the resolved tasks in one list. A task shows in one group only. Rows and headings are
 /// kept between shows, so the keyboard focus stays on a row while the list changes around it.
 /// </summary>
 internal sealed class GroupedRows : StackPanel
@@ -25,7 +25,7 @@ internal sealed class GroupedRows : StackPanel
     private readonly IDragPointer _pointer;
     private readonly Button _resolvedButton = new() { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 12, 0, 8) };
     private readonly Dictionary<RowKey, TaskRow> _rows = [];
-    private readonly Dictionary<string, GroupHeading> _headings = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, GroupHeading> _headings = new(StringComparer.Ordinal);
     private readonly List<(TaskRow Row, RowKey Key)> _shown = [];
     private readonly DropLine _dropLine;
     private IReadOnlyList<PlannedGroup> _plan = [];
@@ -219,7 +219,7 @@ internal sealed class GroupedRows : StackPanel
     // The open row of the task in the group, or else its resolved row, which has no group.
     private TaskRow? RowAt(RowPosition at) =>
         _shown.Where(shown => shown.Key.Id == at.TaskId
-            && (shown.Key.Resolved || string.Equals(shown.Key.Tag, at.Tag, StringComparison.OrdinalIgnoreCase)))
+            && (shown.Key.Resolved || string.Equals(shown.Key.Tag, at.Tag, StringComparison.Ordinal)))
             .Select(shown => shown.Row).FirstOrDefault();
 
     // Puts the title editor in the row the user opened it in. When that row isn't showing, no row has the editor.
@@ -322,7 +322,7 @@ internal sealed class GroupedRows : StackPanel
         key.Resolved ? _resolvedShown : _plan.Any(group => new GroupKey(group.Tag, false) == key);
 
     private IReadOnlyList<TaskItem>? TargetRows(TaskGap gap) =>
-        gap.Resolved ? _resolvedTasks : _plan.FirstOrDefault(group => string.Equals(group.Tag, gap.Tag, StringComparison.OrdinalIgnoreCase))?.Rows;
+        gap.Resolved ? _resolvedTasks : _plan.FirstOrDefault(group => string.Equals(group.Tag, gap.Tag, StringComparison.Ordinal))?.Rows;
 
     // Where the items sit now, in this panel's coordinates; the groups' touching spans include the space above each heading.
     private ListLayout Layout()

@@ -11,7 +11,7 @@ internal static class TagMove
     /// </summary>
     public static TagColorSet? Apply(TagColorSet tags, IEnumerable<string> inUse, string tag, string? previous, string? next, DateTimeOffset now)
     {
-        var everyTag = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var everyTag = new Dictionary<string, string>();
         foreach (var each in new[] { tag, previous, next }.OfType<string>().Concat(inUse).Concat(tags.Entries.Where(e => e.Place is not null).Select(e => e.Tag)))
             everyTag.TryAdd(each, each);
         var shown = tags.Sort(everyTag.Values);
@@ -48,11 +48,11 @@ internal static class TagMove
         return tags.With(entries);
     }
 
-    /// <summary>The tag's entry, spelled as it is there, with its place set.</summary>
+    /// <summary>The tag's entry with its place set.</summary>
     private static TagColorEntry PlacedAt(TagColorSet tags, string tag, string rank, DateTimeOffset now) =>
         (tags.Find(tag) ?? new TagColorEntry(tag, null, null)) with { Place = new TagStamp(rank, now) };
 
     private static string? PlaceOf(TagColorSet tags, string? tag) => tag is null ? null : tags.Find(tag)?.Place?.Value;
 
-    private static int IndexOf(List<string> tags, string tag) => tags.FindIndex(each => string.Equals(each, tag, StringComparison.OrdinalIgnoreCase));
+    private static int IndexOf(List<string> tags, string tag) => tags.IndexOf(tag);
 }

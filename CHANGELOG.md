@@ -6,6 +6,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- A task can now have up to 15 tags. In Add and Task View, each tag shows as a pill; drag a pill to reorder the tags, or move the selected pill with Alt+Left and Alt+Right. The first tag groups the task in Task View, so it shows a little larger than the others. Searching finds a task by any of its tags. Tags are now always lowercase, with a hyphen in place of spaces: "My Work" becomes "my-work", and tags that differed only in case become one. Your existing tasks keep their tags, written this way the next time you change them. AI assistants and your own programs can now set several tags on a task and find the tasks that have all the tags they name. Until every device you sync is updated, older versions show a task with several tags under each of its tags.
+
 ## 1.2.0
 
 - The app now keeps a log of what it does, such as syncs, added, changed, and deleted tasks and contacts, and every error, with the time to the millisecond. When the app says files can't be loaded, the log names each file and why. The log stays on your computer, never holds passwords or keys, and cleans up after itself: entries older than two weeks are deleted, and it never grows past about 30 MB.

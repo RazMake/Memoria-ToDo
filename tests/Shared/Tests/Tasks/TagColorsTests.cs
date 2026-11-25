@@ -110,23 +110,34 @@ public sealed class TagColorsTests
         Assert.Equal("teal", restarted.TagColors.ColorOf("work"));
     }
 
-    // Sorting, spelling, and never deleting
+    // Sorting, normalizing, and never deleting
 
     [Fact]
-    public void Sorts_the_entries_by_tag_ignoring_case()
+    public void Sorts_the_entries_by_normalized_tag_ordinally()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         Colors.SetColor("banana", "red");
         Colors.SetColor("Cherry", "blue");
-        Colors.SetColor("apple", "green");
-        Colors.SetColor("Banana2", "gold");
+        Colors.SetColor("az", "green");
+        Colors.SetColor("A_z", "gold");
 
-        Assert.Equal(["apple", "banana", "Banana2", "Cherry"], Read().Entries.Select(e => e.Tag).ToList());
+        Assert.Equal(["a_z", "az", "banana", "cherry"], Read().Entries.Select(e => e.Tag).ToList());
     }
 
     [Fact]
-    public void Saves_a_new_pick_of_a_tag_with_the_spelling_given_in_that_call()
+    public void Saves_a_pick_with_the_normalized_tag()
+    {
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        Colors.SetColor("  My  Work ", "teal");
+
+        Assert.Equal([("my-work", "teal", NowText)], Read().Entries);
+        Assert.Equal("teal", Colors.ColorOf("my-work"));
+    }
+
+    [Fact]
+    public void Changes_the_color_of_the_same_tag_given_in_another_case()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
         Colors.SetColor("Work", "teal");
@@ -135,6 +146,19 @@ public sealed class TagColorsTests
         Colors.SetColor("work", "gold");
 
         Assert.Equal([("work", "gold", "2026-11-12T08:31:15.123Z")], Read().Entries);
+    }
+
+    [Fact]
+    public void Writes_nothing_when_the_same_color_is_set_again_for_a_tag_given_in_another_case()
+    {
+        f.SeedTagColors(1, ("work", "teal", Earlier));
+        f.Tasks.UseRepositoryFolder(f.Clone);
+        var before = f.Files.ReadFile(f.TagColorsFile);
+        f.Files.FailWritesUnder(f.Clone);
+
+        Colors.SetColor(" WORK ", "teal");
+
+        Assert.Equal(before, f.Files.ReadFile(f.TagColorsFile));
     }
 
     [Fact]
@@ -163,13 +187,51 @@ public sealed class TagColorsTests
     // Reading
 
     [Fact]
-    public void Matches_a_tag_ignoring_case()
+    public void Looks_a_color_up_by_the_normalized_tag()
     {
-        f.SeedTagColors(1, ("Work", "teal", Earlier));
+        f.SeedTagColors(1, ("Work", "teal", Earlier), ("my  home", "red", Earlier));
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         Assert.Equal("teal", Colors.ColorOf("work"));
-        Assert.Equal("teal", Colors.ColorOf("WORK"));
+        Assert.Equal("teal", Colors.ColorOf(" WORK "));
+        Assert.Equal("red", Colors.ColorOf("My-Home"));
+        Assert.Equal("red", Colors.ColorOf("my home"));
+    }
+
+    [Fact]
+    public void Loads_a_file_with_two_entries_for_one_normalized_tag_and_the_first_wins()
+    {
+        f.SeedTagColors(1, ("Work", "teal", Earlier), ("work", "gold", Earlier), ("WORK ", "red", Earlier));
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        Assert.Equal("teal", Colors.ColorOf("work"));
+        Assert.Empty(f.Repository.SkippedFiles);
+    }
+
+    [Fact]
+    public void Does_not_rewrite_the_file_it_read_with_unnormalized_tags()
+    {
+        f.SeedTagColors(1, ("Work", "teal", Earlier), ("work", "gold", Earlier));
+        var before = f.ReadText(f.TagColorsFile);
+        var (colors, saved) = CountNotices();
+
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        Assert.Equal(before, f.ReadText(f.TagColorsFile));
+        Assert.Equal(0, saved());
+    }
+
+    [Fact]
+    public void Writes_every_entry_normalized_without_the_dropped_ones_at_the_next_pick()
+    {
+        f.SeedTagColors(1, ("Work", "teal", Earlier), ("work", "gold", Earlier), ("My  Home", "red", Earlier));
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        Colors.SetColor("errand", "blue");
+
+        Assert.Equal(
+            [("errand", "blue", NowText), ("my-home", "red", Earlier), ("work", "teal", Earlier)],
+            Read().Entries);
     }
 
     [Fact]
@@ -196,9 +258,8 @@ public sealed class TagColorsTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData(" padded ")]
-    [InlineData("two\nlines")]
-    public void Refuses_an_invalid_tag_and_writes_nothing(string tag)
+    [InlineData(" \r\n ")]
+    public void Refuses_a_tag_that_is_empty_once_normalized_and_writes_nothing(string tag)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
@@ -259,12 +320,11 @@ public sealed class TagColorsTests
     public static TheoryData<string> UnreadableFiles() => new()
     {
         "{ not json",
-        TasksFixture.TagColorsJson(1, (" padded ", "teal", Earlier)),
+        TasksFixture.TagColorsJson(1, ("work", "teal", Earlier), ("  ", "teal", Earlier)),
         TasksFixture.TagColorsJson(1, ("", "teal", Earlier)),
         TasksFixture.TagColorsJson(1, ("work", "", Earlier)),
         TasksFixture.TagColorsJson(1, ("work", "teal\ngold", Earlier)),
         TasksFixture.TagColorsJson(1, ("work", "teal", "yesterday")),
-        TasksFixture.TagColorsJson(1, ("Work", "teal", Earlier), ("work", "gold", Earlier)),
     };
 
     [Theory]

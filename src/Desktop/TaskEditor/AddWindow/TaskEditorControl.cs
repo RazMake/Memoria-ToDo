@@ -10,7 +10,7 @@ using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
-/// <summary>The Title, Description, and one tag of a task, with every key the Task editor's design lists.</summary>
+/// <summary>The Title, Description, and ordered tags of a task, with every key the Task editor's design lists.</summary>
 internal sealed class TaskEditorControl : UserControl, IDraftEditor
 {
     private readonly TitleField _title;
@@ -37,7 +37,7 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
         TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, ILogger logger)
     {
         _tagsModel = tagsModel;
-        _tags = new TagEditor(tasks, _tagsModel, new TagLook(tagColors, theme));
+        _tags = new TagEditor(tasks, _tagsModel, new TagLook(tagColors, theme), pointer, logger);
         _lists = new PickerLists(tasks, contacts, palette, theme);
         _images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId, _message.Show, logger);
         var snippets = new SnippetInserter(time, clipboard, _lists.TaskReferences.Open, _images.InsertClipboardOrChosen);
@@ -78,7 +78,7 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
     /// <summary>Asks to save, as the Save keys do: typed tag text becomes a tag first.</summary>
     internal void RequestSave() => RequestSave(SaveRequested);
 
-    /// <summary>What the fields hold now. Setting it replaces all three fields; a task saved with several tags shows its first, so <see cref="Value"/> then holds only it.</summary>
+    /// <summary>What the fields hold now. Setting it replaces all three fields, the tags in their order.</summary>
     public TaskDraft Value
     {
         get => new(_taskId, _title.Editor.Text, _description.Editor.Text, _tagsModel.Tags);
@@ -88,14 +88,14 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
             _taskId = value.TaskId;
             _title.Editor.Text = value.Title;
             _description.Editor.Text = value.Description;
-            _tagsModel.Tags = [.. value.Tags.Take(1)];
+            _tagsModel.Tags = [.. value.Tags];
             _baseline.Reset(Value);
         }
     }
 
     /// <summary>
     /// Whether anything changed since <see cref="Value"/> was last set, or since the editor was made. Tags are compared
-    /// as Tasks' edit compares them: ignoring case and order. Non-blank tag text typed and not yet added counts too.
+    /// as Tasks' edit compares them: in order. Non-blank tag text typed and not yet added counts too.
     /// </summary>
     public bool HasChanges => _baseline.HasChanges(_title.Editor.Text, _description.Editor.Text, _tagsModel.Tags, _tagsModel.TypedText);
 

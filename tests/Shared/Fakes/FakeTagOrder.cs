@@ -3,8 +3,8 @@ using Memoria.ToDo.Shared.Tasks;
 namespace Memoria.ToDo.Shared.Fakes;
 
 /// <summary>
-/// In-memory <see cref="ITagOrder"/>. Tags match with case ignored. <see cref="Sort"/> shows the tags with no place first,
-/// alphabetically, then the placed tags in the order they were placed. The tags last passed to <see cref="Sort"/> are the tags in
+/// In-memory <see cref="ITagOrder"/>. Tags are normalized with <see cref="TagName.Normalize"/>. <see cref="Sort"/> normalizes the tags, drops repeats, and shows the tags with no place first,
+/// ordinally, then the placed tags in the order they were placed. The tags last passed to <see cref="Sort"/> are the tags in
 /// use. <see cref="Move"/> puts the tag right after its previous neighbor, or right before its next one; when a neighbor has no
 /// place, the tags in use, the tag, and its neighbors are placed first, in the order <see cref="Sort"/> shows them.
 /// Move(tag, null, null) does nothing. Set <see cref="Failure"/> to make <see cref="Move"/> throw it before keeping
@@ -18,22 +18,23 @@ public sealed class FakeTagOrder : ITagOrder
     /// <summary>When set, <see cref="Move"/> throws it and keeps nothing.</summary>
     public Exception? Failure { get; set; }
 
-    /// <summary>Every move <see cref="Move"/> was asked to make, in order, as called. Failed calls are not listed.</summary>
+    /// <summary>Every move <see cref="Move"/> was asked to make, in order, with the normalized tags. Failed calls are not listed.</summary>
     public List<(string Tag, string? Previous, string? Next)> Moves { get; } = [];
 
     /// <summary>Gives these tags places, in this order, without a call being recorded, as an earlier session or another device would.</summary>
     public void Seed(params string[] tagsInOrder)
     {
         placed.Clear();
-        placed.AddRange(tagsInOrder);
+        placed.AddRange(tagsInOrder.Select(TagName.Normalize));
     }
 
     /// <inheritdoc />
     public IReadOnlyList<string> Sort(IReadOnlyCollection<string> tags)
     {
-        inUse = [.. tags];
-        var unplaced = tags.Where(tag => IndexOf(tag) < 0).OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase);
-        var inPlace = placed.Select(place => tags.FirstOrDefault(tag => Same(tag, place))).OfType<string>();
+        var normalized = tags.Select(NonEmpty).Distinct(StringComparer.Ordinal).ToList();
+        inUse = normalized;
+        var unplaced = normalized.Where(tag => IndexOf(tag) < 0).OrderBy(tag => tag, StringComparer.Ordinal);
+        var inPlace = placed.Where(normalized.Contains);
         return [.. unplaced, .. inPlace];
     }
 
@@ -45,6 +46,9 @@ public sealed class FakeTagOrder : ITagOrder
             throw Failure;
         }
 
+        tag = NonEmpty(tag);
+        previousTag = previousTag is null ? null : TagName.Normalize(previousTag);
+        nextTag = nextTag is null ? null : TagName.Normalize(nextTag);
         if (previousTag is null && nextTag is null)
         {
             return;
@@ -58,13 +62,13 @@ public sealed class FakeTagOrder : ITagOrder
             var newcomers = new List<string>();
             foreach (var known in inUse.Concat([tag]).Concat(neighbors))
             {
-                if (IndexOf(known) < 0 && !newcomers.Any(newcomer => Same(newcomer, known)))
+                if (IndexOf(known) < 0 && !newcomers.Contains(known))
                 {
                     newcomers.Add(known);
                 }
             }
 
-            placed.InsertRange(0, newcomers.OrderBy(newcomer => newcomer, StringComparer.OrdinalIgnoreCase));
+            placed.InsertRange(0, newcomers.OrderBy(newcomer => newcomer, StringComparer.Ordinal));
         }
 
         var at = IndexOf(tag);
@@ -84,7 +88,8 @@ public sealed class FakeTagOrder : ITagOrder
     /// <summary>Raises <see cref="Changed"/> on the calling thread, as a reload does.</summary>
     public void RaiseChanged() => Changed?.Invoke(this, EventArgs.Empty);
 
-    private static bool Same(string left, string right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+    private static string NonEmpty(string tag) =>
+        TagName.Normalize(tag) is { Length: > 0 } normalized ? normalized : throw new ArgumentException("A tag can't be empty.", nameof(tag));
 
-    private int IndexOf(string tag) => placed.FindIndex(place => Same(place, tag));
+    private int IndexOf(string tag) => placed.IndexOf(tag);
 }

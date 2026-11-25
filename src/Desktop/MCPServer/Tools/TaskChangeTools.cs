@@ -13,27 +13,27 @@ internal sealed class TaskChangeTools(ToolRunner run, CloneCheck clone, ITasks t
     public Task<string> AddTask(
         [Description("The title: one line, not empty.")] string title,
         [Description("The description, in Markdown. Empty when left out.")] string? description = null,
-        [Description("One tag.")] string? tag = null)
+        [Description("The tags, at most 15, none empty. The first tag groups the task. None when left out.")] string[]? tags = null)
     {
         string? addedId = null;
         return run.Run(() =>
         {
-            var added = direct.Add(title, description ?? "", tag);
+            var added = direct.Add(title, description ?? "", tags ?? []);
             addedId = added.Id;
             return TaskView.Of(added, withDescription: true);
         }, resultId: _ => addedId);
     }
 
-    [McpServerTool(Destructive = false), Description("Changes a task's title, description, or tag, and answers it. What you leave out stays as it is; an empty tag removes every tag. If the task changed since this call read it, it fails and you should read the task again and retry.")]
+    [McpServerTool(Destructive = false), Description("Changes a task's title, description, or tags, and answers it. What you leave out stays as it is; tags replaces the whole list, and an empty list removes every tag. The first tag groups the task, and a task has at most 15 tags. If the task changed since this call read it, it fails and you should read the task again and retry.")]
     public Task<string> EditTask(
         [Description("The task's ID.")] string id,
         [Description("The new title.")] string? title = null,
         [Description("The new description, in Markdown.")] string? description = null,
-        [Description("The new tag; empty removes it.")] string? tag = null) => run.Run(() =>
+        [Description("The new tags, at most 15, none empty; they replace the old ones, and an empty list removes them all. The first tag groups the task.")] string[]? tags = null) => run.Run(() =>
     {
         clone.Require();
         var started = tasks.All.FirstOrDefault(task => task.Id == id) ?? throw new TaskNotFoundException();
-        return TaskView.Of(direct.Update(id, started.Updated, title, description, tag), withDescription: true);
+        return TaskView.Of(direct.Update(id, started.Updated, title, description, tags), withDescription: true);
     }, [id]);
 
     [McpServerTool(Destructive = false), Description("Saves an image with a task, appends the Markdown that shows it to the end of the task's description, and answers the task. The image is shrunk to at most 1 MB.")]

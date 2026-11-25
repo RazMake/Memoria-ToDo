@@ -61,7 +61,7 @@ public class LocalApiTaskReadTests
     {
         await using var api = new ApiHarness();
         api.Store.Tasks.AddRange([
-            FakeTaskStore.Item("t1", tag: "work"), FakeTaskStore.Item("t2", tag: "home"), FakeTaskStore.Item("t3"), FakeTaskStore.Item("t4", tag: "Work")]);
+            FakeTaskStore.Item("t1", tag: "work"), FakeTaskStore.Item("t2", tag: "home"), FakeTaskStore.Item("t3"), FakeTaskStore.Item("t4", tag: "work")]);
 
         var reply = await api.Tasks.ListTasksAsync(new V1.ListTasksRequest { Tag = "WORK" });
 

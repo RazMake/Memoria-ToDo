@@ -65,6 +65,29 @@ public abstract class TagOrderContract
     }
 
     [Fact]
+    public void Normalizes_the_tag_and_its_neighbors_of_a_move()
+    {
+        Assert.Equal(["a", "b", "c"], Shown());
+
+        Order.Move(" C ", "A", "B");
+
+        Assert.Equal(["a", "c", "b"], Shown());
+    }
+
+    [Fact]
+    public void Sorts_normalized_tags_and_drops_repeats()
+    {
+        Assert.Equal(["a", "b", "my-tag"], Order.Sort(["My  Tag", "B", "a", " A "]));
+    }
+
+    [Fact]
+    public void Refuses_a_tag_that_is_empty_once_normalized()
+    {
+        Assert.ThrowsAny<ArgumentException>(() => Order.Sort(["a", " \n "]));
+        Assert.ThrowsAny<ArgumentException>(() => Order.Move("  ", "a", null));
+    }
+
+    [Fact]
     public void Raises_one_notice_for_a_move_that_changes_the_order()
     {
         Assert.Equal(["a", "b", "c"], Shown());

@@ -2,7 +2,7 @@ namespace Memoria.ToDo.Shared.Tasks;
 
 /// <summary>
 /// Each tag's color, kept in tags.json and shared by every device. Safe to call from any thread;
-/// uses the task store's lock. Tags match with case ignored. A color's name is kept without interpreting it.
+/// uses the task store's lock. Tags are normalized with TagName.Normalize. A color's name is kept without interpreting it.
 /// </summary>
 public interface ITagColors
 {
@@ -15,7 +15,7 @@ public interface ITagColors
     /// <summary>
     /// Keeps colorName for tag, with the current UTC time, creating tags.json when it's missing, then raises
     /// LocalSaved and Changed. The same color as kept writes and raises nothing. Throws, before writing:
-    /// ArgumentException for an invalid tag, or a colorName that isn't one non-empty line;
+    /// ArgumentException for a tag that's empty once normalized, or a colorName that isn't one non-empty line;
     /// NoRepositoryFolderException when no repository is selected; and InvalidDataException when
     /// tags.json can't be read or has a newer version.
     /// </summary>

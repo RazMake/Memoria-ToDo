@@ -12,7 +12,7 @@ The Add window is created when the app starts and stays hidden until needed, so 
 
 1. **Title**: one line, where the cursor starts.
 2. **Description**: grows with its content, then scrolls. Proposed: it is at least 140 and at most 400 device-independent pixels tall, so the window stays on screen. This is a decision to confirm. Proposed, a decision to confirm: where a window gives the [Description editor](#public-interface) a set height, as Task View's [right side](task-list.md#edit-description-turns-the-right-side-into-the-editor) does, the Description fills that height instead, with no upper limit, and scrolls inside itself. The Description editor then sets its `MinHeight` to its height with the Description at its smallest, so the container can tell when it must scroll.
-3. **Tag**: the task's one tag as a colored pill, or a "No tag" pill, which [opens the tag menu](#a-task-has-one-tag-shown-as-one-pill).
+3. **Tags**: the task's tags as colored pills in the task's order, where the first one groups the task and shows larger, followed by a pill that [adds a tag](#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them).
 
 Above the fields, a small **Clear** button empties Add and deletes its [draft](#closing-without-saving-keeps-a-draft-on-this-device). Below them, a **Save** button saves the task, exactly as the [Save shortcut](#keys-save-close-and-move-between-fields) does. Clear is smaller than Save and sits apart from it, so it isn't clicked by mistake.
 
@@ -46,8 +46,9 @@ The table lists the keys that work across the window, and which are still propos
 | Key | Where | What it does | Status |
 | --- | --- | --- | --- |
 | Enter or Tab | Title | Moves to the Description | Decided |
-| Tab | Description, outside a list item | Moves to the tag pill | Proposed |
-| Enter | Tag box | Makes the typed tag the task's tag, keeping its color | Proposed |
+| Tab | Description, outside a list item | Moves to the first tag pill, or to the add pill when the task has no tag | Proposed |
+| Enter | Tag box | Adds the typed tag to the task, keeping its color | Proposed |
+| Alt+Left, Alt+Right | A tag's pill | Moves that tag one place earlier or later | Proposed |
 | [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window), Ctrl+Enter at first | Anywhere | Saves the task, as the Save button does. Proposed: and closes Add. The user decided the key can be changed, in Configure. | Decided |
 | Ctrl+Shift+Enter | Anywhere | Saves the task and clears Add for another one. Proposed: these keys stay fixed when the Save shortcut changes, and the Save shortcut wins if the user picks them for it. | Proposed |
 | Esc | Anywhere | Closes Add and keeps a draft. Proposed: closes an open list, such as the snippet picker or the tag menu, first. | Decided |
@@ -94,7 +95,7 @@ No key uses Ctrl+Alt, which [Shell rules out](shell.md#ruled-out). The stamp key
 
 Proposed, each a decision to confirm:
 
-- The color list opens under the Description, not at the cursor, and shows only while open. Click a color, or press Down to move through them and Enter to choose, as with Search's matches in the [tag menu](#a-click-on-the-pill-opens-the-tag-menu). Esc closes it first. The cursor stays in the field, and the chosen color wraps the field's selection.
+- The color list opens under the Description, not at the cursor, and shows only while open. Click a color, or press Down to move through them and Enter to choose, as with Search's matches in the [tag menu](#a-click-on-a-pill-opens-the-tag-menu). Esc closes it first. The cursor stays in the field, and the chosen color wraps the field's selection.
 - Each formatting and heading key runs on the field with the cursor. Each key's result replaces only the text that changed, as one undo step, and keeps the selection Editing returns.
 - Editing sees every line break as "\n". If the text holds any "\r\n" or "\r", the key converts them first.
 - In the Description, Enter, Tab, and Shift+Tab run Editing's list commands in a list item. Tab on a first item that can't move is swallowed: the cursor stays in the Description. Outside a list item, Enter breaks the line as usual, Tab moves to the tags, and Shift+Tab moves back to the Title.
@@ -110,7 +111,7 @@ Proposed, each a decision to confirm:
 - Empty or missing clipboard text counts as no web address for the link, so the link gets an empty address and no error shows.
 - The task list shows every open task, newest first, until the user types; what is typed after it opens narrows it by Tasks' search. With no open task, or none matching, no list shows. Choosing a snippet that needs a task from the snippet list opens the task list, and choosing a task replaces the "/" and what was typed.
 
-The reference to another task opens a list, as above. It lists open tasks only, and typing filters them with [Tasks' search](../tasks.md#tags-and-search-ignore-case). The link's text is the chosen task's title with its Markdown kept, and only brackets and backslashes escaped; the list itself shows the title as a reader sees it, without its Markdown, which [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) mark.
+The reference to another task opens a list, as above. It lists open tasks only, and typing filters them with [Tasks' search](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case). The link's text is the chosen task's title with its Markdown kept, and only brackets and backslashes escaped; the list itself shows the title as a reader sees it, without its Markdown, which [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) mark.
 
 A title's [mentions](#typing-an-at-sign-mentions-a-contact) show in the task list with their live text, or their stored text when Contacts has none, as in Task View's rows. Markdown can't put a link inside another link's text, so when the reference is inserted, each mention in the title becomes its live text, or its stored text, as plain text. Later changes to the contact don't reach the reference, as later changes to the title don't. Proposed, each a decision to confirm. The user decided that a contact's text keeps any Markdown characters it holds, as the rest of the title's text does, since the reference escapes only brackets and backslashes: a name such as `Ana *QA*` shows "QA" in italic in the reference. Such names are rare, so the reference snippet's escaping stays as it is.
 
@@ -135,7 +136,7 @@ The theme comes from the editor that owns the list, which already takes it, and 
 
 Proposed, each a decision to confirm:
 
-- **The list opens in a popup at the "@"**, as the [tag menu](#a-click-on-the-pill-opens-the-tag-menu) does, not inside the editor. Its top-left corner sits just under the line that holds the "@", lined up with the "@"'s left edge, so it stays put while the user types after the "@". In a tall Description, it opens beside the text being typed, wherever that is.
+- **The list opens in a popup at the "@"**, as the [tag menu](#a-click-on-a-pill-opens-the-tag-menu) does, not inside the editor. Its top-left corner sits just under the line that holds the "@", lined up with the "@"'s left edge, so it stays put while the user types after the "@". In a tall Description, it opens beside the text being typed, wherever that is.
 - **Near a screen's edge, the popup moves to stay whole on that screen's work area**: where it doesn't fit below the line, it opens above it, and where it doesn't fit to the right, it moves left until it fits. WPF's popup placement does both for a popup placed under a rectangle ([popup placement](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/popup-placement-behavior)).
 - **The popup never takes the keyboard focus**: the cursor stays in the field, and typing still goes there and narrows the list.
 - **It follows the "@" when the field scrolls**, and closes when the "@" scrolls out of the field's view.
@@ -187,74 +188,81 @@ Proposed, each a decision to confirm:
 - Add keeps the draft itself when its window closes as the app exits, so the composition root needs no extra call.
 - After Clear, Add shows no message and no mark on the Title, as for a new task.
 - Text typed in the tag box and not yet added as a tag isn't part of the draft, but the hidden window keeps it, so the next Show of the same window finds it. Clear and saving clear it.
+- The draft keeps every tag in the order the pills show, so Show restores the same order and the same first tag.
 - A save that fails with an unreadable-data error keeps Add open and shows the message, as for other failed saves. A save with no title marks the Title with a red border until it is edited.
 - While a draft that can't be read is on disk and the fields are still empty, hiding leaves that file alone, so a window opened and closed by mistake doesn't destroy it. Typing something or saving replaces it, and Clear deletes it.
 - If keeping the draft fails when Add hides, the error is not caught, so the failure is loud rather than a draft silently lost.
 
-### A task has one tag, shown as one pill
+### A task's tags are pills in order, and a drag reorders them
 
-The user decided that a task has at most one tag, as [Tasks](../tasks.md#a-task-has-at-most-one-tag) keeps it, so the tag control has no + button. It's one pill:
+The user decided that a task has several tags in an order they set, and that the first one is the one Task View [groups the task by](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description), as [Tasks](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) keeps it. The tag control shows them as a row of pills:
 
-- **With a tag, the pill shows the tag in its color, with an x at its end.** A click on the x clears the tag, and the pill shows "No tag" again.
-- **With no tag, the pill says "No tag".**
-- **A click anywhere else on the pill opens the tag menu** under it.
-- **Choosing a tag replaces the current one**, wherever it's chosen: from the menu, from Search, or in Custom.
+- **Each tag is a pill in its color, with an x at its end**, in the task's order, wrapping onto more lines when the row is full. A click on the x removes that tag; the next tag, if any, becomes the first.
+- **The first pill shows 5% larger than a tag badge shows today, and every other pill 5% smaller**, so the user sees which tag groups the task. The user set both sizes, and decided that only the tag control shows the first tag larger: Task View's group headings keep today's badge size. Proposed, a decision to confirm: the text, the padding, and the x scale together.
+- **After the tags, an add pill opens the tag menu**, and the tag chosen there is added at the end. The user decided that the add pill says "No tag" while the task has none, as today's pill does, and shows "+" once it has one, at today's badge size. Decided by the session, a decision to confirm: once the task has 15 tags, Tasks' [limit](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), the add pill is turned off, dimmed and skipped by Tab, so the user never meets the error.
+- **A click on a tag's pill, outside its x, opens the tag menu to replace that tag** in its place, so changing the group tag keeps the others, as the user decided.
+- **A tag the task already has is never offered and never added twice**, wherever it's chosen: from the menu, from Search, or in Custom. Tags compare once [normalized](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case).
+
+The user asked that the user pick up a tag and drag it, with the list reordering as the pointer moves. Proposed, each a decision to confirm:
+
+- **A press on a tag's pill that then moves farther than Windows' drag distance picks the pill up**, as the [desktop platform's](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) press-and-drag part tells a click from a drag. A press that doesn't move that far is a click. A press on the x, or on the add pill, never starts a drag.
+- **While the pill is held, the other pills move aside as the pointer passes them**, so the row always shows the order a release would save, and the held pill shows where it would land. The sizes follow that order: whichever pill sits first shows larger.
+- **Releasing the button drops the pill there.** The control raises one change only when the order differs from before the drag. A pointer outside the row, while the button is still down, keeps the place nearest it, so a drag never loses the pill.
+- **Esc, or losing the mouse, such as when another window takes it, puts the pills back** in the order they had before the drag, and nothing changes.
+- **The drag stays inside the control.** It uses the mouse held by the control, not Windows' drag and drop between windows, so no other window or field can take a tag.
+- **Alt+Left and Alt+Right move the focused pill one place**, so the order can change without a mouse, as Alt+Up and Alt+Down [move a task](task-list.md#keys-and-the-mouse-reorder-resolve-and-delete) in Task View. The user decided these keys.
 
 The menu has three parts, as the + menu had:
 
 1. **The eight most-used tags**, which a click chooses.
 2. **Search**: a text box. The tags that match what is typed show in a submenu beside it, and a click on one chooses it.
-3. **Custom**: a text box labeled **New tag:**, with no spaces, and Rendering's 30 [tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes), in the current theme's set. The colors show only while the box holds text, and a click on a color chooses the typed tag in that color.
+3. **Custom**: a text box labeled **New tag:**, whose text follows [Tasks' tag rule](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) as it's typed, and Rendering's 30 [tag colors](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes), in the current theme's set. The colors show only while the box holds text, and a click on a color chooses the typed tag in that color.
 
-[Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color, so every device shows it. [The menu](#a-click-on-the-pill-opens-the-tag-menu) and [Custom](#custom-adds-a-new-tag-in-the-color-clicked) are described below.
+[Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color, so every device shows it. [The menu](#a-click-on-a-pill-opens-the-tag-menu) and [Custom](#custom-adds-a-new-tag-in-the-color-clicked) are described below.
 
-The user decided each of these rules:
+The user decided each of these rules, kept from the one-tag pill:
 
 - **"No tag" has no x**, since there's nothing to clear.
-- **A task saved with two or more tags before this rule** shows its first tag in the pill. Choosing or clearing a tag replaces them all, as [Tasks](../tasks.md#a-task-has-at-most-one-tag) decides.
-- **The pill is one Tab stop, and its x is the next.** Enter, Space, or Down on the pill opens the menu. Enter or Space on the x clears the tag.
+- **A pill is one Tab stop, and its x is the next.** Enter, Space, or Down on a pill opens the menu. Enter or Space on the x removes that tag.
 
 Proposed, each a decision to confirm:
 
-- **A click on the x doesn't open the menu**, and leaves the focus on the pill.
-- **"No tag" shows in the theme's plain look**, not a tag color, so it never reads as a tag named "No tag".
+- **The Tab order follows the pills' order**: each tag's pill, then its x, then the add pill. After a reorder, the moved pill keeps the focus.
+- **A click on the x doesn't open the menu.** The focus moves to the pill now in the removed one's place, or to the add pill when none is.
+- **"No tag" and "+" show in the theme's plain look**, not a tag color, so neither reads as a tag.
 
-The pill and its menu make up the tag control. It's part of the editor, so Add gets it, and the Task list shows it under the [selected task's](task-list.md#tags-show-as-colored-badges-and-change-without-edit) description. Tags still follow [Tasks' tag rules](../tasks.md#tags-and-search-ignore-case): case is ignored, and a typed tag takes the spelling of a matching tag in use.
+The pills and their menu make up the tag control. It's part of the editor, so Add gets it, and the Task list shows it under the [selected task's](task-list.md#tags-show-as-colored-badges-and-change-without-edit) description. Tags follow [Tasks' tag rules](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case): every tag is lowercase, with a hyphen where a space was.
 
-The user decided that tags typed in the tag box, Custom's **New tag:** box, are lowercase and have no spaces, and that tags already in use stay as they are. So in the tag box:
+The user decided that every tag is normalized, so a tag already in use shows normalized too: a task file that holds `Work` shows `work`. In the tag box, Custom's **New tag:** box, the text follows Tasks' rule as it's typed:
 
-- **Typed letters show lowercase**, whatever the Shift or Caps Lock state, and so do pasted ones, by the invariant culture's rules, so a tag reads the same on every PC.
-- **A typed space does nothing**, and spaces in pasted text are removed, so "to do" pastes as "todo".
-- **Only typed and pasted text changes.** Existing tags, the tag menu's tags, Search's matches, and a typed tag that matches a tag in use, which takes that tag's spelling as Tasks decides, keep their spelling, so `Work` stays `Work` on every task that has it.
+- **Typed and pasted text is rewritten by Tasks' [`TagName.Normalize`](../tasks.md#public-interface)** on every change, so typed letters show lowercase, whatever the Shift or Caps Lock state, and pasted `My  Work` shows `my-work`.
 
-Proposed: **the Search box keeps what is typed as it is.** It only finds tags in use, and matching ignores case, so it needs no lowercase rule; keeping spaces lets it find an older tag that has one. This is a decision to confirm.
+Decided by the session, each a decision to confirm:
 
-Proposed, each a decision to confirm:
-
-- **Other whitespace, such as a tab, is removed as a space is**, so no tag has a gap in it.
-- **A removed space joins its neighbors** rather than becoming a hyphen, so the user sees exactly what they typed, less the space.
+- **A space typed at the end shows as a space until the next character is typed, which turns it into a hyphen**, so typing `to do` shows `to do` for a moment, then `to-do`. A space typed in an empty box, or right after another space, does nothing, since normalizing trims it or joins the run. Choosing the tag normalizes it once more, so a space left at the end is dropped.
+- **The Search box keeps what is typed as it is.** Tasks normalizes the typed text before it [matches tags](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case), so `My w` finds `my-work`, and the box needs no rule of its own.
 
 Proposed, each a decision to confirm:
 
 - **A badge's text sits in its middle, across and down**, the user decided, and so does the pill's, with its x when it has one.
 - **A color belongs to the tag, not to one task.** Choosing a color for a tag already in use changes it on every task, and on every device after a sync.
-- **A tag with no color kept shows its default color**, which [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) picks from the tag's text with case ignored, so a tag looks the same in every window and on every device. A color name this app doesn't know, such as one a newer app wrote, shows the default and is kept as it is.
-- **A badge, and the pill with a tag, take the color's value and text color for the current theme**, from Rendering, and change when the theme or a tag's color does.
+- **A tag with no color kept shows its default color**, which [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) picks from the tag's normalized text, so a tag looks the same in every window and on every device. A color name this app doesn't know, such as one a newer app wrote, shows the default and is kept as it is.
+- **A badge, and each pill with a tag, take the color's value and text color for the current theme**, from Rendering, and change when the theme or a tag's color does.
 - **A clicked color is kept when its tag is chosen**, not when the task is saved, so the [draft](#closing-without-saving-keeps-a-draft-on-this-device) keeps its format. The color stays with the tag even if the task is never saved.
 
-### A click on the pill opens the tag menu
+### A click on a pill opens the tag menu
 
-The pill is a drop-down button: a click on it outside its x, or Enter, Space, or Down while it has the focus, opens the menu under it, over the window, and a second click closes it. The menu is drawn in the theme's menu colors, copying none. The user decided it's a WPF [Popup](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/popup) under the pill, holding the Task editor's own items, with a second Popup beside Search for the matches. Keys pressed inside a popup still travel up to the window, since a popup's root passes routed events to the popup's parent ([PopupRoot.cs](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Controls/Primitives/PopupRoot.cs)). So Esc, the [Close window shortcut](#keys-save-close-and-move-between-fields), and the Save shortcut keep working with the menu open.
+Each pill is a drop-down button: a click on it outside its x, or Enter, Space, or Down while it has the focus, opens the menu under it, over the window, and a second click closes it. Opened from the add pill, the menu adds a tag at the end; opened from a tag's pill, it replaces that tag in its place. The pill's tag is remembered by name, not by place, so a sync that adds or moves tags while the menu is open still replaces that tag wherever it now sits. The user decided that when a sync removes the tag the menu was opened from, the menu closes and nothing is replaced. The menu is drawn in the theme's menu colors, copying none. The user decided it's a WPF [Popup](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/popup) under the pill, holding the Task editor's own items, with a second Popup beside Search for the matches. Keys pressed inside a popup still travel up to the window, since a popup's root passes routed events to the popup's parent ([PopupRoot.cs](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Controls/Primitives/PopupRoot.cs)). So Esc, the [Close window shortcut](#keys-save-close-and-move-between-fields), and the Save shortcut keep working with the menu open.
 
-The user decided that the menu's top tags and Search's matches both leave out the task's current tag, since choosing it would change nothing.
+The user decided that the menu's top tags and Search's matches leave out the task's current tag, since choosing it would change nothing. Proposed, a decision to confirm: now that a task has several, they leave out every tag the task has, so the menu never offers a tag the task can't take twice.
 
 Proposed, each a decision to confirm:
 
-- **The top of the menu lists up to eight tags**: the tags in use other than the task's tag, in Tasks' most-used order, each as a badge in its color. A line separates them from Search. With no such tag, the menu starts with Search. Eight has one home in the Task editor's code.
-- **Search is a text box labeled "Search:"**. Typing in it shows the tags that match in a submenu to the right of the Search item, or to its left when the screen has no room. The user decided which tags match: the tags in use that contain the typed text anywhere, case ignored, other than the task's tag, so `ork` finds `work`. They're [Tasks' tag suggestions](../tasks.md#tags-and-search-ignore-case). Matches show as badges in their colors, most-used first, and may include the top eight.
+- **The top of the menu lists up to eight tags**: the tags in use other than the task's tags, in Tasks' most-used order, each as a badge in its color. A line separates them from Search. With no such tag, the menu starts with Search. Eight has one home in the Task editor's code.
+- **Search is a text box labeled "Search:"**. Typing in it shows the tags that match in a submenu to the right of the Search item, or to its left when the screen has no room. The user decided which tags match: the tags in use that contain the typed text anywhere, other than the task's tags, so `ork` finds `work`. They're [Tasks' tag suggestions](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case). Matches show as badges in their colors, most-used first, and may include the top eight.
 - **The submenu lists every match**, and scrolls when it's taller than the screen allows. With an empty Search box, no submenu shows. When nothing matches, it shows one dimmed line, "No matching tags", that can't be clicked.
-- **Custom… closes the menu and opens [Custom](#custom-adds-a-new-tag-in-the-color-clicked).**
-- **Choosing a tag from the menu or its submenu replaces the task's tag and closes both**, and the focus goes back to the pill. Search's text is never part of the task, the draft, or the editor's changes, and closing the menu drops it.
+- **Custom… closes the menu and opens [Custom](#custom-adds-a-new-tag-in-the-color-clicked)**, which then adds or replaces as the menu would have.
+- **Choosing a tag from the menu or its submenu adds it, or replaces the pill's tag, and closes both**, and the focus goes to the chosen tag's pill. Search's text is never part of the task, the draft, or the editor's changes, and closing the menu drops it.
 - **A click outside the menu closes it**, as Esc does.
 - **Choosing a tag from the menu while Custom shows leaves Custom as it is**, with its typed text, so no typing is lost.
 
@@ -272,17 +280,17 @@ Keys in the menu, proposed, each a decision to confirm:
 
 ### Custom adds a new tag in the color clicked
 
-Custom shows below the pill, with the cursor in its text box, labeled **New tag:**. The user decided that the box takes no spaces, that the colors show only while the box holds text, and that a click on a color chooses the typed tag with that color. The user also decided that Custom opens below the tag control, as today, and stays until a tag is chosen or Esc. So a click elsewhere can't lose the typed tag, and the Save button and shortcuts can choose its text.
+Custom shows below the tag control, with the cursor in its text box, labeled **New tag:**. The user decided that the box's text follows Tasks' tag rule as [above](#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them), that the colors show only while the box holds text, and that a click on a color chooses the typed tag with that color. The user also decided that Custom opens below the tag control, as today, and stays until a tag is chosen or Esc. So a click elsewhere can't lose the typed tag, and the Save button and shortcuts can choose its text.
 
 Proposed, each a decision to confirm:
 
 - **The box suggests nothing.** Search finds the tags in use, so two lists would offer the same tags.
 - **The colors show as a grid, one column per hue and one row per shade**, below the box. They hide again when the box is emptied.
 - **The grid marks the color the typed tag would get with Enter**: its kept color, or its default. So typing `work` shows what `work` looks like now.
-- **A click on a color keeps that color for the tag, then makes it the task's tag**, replacing the current one, spelled as a tag in use when one matches. A tag already in use is recolored on every task, as [a color belongs to the tag](#a-task-has-one-tag-shown-as-one-pill). Custom then hides, the box empties, and the focus goes to the pill.
-- **Enter in the box makes the typed tag the task's tag with no new color**, so it keeps its kept color, or its default. That keeps choosing a tag fast from the keyboard and never writes `tags.json`.
-- **Keys**: Tab moves from the box to the colors. In the colors, the arrow keys move, and Space or Enter chooses the tag in the color moved to. Esc hides Custom and drops what was typed there, before it closes Add. The user decided that Backspace in the empty box does nothing, since the x clears the tag, so one Backspace too many never clears the current one.
-- **The Save button, the Save shortcut, and Ctrl+Shift+Enter make any text still in the box the task's tag**, as Enter does, before they save, so no typing is lost. That text counts as a change, as typed tag text does today.
+- **A click on a color keeps that color for the tag, then adds the tag to the task**, at the end, or in place of the pill's tag when Custom came from a tag's pill, normalized. A tag already in use is recolored on every task, as [a color belongs to the tag](#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them). Proposed, a decision to confirm: a typed tag the task already has is only recolored, and the task's tags stay as they are. Custom then hides, the box empties, and the focus goes to the tag's pill.
+- **Enter in the box adds the typed tag with no new color**, as a click on a color does, so it keeps its kept color, or its default. That keeps choosing a tag fast from the keyboard and never writes `tags.json`.
+- **Keys**: Tab moves from the box to the colors. In the colors, the arrow keys move, and Space or Enter chooses the tag in the color moved to. Esc hides Custom and drops what was typed there, before it closes Add. The user decided that Backspace in the empty box does nothing, since each x removes its tag, so one Backspace too many never removes one.
+- **The Save button, the Save shortcut, and Ctrl+Shift+Enter add any text still in the box**, as Enter does, before they save, so no typing is lost. That text counts as a change, as typed tag text does today.
 - **When a clicked color can't be kept, the tag isn't chosen.** Custom stays open with the typed text, and says why under the colors. With no clone folder, it says to choose the repository folder in Configure, then choose the tag again. Otherwise it says the tag wasn't chosen because its color couldn't be kept, followed by the reason, such as the file error. (Decision to confirm: the wording.) The message clears when the text changes or Custom hides.
 
 ### The editor styles Markdown in place, with no preview
@@ -305,7 +313,7 @@ A saved new task goes to the top of the order, where the user sees it first in T
 
 The editors run every save themselves, so Add and the Task list's [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor) and [Edit Title](task-list.md#edit-title-edits-the-title-in-its-row) save the same way. Their user passes the function that saves: Add passes [Tasks'](../tasks.md#public-interface) add, and the Task list passes Tasks' save of an edit. Each save takes three steps, each where the editor has the field it needs:
 
-1. Tag text typed and not yet chosen becomes the task's tag, so no typing is lost. In Task View, the tag control sits outside the field editors, so the Task list takes this step through the control's `ChooseTypedText`, then passes the pill's tag in the save it gives the editor.
+1. Tag text typed and not yet chosen is added to the task's tags, so no typing is lost. In Task View, the tag control sits outside the field editors, so the Task list takes this step through the control's `ChooseTypedText`, then passes the control's tags in the save it gives the editor.
 2. An empty Title is marked, the cursor goes to it, and nothing is saved.
 3. The editor calls the function. If it fails, the editor keeps the text and says why on its own message line.
 
@@ -325,8 +333,8 @@ The composition root, Shell, and the Task list use these parts:
 - **The editor**: Add's Title, Description, and Tags of one task, with every key above. It reports when the user asks to save or cancels, [saves](#add-and-task-view-save-the-same-way-through-the-editor) through the function its user passes, puts the cursor in the Title, and says whether anything changed since its fields were set. Only Add uses it, so it's internal to the Task editor.
 - **The Title editor and the Description editor**: the user decided that the Task list edits a title or a description alone through two public controls, each one field with the same keys, styling, paste rules, and save steps as Add's field, its own message line, and the same report of changes and requests to save or cancel. Add's editor is built from the same Title and Description parts, so each rule keeps one home. The Task list uses one at a time: the Title editor in a row, for [Edit Title](task-list.md#edit-title-edits-the-title-in-its-row), and the Description editor on the right side, for [Edit Description](task-list.md#edit-description-turns-the-right-side-into-the-editor). The user decided that an editor tells what changed, so the Task list shows its Undo bar only for an edit with changes. The Description editor also sets an image's width in its text, for an image resized in the [edit's Preview](task-list.md#an-image-resizes-by-dragging-its-corner-in-the-edits-preview): it writes the width with Rendering's [width function](../rendering.md#public-interface), as a change the user made, so the edit then has changes, and Ctrl+Z in the editor takes it back as one step.
 - **The Save keys**: Add's editor and both field editors save on the platform's [Save keys](README.md#the-save-shortcut-saves-in-any-window-that-edits), so a new Save shortcut applies at once.
-- **The tag control**: a task's one tag as a pill with an x, or "No tag", and the menu the pill opens, as [above](#a-task-has-one-tag-shown-as-one-pill). It reports each tag the user chooses or clears, and keeps a clicked color through Tasks, but never saves the task. Its user can also close its open menu or Custom, and choose the text typed in Custom, so Task View's Esc and Save act on it as Add's do. The editor holds one, and the Task list shows one under the selected task's description, during an edit too. It also publishes the words "No tag", which the Task list's "No tag" group heading shows, so they have one home. Proposed: this home, as a constant on the tag control. This is a decision to confirm.
-- **Tag badges**: tags as read-only badges in their colors. The Task list shows one as each tag group's heading.
+- **The tag control**: a task's tags as pills in order, each with an x, and the add pill, with the menu a pill opens and the drag that reorders them, as [above](#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them). It reports the task's whole list each time the user adds, removes, replaces, or reorders a tag, and keeps a clicked color through Tasks, but never saves the task. Its user can also close its open menu or Custom, and choose the text typed in Custom, so Task View's Esc and Save act on it as Add's do. The editor holds one, and the Task list shows one under the selected task's description, during an edit too. It also publishes the words "No tag", which the Task list's "No tag" group heading shows, so they have one home. Proposed: this home, as a constant on the tag control. This is a decision to confirm.
+- **Tag badges**: tags as read-only badges in their colors, at today's size. The Task list shows one as each tag group's heading.
 - **Two ports**, the clipboard and the image file dialog, which the desktop app implements beside its composition root, so the Task editor's tests run on [fakes](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test).
 
 Proposed: the editor and the two tag parts follow Tasks' changes, the tag colors' changes, and the theme only while they're on screen, so a closed window or a left edit holds no subscription, as the [Formatted view](formatted-view.md#it-shows-what-rendering-decides-never-markdown) does. Each shows the current tags, colors, and theme when it's made, and again when it's back on screen, such as an edit reopened by Undo. This is a decision to confirm.
@@ -448,32 +456,38 @@ public sealed class DescriptionEditor : UserControl
     public event EventHandler? CancelRequested; // Esc, with no list open
 }
 
-/// A task's one tag as a pill in its color, with an x that clears it, or a "No tag" pill. A click elsewhere on the
-/// pill opens the menu: the top tags other than the current one, a tag in use found by Search, or Custom: the New
-/// tag box and the 30 tag colors, where a click on a color keeps that color through tagColors and chooses the tag.
+/// A task's tags as pills in their colors, in order, each with an x that removes it, then an add pill that says
+/// "No tag" while there are none and "+" otherwise, turned off at 15 tags. The first pill shows 5% larger than a badge,
+/// the others 5% smaller. A click on a pill opens the menu, which adds a tag from the add pill or replaces the pill's
+/// tag: the top tags other than the task's, a tag in use found by Search, or Custom: the New tag box, whose text
+/// TagName.Normalize rewrites as it's typed, and the 30 tag colors, where a click on a color keeps that color through
+/// tagColors and chooses the tag. Dragging a pill, or Alt+Left and Alt+Right on it, reorders the tags.
 /// It never saves the task.
 public sealed class TagEditor : UserControl
 {
-    /// The words the pill shows when the task has no tag, and the Task list's "No tag" group heading.
+    /// The words the add pill shows when the task has no tag, and the Task list's "No tag" group heading.
     public const string NoTagText = "No tag";
 
-    public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme, ILogger logger);
+    /// pointer gives the mouse's place during a drag, as the field editors' pointer does.
+    public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme, IPointerPosition pointer, ILogger logger);
 
-    /// The tag the pill shows, or null for "No tag". Setting it changes the pill, raises nothing, and leaves an
-    /// open menu or Custom as it is.
-    public string? TaskTag { get; set; }
+    /// The tags the pills show, in order; empty for "No tag". Setting it changes the pills, raises nothing, cancels
+    /// a drag, and leaves an open menu or Custom as it is. Throws ArgumentNullException for null.
+    public IReadOnlyList<string> TaskTags { get; set; }
 
-    /// Raised after the user chooses or clears the tag, once TaskTag holds it: the chosen tag, spelled as Tasks'
-    /// WithTag spells it, or null when cleared. Choosing the current tag, ignoring case, raises nothing.
-    public event EventHandler<string?>? TagChanged;
+    /// Raised once after the user adds, removes, replaces, or reorders a tag, once TaskTags holds the new list:
+    /// every tag in order, an added one normalized as Tasks' WithTag returns it. Raises nothing when the list didn't
+    /// change, such as a drag dropped where it started or a tag chosen that the task already has.
+    public event EventHandler<IReadOnlyList<string>>? TagsChanged;
 
-    /// Closes the innermost open part, the menu, then Custom, dropping what was typed there, as Esc does in it.
-    /// Returns false when neither is open.
+    /// Closes the innermost open part, a pill's drag first, which puts the pill back, then the menu, then Custom, dropping what was typed there, as Esc does in it.
+    /// Returns false when none is open.
     public bool CloseEdit();
 
-    /// Chooses the text typed in Custom as the tag, as Enter there does, raising TagChanged.
-    /// Does nothing when Custom's box is empty.
-    public void ChooseTypedText();
+    /// Adds the text typed in Custom, as Enter there does, raising TagsChanged. Returns true when
+    /// the text was added or Custom's box is empty, and false when the task already holds
+    /// TagName.MaxPerTask tags: the text then stays in Custom and the message line says why.
+    public bool ChooseTypedText();
 }
 
 /// Tags as read-only badges in their colors, wrapping onto more lines.
@@ -503,7 +517,15 @@ public interface IImageFileChooser
 }
 ```
 
-Row 14 of the [delivery backlog](README.md#delivery-backlog) changes the tag control for [one tag per task](#a-task-has-one-tag-shown-as-one-pill). The user decided that `TagEditor` replaces `Tags`, `TagAdded`, and `TagRemoved` with one tag, `TaskTag`, and one event, `TagChanged`, so one choice outside an edit makes one save and one Undo bar. The user named it `TaskTag`, not `Tag`, so it doesn't hide WPF's `FrameworkElement.Tag`. The user decided that row 14 also adds `NoTagText`, the one home of the "No tag" words, and two members the Task list needs now that a tag [joins an open edit](task-list.md#a-tag-chosen-during-an-edit-saves-with-the-edit): `CloseEdit`, which the user named, so Task View's Esc closes the menu or Custom before it leaves an edit, and `ChooseTypedText`, so the edit's save chooses Custom's text first, as Add's does. `TagBadges` doesn't change. Until row 14 is built, the code still has the three old members.
+Row 14 of the [delivery backlog](README.md#delivery-backlog) gave the tag control one tag, `TaskTag`, and one event, `TagChanged`, so one choice outside an edit makes one save and one Undo bar. The user named it `TaskTag`, not `Tag`, so it doesn't hide WPF's `FrameworkElement.Tag`. Row 14 also added `NoTagText`, the one home of the "No tag" words, and two members the Task list needs now that the tags [join an open edit](task-list.md#tags-changed-during-an-edit-save-with-the-edit): `CloseEdit`, which the user named, so Task View's Esc closes the menu or Custom before it leaves an edit, and `ChooseTypedText`, so the edit's save chooses Custom's text first, as Add's does.
+
+Row 21 brings [several ordered tags](#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them). The user decided these declaration changes:
+
+- **`TaskTags` and `TagsChanged` replace `TaskTag` and `TagChanged`**, holding and reporting the whole list, so every change, a reorder included, still makes one save and one Undo bar. The names keep row 14's reason for `TaskTag`.
+- **The constructor takes `IPointerPosition`**, before the logger, as the Title and Description editors do, so UX tests drive a drag with the [fake pointer](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them). Add's `Create` and the Task list already hold one, so no other declaration and no wiring in the composition root changes.
+- **`NoTagText`, `CloseEdit`, and `TagBadges` keep their declarations.** The user decided that `ChooseTypedText` returns whether it took the typed text, so Task View's save stops, keeping the edit and the typed tag, when the task already holds 15 tags.
+
+Until row 21 is built, the code still has row 14's members.
 
 ## Failure modes
 
@@ -562,7 +584,7 @@ The options below were considered and rejected, grouped by decision.
   - **Keeping the five chips under the Tags line beside the + menu**: two lists of the same tags in one window.
   - **Keeping a picked color only when the task is saved**: the draft would need a new format to carry it.
   - **Adding the tag when its color can't be kept, in its default color**: the user would see a color other than the one picked, with no sign until another device shows it.
-  - **Several tags per task, as badges with remove buttons and a + button**: the user decided that a task has one tag, shown as one pill.
+  - **Several tags per task, as badges with remove buttons and a + button**, with no order: the user asked that the order count, the first tag grouping the task, and that a drag reorder them.
   - **One tag control with a flag that turns its + off for the rows**: rows need only colored badges, so a separate read-only part is smaller than a flag no other user needs.
   - **Picking a color, which a second click unpicks, then adding the tag with Enter**: the user asked that a click on a color add the tag at once.
   - **Colors that show while Custom's box is empty**: the user asked that they show only once a tag is typed.
@@ -573,17 +595,36 @@ The options below were considered and rejected, grouped by decision.
   - **Today's inline panel for the tag menu**: it isn't a drop-down, and opening it grows Add and pushes the Task list's description down.
   - **Search finds only tags that start with the typed text**: the user asked that a tag containing the text anywhere match.
   - **Custom inside the drop-down, in place of the menu's items**: a stray click outside would close it and drop the typed tag, and Save couldn't add text from a closed menu.
-- The tag control's interface for one tag:
-  - **Keeping `Tags`, `TagAdded`, and `TagRemoved`, where a replace raises a remove, then an add**: the Task list would save twice for one choice, with two Undo bars, or pair the events itself.
-  - **Keeping the `Tags` list, with one `TagsChanged` event**: the type would still allow many tags, so every caller would have to remember the limit.
-- The "No tag" pill:
+- The tag control's interface for several tags:
+  - **Separate events for an added, a removed, and a moved tag**: the Task list would rebuild the list from each event, and a replace would raise two, with two saves and two Undo bars.
+  - **Keeping `TaskTag` and `TagChanged` beside a new list**: two members for one value, which must stay in step.
+- How a drag reorders the pills:
+  - **Windows' drag and drop through the platform's `IDragPointer`, as task rows use**: it lets a pill leave the control and land in another window or field, and the row can't reorder while the drag runs, since Windows' drag loop holds the mouse.
+  - **A drop line between pills, with the row reordered only on release**: the user asked that the list reorder as the pointer moves.
+- How the first tag stands out:
+  - **A star or a "group" label on the first pill**: the user asked for the size difference.
+  - **The group headings at the first tag's larger size too**: a heading shows one tag, so a size there tells nothing, and the size would no longer mark the first of several.
+- What the add pill says:
+  - **Always "+"**: an untagged task would show only a "+", with nothing saying it has no tag.
+  - **Always "Add tag"**: wide, and it pushes the tags onto more lines.
+- What a click on a tag's pill does:
+  - **Nothing, with only the add pill opening the menu**: changing a tag would take a remove, an add, and a drag.
+- How the keyboard reorders tags:
+  - **A "Make first" item in the tag menu**: it only moves a tag to the front, and adds an item to every menu.
+  - **No keyboard reorder**: a keyboard user couldn't change which tag groups a task without removing tags.
+- What the tag box does with a space:
+  - **A typed space does nothing, and pasted spaces are removed**, the earlier rule: `to do` would become `todo`, while Tasks turns the same text into `to-do`. The user chose hyphens.
+  - **A typed space becomes a hyphen at once**: typing two spaces would show two hyphens, which Tasks' rule would never make, so the box would need its own copy of the rule.
+  - **The box keeps the text as typed until the tag is chosen**: the user decided that typed letters show lowercase.
+- What the add pill does at 15 tags:
+  - **It stays on, and choosing a tag says it's one too many**: the user would pick a tag only to be told it can't be added.- The "No tag" pill:
   - **A dimmed x that can't be clicked**: a control that never works.
 - The current tag in the menu:
   - **Shown with a check mark**: it would take one of the eight places, and a click on it would do nothing.
-- How the keyboard reaches the pill and its x:
-  - **One Tab stop, the pill, where Delete or Backspace clears the tag**: a key the user must discover, and the x would be mouse-only.
+- How the keyboard reaches each pill and its x:
+  - **One Tab stop per pill, where Delete or Backspace removes the tag**: a key the user must discover, and the x would be mouse-only.
 - Backspace in Custom's empty box:
-  - **It clears the task's tag**: the tag the user is replacing could vanish by accident.
+  - **It removes the last tag**: a tag the user meant to keep could vanish by accident.
 - Where a new task goes:
   - **The bottom**: it can scroll out of sight.
   - **A setting**: one more option to test.

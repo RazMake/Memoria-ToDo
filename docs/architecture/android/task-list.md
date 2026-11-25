@@ -36,7 +36,7 @@ Proposed, each a decision to confirm:
 
 - Task View shows a chip for each tag an open task has, in one row that scrolls sideways, so every tag can filter. Add's chips keep their five most-used tags, as the desktop's + menu keeps its most-used order.
 - The phone doesn't move tags: the order changes only by dragging groups on the desktop, and a long press and drag on the phone moves tasks only.
-- Tag chips filter the list one tag at a time, and choosing a tag again clears the filter; search works as on the [desktop](../desktop/task-list.md#search-narrows-the-list), and opens from a button in the top app bar. The desktop dropped its tag filter, since its tag groups collapse.
+- Tag chips filter the list one tag at a time, keeping the tasks that have that tag anywhere in their tags, and choosing a tag again clears the filter; search works as on the [desktop](../desktop/task-list.md#search-narrows-the-list), and opens from a button in the top app bar. The desktop dropped its tag filter, since its tag groups collapse.
 
 Deferred: the desktop shows tags as [colored badges](../desktop/task-list.md#tags-show-as-colored-badges-and-change-without-edit) on group headings, and changes them on the selected task without Edit. Whether the phone's chips take each tag's color, and whether a tag changes without Edit, follows the [Task editor's](task-editor.md#tags-sit-as-chips-under-the-title) answer when the Android app is built.
 

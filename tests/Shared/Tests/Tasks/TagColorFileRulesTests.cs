@@ -54,12 +54,12 @@ public sealed class TagColorFileRulesTests
     }
 
     [Fact]
-    public void Takes_the_entry_with_the_later_time_spelling_included()
+    public void Takes_the_entry_with_the_later_time_and_writes_the_normalized_tag()
     {
         var local = File(("Work", "teal", T2));
         var remote = File(("work", "gold", T1));
 
-        Assert.Equal([("Work", "teal", T2)], Merged(null, local, remote));
+        Assert.Equal([("work", "teal", T2)], Merged(null, local, remote));
         Assert.Equal([("work", "gold", T2)], Merged(null, File(("Work", "teal", T1)), File(("work", "gold", T2))));
     }
 
@@ -95,23 +95,30 @@ public sealed class TagColorFileRulesTests
     }
 
     [Fact]
-    public void Writes_the_merged_entries_sorted_by_tag_ignoring_case_and_the_same_bytes_every_time()
+    public void Writes_the_merged_entries_sorted_by_normalized_tag_ordinally_and_the_same_bytes_every_time()
     {
-        var local = File(("banana", "red", T1), ("Cherry", "blue", T1));
-        var remote = File(("apple", "green", T1));
+        var local = File(("az", "red", T1), ("Cherry", "blue", T1));
+        var remote = File(("a_z", "green", T1));
 
-        Assert.Equal(["apple", "banana", "Cherry"], Merged(null, local, remote).Select(e => e.Tag).ToList());
+        Assert.Equal(["a_z", "az", "cherry"], Merged(null, local, remote).Select(e => e.Tag).ToList());
         Assert.Equal(Rules.MergeTagColors(null, local, remote), Rules.MergeTagColors(null, local, remote));
+    }
+
+    [Fact]
+    public void Keeps_the_first_entry_when_one_file_names_the_same_normalized_tag_twice()
+    {
+        var twice = File(("X", "red", T1), ("x", "blue", T2));
+
+        Assert.Equal([("x", "red", T1)], Merged(null, twice, null));
     }
 
     [Theory]
     [InlineData("{ not json")]
     [InlineData("""{ "version": 1 }""")]
     [InlineData("""{ "version": 3, "tags": [] }""")]
-    [InlineData("""{ "version": 1, "tags": [ { "tag": " x ", "color": "red", "updated": "2026-01-01T00:00:00.000Z" } ] }""")]
+    [InlineData("""{ "version": 1, "tags": [ { "tag": "  ", "color": "red", "updated": "2026-01-01T00:00:00.000Z" } ] }""")]
     [InlineData("""{ "version": 1, "tags": [ { "tag": "x", "color": "", "updated": "2026-01-01T00:00:00.000Z" } ] }""")]
     [InlineData("""{ "version": 1, "tags": [ { "tag": "x", "color": "red", "updated": "soon" } ] }""")]
-    [InlineData("""{ "version": 1, "tags": [ { "tag": "X", "color": "red", "updated": "2026-01-01T00:00:00.000Z" }, { "tag": "x", "color": "red", "updated": "2026-01-01T00:00:00.000Z" } ] }""")]
     public void Refuses_to_merge_an_unreadable_or_newer_file_and_leaves_the_inputs_unchanged(string bad)
     {
         var good = File(("work", "teal", T1));

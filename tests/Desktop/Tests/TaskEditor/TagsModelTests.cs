@@ -65,33 +65,33 @@ public class TagsModelTests
     }
 
     [Fact]
-    public void A_lowercase_typed_tag_that_matches_a_tag_in_use_is_added_with_the_spelling_in_use()
+    public void A_typed_tag_is_added_normalized_so_it_matches_a_tag_in_use_however_it_is_spelled()
     {
-        _services.UseTag("Work");
-        _model.TypedText = "work";
+        _services.UseTag("My Work");
+        _model.TypedText = "MY  work";
 
         _model.AddTypedText();
 
-        Assert.Equal(["Work"], _model.Tags);
+        Assert.Equal(["my-work"], _model.Tags);
     }
 
     [Fact]
-    public void The_plus_menu_lists_the_tags_in_use_with_the_spelling_in_use()
+    public void The_plus_menu_lists_the_tags_in_use_normalized()
     {
-        _services.UseTag("Work", 2);
+        _services.UseTag("My Work", 2);
         _services.UseTag("home");
 
-        Assert.Equal(["Work", "home"], _model.MenuTags);
+        Assert.Equal(["my-work", "home"], _model.MenuTags);
     }
 
     [Fact]
-    public void A_tag_chosen_from_the_plus_menu_keeps_the_spelling_in_use()
+    public void A_tag_chosen_from_the_plus_menu_is_the_normalized_tag_in_use()
     {
-        _services.UseTag("Work");
+        _services.UseTag("My Work");
 
         _model.Add(_model.MenuTags[0]);
 
-        Assert.Equal(["Work"], _model.Tags);
+        Assert.Equal(["my-work"], _model.Tags);
     }
 
     [Fact]

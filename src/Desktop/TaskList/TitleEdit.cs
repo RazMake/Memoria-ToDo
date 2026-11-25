@@ -22,7 +22,7 @@ internal sealed class TitleEdit : IFieldEdit
     {
         _tasks = tasks;
         Started = task;
-        Tag = task.Tags.FirstOrDefault();
+        Tags = task.Tags;
         _editor = new TitleEditor(tasks, contacts, palette, theme, time, clipboard, saveKeys, pointer, logger) { Value = task.Title };
         _editor.SaveRequested += (_, _) => saveRequested();
         _editor.CancelRequested += (_, _) => cancelRequested();
@@ -34,11 +34,11 @@ internal sealed class TitleEdit : IFieldEdit
 
     public bool ShowsInRow => true;
 
-    public string? Tag { get; set; }
+    public IReadOnlyList<string> Tags { get; set; }
 
-    public bool HasChanges => _editor.HasChanges || EditSaves.TagChanged(Started, Tag);
+    public bool HasChanges => _editor.HasChanges || EditSaves.TagsChanged(Started, Tags);
 
-    public bool Save() => _editor.Save(EditSaves.Title(_tasks, Started, Tag));
+    public bool Save() => _editor.Save(EditSaves.Title(_tasks, Started, Tags));
 
     public void FocusEnd() => _editor.FocusEnd();
 

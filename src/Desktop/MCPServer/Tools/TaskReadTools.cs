@@ -24,10 +24,10 @@ internal sealed class TaskReadTools(ToolRunner run, CloneCheck clone, ITasks tas
     [McpServerTool(ReadOnly = true), Description("Finds the tasks whose title, description, or tags hold every word of the text, ignoring case, in the order the user sees them. Descriptions are left out; get_task has them.")]
     public Task<string> SearchTasks(
         [Description("The words to find.")] string text,
-        [Description("Only tasks with this tag, ignoring case.")] string? tag = null) => run.Run(() =>
+        [Description("Only tasks with every one of these tags, ignoring case. Any task when left out or empty.")] string[]? tags = null) => run.Run(() =>
     {
         clone.Require();
-        return TaskView.ListOf(string.IsNullOrEmpty(tag) ? tasks.Search(text) : tasks.Search(text, tag), withDescription: false);
+        return TaskView.ListOf(tags is null or [] ? tasks.Search(text) : tasks.Search(text, tags), withDescription: false);
     });
 
     [McpServerTool(ReadOnly = true), Description("Gets the address that links to a task, to put in another task's description as a Markdown link, such as [text](address).")]

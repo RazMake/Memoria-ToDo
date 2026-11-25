@@ -19,7 +19,7 @@ internal sealed class TagMenu : Popup
 
     private readonly TagMenuModel _model;
     private readonly TagLook _look;
-    private readonly UIElement _owner;
+    private UIElement _owner;
     private readonly Border _frame = PopupFrame.Make();
     private readonly Border _submenuFrame = PopupFrame.Make();
     private readonly StackPanel _items = new() { MinWidth = 180 };
@@ -99,6 +99,18 @@ internal sealed class TagMenu : Popup
 
         model.Changed += Render;
         look.Follow(_items, Fill);
+    }
+
+    /// <summary>The pill the menu opens under, and gives the cursor back to. Set it before opening the menu from another pill.</summary>
+    public UIElement Anchor
+    {
+        get => _owner;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _owner = value;
+            PlacementTarget = value;
+        }
     }
 
     /// <summary>Whether the element is part of the menu, its submenu, or the pill that opens it.</summary>

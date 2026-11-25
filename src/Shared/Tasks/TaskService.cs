@@ -139,8 +139,8 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             if (set.Contains(taskId) || folder.FileExists(root, taskId))
                 throw new ArgumentException("A task with this ID exists.", nameof(draft));
             var singleLine = TaskText.SingleLine(draft.Title, nameof(draft));
-            var tag = OneTag(draft.Tags, nameof(draft));
-            var added = NewTask(taskId, singleLine, draft.Description, tag);
+            var tags = TagList.NewList(draft.Tags, nameof(draft));
+            var added = NewTask(taskId, singleLine, draft.Description, tags);
 
             Publish(root, added);
             set = set.WithTask(added);
@@ -152,16 +152,13 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         return task;
     }
 
-    /// <summary>An open task at the top, created now, from a validated title and tag. Call under the lock.</summary>
-    private TaskItem NewTask(string id, string title, string description, string? tag)
+    /// <summary>An open task at the top, created now, from a validated title and tags. Call under the lock.</summary>
+    private TaskItem NewTask(string id, string title, string description, IReadOnlyList<string> tags)
     {
         var now = Now();
         var rank = RankKey.Before(set.Items.Count == 0 ? null : set.Items[0].Rank);
-        return new TaskItem(id, title, TaskText.LineFeeds(description), rank, TagsOf(tag), now, now, null);
+        return new TaskItem(id, title, TaskText.LineFeeds(description), rank, tags, now, now, null);
     }
-
-    /// <summary>The tags of a task with this validated tag, spelled as the tag is already in use; none for null. Call under the lock.</summary>
-    private IReadOnlyList<string> TagsOf(string? tag) => tag is null ? [] : set.Tags.With([], tag);
 
     /// <summary>
     /// Writes the task's file, moves the draft's images into the clone, and deletes the draft. When a step
@@ -205,17 +202,19 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
 
     public IReadOnlyList<TagUse> TagsInUse() => repository.Locked(_ => set.Tags.InUse);
 
-    public IReadOnlyList<string> WithTag(IReadOnlyList<string> tags, string typed) =>
-        repository.Locked(_ => set.Tags.With(tags, typed));
+    public IReadOnlyList<string> WithTag(IReadOnlyList<string> tags, string typed) => TagList.With(tags, typed);
 
     public IReadOnlyList<string> SuggestTags(string typed, IReadOnlyList<string> tags) =>
         repository.Locked(_ => set.Tags.Suggest(typed, tags));
 
     public IReadOnlyList<TaskItem> Search(string text) => repository.Locked(_ => set.Search(text));
 
-    public IReadOnlyList<TaskItem> Search(string text, string tag)
+    public IReadOnlyList<TaskItem> Search(string text, IReadOnlyCollection<string> tags)
     {
-        var wanted = TaskText.SingleLine(tag, nameof(tag));
+        ArgumentNullException.ThrowIfNull(tags);
+        if (tags.Count == 0)
+            throw new ArgumentException("Name at least one tag.", nameof(tags));
+        var wanted = TagList.Normalized(tags, nameof(tags));
         return repository.Locked(_ => set.Search(text, wanted));
     }
 
@@ -231,16 +230,18 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
                 throw new ArgumentException("The edit is of another task.", nameof(edited));
             var title = TaskText.SingleLine(edited.Title, nameof(edited));
             var description = TaskText.LineFeeds(edited.Description);
-            var editedTag = OneTag(edited.Tags, nameof(edited));
+            var editedTags = TagList.Normalized(edited.Tags, nameof(edited));
+            var tagsChanged = !editedTags.SequenceEqual(TagList.Read(started.Tags));
+            if (tagsChanged)
+                TagList.RequireWithinLimit(editedTags, nameof(edited));
             var current = Find(started.Id);
+            logger.Debug("Edit of task {TaskId} {TagsOutcome} the tags", started.Id, tagsChanged ? "replaces" : "keeps");
 
             var changed = current with
             {
                 Title = title == started.Title ? current.Title : title,
                 Description = description == started.Description ? current.Description : description,
-                Tags = string.Equals(editedTag, started.Tags.FirstOrDefault(), StringComparison.OrdinalIgnoreCase)
-                    ? current.Tags
-                    : TagsOf(editedTag),
+                Tags = tagsChanged ? editedTags : current.Tags,
             };
             if (changed.Title == current.Title && changed.Description == current.Description && changed.Tags.SequenceEqual(current.Tags))
                 return current;
@@ -262,11 +263,6 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
 
         return result;
     }
-
-    /// <summary>The one tag of the draft, trimmed, or null for none. Throws <see cref="ArgumentException"/> for two or more tags or an invalid one.</summary>
-    private static string? OneTag(IReadOnlyList<string> tags, string paramName) =>
-        tags.Count > 1 ? throw new ArgumentException("A task has at most one tag.", paramName)
-            : tags.Count == 0 ? null : TaskText.SingleLine(tags[0], paramName);
 
     public TaskItem Move(string taskId, string? previousTaskId, string? nextTaskId)
     {
@@ -416,7 +412,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
                 return null;
             }
 
-            return draft is null ? null : draft with { Tags = [.. draft.Tags.Take(1)] };
+            return draft;
         });
 
     public void KeepDraft(TaskDraft draft)

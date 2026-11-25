@@ -40,7 +40,7 @@ Each task file is a JSON object with the nine fields in the table. Every time is
 | `title` | One line of Markdown |
 | `description` | Markdown, which can link images and other tasks |
 | `rank` | The [sort key](#rank-is-a-text-key-that-sorts-between-its-neighbors) |
-| `tags` | The task's tags: a list holding at most one, as [A task has at most one tag](#a-task-has-at-most-one-tag) says |
+| `tags` | The task's tags, in the user's order, where the first one groups the task, as [A task's tags are an ordered list](#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) says |
 | `created` | When the task was added |
 | `updated` | When the task last changed, on any device |
 | `resolved` | When the task was resolved, or `null` while it's open |
@@ -88,9 +88,9 @@ When two devices changed the same task, Tasks compares each version with the one
 
 An edit can bring back a task that another device deleted. If that task is still resolved past the deletion delay, the next sync deletes it again, unless the user reopens it first.
 
-Saving an edit changes only what the edit changed, so it never undoes a change that arrived while the edit was open. Tasks compares the edit with the version the editor started from: a Title, Description, or tag the edit changed replaces the current one, as [A task has at most one tag](#a-task-has-at-most-one-tag) says for the tag. Every field the edit didn't touch keeps its current value.
+Saving an edit changes only what the edit changed, so it never undoes a change that arrived while the edit was open. Tasks compares the edit with the version the editor started from: a Title, Description, or tag list the edit changed replaces the current one, as [A task's tags are an ordered list](#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) says for the tags. Every field the edit didn't touch keeps its current value.
 
-The user decided that a task's tags merge as a Title does: a change on one device wins, and when both changed them, the later edit wins.
+The user decided that a task's tags merge as a Title does: a change on one device wins, and when both changed them, the later edit wins. The whole list is one field, and its order is part of its value, so a reorder is a change. A reorder on one device and an added tag on another then conflict, and the later edit wins. Lists compare after [normalizing](#tags-are-lowercase-with-hyphens-and-search-ignores-case), so `Work` on one side and `work` on the other are no change.
 
 Proposed, each a decision to confirm:
 
@@ -256,40 +256,61 @@ Proposed, each a decision to confirm:
 - A kept draft that can't be read stays as it is until the next keep or discard. Loading it fails with `InvalidDataException`, whether the file was corrupt or couldn't be read from disk, with the cause kept as the inner exception.
 - A kept draft whose task ID is already a task was saved just before the app stopped, so Tasks deletes it instead of loading it.
 
-### Tags and search ignore case
+### Tags are lowercase with hyphens, and search ignores case
 
-A tag is one trimmed, non-empty line. Tags that differ only in case are the same tag, and a new tag takes the spelling of a matching tag in use. A tag suggestion is a tag in use that contains the text typed so far anywhere, ignoring case, so `ork` suggests `work`, and both apps suggest the same tags. The user decided it matches anywhere, not only at the start, for the desktop's tag [Search](desktop/task-editor.md#a-click-on-the-pill-opens-the-tag-menu).
+The user decided that every tag is **normalized**, so two tags can never differ only in case or spacing. Normalizing a tag:
+
+1. trims it,
+2. lowercases it by the invariant culture's rules, so a tag reads the same on every PC and phone,
+3. replaces each run of whitespace, line breaks included, with one hyphen.
+
+So `My  Work` becomes `my-work`, and `Work`, `work`, and ` WORK ` are all `work`. Tasks normalizes every tag it gets, whoever sends it: the user, the Local API, or the MCP server. It also normalizes every tag it reads from a task file, a draft, or `tags.json`. Tasks publishes the rule as [`TagName.Normalize`](#public-interface), so the desktop's tag box applies the same rule as the user types. With every tag normalized, tags compare as plain text, character by character. Decided by the session, a decision to confirm: every comparison that ignored case before now compares normalized tags ordinally.
+
+Decided by the session, each a decision to confirm:
+
+- **A tag that's empty after normalizing is rejected**, with `ArgumentException`, before any file is written. The Local API and the MCP server turn that into their own errors.
+- **Normalizing on read never rewrites a file.** A task file that holds `Work` keeps it on disk until the task's next save, which writes `work`. So opening the app after this change doesn't rewrite every task and push it through sync.
+- **Whitespace inside a tag becomes a hyphen, line breaks included**, so a multi-line tag is no longer an error: `to\ndo` becomes `to-do`.
+
+A tag suggestion is a tag in use that contains the typed text anywhere, so `ork` suggests `work`, and both apps suggest the same tags. The user decided it matches anywhere, not only at the start, for the desktop's tag [Search](desktop/task-editor.md#a-click-on-a-pill-opens-the-tag-menu). Decided by the session, a decision to confirm: the typed text is normalized before matching, so `My w` suggests `my-work`.
 
 Proposed, each a decision to confirm:
 
 - Tags in use count open and resolved tasks, and list the most-used first, with ties in alphabetical order. Suggestions follow the same order, leave out the tags the task already has, and are empty while nothing is typed.
-- A task kept with several tags from before [one tag per task](#a-task-has-at-most-one-tag) keeps them in the order they were added.
-- When tasks spell one tag differently, such as after two offline devices added it, the tags in use and the suggestions spell it as most of those tasks do, and on a tie as the first in alphabetical order.
-- Search matches a task when every word typed appears in its title, description, or tags. Empty search text matches every task, and matches come in rank order.
-- The tag filter shows the tasks that have the tag.
+- A task's tags keep the order the user gave them. A tag added with `WithTag` goes at the end of the list, so adding a tag never changes the task's [group tag](#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) unless the task had none.
+- Search matches a task when every word typed appears in its title, description, or any of its tags, first or not, ignoring case. Empty search text matches every task, and matches come in rank order.
+- Tags in use count every tag of every task, first or not, so the desktop's tag menu offers a tag the user only ever puts second.
 
-### A task has at most one tag
+The user decided that the tag filter, `Search(text, tags)`, shows the tasks that have every tag it names, each at any place in the task's list. Its tags are normalized, and a repeated one counts once.
 
-The user decided that a task has at most one tag. The desktop shows it as [one pill](desktop/task-editor.md#a-task-has-one-tag-shown-as-one-pill), and choosing another tag replaces it.
+### A task's tags are an ordered list, and the first one groups it
 
-The user decided each of these rules:
+A task has any number of tags, zero included, in an order the user sets. The first tag is the task's **group tag**: the desktop's [Task View](desktop/task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) shows the task only in that tag's group. Every tag, first or not, counts when the user searches, and when the Local API or the MCP server selects tasks by tag. The desktop shows the tags as [pills the user drags into order](desktop/task-editor.md#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them).
 
-- **Tasks keeps the rule**, so both apps and every merge hold it, not only one screen.
-- **The file's `tags` field stays a list, holding at most one tag, and the file `version` stays 1.** So an app not yet updated still reads every task, rather than [skipping a newer version](#failure-modes).
-- **Adding a task with two or more tags fails** with `ArgumentException`, before any file is written. So does saving an edit whose tags hold two or more.
-- **Two versions' tags merge as one field**, as a Title does: a change on one device wins, and when both changed them, the later edit wins.
-- **A task saved with two or more tags before this rule keeps them** until the user chooses or clears its tag; then the one choice replaces them all. Its first tag, the one added first, is the tag each app's editor shows.
-- **A kept draft with two or more tags loads with its first tag only**, since Add couldn't save it otherwise. A draft never leaves the device, so nothing synced changes.
+This replaces the earlier rule that a task has at most one tag. The user decided these rules:
+
+- **Tasks keeps the rules**, so both apps, the Local API, the MCP server, and every merge hold them, not only one screen.
+- **The file's `tags` field stays a list, and the file `version` stays 1.** The list already holds the order, so no stored task changes, and an app not yet updated still reads every task, rather than [skipping a newer version](#failure-modes).
+- **The group tag is the list's first entry**, or none when the list is empty. `TaskItem.GroupTag` gives it, so every caller reads it the same way. A task with no tags shows in Task View's "No tag" group.
+- **A task's tags are [normalized](#tags-are-lowercase-with-hyphens-and-search-ignores-case), and a repeated tag is dropped, keeping its first place.** This holds for a list read from a file and for one a caller gives, with no error: `Work, home, work` becomes `work, home`.
+- **A task has at most 15 tags.** The count is taken after normalizing and dropping repeats. The user decided the limit has one home, the public constant `TagName.MaxPerTask`, which the desktop's tag control and the test fakes read rather than keep a copy.
+- **Saving an edit replaces the tags only when the edit changed them.** Tasks compares the edit's list with the list the editor started with, in order, so a reorder is a change. When they differ, the edit's whole list replaces the current one. Otherwise the current tags stay, so tags set meanwhile, such as on another device while the edit was open, stay. Tasks logs at Debug whether it kept or replaced the tags.
+- **Two versions' tags merge as one field, and the later edit wins**, as [the merge](#two-versions-of-a-task-merge-field-by-field) says. A reorder on one device and an added tag on another keep only the later of the two.
+
+Decided by the session, each a decision to confirm:
+
+- **More than 15 tags is rejected** with `ArgumentException`, before any file is written, by `Add`, `SaveEdit`, `WithTag`, and the [direct changes](#direct-task-changes-are-a-capability-of-their-own). A task file that already holds more, such as one written by hand, still loads every tag, and a save that doesn't change its tags, or a merge, keeps them all; only a new tag list is limited. The desktop's add pill is [turned off at 15](desktop/task-editor.md#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them).
+- **Tasks publishes the normalizing rule as `TagName.Normalize`**, a static method, since the desktop's tag box rewrites typed text by the same rule and must not keep a copy of it.
 
 Proposed, each a decision to confirm:
 
-- **Saving an edit replaces the tag only when the edit changed it.** Tasks compares the edit's tag with the one the editor started with, ignoring case, where no tag counts as a value. When they differ, the edit's tag, or none, replaces every current tag. Otherwise the current tags stay, so a tag set meanwhile, such as on another device while the edit was open, stays.
-- **The merge compares the tag lists in order, ignoring case.**
-- **Search, the tag filter, and the desktop's [tag groups](desktop/task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) still see all of an older task's tags.**
+- **A kept draft keeps every tag, in order**, so Add saves the list the user built.
+- **Each tag keeps its own [color](#each-tags-color-is-kept-in-one-synced-file)**, wherever it sits in a task's list.
+- **The [tag order](#each-tags-place-orders-task-views-groups-and-androids-tag-chips) orders the groups, not the tags inside a task.** A task's list keeps the user's order, whatever the tags' places are.
 
-The desktop's tag control saves a tag through `SaveEdit`. Outside an edit, it saves at once; during a description or title edit, the tag [joins that edit's one save](desktop/task-list.md#a-tag-chosen-during-an-edit-saves-with-the-edit), so the text and the tag save or fail together. The user decided that **`SaveEdit` moves the images waiting for the task's open edit into the clone on any save that changes something**, as before one tag per task.
+The desktop's tag control saves through `SaveEdit`. Outside an edit, it saves at once; during a description or title edit, the tags [join that edit's one save](desktop/task-list.md#tags-changed-during-an-edit-save-with-the-edit), so the text and the tags save or fail together. The user decided that **`SaveEdit` moves the images waiting for the task's open edit into the clone on any save that changes something**.
 
-No signature changes: `TaskItem.Tags` and `TaskDraft.Tags` stay lists, and `WithTag` and `SuggestTags` keep their meaning. Only the documented behavior of `Add`, `SaveEdit`, the task merge, and `LoadDraft` changes.
+An app not yet updated reads a task with several tags as it always has: its Task View shows the task in every tag's group, and its one-tag editor shows the first tag. Choosing a tag there replaces the whole list with that one tag. The user accepted this cost, since one person updates all their own devices, and a wrong grouping on an old device is easier to live with than missing tasks.
 
 ### Each tag's color is kept in one synced file
 
@@ -300,7 +321,7 @@ The file is one object with these fields, in this order:
 | Field | Value |
 | --- | --- |
 | `version` | `2` |
-| `tags` | A list of entries, each an object with `tag`, the tag as spelled when it was last set; `color`, an object with `value`, the color's name, and `updated`, a UTC timestamp, or `null` when no color was picked; and `place`, an object with `value`, a [rank key](#rank-is-a-text-key-that-sorts-between-its-neighbors), and `updated`, or `null` when the tag was never moved |
+| `tags` | A list of entries, each an object with `tag`, the [normalized](#tags-are-lowercase-with-hyphens-and-search-ignores-case) tag; `color`, an object with `value`, the color's name, and `updated`, a UTC timestamp, or `null` when no color was picked; and `place`, an object with `value`, a [rank key](#rank-is-a-text-key-that-sorts-between-its-neighbors), and `updated`, or `null` when the tag was never moved |
 
 For example, a tag the user colored and then moved:
 
@@ -321,21 +342,26 @@ Version 1 has the same `tags` list, but each entry holds `tag`, `color` as the b
 
 The user decided that the place lives in `tags.json`, as version 2, not in a file of its own, and accepted the cost. Tasks writes version 2 every time it writes the file, whether for a color, a move, or a merge. An app older than this design [skips a newer version](#failure-modes), so once version 2 reaches it, every tag shows its default color there, and picking a color fails, until the user updates that app. Its sync names the file, asks the user to update, and leaves the file as it is, so no color or place is lost.
 
-Two versions of the file merge one entry at a time, matching tags with case ignored. An entry's color and place merge apart:
+Two versions of the file merge one entry at a time, matching normalized tags. An entry's color and place merge apart:
 
 - **An entry on one side only is kept.** A missing entry or an absent file never deletes one.
 - **An entry on both sides takes the color with the later `updated` time, and, apart from it, the place with the later `updated` time.** Equal times take the remote's. So a color picked on one device and a move made on another both survive.
-- **The entry's spelling comes from the side with the latest time** of its color and place. Equal times take the remote's.
 - **Three absent files merge to no file.** A present file that can't be read fails the merge, as a settings file does.
 
 Sync carries `tags.json` as it carries `settings.json`: Tasks' [file rules](#tag-colors-are-a-capability-of-their-own) classify the file and merge its versions, and Sync commits, merges, and pushes it. Places need no new file kind and no change to Sync.
 
 Proposed, each a decision to confirm:
 
-- The file uses the [task file's JSON style](#each-task-file-holds-nine-fields), with its entries sorted by tag, ignoring case, so a recolor or a move shows as a few changed lines.
+- The file uses the [task file's JSON style](#each-task-file-holds-nine-fields), with its entries sorted by tag, ordinally, so a recolor or a move shows as a few changed lines.
 - An entry is written only when the user picks a color or moves a tag, and is never deleted, so a tag that goes out of use and comes back keeps its color and its place. A clone has no `tags.json` until the first pick or move; settings initialization doesn't create one.
-- Picking a color writes the tag as spelled in the call, the color, and the current time, and keeps the entry's place. Picking the color a tag already has writes nothing.
-- A present file is unreadable when an entry's tag breaks the [tag rules](#tags-and-search-ignore-case), its color isn't one non-empty line, its place isn't a valid rank key, a time isn't valid, or it has neither a color nor a place, or when two entries name the same tag. A newer app reads every older `version`, and an app that finds a newer one skips the file, as for task files.
+- Picking a color writes the normalized tag, the color, and the current time, and keeps the entry's place. Picking the color a tag already has writes nothing.
+- A present file is unreadable when an entry's tag is empty after normalizing, its color isn't one non-empty line, its place isn't a valid rank key, a time isn't valid, or it has neither a color nor a place. A newer app reads every older `version`, and an app that finds a newer one skips the file, as for task files.
+
+The user decided that a color is looked up by the normalized tag. Decided by the session, each a decision to confirm:
+
+- **Reading `tags.json` normalizes each entry's tag, and when two entries then name the same tag, the first in the file wins** and the other is dropped. A file written before tags were normalized, holding `Work` and `work`, still loads, and keeps one color and one place for `work`.
+- **Reading never rewrites the file**, as for task files. The next color pick or move writes every entry normalized, without the dropped ones.
+- **A tag whose spelling changes by normalizing keeps its kept color**, since its entry is normalized too. A tag with no kept color that held a space gets a different default color, since `my work` becomes `my-work`. Case alone changes nothing, since [Rendering](rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) picks the default from the tag in uppercase.
 - While `tags.json` can't be read, every tag shows its default color and has no place, and picking a color or moving a tag fails without writing, as [failure modes](#failure-modes) say. Showing colors and order never stops the task list from loading.
 
 ### Each tag's place orders Task View's groups and Android's tag chips
@@ -344,8 +370,10 @@ The user decided that each tag has its own place: a [rank key](#rank-is-a-text-k
 
 Tasks sorts tags this way, as the user decided:
 
-1. **Tags with no place come first**, at the top, as a [new task goes to the top](#rank-is-a-text-key-that-sorts-between-its-neighbors), in alphabetical order, ignoring case. With nothing placed, the order is alphabetical, and a new tag shows first, where the user sees it.
-2. **Then the placed tags, by place.** Places compare as task ranks do; equal places sort by tag, ignoring case.
+1. **Tags with no place come first**, at the top, as a [new task goes to the top](#rank-is-a-text-key-that-sorts-between-its-neighbors), in alphabetical order. With nothing placed, the order is alphabetical, and a new tag shows first, where the user sees it.
+2. **Then the placed tags, by place.** Places compare as task ranks do; equal places sort by tag.
+
+Tags sort as [normalized](#tags-are-lowercase-with-hyphens-and-search-ignores-case) text, ordinally. Decided by the session, a decision to confirm: sorting normalizes the tags it's given and drops a repeat, rather than rejecting the same tag twice, as every other call that takes tags does.
 
 A task with no tag has no tag to sort. Where an app shows such tasks, such as the desktop's "No tag" group, is that app's choice.
 
@@ -359,8 +387,8 @@ Each app's modules and Sync use these parts:
 
 - **The task list**: every task, open and resolved, in rank order, with a notice when any task changes here or through sync.
 - **Task operations**: add the draft's task at the top; save an edit, move, resolve, reopen, and delete. Each writes the task's file at once.
-- **[Direct task changes](#direct-task-changes-are-a-capability-of-their-own)**: add a task from a title, description, and tag, update it, and add an image to it, for a caller with no editor, without touching the draft or an open edit.
-- **Tags and search**: the tags in use with how many tasks use each, and the tasks matching a search and a tag.
+- **[Direct task changes](#direct-task-changes-are-a-capability-of-their-own)**: add a task from a title, description, and tags, update it, and add an image to it, for a caller with no editor, without touching the draft or an open edit.
+- **Tags and search**: the tags in use with how many tasks use each, a task's group tag, and the tasks matching a search and a set of tags.
 - **Task links**: a task's link, and the task ID in a link's address, if it's a task link.
 - **Drafts**: start, load, keep, and discard this device's draft of a new task, with its images.
 - **Images**: save an image for a draft or an open edit and get its Markdown, discard an open edit's images, and the folder where an open edit's images wait.
@@ -393,17 +421,18 @@ public interface ITasks
 
     /// Adds the draft's task at the top, writes its file, moves its images into the clone,
     /// then deletes the kept draft. Throws NoRepositoryFolderException when no folder is set,
-    /// and ArgumentException for an empty or multi-line title or an invalid tag.
+    /// and ArgumentException for an empty or multi-line title, a tag that's empty once normalized, or more
+    /// than 15 tags. Keeps the draft's tags in order, normalized, each repeat dropped.
     TaskItem Add(TaskDraft draft);
 
     /// The tags in use and how many tasks have each, most-used first, ties in alphabetical order.
     IReadOnlyList<TagUse> TagsInUse();
 
-    /// tags with the typed tag added, spelled as a matching tag in use; unchanged when already there.
-    /// Throws ArgumentException for an empty or multi-line tag.
+    /// tags with the typed tag added at the end, normalized; unchanged when already there.
+    /// Throws ArgumentException for a tag that's empty once normalized, or when tags already holds 15.
     IReadOnlyList<string> WithTag(IReadOnlyList<string> tags, string typed);
 
-    /// Tags in use that contain typed anywhere, ignoring case, except those in tags, most-used first.
+    /// Tags in use that contain typed, normalized, anywhere, except those in tags, most-used first.
     IReadOnlyList<string> SuggestTags(string typed, IReadOnlyList<string> tags);
 
     /// Tasks whose title, description, or tags hold every typed word, ignoring case, in rank order.
@@ -437,13 +466,13 @@ public interface ITasks
     void DiscardEditImages(string taskId);
 
     /// Saves an edit of started, the task as the editor got it, onto the task as it is now.
-    /// A Title or Description that differs from started's replaces the current one; a tag that
-    /// differs from started's, ignoring case, replaces the current tags. Every other
+    /// A Title or Description that differs from started's replaces the current one; a tag list that
+    /// differs from started's, in order, once normalized, replaces the current list whole. Every other
     /// field keeps its current value. Moves the edit's images into the clone, then writes the file
     /// and sets Updated, unless nothing changed. Returns the task as saved.
     /// Throws, before any change: NoRepositoryFolderException when no folder is set;
     /// TaskNotFoundException when the task isn't in All; ArgumentException when edited.TaskId isn't
-    /// started.Id, or for an empty or multi-line title, an invalid tag, or two or more tags.
+    /// started.Id, or for an empty or multi-line title, a tag that's empty once normalized, or more than 15 tags.
     TaskItem SaveEdit(TaskItem started, TaskDraft edited);
 
     /// Gives the task a rank that shows it after previousTaskId and before nextTaskId; a null ID
@@ -472,13 +501,29 @@ public interface ITasks
     /// raised, even when a later step throws. Throws TaskNotFoundException when the task isn't in All.
     void Delete(string taskId);
 
-    /// Search(text), narrowed to the tasks that have tag, ignoring case.
-    /// Throws ArgumentException for an empty or multi-line tag; Search(text) filters by no tag.
-    IReadOnlyList<TaskItem> Search(string text, string tag);
+    /// Search(text), narrowed to the tasks that have every one of tags, normalized, each anywhere in the
+    /// task's list; a repeated tag counts once. Throws ArgumentException when tags is empty or holds a tag
+    /// that's empty once normalized; Search(text) filters by no tag.
+    IReadOnlyList<TaskItem> Search(string text, IReadOnlyCollection<string> tags);
 }
 
 public sealed record TaskItem(string Id, string Title, string Description, string Rank,
-    IReadOnlyList<string> Tags, DateTimeOffset Created, DateTimeOffset Updated, DateTimeOffset? Resolved);
+    IReadOnlyList<string> Tags, DateTimeOffset Created, DateTimeOffset Updated, DateTimeOffset? Resolved)
+{
+    /// The tag that groups the task: Tags' first entry, or null when it has none.
+    public string? GroupTag { get; }
+}
+
+/// The one rule that turns text into a tag.
+public static class TagName
+{
+    /// The most tags a new tag list may hold, counted after normalizing and dropping repeats.
+    public const int MaxPerTask = 15;
+
+    /// text trimmed, lowercase by the invariant culture's rules, with each run of whitespace,
+    /// line breaks included, replaced by one hyphen. Empty when text holds only whitespace.
+    public static string Normalize(string text);
+}
 
 public sealed record TaskDraft(string TaskId, string Title, string Description, IReadOnlyList<string> Tags);
 
@@ -559,18 +604,24 @@ remains a separate data error. This uses Tasks' existing canonical-ID validation
 
 Proposed: `SaveImage`'s two exceptions, so the editor can say why an image wasn't saved. This is a decision to confirm.
 
-Row 14 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) brings [one tag per task](#a-task-has-at-most-one-tag). The user decided that `Add` and `SaveEdit` also throw `ArgumentException` for two or more tags, before any change, and that `LoadDraft` returns a kept draft's first tag only. Proposed: `SaveEdit`'s tag rule, as its comment above says. This is a decision to confirm. No declaration changes.
+Row 14 of the [desktop delivery backlog](desktop/README.md#delivery-backlog) brought one tag per task, and row 21 replaces it with [an ordered list of tags](#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it). The user decided these declaration changes:
+
+- **`TaskItem.GroupTag`** is new, so Task View's grouping, the Local API's `tag` field, and any later caller read the group tag one way.
+- **`Search(string text, string tag)` becomes `Search(string text, IReadOnlyCollection<string> tags)`**, so the Local API and the MCP server can ask for several tags at once. Its one-tag callers pass a one-tag list.
+- **`Add`, `SaveEdit`, and `WithTag` throw for more than 15 tags**, and no longer for two or more tags or a multi-line tag. `LoadDraft` returns every tag of a kept draft, normalized.
+
+Decided by the session, a decision to confirm: **`TagName.Normalize`** is new, a static method, so the desktop's tag box rewrites typed text by Tasks' rule rather than a copy of it. It's a public interface change, so the user confirms it.
 
 Also proposed for step 4, each a decision to confirm:
 
-- `SaveEdit` compares a Title after trimming, and a Description after storing its line breaks as `\n`, so only a real change counts. It replaces the tags as [A task has at most one tag](#a-task-has-at-most-one-tag) says, spelling the new one as `WithTag` spells it.
+- `SaveEdit` compares a Title after trimming, and a Description after storing its line breaks as `\n`, so only a real change counts. It replaces the tags as [A task's tags are an ordered list](#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) says, normalizing each one.
 - `SaveEdit` of a task that's no longer in `All` throws, so a save never undoes a deletion that arrived while the edit was open. The editor keeps the text, so the user can copy it.
 - `SaveEdit` moves the edit's images first, so a failed write leaves them in the task's folder, and a retry works. An image in the task's folder with no link is kept, as the rule above says.
 - When `Move`'s two given neighbors share a rank, which only [two devices changing tasks offline](#rank-is-a-text-key-that-sorts-between-its-neighbors) can cause, no key sorts between them, and a move changes only its own file. So `Move` refuses, unless the task already shows there, and the Task list shows the move failed. A later design can re-rank a neighbor instead.
 - The user decided that every `Move` bounds the new rank by the task really next to it in `All`, so a drop at the end of a tag group can't take the rank of the first task in the next group, and a move between two tasks of one group can't take the rank of another group's task between them. With a previous neighbor, the bound is the first rank after it that differs from its own, past the moved task and the tasks sharing the previous neighbor's rank, so it's never past the given next neighbor. With only a next neighbor, it's the last rank before it that differs from its own, past the moved task. Skipping the tasks that share a neighbor's rank still honors the request, where refusing would fail a drop because of tasks the user may not see.
 - Proposed, a decision to confirm: with both neighbors given, the task already "shows there" when it sits anywhere between them in `All`, as before, so a drop that doesn't change its group's order writes nothing, even with another group's task between it and a neighbor. With a side open, it shows there only when it's next to the given neighbor, with only tasks sharing that neighbor's rank between them, as the open-side rule already does.
 - `Move` with no neighbors changes nothing, even when other tasks exist, such as hidden by a filter that shows only this task.
-- `Search(text, tag)` refuses an empty tag instead of treating it as no filter, so a caller's mistake shows; a screen with no tag filter calls `Search(text)`.
+- `Search(text, tags)` refuses an empty list or an empty tag instead of treating it as no filter, so a caller's mistake shows; a screen with no tag filter calls `Search(text)`.
 - `Delete` stops at the first step that fails and throws its error, with no new exception type. Deleting the file is the step that deletes the task: if it fails, the task and its images stay as they were; once it succeeds, the task is deleted even when removing its images then fails, and those images stay in the clone. A caller tells the two apart by whether the task is still in `All`. Like every call, `Delete` does all its file work while no other call's file work runs, so its last step can't delete an image saved after the file was deleted, such as for a task with the same ID in another repository. Then it raises `Changed`, including when a step after the file's deletion failed. As with every call, `Changed` is raised once other calls can run again, so another call may run before the handlers do; Tasks never holds other calls back while handlers run.
 - `Resolve` and `Reopen` raise `Changed` only when they change the task, and `Move` and `SaveEdit` likewise.
 
@@ -591,7 +642,7 @@ public interface ITaskStore : ITasks
 
 /// <summary>
 /// Each tag's color, kept in tags.json and shared by every device. Safe to call from any thread;
-/// uses the task store's lock. Tags match with case ignored. A color's name is kept without interpreting it.
+/// uses the task store's lock. Tags match once normalized, by TagName.Normalize. A color's name is kept without interpreting it.
 /// </summary>
 public interface ITagColors
 {
@@ -604,7 +655,7 @@ public interface ITagColors
     /// <summary>
     /// Keeps colorName for tag, with the current UTC time, creating tags.json when it's missing, then raises
     /// LocalSaved and Changed. The same color as kept writes and raises nothing. Throws, before writing:
-    /// ArgumentException for an invalid tag, or a colorName that isn't one non-empty line;
+    /// ArgumentException for a tag that's empty once normalized, or a colorName that isn't one non-empty line;
     /// NoRepositoryFolderException when no repository is selected; and InvalidDataException when
     /// tags.json can't be read or has a newer version.
     /// </summary>
@@ -625,7 +676,8 @@ public interface IRepositoryFileRules
     string TagColorsFileName { get; }
 
     /// <summary>
-    /// Merges each tag's entry by its own Updated time, remote winning ties, matching tags with case ignored.
+    /// Merges each tag's entry by its own Updated time, remote winning ties, matching normalized tags; within one
+    /// file, the first entry for a normalized tag wins.
     /// Null means an absent file; an absent side or a missing entry never removes an entry. Three absent
     /// files return null. Throws InvalidDataException for any present file that cannot be read; never alters input arrays.
     /// </summary>
@@ -646,7 +698,7 @@ The other contracts keep their members and cover the new file too: `SkippedFiles
 
 Proposed: `ColorOf` answers null while `tags.json` can't be read, rather than failing, so every badge shows its default color and the sync status names the file. A failure there would stop every screen that shows a tag, and a tag's default color is always a valid color. This is a decision to confirm.
 
-Proposed: `SetColor` checks its arguments before anything else, so an invalid tag or color name throws `ArgumentException` even when no repository is selected or `tags.json` can't be read. A caller's mistake then shows the same way whatever the repository's state. This is a decision to confirm.
+Proposed: `SetColor` checks its arguments before anything else, so a tag that's empty once normalized, or an invalid color name, throws `ArgumentException` even when no repository is selected or `tags.json` can't be read. A caller's mistake then shows the same way whatever the repository's state. This is a decision to confirm.
 
 ### Tag order is a capability of its own
 
@@ -665,15 +717,15 @@ public interface ITaskStore : ITasks
 
 /// <summary>
 /// Each tag's place in the order both apps show tags in, kept in tags.json beside the tag's color and shared by every
-/// device. Safe to call from any thread; uses the task store's lock. Tags match with case ignored.
+/// device. Safe to call from any thread; uses the task store's lock. Tags match once normalized, by TagName.Normalize.
 /// </summary>
 public interface ITagOrder
 {
     /// <summary>
-    /// tags in the user's order: the tags with no place first, in alphabetical order ignoring case, then the placed
-    /// tags by place, equal places in alphabetical order ignoring case. Each tag keeps its spelling. Every tag has no
+    /// tags, normalized with each repeat dropped, in the user's order: the tags with no place first, in ordinal order,
+    /// then the placed tags by place, equal places in ordinal order. Every tag has no
     /// place when no repository is selected, or tags.json can't be read or has a newer version, which SkippedFiles names.
-    /// Throws ArgumentException for an invalid tag, or the same tag twice, ignoring case.
+    /// Throws ArgumentException for a tag that's empty once normalized.
     /// </summary>
     IReadOnlyList<string> Sort(IReadOnlyCollection<string> tags);
 
@@ -681,8 +733,8 @@ public interface ITagOrder
     /// Gives tag a place after previousTag and before nextTag, as Sort shows them; null leaves that side open, so
     /// Move(tag, null, null) changes nothing. When a neighbor has no place, or both share one, first gives the tags in
     /// use, tag, and its neighbors places in the order Sort shows them. Writes tags.json with the current UTC time and
-    /// tag as spelled in the call, then raises LocalSaved and Changed. Writes and raises nothing when tag already shows
-    /// there. Throws, before writing: ArgumentException for an invalid tag, a neighbor that is tag itself, or a
+    /// the normalized tag, then raises LocalSaved and Changed. Writes and raises nothing when tag already shows
+    /// there. Throws, before writing: ArgumentException for a tag that's empty once normalized, a neighbor that is tag itself, or a
     /// previousTag that doesn't show before nextTag; NoRepositoryFolderException when no repository is selected; and
     /// InvalidDataException when tags.json can't be read or has a newer version.
     /// </summary>
@@ -704,7 +756,7 @@ Proposed: the file rules keep their `TagColors` names, though `tags.json` now ho
 
 ### Direct task changes are a capability of their own
 
-The user decided, for the [local API](local-api-contract.md#task-calls-never-touch-your-draft-or-open-edit): a fourth capability adds and changes tasks for a caller with no editor. `Add` deletes the kept draft, `SaveImage` keeps images with the open edit or the draft, and `SaveEdit` moves the open edit's images, so a program using them would change what you're typing. Direct changes never touch the draft or an open edit. A task has one tag here, as in the editor.
+The user decided, for the [local API](local-api-contract.md#task-calls-never-touch-your-draft-or-open-edit): a fourth capability adds and changes tasks for a caller with no editor. `Add` deletes the kept draft, `SaveImage` keeps images with the open edit or the draft, and `SaveEdit` moves the open edit's images, so a program using them would change what you're typing. Direct changes never touch the draft or an open edit. A task's tags here are the same [ordered list](#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) as in the editor.
 
 It has two callers, the local API and the desktop's [MCP server](desktop/mcp-server.md#adding-and-editing-never-touch-the-users-open-work). The user decided that the MCP server uses all three changes: `Add` for its new tasks, `Update` for `edit_task`, and `AddImage` for its images. So changing a task without an editor has one home, and `ITasks` has no members of its own for that. `edit_task` passes the `Updated` of the task it read just before, so the assistant never sends a time.
 
@@ -731,19 +783,21 @@ public interface ITaskStore : ITasks
 public interface IDirectTaskChanges
 {
     /// <summary>
-    /// Adds an open task with a new ID, at the top, with Created and Updated set to now; a null or empty tag means none. Returns it.
-    /// Throws, before writing: ArgumentException for an empty or multi-line title, or an invalid tag;
-    /// NoRepositoryFolderException when no folder is set.
+    /// Adds an open task with a new ID, at the top, with Created and Updated set to now, and tags in the given order,
+    /// normalized, each repeat dropped; an empty list means none. Returns it.
+    /// Throws, before writing: ArgumentException for an empty or multi-line title, a tag that's empty once normalized,
+    /// or more than 15 tags; NoRepositoryFolderException when no folder is set.
     /// </summary>
-    TaskItem Add(string title, string description, string? tag);
+    TaskItem Add(string title, string description, IReadOnlyList<string> tags);
 
     /// <summary>
-    /// Replaces each field that isn't null; an empty tag removes every tag. Sets Updated, unless nothing changed, which
-    /// writes nothing. Returns the task as saved. Throws, before writing: StaleTaskException when the task's Updated isn't
-    /// baseUpdated; TaskNotFoundException; ArgumentException for an empty or multi-line title or an invalid tag;
-    /// NoRepositoryFolderException.
+    /// Replaces each field that isn't null; a tags list, normalized with each repeat dropped, replaces the whole list, in
+    /// its order, and an empty list removes every tag. Sets Updated, unless nothing changed, which writes nothing; a list
+    /// that equals the current one in order, once normalized, is no change. Returns the task as saved. Throws, before
+    /// writing: StaleTaskException when the task's Updated isn't baseUpdated; TaskNotFoundException; ArgumentException for
+    /// an empty or multi-line title, a tag that's empty once normalized, or more than 15 tags; NoRepositoryFolderException.
     /// </summary>
-    TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, string? tag);
+    TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, IReadOnlyList<string>? tags);
 
     /// <summary>
     /// Shrinks the image to at most 1 MB, writes it into the task's image folder in the clone, and appends its Markdown on
@@ -770,7 +824,9 @@ The user decided: `Update` compares `Updated` exactly, to the millisecond it's s
 
 **Every change to a task moves `Updated` strictly forward.** An editor save, a move, a resolve, a reopen, a direct update, and an added image each set it to now, cut to the millisecond, or to one millisecond after its last value when now isn't later. So two changes in the same millisecond still leave different times, and an `Update` that read the first fails with `StaleTaskException`.
 
-Decided by the implementation, to confirm: `Add` treats an empty tag as no tag, as `Update` treats it as a cleared tag, so a program that sends an empty tag gets the same result from both. `AddImage` on an empty description makes the image's Markdown the whole description, with no blank first line.
+Decided by the implementation, to confirm: `AddImage` on an empty description makes the image's Markdown the whole description, with no blank first line.
+
+For row 21, the user decided that `Add` and `Update` take a list of tags instead of one tag, so the Local API and the MCP server can set several in order. With a list there's no empty-tag shortcut: an empty list means no tags, and a tag that's empty once normalized is rejected. The Local API keeps its one-tag field and turns it into a list, as its [contract](local-api-contract.md#a-tasks-tags-travel-as-a-list-beside-the-older-one-tag-field) says.
 
 ### A caller can require readable settings files
 
@@ -877,13 +933,38 @@ The options below were considered and rejected, grouped by decision.
   - **After every placed tag, in alphabetical order**: the user chose the top, as for a new task.
 - How the tag order is published:
   - **Sorting and moving on `ITagColors`**: a caller that needs only colors, such as the desktop's Task editor, would get the order too.
-- Where the one-tag rule lives:
-  - **A new single `tag` field in file version 2**: [an app that finds a newer version skips the file](#each-task-file-holds-nine-fields), so a device not yet updated would lose every task from view, and `TaskItem`, `TaskDraft`, the draft file, `WithTag`, `SuggestTags`, and both apps' callers would change.
-  - **Only in the desktop's tag control**: the merge and saving an edit would still add tags, so a task could still end up with two, and every screen would handle many tags forever.
-- Tasks that already have two or more tags:
-  - **Tasks reads only the first tag**, and the next save drops the rest: tags would vanish with no word to the user.
-  - **A one-time change during sync rewrites every such task to its first tag**: a migration step, with a commit that touches many files, and the same silent loss.
-- How two devices' tag changes merge:
-  - **Both devices' adds and removes, then the first tag only**: which tag survives would depend on the order the tags were added, not on which change is newer.
+- Where a task's group tag is kept:
+  - **A field of its own, such as `groupTag`, beside the list**: two fields would have to change together, a merge could pair one device's group tag with another's list, and an app not yet updated would keep writing the list without it.
+  - **The tag with the earliest [place](#each-tags-place-orders-task-views-groups-and-androids-tag-chips) in the tag order**: the user asked that the first tag in the task's own list group it, and a group move would then regroup tasks the user never touched.
+- Where the tag-list rules live:
+  - **Only in the desktop's tag control**: the Local API, the MCP server, and the Android app would each need their own check, so two same tags could still reach a file.
+- How the API and the MCP server set several tags:
+  - **One text field with the tags separated by commas**: a tag could never hold a comma, and every caller would parse it.
+- Which version a task file with several tags has:
+  - **Version 2 for every task file**: an app not yet updated [skips every version 2 file](#failure-modes), so a task saved by the new app would disappear from an old device until it's updated, and old and new files would mix for a long time.
+  - **Version 2 only for a task with two or more tags**: those tasks would vanish from an old app, and a task's version would depend on its content.
+- How many tags a task may have:
+  - **No limit**: the user chose at most 15.
+  - **At most 10**: the user chose 15.
+- What happens to tags that differ only in case:
+  - **Rejecting a list with two of them, with `ArgumentException`**: the user chose to normalize every tag and drop repeats, so no caller ever meets that error.
+  - **Tags keep the user's spelling, matched ignoring case, and a new tag takes the spelling of a matching tag in use**: two spellings of one tag could still reach files and `tags.json`, so every comparison, merge, and color lookup had to ignore case. The user chose one lowercase spelling.
+  - **Removing spaces from a tag instead of turning them into hyphens**: `my work` would become `mywork`. The user chose hyphens.
+- What happens to `tags.json` entries whose tags normalize to the same tag:
+  - **The file is unreadable**: every tag would lose its color and place until someone fixed the file by hand, for a file this change itself makes common.
+  - **The entries merge, each of color and place by its later time**: right more often, but a second merge rule inside one file, for a case that happens once per clone.
+- Whether normalizing on read rewrites the file:
+  - **Rewriting every task file and `tags.json` on first read**: every device would rewrite and push every task at once, and two devices doing it would conflict on every file.
+- What a filter of several tags matches:
+  - **Tasks that have any given tag**: "work and urgent" would need the caller to intersect results itself, while "work or home" takes one call per tag.
+  - **Only a task's group tag**: the user asked that every tag count when the API and the MCP server select tasks.
+- How a caller reads the group tag:
+  - **Each caller reads `Tags.FirstOrDefault()`**: the rule would be written in every caller, which the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) forbids at the second use.
+  - **A static helper in Tasks**: one home too, but harder to find than a property of the task.
+- How the desktop's tag box applies the tag rule:
+  - **Its own copy of the rule**: the rule would live in two places that must change together.
+  - **A member of `ITasks`**: an instance call, and a fake in every test, for a pure rule with no state.
+- How two devices' tag lists merge:
+  - **Each tag merges on its own: adds and removes from both devices, then the later device's order**: neither change is lost, but the merge grows a set rule with its own tests, and the order can be one neither device chose.
 - Which waiting images saving an edit moves:
   - **Move waiting images only on a Description change**: needed only for tag saves during an edit, which the atomic save removed.

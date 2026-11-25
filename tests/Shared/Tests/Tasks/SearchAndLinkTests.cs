@@ -55,6 +55,23 @@ public sealed class SearchAndLinkTests
     }
 
     [Fact]
+    public void Finds_a_task_by_a_word_in_a_tag_that_is_not_its_first()
+    {
+        SeedThree();
+
+        Assert.Equal(["Call the bank"], Found("money"));
+        Assert.Empty(Found("moneyless"));
+    }
+
+    [Fact]
+    public void Finds_a_task_by_a_word_in_a_hyphenated_tag_read_from_a_file()
+    {
+        f.SeedAndUse(TasksFixture.Id(1), title: "Task", tags: ["x", "My  Work"]);
+
+        Assert.Equal(["Task"], Found("my-work"));
+    }
+
+    [Fact]
     public void Ignores_case_in_the_search_text_and_in_the_task()
     {
         SeedThree();

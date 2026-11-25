@@ -8,7 +8,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// </summary>
 internal sealed class GroupCollapse
 {
-    private readonly HashSet<string> _tags = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _tags = new(StringComparer.Ordinal);
     private bool _noTag;
 
     /// <summary>Whether the group's rows are hidden.</summary>
@@ -32,20 +32,9 @@ internal sealed class GroupCollapse
     }
 
     /// <summary>
-    /// Makes sure the task has a row showing: when every group the task is in is collapsed, expands only the group of its first
-    /// row, the first in the list's group order; when one of its groups is expanded already, changes nothing.
+    /// Makes sure the task has a row showing: expands the one group it is in, its first tag's or "No tag", and no other.
     /// </summary>
-    public void Reveal(TaskItem task)
-    {
-        if (task.Tags.Count == 0)
-        {
-            Expand(null);
-        }
-        else if (task.Tags.All(IsCollapsed))
-        {
-            Expand(task.Tags.Order(StringComparer.OrdinalIgnoreCase).First());
-        }
-    }
+    public void Reveal(TaskItem task) => Expand(task.GroupTag);
 
     /// <summary>Shows the group's rows, when they are hidden.</summary>
     public void Expand(string? tag)

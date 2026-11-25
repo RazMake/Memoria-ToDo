@@ -37,7 +37,7 @@ public class TagColorsRequiredTests
     [Fact]
     public void The_tag_editor_without_tag_colors_is_rejected()
     {
-        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, null!, _services.Theme, Logger.None));
+        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, null!, _services.Theme, _services.Pointer, Logger.None));
 
         Assert.Equal("tagColors", failure.ParamName);
     }
@@ -45,9 +45,17 @@ public class TagColorsRequiredTests
     [Fact]
     public void Creating_the_TagEditor_without_a_logger_is_refused()
     {
-        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, _services.TagColors, _services.Theme, null!));
+        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, _services.TagColors, _services.Theme, _services.Pointer, null!));
 
         Assert.Equal("logger", failure.ParamName);
+    }
+
+    [Fact]
+    public void Creating_the_TagEditor_without_a_pointer_is_refused()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => new TagEditor(_services.Tasks, _services.TagColors, _services.Theme, null!, Logger.None));
+
+        Assert.Equal("pointer", failure.ParamName);
     }
 
     [Fact]

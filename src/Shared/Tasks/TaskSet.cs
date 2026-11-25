@@ -55,9 +55,9 @@ internal sealed class TaskSet
         return Math.Clamp(i, -1, Items.Count);
     }
 
-    /// <summary><see cref="Search(string)"/>, narrowed to the tasks that have <paramref name="tag"/>, ignoring case.</summary>
-    public IReadOnlyList<TaskItem> Search(string text, string tag) =>
-        Search(text).Where(task => TagCatalog.Has(task.Tags, tag)).ToList();
+    /// <summary><see cref="Search(string)"/>, narrowed to the tasks that have every one of <paramref name="tags"/>, each anywhere in the task's list.</summary>
+    public IReadOnlyList<TaskItem> Search(string text, IReadOnlyCollection<string> tags) =>
+        Search(text).Where(task => tags.All(task.Tags.Contains)).ToList();
 
     /// <summary>The tasks that hold every word of <paramref name="text"/> in their title, description, or tags, ignoring case.</summary>
     public IReadOnlyList<TaskItem> Search(string text)

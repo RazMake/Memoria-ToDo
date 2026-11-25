@@ -25,11 +25,12 @@ public sealed class FakeTaskStore : ITaskStore
 
     public FakeTaskStore() => DirectChanges = new FakeDirectTaskChanges(this);
 
-    /// <summary>Makes a task for seeding: open unless <paramref name="resolved"/> is set, created and updated at the given times.</summary>
+    /// <summary>Makes a task for seeding: open unless <paramref name="resolved"/> is set, created and updated at the given times. <paramref name="tags"/> wins over <paramref name="tag"/> when both are given.</summary>
     public static TaskItem Item(
         string id, string title = "Title", string description = "", string? tag = null,
-        DateTimeOffset? created = null, DateTimeOffset? updated = null, DateTimeOffset? resolved = null) =>
-        new(id, title, description, "rank-" + id, tag is null ? [] : [tag], created ?? Stamp, updated ?? created ?? Stamp, resolved);
+        DateTimeOffset? created = null, DateTimeOffset? updated = null, DateTimeOffset? resolved = null,
+        IReadOnlyList<string>? tags = null) =>
+        new(id, title, description, "rank-" + id, tags ?? (tag is null ? [] : [tag]), created ?? Stamp, updated ?? created ?? Stamp, resolved);
 
     /// <summary>The error a stale update throws, carrying the task as it is now.</summary>
     public static StaleTaskException StaleOf(TaskItem current) => new(current);
@@ -99,8 +100,8 @@ public sealed class FakeTaskStore : ITaskStore
     public IReadOnlyList<TagUse> TagsInUse()
     {
         Enter("TagsInUse", changes: false);
-        return [.. All.SelectMany(task => task.Tags).GroupBy(tag => tag, StringComparer.OrdinalIgnoreCase)
-            .Select(group => new TagUse(group.Key, group.Count())).OrderByDescending(use => use.Count).ThenBy(use => use.Tag, StringComparer.OrdinalIgnoreCase)];
+        return [.. All.SelectMany(task => task.Tags).GroupBy(tag => tag, StringComparer.Ordinal)
+            .Select(group => new TagUse(group.Key, group.Count())).OrderByDescending(use => use.Count).ThenBy(use => use.Tag, StringComparer.Ordinal)];
     }
 
     /// <inheritdoc />
@@ -115,15 +116,23 @@ public sealed class FakeTaskStore : ITaskStore
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<TaskItem> Search(string text, string tag)
+    public IReadOnlyList<TaskItem> Search(string text, IReadOnlyCollection<string> tags)
     {
-        Enter($"Search {text}|{tag}", changes: false);
+        Enter($"Search {text}|{string.Join(",", tags)}", changes: false);
+        var wanted = Normalized(tags);
+        if (tags.Count == 0)
+            throw new ArgumentException("Name at least one tag.", nameof(tags));
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return [.. All.Where(task => task.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase) && words.All(word =>
+        return [.. All.Where(task => wanted.All(task.Tags.Contains) && words.All(word =>
             task.Title.Contains(word, StringComparison.OrdinalIgnoreCase)
             || task.Description.Contains(word, StringComparison.OrdinalIgnoreCase)
             || task.Tags.Any(t => t.Contains(word, StringComparison.OrdinalIgnoreCase))))];
     }
+
+    /// <summary>The tags normalized with repeats dropped, first place kept. Throws <see cref="ArgumentException"/> for a tag that's empty once normalized.</summary>
+    internal static List<string> Normalized(IEnumerable<string> tags) =>
+        [.. tags.Select(tag => TagName.Normalize(tag) is { Length: > 0 } normalized ? normalized : throw new ArgumentException("A tag can't be empty.", nameof(tags)))
+            .Distinct(StringComparer.Ordinal)];
 
     /// <inheritdoc />
     public string LinkAddress(string taskId) => "task:" + taskId;
@@ -276,12 +285,12 @@ public sealed class FakeTaskStore : ITaskStore
 public sealed class FakeDirectTaskChanges(FakeTaskStore store) : IDirectTaskChanges
 {
     private readonly Lock gate = new();
-    private readonly List<(string Title, string Description, string? Tag)> adds = [];
-    private readonly List<(string Id, DateTimeOffset BaseUpdated, string? Title, string? Description, string? Tag)> updates = [];
+    private readonly List<(string Title, string Description, IReadOnlyList<string> Tags)> adds = [];
+    private readonly List<(string Id, DateTimeOffset BaseUpdated, string? Title, string? Description, IReadOnlyList<string>? Tags)> updates = [];
     private readonly List<(string Id, byte[] Image, string AltText)> images = [];
 
     /// <summary>Each Add call's arguments.</summary>
-    public IReadOnlyList<(string Title, string Description, string? Tag)> Adds
+    public IReadOnlyList<(string Title, string Description, IReadOnlyList<string> Tags)> Adds
     {
         get
         {
@@ -291,7 +300,7 @@ public sealed class FakeDirectTaskChanges(FakeTaskStore store) : IDirectTaskChan
     }
 
     /// <summary>Each Update call's arguments.</summary>
-    public IReadOnlyList<(string Id, DateTimeOffset BaseUpdated, string? Title, string? Description, string? Tag)> Updates
+    public IReadOnlyList<(string Id, DateTimeOffset BaseUpdated, string? Title, string? Description, IReadOnlyList<string>? Tags)> Updates
     {
         get
         {
@@ -311,29 +320,35 @@ public sealed class FakeDirectTaskChanges(FakeTaskStore store) : IDirectTaskChan
     }
 
     /// <inheritdoc />
-    public TaskItem Add(string title, string description, string? tag)
+    public TaskItem Add(string title, string description, IReadOnlyList<string> tags)
     {
         lock (gate)
-            adds.Add((title, description, tag));
+            adds.Add((title, description, tags));
         store.EnterDirect("Direct.Add");
+        var normalized = FakeTaskStore.Normalized(tags);
+        if (normalized.Count > TagName.MaxPerTask)
+            throw new ArgumentException($"A task has at most {TagName.MaxPerTask} tags.", nameof(tags));
         var next = store.Next();
-        return store.Insert(new TaskItem("new-" + Guid.NewGuid().ToString("N")[..8], title, description, "rank-new", tag is null ? [] : [tag], next, next, null));
+        return store.Insert(new TaskItem("new-" + Guid.NewGuid().ToString("N")[..8], title, description, "rank-new", normalized, next, next, null));
     }
 
     /// <inheritdoc />
-    public TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, string? tag)
+    public TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, IReadOnlyList<string>? tags)
     {
         lock (gate)
-            updates.Add((taskId, baseUpdated, title, description, tag));
+            updates.Add((taskId, baseUpdated, title, description, tags));
         store.EnterDirect("Direct.Update " + taskId);
         var task = store.Find(taskId);
         if (task.Updated != baseUpdated)
             throw FakeTaskStore.StaleOf(task);
+        var normalized = tags is null ? null : FakeTaskStore.Normalized(tags);
+        if (normalized is { Count: > TagName.MaxPerTask } && !normalized.SequenceEqual(task.Tags))
+            throw new ArgumentException($"A task has at most {TagName.MaxPerTask} tags.", nameof(tags));
         return store.Replace(task, t => t with
         {
             Title = title ?? t.Title,
             Description = description ?? t.Description,
-            Tags = tag is null ? t.Tags : tag.Length == 0 ? [] : [tag],
+            Tags = normalized ?? t.Tags,
         });
     }
 

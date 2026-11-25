@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Memoria.ToDo.Shared.Tasks.Tests;
 
-/// <summary>The tags in use, tag spelling, and suggestions.</summary>
+/// <summary>The tags in use, adding a tag, and suggestions.</summary>
 [Unit]
 public sealed class TagTests
 {
@@ -40,37 +40,40 @@ public sealed class TagTests
     }
 
     [Fact]
-    public void Lists_the_most_used_tag_first_and_ties_in_alphabetical_order_ignoring_case()
+    public void Lists_the_most_used_tag_first_and_ties_in_ordinal_order()
     {
-        f.SeedTagsAndUse(["pear", "banana"], ["apple", "banana"], ["Cherry"], ["banana"], ["Cherry"]);
+        f.SeedTagsAndUse(["pear", "banana"], ["apple", "banana"], ["cherry"], ["banana"], ["cherry"], ["Zed", "zed2"]);
 
         Assert.Equal(
-            [new TagUse("banana", 3), new TagUse("Cherry", 2), new TagUse("apple", 1), new TagUse("pear", 1)],
+            [new TagUse("banana", 3), new TagUse("cherry", 2), new TagUse("apple", 1), new TagUse("pear", 1), new TagUse("zed", 1), new TagUse("zed2", 1)],
             f.Tasks.TagsInUse());
     }
 
     [Fact]
-    public void Counts_tags_that_differ_only_in_case_as_one_tag()
+    public void Sorts_tied_tags_ordinally_not_by_culture()
     {
-        f.SeedTagsAndUse(["Work"], ["Work"], ["work"]);
+        f.SeedTagsAndUse(["b", "a", "-", "_", "1"]);
 
-        Assert.Equal([new TagUse("Work", 3)], f.Tasks.TagsInUse());
+        Assert.Equal(["-", "1", "_", "a", "b"], f.Tasks.TagsInUse().Select(u => u.Tag));
     }
 
     [Fact]
-    public void Spells_a_tag_as_most_of_the_tasks_spell_it()
+    public void Counts_tags_that_differ_only_in_case_or_spacing_as_one_normalized_tag()
     {
-        f.SeedTagsAndUse(["work"], ["Work"], ["Work"]);
+        f.SeedTagsAndUse(["Work"], ["Work"], ["work"], ["my  work"], ["MY-WORK"]);
 
-        Assert.Equal("Work", Assert.Single(f.Tasks.TagsInUse()).Tag);
+        Assert.Equal([new TagUse("work", 3), new TagUse("my-work", 2)], f.Tasks.TagsInUse());
     }
 
     [Fact]
-    public void Spells_a_tag_as_the_first_in_alphabetical_order_on_a_tie()
+    public void Counts_every_tag_of_every_task_not_only_the_first()
     {
-        f.SeedTagsAndUse(["beta"], ["Beta"]);
+        f.SeedTagsAndUse(["a", "shared"], ["b", "shared"], ["shared", "c"]);
 
-        Assert.Equal("Beta", Assert.Single(f.Tasks.TagsInUse()).Tag);
+        var use = f.Tasks.TagsInUse();
+
+        Assert.Equal(new TagUse("shared", 3), use[0]);
+        Assert.Equal(["a", "b", "c", "shared"], use.Select(u => u.Tag).Order());
     }
 
     [Fact]
@@ -90,23 +93,45 @@ public sealed class TagTests
     }
 
     [Fact]
-    public void Adds_the_typed_tag_trimmed()
+    public void Keeps_the_group_tag_when_a_tag_is_added_to_a_task_that_has_one()
     {
-        Assert.Equal(["work"], f.Tasks.WithTag([], "  work  "));
+        var tags = f.Tasks.WithTag(["first", "second"], "third");
+
+        Assert.Equal(["first", "second", "third"], tags);
     }
 
     [Fact]
-    public void Adds_the_typed_tag_in_the_spelling_of_the_matching_tag_in_use()
+    public void Adds_the_typed_tag_normalized()
+    {
+        Assert.Equal(["work"], f.Tasks.WithTag([], "  work  "));
+        Assert.Equal(["my-work"], f.Tasks.WithTag([], " My \t Work "));
+        Assert.Equal(["to-do"], f.Tasks.WithTag([], "to\ndo"));
+    }
+
+    [Fact]
+    public void Adds_the_typed_tag_in_lowercase_even_when_a_tag_in_use_has_capitals()
     {
         f.SeedTagsAndUse(["Work"]);
 
-        Assert.Equal(["Work"], f.Tasks.WithTag([], "wORK"));
+        Assert.Equal(["work"], f.Tasks.WithTag([], "wORK"));
     }
 
     [Fact]
-    public void Returns_the_tags_unchanged_when_the_tag_is_already_there_ignoring_case()
+    public void Returns_the_tags_unchanged_when_the_normalized_tag_is_already_there()
     {
-        Assert.Equal(["Work", "home"], f.Tasks.WithTag(["Work", "home"], "work"));
+        Assert.Equal(["work", "home"], f.Tasks.WithTag(["work", "home"], " WORK "));
+    }
+
+    [Fact]
+    public void Normalizes_the_tags_it_was_given_when_the_typed_tag_is_already_there()
+    {
+        Assert.Equal(["work"], f.Tasks.WithTag(["Work"], "work"));
+    }
+
+    [Fact]
+    public void Normalizes_the_tags_it_was_given_and_drops_repeats_when_it_adds_a_tag()
+    {
+        Assert.Equal(["work", "my-home", "new"], f.Tasks.WithTag(["Work", "my  Home", "WORK"], "new"));
     }
 
     [Fact]
@@ -122,10 +147,26 @@ public sealed class TagTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("two\nlines")]
-    public void Refuses_to_add_a_tag_that_is_empty_or_has_a_line_break(string typed)
+    [InlineData(" \r\n ")]
+    public void Refuses_to_add_a_tag_that_is_empty_once_normalized(string typed)
     {
         Assert.ThrowsAny<ArgumentException>(() => f.Tasks.WithTag(["a"], typed));
+    }
+
+    [Fact]
+    public void Refuses_to_add_a_tag_when_the_list_already_holds_fifteen()
+    {
+        var fifteen = Enumerable.Range(1, 15).Select(n => $"tag{n}").ToArray();
+
+        Assert.Throws<ArgumentException>(() => f.Tasks.WithTag(fifteen, "extra"));
+    }
+
+    [Fact]
+    public void Adds_the_fifteenth_tag()
+    {
+        var fourteen = Enumerable.Range(1, 14).Select(n => $"tag{n}").ToArray();
+
+        Assert.Equal([.. fourteen, "extra"], f.Tasks.WithTag(fourteen, "extra"));
     }
 
     [Fact]
@@ -133,7 +174,15 @@ public sealed class TagTests
     {
         f.SeedTagsAndUse(["Work", "wonder"], ["Work"], ["home"]);
 
-        Assert.Equal(["Work", "wonder"], f.Tasks.SuggestTags("WO", []));
+        Assert.Equal(["work", "wonder"], f.Tasks.SuggestTags("WO", []));
+    }
+
+    [Fact]
+    public void Normalizes_the_typed_text_before_matching()
+    {
+        f.SeedTagsAndUse(["my-work"], ["home"]);
+
+        Assert.Equal(["my-work"], f.Tasks.SuggestTags("My w", []));
     }
 
     [Fact]
@@ -141,7 +190,7 @@ public sealed class TagTests
     {
         f.SeedTagsAndUse(["Work"], ["home"]);
 
-        Assert.Equal(["Work"], f.Tasks.SuggestTags("ork", []));
+        Assert.Equal(["work"], f.Tasks.SuggestTags("ork", []));
     }
 
     [Fact]
@@ -175,15 +224,15 @@ public sealed class TagTests
     {
         f.SeedTagsAndUse(["Work"]);
 
-        Assert.Equal(["Work"], f.Tasks.SuggestTags("  wo ", []));
+        Assert.Equal(["work"], f.Tasks.SuggestTags("  wo ", []));
     }
 
     [Fact]
-    public void Leaves_out_the_tags_the_task_already_has_ignoring_case()
+    public void Leaves_out_the_tags_the_task_already_has_in_any_spelling()
     {
-        f.SeedTagsAndUse(["Work", "wonder"]);
+        f.SeedTagsAndUse(["Work", "wonder", "my-work"]);
 
-        Assert.Equal(["wonder"], f.Tasks.SuggestTags("wo", ["work"]));
+        Assert.Equal(["wonder"], f.Tasks.SuggestTags("wo", ["work", "My  Work"]));
     }
 
     [Fact]
@@ -192,13 +241,5 @@ public sealed class TagTests
         f.SeedTagsAndUse(["wa", "wb"], ["wb"], ["wc"], ["wc"], ["wc"]);
 
         Assert.Equal(["wc", "wb", "wa"], f.Tasks.SuggestTags("w", []));
-    }
-
-    [Fact]
-    public void Suggests_the_spelling_most_tasks_use()
-    {
-        f.SeedTagsAndUse(["work"], ["Work"], ["Work"]);
-
-        Assert.Equal(["Work"], f.Tasks.SuggestTags("wo", []));
     }
 }

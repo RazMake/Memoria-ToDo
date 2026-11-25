@@ -63,11 +63,27 @@ public sealed class TagsFileMergeTests
     }
 
     [Fact]
-    public void Matches_tags_ignoring_case()
+    public void Matches_tags_by_their_normalized_form_and_writes_it()
     {
-        var merged = Merged(null, Bytes(Colored("Work", "teal", T1)), Bytes(Placed("WORK", "a0", T1)));
+        var merged = Merged(null, Bytes(Colored("Work", "teal", T1)), Bytes(Placed("  WORK ", "a0", T1)));
 
-        Assert.Single(merged);
+        Assert.Equal([Both("work", "teal", T1, "a0", T1)], merged);
+    }
+
+    [Fact]
+    public void Matches_a_tag_with_inner_spaces_to_its_hyphenated_form()
+    {
+        var merged = Merged(null, Bytes(Colored("my  work", "teal", T1)), Bytes(Placed("my-work", "a0", T1)));
+
+        Assert.Equal([Both("my-work", "teal", T1, "a0", T1)], merged);
+    }
+
+    [Fact]
+    public void Keeps_the_first_entry_in_a_file_that_names_one_normalized_tag_twice()
+    {
+        var twice = Bytes(Both("Work", "teal", T1, "a0", T1), Both("work", "gold", T3, "a9", T3));
+
+        Assert.Equal([Both("work", "teal", T1, "a0", T1)], Merged(null, twice, null));
     }
 
     [Fact]
@@ -110,25 +126,6 @@ public sealed class TagsFileMergeTests
     }
 
     [Fact]
-    public void Takes_the_spelling_from_the_side_with_the_latest_time_of_its_color_and_place()
-    {
-        var local = Bytes(Both("Work", "teal", T1, "a0", T3));
-        var remote = Bytes(Both("work", "gold", T2, "a1", T2));
-
-        Assert.Equal(["Work"], Merged(null, local, remote).Select(e => e.Tag));
-        Assert.Equal(["Work"], Merged(null, remote, local).Select(e => e.Tag));
-    }
-
-    [Fact]
-    public void Takes_the_remote_spelling_when_the_latest_times_are_equal()
-    {
-        var local = Bytes(Both("Work", "teal", T1, "a0", T2));
-        var remote = Bytes(Both("work", "gold", T2, "a1", T1));
-
-        Assert.Equal(["work"], Merged(null, local, remote).Select(e => e.Tag));
-    }
-
-    [Fact]
     public void Never_removes_an_entry_the_other_side_lacks_even_when_the_basis_had_it()
     {
         var basis = Bytes(Placed("home", "a0", T1), Placed("work", "a1", T1));
@@ -146,12 +143,12 @@ public sealed class TagsFileMergeTests
     }
 
     [Fact]
-    public void Writes_the_entries_sorted_by_tag_ignoring_case_and_the_same_bytes_every_time()
+    public void Writes_the_entries_sorted_by_normalized_tag_ordinally_and_the_same_bytes_every_time()
     {
-        var local = Bytes(Placed("banana", "a0", T1), Placed("Cherry", "a1", T1));
-        var remote = Bytes(Placed("apple", "a2", T1));
+        var local = Bytes(Placed("az", "a0", T1), Placed("Cherry", "a1", T1));
+        var remote = Bytes(Placed("a_z", "a2", T1));
 
-        Assert.Equal(["apple", "banana", "Cherry"], Merged(null, local, remote).Select(e => e.Tag));
+        Assert.Equal(["a_z", "az", "cherry"], Merged(null, local, remote).Select(e => e.Tag));
         Assert.Equal(Rules.MergeTagColors(null, local, remote), Rules.MergeTagColors(null, local, remote));
     }
 
@@ -162,9 +159,9 @@ public sealed class TagsFileMergeTests
         "{ not json",
         """{ "version": 2 }""",
         """{ "version": 3, "tags": [] }""",
-        Json(Placed(" padded ", "a0")),
+        Json(Placed("   ", "a0")),
         Json(Placed("", "a0")),
-        Json(Placed("two\nlines", "a0")),
+        Json(Placed(" \n ", "a0")),
         Json(new TagEntry("work", new Stamp("", T1), null)),
         Json(new TagEntry("work", new Stamp("   ", T1), null)),
         Json(new TagEntry("work", new Stamp("teal\ngold", T1), null)),
@@ -174,7 +171,6 @@ public sealed class TagsFileMergeTests
         Json(Placed("work", "a")),
         Json(Placed("work", "a0", "soon")),
         Json(new TagEntry("work", null, null)),
-        Json(Placed("Work", "a0"), Placed("work", "a1")),
     };
 
     [Theory]

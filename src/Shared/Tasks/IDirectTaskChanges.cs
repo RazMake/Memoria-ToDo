@@ -8,19 +8,19 @@ namespace Memoria.ToDo.Shared.Tasks;
 public interface IDirectTaskChanges
 {
     /// <summary>
-    /// Adds an open task with a new ID, at the top, with Created and Updated set to now; a null tag means none. Returns it.
-    /// Throws, before writing: ArgumentException for an empty or multi-line title, or an invalid tag;
+    /// Adds an open task with a new ID, at the top, with Created and Updated set to now and the tags normalized, each repeat dropped. Returns it.
+    /// Throws, before writing: ArgumentException for an empty or multi-line title, a tag that's empty once normalized, or more than 15 tags;
     /// NoRepositoryFolderException when no folder is set.
     /// </summary>
-    TaskItem Add(string title, string description, string? tag);
+    TaskItem Add(string title, string description, IReadOnlyList<string> tags);
 
     /// <summary>
-    /// Replaces each field that isn't null; an empty tag removes every tag. Sets Updated, unless nothing changed, which
-    /// writes nothing. Returns the task as saved. Throws, before writing: StaleTaskException when the task's Updated isn't
-    /// baseUpdated; TaskNotFoundException; ArgumentException for an empty or multi-line title or an invalid tag;
+    /// Replaces each field that isn't null; an empty tag list removes every tag. The tags are normalized, each repeat dropped.
+    /// Sets Updated, unless nothing changed, which writes nothing, as when the list equals the current one in order. Returns the task as saved. Throws, before writing: StaleTaskException when the task's Updated isn't
+    /// baseUpdated; TaskNotFoundException; ArgumentException for an empty or multi-line title, a tag that's empty once normalized, or more than 15 tags;
     /// NoRepositoryFolderException.
     /// </summary>
-    TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, string? tag);
+    TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, IReadOnlyList<string>? tags);
 
     /// <summary>
     /// Shrinks the image to at most 1 MB, writes it into the task's image folder in the clone, and appends its Markdown on

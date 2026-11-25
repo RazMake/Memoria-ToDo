@@ -66,8 +66,8 @@ internal static class TagColorsFileFormat
 
     private static string ReadTag(JsonElement entry)
     {
-        var tag = JsonFields.String(entry, "tag");
-        return TaskText.IsStoredTag(tag) ? tag : throw new InvalidDataException("A tag must be one trimmed, non-empty line.");
+        var tag = TagName.Normalize(JsonFields.String(entry, "tag"));
+        return tag.Length > 0 ? tag : throw new InvalidDataException("A tag can't be empty.");
     }
 
     private static TagStamp ReadColor(string color, DateTimeOffset updated) =>

@@ -55,11 +55,11 @@ public sealed class TagOrderMoveTests
     }
 
     [Fact]
-    public void Matches_the_tag_and_its_neighbors_ignoring_case()
+    public void Normalizes_the_tag_and_its_neighbors()
     {
         UseThreePlaced();
 
-        Order.Move("C", "A", "B");
+        Order.Move(" C ", "A", "B");
 
         Assert.Equal(["a", "c", "b"], Shown("a", "b", "c"));
     }
@@ -81,14 +81,14 @@ public sealed class TagOrderMoveTests
     }
 
     [Fact]
-    public void Writes_the_tag_as_spelled_in_the_call()
+    public void Writes_the_normalized_tag()
     {
-        f.SeedTags(Placed("Work", "a0"), Placed("home", "a1"));
+        f.SeedTags(Placed("work", "a0"), Placed("home", "a1"));
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Order.Move("work", "home", null);
+        Order.Move("  My  Tag ", "home", null);
 
-        Assert.Equal(["home", "work"], f.ReadTags().Select(e => e.Tag));
+        Assert.Equal(["home", "my-tag", "work"], f.ReadTags().Select(e => e.Tag));
     }
 
     [Fact]
@@ -228,9 +228,8 @@ public sealed class TagOrderMoveTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData(" padded ")]
-    [InlineData("two\nlines")]
-    public void Refuses_an_invalid_tag_and_writes_nothing(string tag)
+    [InlineData(" \r\n ")]
+    public void Refuses_a_tag_that_is_empty_once_normalized_and_writes_nothing(string tag)
     {
         UseThreePlaced();
         var before = f.Files.ReadFile(f.TagColorsFile);

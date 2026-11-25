@@ -141,7 +141,7 @@ public class AddWindowEditingTests
         screen.Edit(EditorFields.Description, "plain", 5);
         screen.Press(Key.Tab);
         Assert.Equal("plain", screen.TextOf(EditorFields.Description));
-        Assert.Equal(EditorFields.TagPill, screen.FocusedField);
+        Assert.Equal(EditorFields.AddTagPill, screen.FocusedField);
 
         screen.Edit(EditorFields.Description, "", 0);
         screen.Type("/ti");

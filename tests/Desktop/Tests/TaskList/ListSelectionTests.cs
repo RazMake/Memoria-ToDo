@@ -61,16 +61,58 @@ public class ListSelectionTests
     }
 
     [Fact]
-    public void A_task_in_two_groups_is_selected_in_both_rows()
+    public void A_task_with_several_tags_is_selected_in_its_one_row()
     {
-        var task = _tasks.AddOlder("Buy milk", "", "home", "errand");
+        var task = _tasks.Add("Buy milk", "", "home", "errand");
         _tasks.Add("Other", "", "home");
         _selection.Select(task.Id);
         var groups = TagGroups.Of(Snapshot().Open, new Memoria.ToDo.Shared.Fakes.FakeTagOrder());
 
         var selectedRows = groups.SelectMany(group => group.Tasks).Where(row => _selection.IsSelected(row.Id)).ToList();
 
-        Assert.Equal(["Buy milk", "Buy milk"], selectedRows.Select(row => row.Title));
+        Assert.Equal(["Buy milk"], selectedRows.Select(row => row.Title));
+    }
+
+    [Fact]
+    public void Keeps_the_task_selected_when_its_first_tag_changes_and_it_moves_to_another_group()
+    {
+        var task = _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Other", "", "home");
+        _selection.Select(task.Id);
+        _selection.Update(Snapshot());
+
+        _tasks.Tasks.SaveEdit(task, new TaskDraft(task.Id, task.Title, task.Description, ["errand", "home"]));
+        var selected = _selection.Update(Snapshot());
+        var groups = TagGroups.Of(Snapshot().Open, new Memoria.ToDo.Shared.Fakes.FakeTagOrder());
+
+        Assert.Equal(task.Id, selected?.Id);
+        Assert.Equal(["errand", "home"], selected?.Tags);
+        Assert.Equal("errand", selected?.GroupTag);
+        Assert.Equal(task.Id, _selection.SelectedId);
+        Assert.Equal(["Buy milk"], groups.Single(group => group.Tag == "errand").Tasks.Select(row => row.Title));
+    }
+
+    [Fact]
+    public void Keeps_the_task_selected_when_its_last_tag_is_removed_and_it_moves_to_No_tag()
+    {
+        var task = _tasks.Add("Buy milk", "", "home");
+        _selection.Select(task.Id);
+        _selection.Update(Snapshot());
+
+        _tasks.Tasks.SaveEdit(task, new TaskDraft(task.Id, task.Title, task.Description, []));
+
+        Assert.Equal(task.Id, _selection.Update(Snapshot())?.Id);
+    }
+
+    [Fact]
+    public void Keeps_the_task_selected_when_the_search_matches_it_only_by_a_tag_that_is_not_its_first()
+    {
+        var task = _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Other", "", "work");
+        _selection.Select(task.Id);
+        _filter.SearchText = "errand";
+
+        Assert.Equal(task.Id, _selection.Update(Snapshot())?.Id);
     }
 
     [Fact]

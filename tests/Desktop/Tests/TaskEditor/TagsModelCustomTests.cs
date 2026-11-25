@@ -16,15 +16,13 @@ public class TagsModelCustomTests
 {
     private readonly EditorServices _services = new();
     private readonly TagsModel _model;
-    private readonly List<string> _added = [];
-    private readonly List<string> _removed = [];
+    private readonly List<IReadOnlyList<string>> _raised = [];
 
     public TagsModelCustomTests()
     {
         _services.UseRepository();
         _model = new TagsModel(_services.Tasks, _services.TagColors, Serilog.Core.Logger.None);
-        _model.TagAdded += _added.Add;
-        _model.TagRemoved += _removed.Add;
+        _model.TagsChanged += _raised.Add;
     }
 
     [Fact]
@@ -69,7 +67,7 @@ public class TagsModelCustomTests
         _model.Add("home");
 
         Assert.Equal(["home"], _model.Tags);
-        Assert.Equal(["home"], _added);
+        Assert.Equal([["home"]], _raised);
         Assert.True(_model.IsCustomOpen);
         Assert.Equal("errand", _model.TypedText);
     }
@@ -189,7 +187,7 @@ public class TagsModelCustomTests
         Assert.True(_model.AddTypedText());
 
         Assert.Equal(["errand"], _model.Tags);
-        Assert.Equal(["errand"], _added);
+        Assert.Equal([["errand"]], _raised);
         Assert.False(_model.IsCustomOpen);
         Assert.Equal("", _model.TypedText);
     }
@@ -235,26 +233,26 @@ public class TagsModelCustomTests
     [Fact]
     public void Enter_spells_the_tag_as_the_tag_in_use()
     {
-        _services.UseTag("Work");
+        _services.UseTag("work");
         _model.OpenCustom();
         _model.TypedText = "work";
 
         _model.AddTypedText();
 
-        Assert.Equal(["Work"], _model.Tags);
+        Assert.Equal(["work"], _model.Tags);
     }
 
     [Fact]
     public void Enter_with_a_tag_the_task_already_has_raises_nothing_changes_no_tags_and_hides_Custom()
     {
-        _model.Tags = ["Home"];
+        _model.Tags = ["home"];
         _model.OpenCustom();
         _model.TypedText = "home";
 
         Assert.True(_model.AddTypedText());
 
-        Assert.Empty(_added);
-        Assert.Equal(["Home"], _model.Tags);
+        Assert.Empty(_raised);
+        Assert.Equal(["home"], _model.Tags);
         Assert.False(_model.IsCustomOpen);
     }
 
@@ -263,7 +261,7 @@ public class TagsModelCustomTests
     [InlineData(true)]
     public void Choosing_the_tag_the_task_already_has_in_Custom_tells_observers_that_Custom_closed_though_it_raises_nothing(bool byColor)
     {
-        _model.Tags = ["Home"];
+        _model.Tags = ["home"];
         _model.OpenCustom();
         _model.TypedText = "home";
         var customOpenWhenTold = new List<bool>();
@@ -273,8 +271,8 @@ public class TagsModelCustomTests
 
         Assert.NotEmpty(customOpenWhenTold);
         Assert.All(customOpenWhenTold, open => Assert.False(open));
-        Assert.Empty(_added);
-        Assert.Equal(["Home"], _model.Tags);
+        Assert.Empty(_raised);
+        Assert.Equal(["home"], _model.Tags);
     }
 
     [Fact]
@@ -291,10 +289,10 @@ public class TagsModelCustomTests
     // A click on a color, or Space or Enter on it.
 
     [Fact]
-    public void A_color_is_kept_for_the_tag_before_TagAdded_is_raised()
+    public void A_color_is_kept_for_the_tag_before_TagsChanged_is_raised()
     {
         var keptWhenRaised = new List<(string Tag, string Color)>();
-        _model.TagAdded += _ => keptWhenRaised.AddRange(_services.TagColors.Kept);
+        _model.TagsChanged += _ => keptWhenRaised.AddRange(_services.TagColors.Kept);
         _model.OpenCustom();
         _model.TypedText = "errand";
 
@@ -302,7 +300,7 @@ public class TagsModelCustomTests
 
         Assert.True(result);
         Assert.Equal([("errand", "purple-2")], keptWhenRaised);
-        Assert.Equal(["errand"], _added);
+        Assert.Equal([["errand"]], _raised);
         Assert.Equal(["errand"], _model.Tags);
     }
 
@@ -346,15 +344,15 @@ public class TagsModelCustomTests
     [Fact]
     public void A_color_for_a_tag_the_task_already_has_is_kept_and_raises_nothing()
     {
-        _model.Tags = ["Home"];
+        _model.Tags = ["home"];
         _model.OpenCustom();
         _model.TypedText = "home";
 
         _model.AddTypedTextInColor("green-3");
 
-        Assert.Empty(_added);
-        Assert.Equal("green-3", _services.TagColors.ColorOf("Home"));
-        Assert.Equal(["Home"], _model.Tags);
+        Assert.Empty(_raised);
+        Assert.Equal("green-3", _services.TagColors.ColorOf("home"));
+        Assert.Equal(["home"], _model.Tags);
     }
 
     [Fact]
@@ -377,7 +375,7 @@ public class TagsModelCustomTests
 
         Assert.False(result);
         Assert.Empty(_model.Tags);
-        Assert.Empty(_added);
+        Assert.Empty(_raised);
         Assert.Contains("Configure", _model.ColorMessage);
     }
 
@@ -409,7 +407,7 @@ public class TagsModelCustomTests
 
         Assert.False(result);
         Assert.Empty(_model.Tags);
-        Assert.Empty(_added);
+        Assert.Empty(_raised);
         Assert.Contains("disk trouble", _model.ColorMessage);
         Assert.True(_model.IsCustomOpen);
     }
@@ -452,15 +450,101 @@ public class TagsModelCustomTests
         Assert.Equal(["errand"], _model.Tags);
     }
 
+    // The task reaches 15 tags while Custom is open, such as by a tag chosen from the menu, so what is typed can't be added.
+
+    private void FillToFifteenWhileCustomHoldsText(string typed)
+    {
+        _model.Tags = [.. Enumerable.Range(1, 14).Select(number => $"tag-{number}")];
+        _model.OpenCustom();
+        _model.TypedText = typed;
+        _model.Add("tag-15");
+        _raised.Clear();
+    }
+
+    [Fact]
+    public void Enter_when_the_task_reached_fifteen_tags_adds_nothing_keeps_Custom_and_its_text_and_says_why()
+    {
+        FillToFifteenWhileCustomHoldsText("errand");
+
+        var result = _model.AddTypedText();
+
+        Assert.False(result);
+        Assert.Equal(15, _model.Tags.Count);
+        Assert.DoesNotContain("errand", _model.Tags);
+        Assert.Empty(_raised);
+        Assert.True(_model.IsCustomOpen);
+        Assert.Equal("errand", _model.TypedText);
+        Assert.NotEqual("", _model.ColorMessage);
+    }
+
+    [Fact]
+    public void A_color_when_the_task_reached_fifteen_tags_keeps_no_color_adds_nothing_keeps_Custom_and_its_text_and_says_why()
+    {
+        FillToFifteenWhileCustomHoldsText("errand");
+
+        var result = _model.AddTypedTextInColor("red-1");
+
+        Assert.False(result);
+        Assert.Empty(_services.TagColors.Kept);
+        Assert.Equal(15, _model.Tags.Count);
+        Assert.Empty(_raised);
+        Assert.True(_model.IsCustomOpen);
+        Assert.Equal("errand", _model.TypedText);
+        Assert.NotEqual("", _model.ColorMessage);
+    }
+
+    [Fact]
+    public void The_message_about_fifteen_tags_clears_when_the_text_changes_and_when_Custom_closes()
+    {
+        FillToFifteenWhileCustomHoldsText("errand");
+        _model.AddTypedText();
+
+        _model.TypedText = "errands";
+        Assert.Equal("", _model.ColorMessage);
+
+        _model.AddTypedText();
+        _model.CloseCustom();
+        Assert.Equal("", _model.ColorMessage);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_typed_tag_the_task_already_has_still_closes_Custom_at_fifteen_tags(bool byColor)
+    {
+        FillToFifteenWhileCustomHoldsText("TAG-3");
+
+        Assert.True(byColor ? _model.AddTypedTextInColor("green-3") : _model.AddTypedText());
+
+        Assert.False(_model.IsCustomOpen);
+        Assert.Equal("", _model.ColorMessage);
+        Assert.Empty(_raised);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_typed_tag_replaces_the_pills_tag_at_fifteen_tags_since_the_count_stays_the_same(bool byColor)
+    {
+        FillToFifteenWhileCustomHoldsText("errand");
+        _model.Target = 0;
+
+        Assert.True(byColor ? _model.AddTypedTextInColor("green-3") : _model.AddTypedText());
+
+        Assert.Equal(15, _model.Tags.Count);
+        Assert.Equal("errand", _model.Tags[0]);
+        Assert.Single(_raised);
+        Assert.False(_model.IsCustomOpen);
+    }
+
     // Setting the tags raises nothing.
 
     [Fact]
-    public void Setting_the_tags_raises_neither_TagAdded_nor_TagRemoved()
+    public void Setting_the_tags_raises_neither_TagsChanged_nor_TagsChanged()
     {
         _model.Tags = ["a"];
         _model.Tags = ["b"];
 
-        Assert.Empty(_added);
-        Assert.Empty(_removed);
+        Assert.Empty(_raised);
     }
 }

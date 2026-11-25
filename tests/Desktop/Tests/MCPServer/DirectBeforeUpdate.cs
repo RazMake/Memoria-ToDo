@@ -8,12 +8,12 @@ namespace Memoria.ToDo.Desktop.MCPServer.Tests;
 /// </summary>
 internal sealed class DirectBeforeUpdate(IDirectTaskChanges inner, Action beforeUpdate) : IDirectTaskChanges
 {
-    public TaskItem Add(string title, string description, string? tag) => inner.Add(title, description, tag);
+    public TaskItem Add(string title, string description, IReadOnlyList<string> tags) => inner.Add(title, description, tags);
 
-    public TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, string? tag)
+    public TaskItem Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, IReadOnlyList<string>? tags)
     {
         beforeUpdate();
-        return inner.Update(taskId, baseUpdated, title, description, tag);
+        return inner.Update(taskId, baseUpdated, title, description, tags);
     }
 
     public TaskItem AddImage(string taskId, byte[] image, string altText) => inner.AddImage(taskId, image, altText);

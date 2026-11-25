@@ -34,7 +34,9 @@ public class LocalApiTaskChangeTests
 
         var created = await api.Tasks.CreateTaskAsync(new V1.CreateTaskRequest { Title = "Buy milk", Description = "Two litres", Tag = "home" });
 
-        Assert.Equal([("Buy milk", "Two litres", (string?)"home")], api.Store.DirectChanges.Adds);
+        var add = Assert.Single(api.Store.DirectChanges.Adds);
+        Assert.Equal(("Buy milk", "Two litres"), (add.Title, add.Description));
+        Assert.Equal(["home"], add.Tags);
         Assert.Equal("Buy milk", created.Title);
         Assert.Equal(api.Store.Tasks.Single().Id, created.Id);
         Assert.Empty(api.Store.ForbiddenCalls);
@@ -47,7 +49,9 @@ public class LocalApiTaskChangeTests
 
         var created = await api.Tasks.CreateTaskAsync(new V1.CreateTaskRequest { Title = "Buy milk" });
 
-        Assert.Equal([("Buy milk", "", (string?)null)], api.Store.DirectChanges.Adds);
+        var add = Assert.Single(api.Store.DirectChanges.Adds);
+        Assert.Equal(("Buy milk", ""), (add.Title, add.Description));
+        Assert.Empty(add.Tags);
         Assert.False(created.HasTag);
     }
 
@@ -72,7 +76,9 @@ public class LocalApiTaskChangeTests
             Id = "t1", BaseUpdated = Timestamp.FromDateTimeOffset(Base), Title = "New", Description = "New text", Tag = "home",
         });
 
-        Assert.Equal([("t1", Base, (string?)"New", (string?)"New text", (string?)"home")], api.Store.DirectChanges.Updates);
+        var update = Assert.Single(api.Store.DirectChanges.Updates);
+        Assert.Equal(("t1", Base, "New", "New text"), (update.Id, update.BaseUpdated, update.Title, update.Description));
+        Assert.Equal(["home"], update.Tags);
         Assert.Equal("New", updated.Title);
         Assert.Equal("New text", updated.Description);
         Assert.Equal("home", updated.Tag);
@@ -86,7 +92,9 @@ public class LocalApiTaskChangeTests
 
         var updated = await api.Tasks.UpdateTaskAsync(new V1.UpdateTaskRequest { Id = "t1", BaseUpdated = Timestamp.FromDateTimeOffset(Base), Title = "New" });
 
-        Assert.Equal([("t1", Base, (string?)"New", (string?)null, (string?)null)], api.Store.DirectChanges.Updates);
+        var update = Assert.Single(api.Store.DirectChanges.Updates);
+        Assert.Equal(("t1", Base, "New", (string?)null), (update.Id, update.BaseUpdated, update.Title, update.Description));
+        Assert.Null(update.Tags);
         Assert.Equal("Old text", updated.Description);
         Assert.Equal("work", updated.Tag);
     }
@@ -98,7 +106,9 @@ public class LocalApiTaskChangeTests
 
         var updated = await api.Tasks.UpdateTaskAsync(new V1.UpdateTaskRequest { Id = "t1", BaseUpdated = Timestamp.FromDateTimeOffset(Base), Tag = "" });
 
-        Assert.Equal([("t1", Base, (string?)null, (string?)null, (string?)"")], api.Store.DirectChanges.Updates);
+        var update = Assert.Single(api.Store.DirectChanges.Updates);
+        Assert.Equal(("t1", Base, (string?)null, (string?)null), (update.Id, update.BaseUpdated, update.Title, update.Description));
+        Assert.Empty(update.Tags!);
         Assert.False(updated.HasTag);
     }
 
@@ -109,7 +119,9 @@ public class LocalApiTaskChangeTests
 
         var updated = await api.Tasks.UpdateTaskAsync(new V1.UpdateTaskRequest { Id = "t1", BaseUpdated = Timestamp.FromDateTimeOffset(Base), Description = "" });
 
-        Assert.Equal([("t1", Base, (string?)null, (string?)"", (string?)null)], api.Store.DirectChanges.Updates);
+        var update = Assert.Single(api.Store.DirectChanges.Updates);
+        Assert.Equal(("t1", Base, (string?)null, (string?)""), (update.Id, update.BaseUpdated, update.Title, update.Description));
+        Assert.Null(update.Tags);
         Assert.Equal("", updated.Description);
     }
 

@@ -2,7 +2,7 @@ using Memoria.ToDo.Shared.Tasks;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
-/// <summary>The one task selected on the left side, which the right side shows. A task in two groups is selected in both.</summary>
+/// <summary>The one task selected on the left side, which the right side shows. A task shows in one group, so it has one selected row.</summary>
 internal sealed class ListSelection
 {
     /// <summary>The selected task's id, or null when nothing is selected.</summary>
@@ -11,7 +11,7 @@ internal sealed class ListSelection
     /// <summary>Selects the task, replacing any earlier selection.</summary>
     public void Select(string id) => SelectedId = id;
 
-    /// <summary>True for the selected task, in every group that shows it.</summary>
+    /// <summary>True for the selected task, whose row shows in its one group.</summary>
     public bool IsSelected(string id) => SelectedId == id;
 
     /// <summary>

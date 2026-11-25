@@ -18,12 +18,11 @@ public sealed class TagOrderFileTests
     public static TheoryData<string> UnreadableFiles() => new()
     {
         "{ not json",
-        Json(Placed("apple", "a0"), Placed(" padded ", "a1")),
+        Json(Placed("apple", "a0"), Placed("   ", "a1")),
         Json(Placed("apple", "a0"), Placed("zed", "!!")),
         Json(Placed("apple", "a0"), Placed("zed", "a0", "soon")),
         Json(Placed("apple", "a0"), new TagEntry("zed", null, null)),
         Json(Placed("apple", "a0"), new TagEntry("zed", new Stamp("", Earlier), null)),
-        Json(Placed("apple", "a0"), Placed("Apple", "a1")),
         Json(3, Placed("apple", "a0")),
     };
 

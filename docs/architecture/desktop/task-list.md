@@ -10,7 +10,7 @@ The Task list is the desktop app's Task View window. Its left side lists the tas
 
 The user asked for Task View in two sides, and for these rules:
 
-- **The left side groups the tasks by tag.** Each tag is a group. The user decided that [a task has at most one tag](../tasks.md#a-task-has-at-most-one-tag), so a task shows in one group; only a task saved with two or more tags before that rule shows in more, since it keeps them. Each row shows a checkbox and the task's title, and takes the [title's name](formatted-view.md#a-titles-name-is-the-text-it-shows) as its own.
+- **The left side groups the tasks by tag.** Each tag is a group. A task shows in one group only: its first tag's, its [group tag](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), as the user asked, or "No tag" when it has none. Its other tags don't place it anywhere else. Each row shows a checkbox and the task's title, and takes the [title's name](formatted-view.md#a-titles-name-is-the-text-it-shows) as its own.
 - **A click on the title selects the task, and only the checkbox checks or unchecks it.** Only the checkbox shows the hand pointer, the user decided; the title keeps the normal pointer. The user asked first for a title click that checks the task, then chose this so the right side has a clear way to pick its task.
 - **Each row's checkbox lines up with the first line of its title**, however many lines the title wraps to.
 - **Drag and drop sorts the tasks within a group.**
@@ -26,21 +26,21 @@ The user decided that titles and descriptions show formatted, as a reader sees t
 
 The user decided:
 
-- **Groups come in the tags' order from [Tasks](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips), which the user sets by [dragging a group](#drag-and-drop-moves-tasks-and-groups-and-a-line-shows-where-they-land), with a "No tag" group last** for tasks without a tag, so every open task shows. A tag never moved shows at the top, as a new task does, so before any move, groups come in the tags' alphabetical order, ignoring case. Adding, resolving, or retagging tasks never changes the order of the groups that show; a new tag's group appears at the top. Every device, and the Android app's tag chips, show the same order.
-- **Within a group, tasks keep their rank order.** Rank stays one order for all tasks, as [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors) keeps it, so two groups show their shared tasks in the same order, and the task file format doesn't change.
+- **Groups come in the tags' order from [Tasks](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips), which the user sets by [dragging a group](#drag-and-drop-moves-tasks-and-groups-and-a-line-shows-where-they-land), with a "No tag" group last** for tasks without a tag, so every open task shows. A tag never moved shows at the top, as a new task does, so before any move, groups come in the tags' alphabetical order. Adding, resolving, or retagging tasks never changes the order of the groups that show; a new group tag's group appears at the top. A tag that's never first in any open task has no group. Every device, and the Android app's tag chips, show the same order.
+- **Within a group, tasks keep their rank order.** Rank stays one order for all tasks, as [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors) keeps it, and the task file format doesn't change.
 
 Proposed, each a decision to confirm:
 
 - A group's heading is its tag's [colored badge](#tags-show-as-colored-badges-and-change-without-edit), and its rows sit [indented under it](#a-click-on-a-groups-tag-collapses-or-expands-it). A group with no task to show is hidden.
 - **Rows show no tag badges**, since the group already names the tag, and the selected task's tags show on the right side.
-- **A click anywhere on a row except the checkbox selects the task**, and so does a right-click. Selecting a task shows its description, with its [tag control](#tags-show-as-colored-badges-and-change-without-edit) under it. A task in two groups is selected in both, and both rows show it.
+- **A click anywhere on a row except the checkbox selects the task**, and so does a right-click. Selecting a task shows its description, with its [tag control](#tags-show-as-colored-badges-and-change-without-edit) under it.
 - **A link in a title opens as a link**, and doesn't select the task.
 - **The checkbox's middle sits at the middle of the title's first line**, at any text size.
 - **Nothing is selected when Task View opens**, and the right side says "Select a task to see its description." It says that again when the selected task is deleted, hidden by search, or gone after a sync. A selected task with no description shows "No description." above its tags.
 - **Task View opens wide enough for both sides**, and can't be made so narrow that either side becomes unreadable: it opens at 1100 by 720 pixels with the left side taking 68% of the width and the right side 32%, as the user decided, and is at least 680 pixels wide, with the left side at least 300 and the right side at least 340. A bar between the sides moves the split, by mouse only: the user decided it's never a keyboard stop, so it never shows a focus rectangle. Task View opens where [Single window](README.md#a-closed-window-is-made-again-on-the-next-show) places it and remembers neither its size, its split, nor its place, since remembering needs a saved setting that no design has yet.
 - **Each side scrolls on its own.** The description shows at its full height inside the right side, so the right side scrolls, not the web view.
 - The web view starts in the background when Task View opens, and is released when it closes, so the tray app holds no browser while Task View is closed. Microsoft recommends creating WebView2 only for real web content, and no more instances than needed ([WebView2 performance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/performance)).
-- A link to a deleted task shows "This task no longer exists." in the message line. A link to a resolved task shows the resolved tasks and selects it. A link to a hidden task clears the search if the search hides it, and [reveals its row](#a-click-on-a-groups-tag-collapses-or-expands-it) if every group it's in is collapsed, then selects it. The left side scrolls to the task's first row.
+- A link to a deleted task shows "This task no longer exists." in the message line. A link to a resolved task shows the resolved tasks and selects it. A link to a hidden task clears the search if the search hides it, and [reveals its row](#a-click-on-a-groups-tag-collapses-or-expands-it) if its group is collapsed, then selects it. The left side scrolls to the task's row.
 - When the browser can't open a web link, Task View shows the error in its message line, the same line where a failed move, resolve, or delete says why.
 - The [Close window shortcut](configure.md#esc-and-the-close-window-shortcut-close-the-window), Shift+Esc at first, closes Task View from any control, even while a task is being edited, exactly as its close button does.
 
@@ -74,12 +74,12 @@ Proposed, each a decision to confirm:
 
 - **A collapsed heading shows how many of its tasks it hides**, such as "( 3 )", so a collapsed group isn't mistaken for an empty one.
 - **Every group starts expanded when Task View opens.** The user decided that a collapsed group stays collapsed only until Task View closes: nothing stores it, so no file, format, or other device changes.
-- **Collapsing a group keeps the selection**, and the right side still shows the selected task, even when its row is hidden. A task in two groups still shows in its other, expanded group.
+- **Collapsing a group keeps the selection**, and the right side still shows the selected task, even when its row is hidden.
 - **Up and Down skip a collapsed group's rows**, and Alt+Up and Alt+Down move a task only among rows that show.
 - **A link to a task in a collapsed group reveals its row**, as the link rule [above](#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) says, and a search keeps each group as the user left it.
 - **Only the mouse collapses a group.** Rows stay the keyboard's only stops in the list, so headings get no key.
 
-The user decided how Task View reveals a task whose groups are all collapsed, such as for a link to it: it expands only the group of the row it reveals, the task's first row in group order, so one row shows and the task's other groups stay collapsed. When one of the task's groups is already expanded, nothing expands.
+The user decided how Task View reveals a task whose group is collapsed, such as for a link to it: it expands the task's group, so its row shows. Now that a task shows in [one group only](#tasks-show-grouped-by-tag-beside-the-selected-tasks-description), there's no other group to choose.
 
 The user decided that collapsing the group whose row holds an open [title edit](#edit-title-edits-the-title-in-its-row) keeps the edit and its text: the edit stays open, hidden with its row, and shows again, with its text, when the group expands. Proposed, each a decision to confirm:
 
@@ -89,7 +89,7 @@ The user decided that collapsing the group whose row holds an open [title edit](
 
 ### Edit Description turns the right side into the editor
 
-Edit Description, in a task's right-click menu, selects the task and switches the right side to the Task editor's Description editor, the same Description field as Add's, from the [Task editor](task-editor.md#public-interface). The user decided that only the description is editable: the title stays as it shows in the row. The user decided that the [tag control](#tags-show-as-colored-badges-and-change-without-edit) stays live beside the edit and [joins it](#a-tag-chosen-during-an-edit-saves-with-the-edit): a tag chosen during the edit saves or drops with the edit's text. Saving works as in Add, through the [editor's save](task-editor.md#add-and-task-view-save-the-same-way-through-the-editor), which passes Tasks' [save of an edit](../tasks.md#public-interface) with the task as the editor got it, the edited description, the title unchanged, and the pill's tag.
+Edit Description, in a task's right-click menu, selects the task and switches the right side to the Task editor's Description editor, the same Description field as Add's, from the [Task editor](task-editor.md#public-interface). The user decided that only the description is editable: the title stays as it shows in the row. The user decided that the [tag control](#tags-show-as-colored-badges-and-change-without-edit) stays live beside the edit and [joins it](#tags-changed-during-an-edit-save-with-the-edit): a tag change during the edit saves or drops with the edit's text. Saving works as in Add, through the [editor's save](task-editor.md#add-and-task-view-save-the-same-way-through-the-editor), which passes Tasks' [save of an edit](../tasks.md#public-interface) with the task as the editor got it, the edited description, the title unchanged, and the tag control's tags.
 
 The user decided that the [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window), Ctrl+Enter at first, saves the edit and leaves it; the user can change it in Configure. A saved edit shows the task's description again, formatted. Ctrl+Shift+Enter, which in Add saves and starts the next task, does nothing here. The user decided that when Ctrl+Enter isn't the Save shortcut, for example when Save is Ctrl+S, Ctrl+Enter in the Description types a line break like Enter: it doesn't save or leave the edit.
 
@@ -109,9 +109,9 @@ The user asked for a Save button in the edit, at the bottom right, with the Desc
 - **The right side draws no focus outline**, though Ctrl+Tab and [Preview](#edit-description-has-an-edit-tab-and-a-preview-tab) give it the keyboard focus, so it's never framed in a light outline.
 - Changes from other devices show in the list at once. An open edit keeps the user's text, and saving it merges with those changes as [Tasks](../tasks.md#two-versions-of-a-task-merge-field-by-field) decides.
 
-Which discarded edits show that Undo bar, and what Undo keeps of the editor, follow the user's decision on the [editor's report of changes](task-editor.md#public-interface), and a [changed tag](#a-tag-chosen-during-an-edit-saves-with-the-edit) counts too. Since Undo puts the edit back with its images, as the user decided below, the edit's images are deleted only when its Undo bar goes away or Task View closes.
+Which discarded edits show that Undo bar, and what Undo keeps of the editor, follow the user's decision on the [editor's report of changes](task-editor.md#public-interface), and a [changed tag list](#tags-changed-during-an-edit-save-with-the-edit) counts too. Since Undo puts the edit back with its images, as the user decided below, the edit's images are deleted only when its Undo bar goes away or Task View closes.
 
-The user decided what happens when an edit's images can't be deleted. Saving an edit moves the images waiting for the task into the clone, on any save that changes something, as [Tasks](../tasks.md#a-task-has-at-most-one-tag) decides, where [an image is deleted only with its task](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task), so images left by a discarded edit must not wait for the next one:
+The user decided what happens when an edit's images can't be deleted. Saving an edit moves the images waiting for the task into the clone, on any save that changes something, as [Tasks](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) decides, where [an image is deleted only with its task](../tasks.md#images-are-at-most-1-mb-and-live-beside-their-task), so images left by a discarded edit must not wait for the next one:
 
 - **The action still happens.** Leaving the edit, the Undo bar going away, or Task View closing goes ahead, and the message line says "The edit's images couldn't be removed: " followed by the reason. A failure while Task View closes shows the next time it opens, as a failed delete does. The images that couldn't be deleted stay where they wait, and nothing retries.
 - **A new edit cleans up first.** Starting an edit of a task with Edit Description or F2 first finishes that task's discarded edit, if its Undo bar shows, then deletes any images an earlier edit of the task left. If that fails, the edit doesn't open, and the message line says why. An Undo bar for another task stays: editing never finishes another task's delete or discarded edit.
@@ -143,7 +143,7 @@ Proposed, each a decision to confirm:
 The user asked for Edit Title, a new item in a task's right-click menu, which edits the title in place with the same abilities as Add's Title. The user decided that it edits in the row the user right-clicked, not on the right side, so the title is edited where it shows and the description stays in view. The row's title turns into the Task editor's Title editor, the same one-line field as Add's, with the cursor at the end of the title:
 
 - **It works as Add's Title does**: Markdown styled in place, the [formatting keys](task-editor.md#every-formatting-command-and-snippet-has-a-key) that work in a Title, and pasted text with line breaks joined into one line.
-- **The Save shortcut saves** the new title through Tasks' [save of an edit](../tasks.md#public-interface), with the description unchanged and the pill's tag, and the row shows the title formatted again. The tag control on the right side [joins the title edit](#a-tag-chosen-during-an-edit-saves-with-the-edit), as it joins a description edit.
+- **The Save shortcut saves** the new title through Tasks' [save of an edit](../tasks.md#public-interface), with the description unchanged and the tag control's tags, and the row shows the title formatted again. The tag control on the right side [joins the title edit](#tags-changed-during-an-edit-save-with-the-edit), as it joins a description edit.
 - **Esc abandons the change**, after it closes any open list.
 - **An empty title isn't saved**: the field is marked, as Add marks it, and stays open.
 
@@ -183,7 +183,7 @@ Also proposed, each a decision to confirm:
 - The right-click menu holds Edit Title, Edit Description, and Delete, each with its key beside it, so rows hold no buttons.
 - **Rows are the keyboard's stops, not their checkboxes.** Up and Down select the next row across group headings, skipping rows of collapsed groups, and Enter selects the focused row. The user decided that Up on the top row and Down on the bottom row move the cursor to the search box, with its text selected, and keep the selection.
 - **Ctrl+F always searches in Task View**, the user decided, even when the user made it the [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window): it moves to the search box and leaves an open edit open. In a row's right-click menu, it closes the menu first. When an edit ends with the focus inside the editor, the focus goes back to the selected task's row.
-- **The row keys work from the right side too**, the user decided. A click on the right side, such as on the description, gives it the focus, and then each row key in the table acts on the selected task as on its row. Proposed, each a decision to confirm: Alt+Up and Alt+Down move the task in the first group that shows it; the keys act only while the right side itself has the focus and shows the selected task, so keys in the tag control and in an open description edit, its Preview included, keep their own meaning. When a collapsed group hides every row of the selected task, its description still shows, and the user decided the keys still act on it: Shift+F2 expands the group to edit the title in its row, Alt+Up and Alt+Down do nothing, and the other keys act as usual.
+- **The row keys work from the right side too**, the user decided. A click on the right side, such as on the description, gives it the focus, and then each row key in the table acts on the selected task as on its row. Proposed, each a decision to confirm: Alt+Up and Alt+Down move the task in its group; the keys act only while the right side itself has the focus and shows the selected task, so keys in the tag control and in an open description edit, its Preview included, keep their own meaning. When a collapsed group hides the selected task's row, its description still shows, and the user decided the keys still act on it: Shift+F2 expands the group to edit the title in its row, Alt+Up and Alt+Down do nothing, and the other keys act as usual.
 - **The list itself is never a keyboard stop**, the user decided, so it never shows a focus rectangle around the whole list. Tab goes straight to a row. Proposed: a focused row shows only its selection, with no dashed focus rectangle of its own. This is a decision to confirm.
 - Delete asks for no confirmation. The task disappears at once, and an Undo bar shows for about 10 seconds.
 - The task's file is deleted when the Undo bar goes away or Task View closes. Deleting another task or discarding an edit while the bar shows finishes the earlier action at once, so one bar shows at a time. A delete that fails as Task View closes shows its message the next time Task View opens.
@@ -192,7 +192,7 @@ Also proposed, each a decision to confirm:
 - A task moves only within one group. A drop on another tag's group moves nothing and adds no tag, and a drop on the [resolved tasks](#resolved-tasks-wait-behind-a-count-at-the-bottom) moves nothing, so moving never resolves or reopens a task. Resolved tasks move among themselves.
 - Dropping a task that was deleted meanwhile, such as by a sync, moves nothing and shows the same message as a link to a deleted task.
 
-A moved task gets its new rank from [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors), between the two tasks it lands between in its group. Rank is one order for all tasks, so a task in two groups may also change place in its other group: dropping it between A and B puts it between A and B everywhere both show, and wherever that rank falls among the tasks of its other group. The user accepted this, so the task file needs no order per tag.
+A moved task gets its new rank from [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors), between the two tasks it lands between in its group. Rank is one order for all tasks, and a task shows in one group, its first tag's, so the task file needs no order per tag. A task whose first tag changes keeps its rank, and shows in its new group among that group's tasks in rank order.
 
 ### Drag and drop moves tasks and groups, and a line shows where they land
 
@@ -207,7 +207,7 @@ A group's drag works this way:
 - **A group moved while search hides some groups lands between the two shown groups it was dropped between**, wherever the hidden groups fall, as a task moved among a group's shown tasks does.
 - **The move saves at once, in [Tasks' tag order](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips)**, with no Undo bar, as a task's move has none; dragging back undoes it. Other devices, and the Android app's tag chips, get the new order with the next sync.
 - **Moving a group keeps everything else as it was**: the selection, which groups are collapsed, and an open title edit with its text.
-- **The order changes only Task View's groups on the desktop.** The tag menu keeps its [most-used order](../tasks.md#tags-and-search-ignore-case).
+- **The order changes only Task View's groups on the desktop.** The tag menu keeps its [most-used order](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case).
 
 While a drag is over the list, a drop line shows where the item will land:
 
@@ -227,8 +227,8 @@ The list scrolls during a drag, so a task or a group can go to a place off scree
 
 The user decided that Esc closes every window, one step per press, so one key press never loses the user's text, and Esc means "back one step" in Task View as it does in Add. Each press does the first of these that applies:
 
-1. **It closes an open list or menu**, such as the editor's snippet picker, the search box's ["@" list](#search-narrows-the-list), the tag control's menu, or its Custom box and colors, which drop what was typed there, as in [Add](task-editor.md#a-click-on-the-pill-opens-the-tag-menu). The tag control's `CloseEdit` closes its menu first, then Custom, one per press.
-2. **It leaves an edit**, dropping a tag chosen in it, with its Undo bar when a description edit had changes, as [Edit Description](#edit-description-turns-the-right-side-into-the-editor) and [Edit Title](#edit-title-edits-the-title-in-its-row) say.
+1. **It closes an open list or menu**, such as the editor's snippet picker, the search box's ["@" list](#search-narrows-the-list), the tag control's menu, or its Custom box and colors, which drop what was typed there, as in [Add](task-editor.md#a-click-on-a-pill-opens-the-tag-menu). The tag control's `CloseEdit` closes its menu first, then Custom, one per press.
+2. **It leaves an edit**, dropping any tag change made in it, with its Undo bar when a description edit had changes, as [Edit Description](#edit-description-turns-the-right-side-into-the-editor) and [Edit Title](#edit-title-edits-the-title-in-its-row) say.
 3. **It empties the search when the search box holds text**, from anywhere in the window, so every task shows again and Task View stays open. The user asked for this.
 4. **It closes Task View**, as its close button does, so a pending Undo finishes, as above.
 
@@ -242,7 +242,7 @@ Proposed, each a decision to confirm:
 
 ### Closing Task View asks before it drops a changed edit
 
-The user decided that when the Add new task shortcut [switches to Add](shell.md#a-shortcut-switches-between-add-and-task-view) while an [edit](#edit-description-turns-the-right-side-into-the-editor) has changes, Task View asks what to do with them. A [changed tag](#a-tag-chosen-during-an-edit-saves-with-the-edit) is a change. Closing would otherwise lose the edit with no Undo, since the Undo bar closes with the window, and an edit in Task View has no [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Add does. An edit with no changes, the common case, closes at once without asking. The prompt offers three buttons:
+The user decided that when the Add new task shortcut [switches to Add](shell.md#a-shortcut-switches-between-add-and-task-view) while an [edit](#edit-description-turns-the-right-side-into-the-editor) has changes, Task View asks what to do with them. A [changed tag list](#tags-changed-during-an-edit-save-with-the-edit) is a change. Closing would otherwise lose the edit with no Undo, since the Undo bar closes with the window, and an edit in Task View has no [draft](task-editor.md#closing-without-saving-keeps-a-draft-on-this-device) as Add does. An edit with no changes, the common case, closes at once without asking. The prompt offers three buttons:
 
 - **Save** saves the edit as the Save shortcut does. When it's saved, Task View closes, and Shell opens Add. When it isn't, because the save fails or the Title is empty, Task View stays open with the editor's message or the marked Title, and Add doesn't open.
 - **Discard** leaves the edit, deletes its images as closing does, and closes Task View.
@@ -260,44 +260,53 @@ Proposed, each a decision to confirm:
 
 ### Tags show as colored badges, and change without Edit
 
-The user decided that Task View shows tags as colored badges wherever it shows them, in the colors the [Task editor](task-editor.md#a-task-has-one-tag-shown-as-one-pill) draws, and that a task's tag changes without Edit. Proposed: where they show, now that rows sit in tag groups. This is a decision to confirm.
+The user decided that Task View shows tags as colored badges wherever it shows them, in the colors the [Task editor](task-editor.md#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them) draws, and that a task's tags change without Edit. Proposed: where they show, now that rows sit in tag groups. This is a decision to confirm.
 
-- **Each group's heading** shows its tag as a badge, and rows show none. The "No tag" heading stays bold text, with the words the [Task editor publishes](task-editor.md#public-interface) for its pill, so they have one home, as the user decided.
-- **The selected task** shows the tag control under its description: the same pill and menu as Add, so the user chooses or clears the tag without Edit. The user decided that during an [edit](#edit-description-turns-the-right-side-into-the-editor) the pill still shows, a task with no tag shows the "No tag" pill, and a click opens the tag menu, but the choice [joins the edit](#a-tag-chosen-during-an-edit-saves-with-the-edit) instead of saving.
+- **Each group's heading** shows its tag as a badge, at today's size, and rows show none. The "No tag" heading stays bold text, with the words the [Task editor publishes](task-editor.md#public-interface) for its add pill, so they have one home, as the user decided.
+- **The selected task** shows the tag control under its description: the same pills, add pill, menu, and drag as Add, so the user adds, removes, replaces, and reorders tags without Edit. The first pill shows larger, so the user sees which tag places the task in its group. The user decided that during an [edit](#edit-description-turns-the-right-side-into-the-editor) the control still shows, a task with no tag shows the "No tag" pill, and a click opens the tag menu, but every change [joins the edit](#tags-changed-during-an-edit-save-with-the-edit) instead of saving.
 
 The Task editor publishes both parts, so a tag looks the same in both windows, and the Task list owns no colors.
 
-The user decided that outside an edit, an Undo bar follows each change, saying "Tag changed" after a choice and "Tag cleared" after a clear: the same bar as Delete, for the same time. Undo saves the tag the pill showed before, or none, the same way. For a task that had two or more tags, Undo brings back only the first.
+The user decided that outside an edit, an Undo bar follows each change: the same bar as Delete, for the same time. Undo saves the whole list the control showed before, in its order, the same way. The user decided that the bar's words name the change, found by comparing the list before and after:
+
+| Change | The bar says |
+| --- | --- |
+| One tag added | "Tag added" |
+| One tag removed | "Tag removed" |
+| One tag replaced by another | "Tag changed" |
+| The same tags in another order | "Tags reordered" |
+
+The user's earlier words, "Tag changed" after a choice and "Tag cleared" after a clear, came from one tag per task: "Tag changed" keeps its meaning for a replace, and "Tag removed" takes over from "Tag cleared".
 
 Proposed, each a decision to confirm:
 
-- **The tag control shows for any selected task**, open or resolved. One task is selected at a time, so one control shows at a time. Selecting another task closes the control's menu and drops text typed in Custom.
-- **Outside an edit, each choice or clear saves at once**, through Tasks' [save of an edit](../tasks.md#a-task-has-at-most-one-tag), with the task as the list shows it, and the same title, description, and the new tag or none. Only the tag differs, so Tasks replaces only the tag, and a title or description another device changed meanwhile stays. Tasks needs no new part, and the save starts a sync as every local save does.
-- **The pill changes at once, and the groups follow when Tasks reports the change**: the task moves to its new tag's group, or to "No tag". A sync that changes the task's tag meanwhile, outside an edit, updates the pill and leaves an open menu or Custom as it is.
+- **The tag control shows for any selected task**, open or resolved. One task is selected at a time, so one control shows at a time. Selecting another task closes the control's menu, cancels a drag, and drops text typed in Custom.
+- **Outside an edit, each change saves at once**, through Tasks' [save of an edit](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), with the task as the list shows it, and the same title, description, and the control's whole new list. Only the tags differ, so Tasks replaces only the tags, and a title or description another device changed meanwhile stays. A drag saves once, on the drop, never while the pill moves. Tasks needs no new part, and the save starts a sync as every local save does.
+- **The pills change at once, and the groups follow when Tasks reports the change**: when the first tag changed, the task moves to its new first tag's group, or to "No tag", and stays selected, with the list scrolled to it, as the user decided. A change that keeps the first tag leaves the task where it is. A sync that changes the task's tags meanwhile, outside an edit, updates the pills, cancels a drag, and leaves an open menu or Custom as it is.
 - **One bar shows at a time**, so a new tag change, a delete, or a discarded edit finishes the earlier bar and keeps its change. A tag change finishes it before it saves.
-- **Starting an edit of the task finishes its tag-change bar** and keeps the change, so the editor starts from the saved tag. A bar for another task stays, as for a discarded edit.
-- **A tag change outside an edit never cleans up the task's edit images** itself. Finishing a discarded edit's bar first deletes that edit's images, as any finished bar does, so Tasks' save, which moves [every waiting image](../tasks.md#a-task-has-at-most-one-tag), finds none of them.
+- **Starting an edit of the task finishes its tag-change bar** and keeps the change, so the editor starts from the saved tags. A bar for another task stays, as for a discarded edit.
+- **A tag change outside an edit never cleans up the task's edit images** itself. Finishing a discarded edit's bar first deletes that edit's images, as any finished bar does, so Tasks' save, which moves [every waiting image](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), finds none of them.
 - **A clicked color is kept by the tag control when its tag is chosen**, as in Add, so it stays with the tag even when saving the task then fails, or the edit it joined is discarded.
 
-### A tag chosen during an edit saves with the edit
+### Tags changed during an edit save with the edit
 
-The user decided that while a [description edit](#edit-description-turns-the-right-side-into-the-editor) or a [title edit](#edit-title-edits-the-title-in-its-row) is open, the tag control joins that edit, so the text and the tag save or fail together:
+The user decided that while a [description edit](#edit-description-turns-the-right-side-into-the-editor) or a [title edit](#edit-title-edits-the-title-in-its-row) is open, the tag control joins that edit, so the text and the tags save or fail together:
 
-- **Choosing or clearing a tag only changes the pill.** Nothing saves, and no "Tag changed" or "Tag cleared" bar shows.
-- **The edit's save sends the edited text and the pill's tag together**, in one call to Tasks' [save of an edit](../tasks.md#a-task-has-at-most-one-tag), with the task as the edit started. Tasks replaces the tag only when the pill's tag differs from the one the edit started with, ignoring case, so a tag another device set meanwhile stays when the user left the pill alone. When the save fails, nothing is saved: the edit stays open with its text and the pill's tag.
-- **Text still in Custom when the edit saves is chosen as the tag first**, through the tag control's `ChooseTypedText`, as Enter in Custom does and as Add's Save does. Nothing saves for it on its own; the edit's one save carries it. This holds for every way the edit saves: the Save shortcut, the Save button, the close prompt's Save, and checking the task.
-- **Leaving the edit without saving drops the tag choice with the text**: Esc, the close prompt's Discard, selecting another task, or starting another edit. Undo of a discarded description edit puts back both its text and the pill's tag.
-- **A changed tag is a change of the edit.** An edit has changes when its editor reports one, or when the pill's tag differs from the tag the edit started with, ignoring case. So a description edit whose only change is its tag shows the Undo bar when discarded, and closing Task View asks first. The user decided that text typed in Custom and not chosen isn't a change of the edit, unlike in [Add](task-editor.md#custom-adds-a-new-tag-in-the-color-clicked): leaving an edit with no other change drops it without asking. Ruled out: nonblank Custom text counts as a change.
-- **Esc closes the tag control's menu, then its Custom, before it leaves the edit**, through the control's `CloseEdit`, as [Esc's steps](#esc-goes-back-one-step-then-closes-task-view) say.
+- **Adding, removing, replacing, or reordering a tag only changes the pills.** Nothing saves, and no tag-change bar shows.
+- **The edit's save sends the edited text and the control's tags together**, in one call to Tasks' [save of an edit](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), with the task as the edit started. Tasks replaces the tags only when the control's list differs from the one the edit started with, in order, once normalized, so tags another device set meanwhile stay when the user left the pills alone. When the save fails, nothing is saved: the edit stays open with its text and the control's tags.
+- **Text still in Custom when the edit saves is added as a tag first**, through the tag control's `ChooseTypedText`, as Enter in Custom does and as Add's Save does. Nothing saves for it on its own; the edit's one save carries it. This holds for every way the edit saves: the Save shortcut, the Save button, the close prompt's Save, and checking the task.
+- **Leaving the edit without saving drops the tag changes with the text**: Esc, the close prompt's Discard, selecting another task, or starting another edit. Undo of a discarded description edit puts back both its text and the control's tags.
+- **A changed tag list is a change of the edit.** An edit has changes when its editor reports one, or when the control's list differs from the list the edit started with, in order, once normalized, so a reorder alone counts. So a description edit whose only change is its tags shows the Undo bar when discarded, and closing Task View asks first. The user decided that text typed in Custom and not chosen isn't a change of the edit, unlike in [Add](task-editor.md#custom-adds-a-new-tag-in-the-color-clicked): leaving an edit with no other change drops it without asking. Ruled out: nonblank Custom text counts as a change.
+- **Esc closes the tag control's menu, then its Custom, before it leaves the edit**, through the control's `CloseEdit`, as [Esc's steps](#esc-goes-back-one-step-then-closes-task-view) say. Esc during a drag cancels the drag first, inside the control.
 
 Proposed, each a decision to confirm:
 
-- **A title edit left with Esc still shows no Undo bar**, even when its tag changed: a tag, like a title, is quickly chosen again.
-- **A sync during the edit doesn't change the pill**, as it doesn't change the edit's text. The save then keeps the synced tag unless the user chose another, by [Tasks' tag rule](../tasks.md#a-task-has-at-most-one-tag).
+- **A title edit left with Esc still shows no Undo bar**, even when its tags changed: tags, like a title, are quickly chosen again.
+- **A sync during the edit doesn't change the pills**, as it doesn't change the edit's text. The save then keeps the synced tags unless the user changed the list, by [Tasks' tag rule](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it).
 
 ### Search narrows the list
 
-[Tasks](../tasks.md#tags-and-search-ignore-case) decides how search matches tasks. The user decided that Task View has no tag filter, that the search box sits after a "Search:" label with no button, and that the list narrows as the user types.
+[Tasks](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) decides how search matches tasks. The user decided that Task View has no tag filter, that the search box sits after a "Search:" label with no button, and that the list narrows as the user types.
 
 The user also decided:
 
@@ -307,7 +316,7 @@ The user also decided:
 
 Proposed, each a decision to confirm:
 
-- Search looks in titles, descriptions, and tags. Each group shows only its tasks that match, and a group with none is hidden. An empty box shows every task.
+- Search looks in titles, descriptions, and every tag of a task, first or not, so a word that matches only a task's second tag still finds it. Each group shows only its tasks that match, so a match shows in its first tag's group, and a group with none is hidden. An empty box shows every task.
 - Opening Task View from the tray while it is open also empties the search, since the tray and the shortcut share the window's Show.
 - The resolved count, below, counts only the resolved tasks that match the search.
 
@@ -316,7 +325,7 @@ The user asked that typing "@" in the search box insert the chosen contact's ali
 - **"@" in the search box opens the Task editor's [alias list](task-editor.md#a-plain-text-box-can-offer-contacts-by-alias)**, where Editing's rule opens the "@" list: at the box's start, or after a character that isn't a letter or a digit. It looks and works like the editor's "@" list, without the template header. The search box's own Down and Up, to the top or bottom row, work only while the list is closed, and then exactly as before the list existed.
 - **Choosing a contact puts "@" and its alias in the box**, or its ID when it has no alias, in place of the "@" and what was typed after it, and the list narrows at once.
 - **A search word that starts with "@" names a contact when the rest of it finds one**, through Contacts' [Find](../contacts.md#public-interface), which looks up an alias first, then an ID, ignoring case. Typing `@anap` by hand works the same as choosing it.
-- **Every word must still match**, as today: `@anap budget` finds the tasks that mention Ana and also hold "budget". Words without "@" match through [Tasks' search](../tasks.md#tags-and-search-ignore-case), unchanged.
+- **Every word must still match**, as today: `@anap budget` finds the tasks that mention Ana and also hold "budget". Words without "@" match through [Tasks' search](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case), unchanged.
 - **The search follows contact changes**: when contacts change, Task View matches the box's text again, so a word that now names a contact, or no longer does, takes effect without typing.
 
 The user decided:
@@ -484,9 +493,9 @@ Proposed, each a decision to confirm:
 - **A move, resolve, or delete can't be saved**: the task returns to how it was, and a message says why.
 - **A group's move can't be saved**, for example because no clone folder is set, or `tags.json` can't be read, has a newer version, or can't be written: the group goes back to its place, and the message line says why, as Tasks' [failure modes](../tasks.md#failure-modes) give it. While `tags.json` can't be read, groups show in the tags' alphabetical order, and the list still loads.
 - **A deleted task's images can't be removed**: the task's file is already deleted, as [Tasks](../tasks.md#public-interface) says, so the task stays gone. Proposed: the message line says "The task was deleted, but some of its images couldn't be removed: " followed by the reason. This is a decision to confirm.
-- **Saving an edit fails**: nothing is saved, neither the text nor the pill's tag. The editor stays open with the text, the pill keeps its tag, and the editor shows the error, as the [editor's save](task-editor.md#add-and-task-view-save-the-same-way-through-the-editor) does.
+- **Saving an edit fails**: nothing is saved, neither the text nor the control's tags. The editor stays open with the text, the control keeps its tags, and the editor shows the error, as the [editor's save](task-editor.md#add-and-task-view-save-the-same-way-through-the-editor) does.
 - **An edit's images can't be deleted**: the action goes ahead and the message line says why, and a new edit of that task doesn't open until they're deleted, as the [user decided](#edit-description-turns-the-right-side-into-the-editor). A tag change outside an edit doesn't clean them up first, so its save moves them into the clone, where they sync with no link until the task is deleted. This is a known limitation, not fixed.
-- **A tag chosen or cleared outside an edit can't be saved**, for example because the task's file can't be written or no clone folder is set: the pill goes back to the task's saved tag, no Undo bar shows, and the message line says why, as the editor words each of Tasks' failures. When the task was deleted meanwhile, such as by a sync, it says "This task no longer exists." (Decision to confirm: the wording.)
+- **A tag change outside an edit can't be saved**, for example because the task's file can't be written or no clone folder is set: the pills go back to the task's saved tags, in their saved order, no Undo bar shows, and the message line says why, as the editor words each of Tasks' failures. When the task was deleted meanwhile, such as by a sync, it says "This task no longer exists." (Decision to confirm: the wording.)
 - **Undoing a tag change fails**: the change stays, the bar goes away, and the message line says why.
 - **A tag's color can't be kept**: the tag isn't chosen and nothing is saved; Custom says why, as in [Add](task-editor.md#failure-modes).
 - **A new title can't be saved**: the title edit stays open with its text, and the Title editor says why.
@@ -515,7 +524,7 @@ The options below were considered and rejected, grouped by decision.
   - **Tags change only in an edit, and show as colored badges in the rows and the filter**: the user chose to tag a task without Edit.
   - **Only the edit uses the control, and the rows and the filter stay as they are**: a tag would look different in the list than in the editor, and colors would help least where the user scans most.
   - **Saving a tag change when the task collapses**: closing Task View or a sync meanwhile could lose it, and the change would need a pending state of its own.
-  - **A new Tasks part that sets one tag**: Tasks' save of an edit already applies only a tag that changed.
+  - **A new Tasks part that sets the tags**: Tasks' save of an edit already applies only tags that changed.
   - **No Undo for a tag change, since another click reverses it**: a slip on the x would be the only change in Task View with no Undo, and a tag no other task uses would be gone from the tag menu.
 - What Esc does while a list or an edit is open:
   - **Close at once, after closing an open list**: an open edit would be lost with no Undo, since the bar closes with the window.
@@ -544,7 +553,7 @@ The options below were considered and rejected, grouped by decision.
   - **In the Title, as in Add**: the user would have to move to the Description first.
 - The order of the tag groups:
   - **Most-used tag first**: groups would move as tasks are added and resolved.
-  - **Always alphabetical, ignoring case**: the user asked to set the groups' order by dragging. Where the order is stored is ruled out in [Tasks](../tasks.md#ruled-out).
+  - **Always alphabetical**: the user asked to set the groups' order by dragging. Where the order is stored is ruled out in [Tasks](../tasks.md#ruled-out).
 - Whether "No tag" moves:
   - **Like any group**: the stored order would need a reserved name no real tag may take, which both apps must know.
 - Which part of the list picks the gap a dragged group lands in:
@@ -594,16 +603,20 @@ The options below were considered and rejected, grouped by decision.
   - **The Task editor's Description editor**: it would need the Formatted view and a web view, as the [Task editor](task-editor.md#ruled-out) says.
 - What collapsing a group does to a title edit in it:
   - **The edit ends**: the user chose to keep the draft, so a click on a tag never loses typing.
-- Which groups a reveal expands when all of a task's groups are collapsed:
-  - **Every group of the task**: the user wants one row to show, not every group the task is in.
-- What shows of the tag during an edit:
-  - **The tag as a read-only badge, or a plain read-only "No tag" badge, with no x and no menu**: the user wants the tag chosen during an edit, as part of it.
-  - **The tag as a badge, and nothing when there's no tag**: the same reason, and the row under the description would jump.
-- How a tag chosen during an edit saves:
-  - **At once, in its own save with its own Undo bar, while the edit's later save keeps it**: the text and the tag wouldn't save or fail together, and the two saves need rules so they can't undo each other.
+- Which group a task with several tags shows in:
+  - **Every tag's group, as before one tag per task**: the user asked that only the first tag place the task, so a task shows once.
+- What shows of the tags during an edit:
+  - **The tags as read-only badges, or a plain read-only "No tag" badge, with no x and no menu**: the user wants the tags changed during an edit, as part of it.
+  - **The tags as badges, and nothing when there are none**: the same reason, and the row under the description would jump.
+- How a tag change during an edit saves:
+  - **At once, in its own save with its own Undo bar, while the edit's later save keeps it**: the text and the tags wouldn't save or fail together, and the two saves need rules so they can't undo each other.
   - **The edit's Save leaves Custom's text out, so it becomes a tag only by Enter or a color click**: typing in Custom would be lost on Save, unlike in Add.
 - The tag-change Undo bar's text:
-  - **"Tag changed" for both a choice and a clear**: the bar wouldn't say the tag is gone.
+  - **"Tag changed" for every change**: the bar wouldn't say whether a tag is gone, new, or only moved.
+  - **"Tags changed" for every change**: one rule and no comparison, but a slip of a drag and a slip of the x would read the same.
+  - **A save on every step of a drag, each with its own bar**: one drag would leave many saves and bars, where the user made one change.
+- What happens to a task's row when its first tag changes:
+  - **The task moves, and the selection clears**: the tag control would disappear right after the user changed it, so a second change would need the task found again.
 - What an edit's Preview shows of a mention:
   - **The stored text**: the Preview would show a mention's old text while the chip in the editor shows the new.
 - What "@" in the search box inserts (proposed, a decision to confirm):

@@ -194,7 +194,7 @@ public sealed class RepositoryFileRulesTests
     }
 
     [Fact]
-    public void Takes_the_one_tag_a_device_set_when_the_basis_holds_older_tags()
+    public void Takes_the_list_a_device_set_when_the_basis_holds_several_tags()
     {
         var basis = Task(tags: ["a", "b"]);
 
@@ -203,7 +203,7 @@ public sealed class RepositoryFileRulesTests
     }
 
     [Fact]
-    public void Keeps_older_tags_that_neither_device_changed()
+    public void Keeps_the_tags_that_neither_device_changed()
     {
         var basis = Task("B", tags: ["a", "b"]);
 
@@ -213,13 +213,45 @@ public sealed class RepositoryFileRulesTests
     }
 
     [Fact]
-    public void Writes_the_tag_in_the_spelling_of_the_version_it_took()
+    public void Writes_the_normalized_tags_of_the_version_it_took()
     {
         var basis = Task(tags: ["a"]);
 
-        var merged = Merged(basis, Task(tags: ["Work"], updated: T1), Task(tags: ["a"]));
+        var merged = Merged(basis, Task(tags: ["Work", "My  Home", "work"], updated: T1), Task(tags: ["a"]));
 
-        Assert.Equal(["Work"], TagsOf(merged));
+        Assert.Equal(["work", "my-home"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Counts_a_change_of_spacing_alone_as_no_change()
+    {
+        var basis = Task(tags: ["my  work", "b"]);
+
+        var merged = Merged(basis, Task(tags: ["My-Work", "b"], updated: T3), Task(tags: ["home"], updated: T1));
+
+        Assert.Equal(["home"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Keeps_the_later_reorder_over_a_tag_added_on_the_other_device()
+    {
+        var basis = Task(tags: ["a", "b"]);
+
+        Assert.Equal(["b", "a"], TagsOf(Merged(basis, Task(tags: ["b", "a"], updated: T2), Task(tags: ["a", "b", "c"], updated: T1))));
+        Assert.Equal(["a", "b", "c"], TagsOf(Merged(basis, Task(tags: ["b", "a"], updated: T1), Task(tags: ["a", "b", "c"], updated: T2))));
+    }
+
+    [Fact]
+    public void Keeps_every_tag_of_a_task_with_more_than_fifteen_through_a_merge()
+    {
+        var many = Enumerable.Range(1, 20).Select(n => $"tag{n}").ToArray();
+        var basis = Task("B", tags: many);
+
+        var merged = Merged(basis, Task("L", tags: many, updated: T1), Task("B", tags: many));
+        var changedElsewhere = Merged(basis, Task("B", tags: many), Task("B", tags: [.. many, "tag21"], updated: T1));
+
+        Assert.Equal(many, TagsOf(merged));
+        Assert.Equal([.. many, "tag21"], TagsOf(changedElsewhere));
     }
 
     [Fact]

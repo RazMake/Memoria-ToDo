@@ -117,7 +117,7 @@ internal sealed class AddScreen : IDisposable
         EditorFields.Type(Window, EditorFields.Tags, text);
     }
 
-    /// <summary>Clicks the pill and then Custom, unless Custom is already open.</summary>
+    /// <summary>Clicks the add pill and then Custom, unless Custom is already open, so Custom adds its tag at the end.</summary>
     public void OpenCustom()
     {
         if (TagControls.CustomIsOpen(Window))
@@ -125,7 +125,7 @@ internal sealed class AddScreen : IDisposable
             return;
         }
 
-        OpenWindows.Click(TagControls.PillButton(Window));
+        OpenWindows.Click(TagControls.AddPill(Window));
         OpenWindows.Click(TagControls.CustomItem(Window));
     }
 
@@ -140,6 +140,9 @@ internal sealed class AddScreen : IDisposable
 
     /// <summary>The tag the pill shows, or null when it shows "No tag".</summary>
     public string? ShownTag => TagControls.PillTag(Window);
+
+    /// <summary>The tags the pills show, in order.</summary>
+    public IReadOnlyList<string> ShownTags => TagControls.PillTags(Window);
 
     /// <summary>Puts the text in the field, selects <paramref name="length"/> characters from <paramref name="start"/>, and gives the field the keyboard focus.</summary>
     public void Edit(string field, string text, int start, int length = 0)

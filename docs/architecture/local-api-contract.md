@@ -21,9 +21,9 @@ The contract's package is `memoria.todo.v1`. The table lists each service, its c
 
 Each call follows these rules:
 
-- **`ListTasks` returns open tasks in rank order**, or resolved ones too when asked. Its query matches as [Task View's search](tasks.md#tags-and-search-ignore-case) does, and a tag narrows it. The whole list comes in one reply, with no pages.
+- **`ListTasks` returns open tasks in rank order**, or resolved ones too when asked. Its query matches as [Task View's search](tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) does, so a word matches any of a task's tags, and tags narrow it, as [below](#a-tasks-tags-travel-as-a-list-beside-the-older-one-tag-field). The whole list comes in one reply, with no pages.
 - **Replies may be up to 64 MiB (mebibytes)**, instead of gRPC's default of 4 MiB. An image sent to `AddImage` may be up to 32 MiB before shrinking, and a whole request up to 33 MiB, so that image and its fields fit. Decided by the implementation, to confirm.
-- **A task carries its ID, title, description, tag, created, updated, and resolved times, and its link address.** Its rank stays inside Tasks: the list's order shows it, and `MoveTask` names neighbors, as [`ITasks.Move`](../../src/Shared/Tasks/ITasks.cs) does.
+- **A task carries its ID, title, description, tags, created, updated, and resolved times, and its link address.** Its tags come in the task's order, and its group tag, the first, also comes alone, as [below](#a-tasks-tags-travel-as-a-list-beside-the-older-one-tag-field). Its rank stays inside Tasks: the list's order shows it, and `MoveTask` names neighbors, as [`ITasks.Move`](../../src/Shared/Tasks/ITasks.cs) does.
 - **A contact carries its fields by their file names, with the text the file holds**, through Contacts' public [`ContactFields`](../../src/Shared/Contacts/Fields/ContactFields.cs). The contract never lists the fields, and a contact read and then saved keeps every stored value, including an empty nickname.
 - **`SaveContact` replaces the whole contact**, as the Contact list does, with no check for a newer version, since a contact has no updated time. It replies with the contact as sent, which is what the store saved, without reading it again.
 - **`GetContact` and `MentionOf` find a contact by its ID or its alias.**
@@ -38,10 +38,28 @@ Decided by the implementation, to confirm: `SaveContact`'s reply, `MentionOf`'s 
 
 Task calls use Tasks' [direct task changes](tasks.md#direct-task-changes-are-a-capability-of-their-own), so a program's add or image never disturbs what you're typing. `MoveTask`, `ResolveTask`, `ReopenTask`, and `DeleteTask` use `ITasks` as it is. `DeleteTask` also deletes the images waiting in the task's open edit, as Task View's delete does.
 
-- **`UpdateTask` needs the task's updated time as the program read it.** When the task has changed since, the call fails with `ABORTED` and changes nothing, and the program reads the task again. A field the call leaves out keeps its value, and an empty tag clears the tag.
+- **`UpdateTask` needs the task's updated time as the program read it.** When the task has changed since, the call fails with `ABORTED` and changes nothing, and the program reads the task again. A field the call leaves out keeps its value, and tags change as [below](#a-tasks-tags-travel-as-a-list-beside-the-older-one-tag-field).
 - **An open edit in Task View still merges.** Its save is the [three-way merge](tasks.md#two-versions-of-a-task-merge-field-by-field) against the task as the editor got it. So a program's change to another field survives, and your save wins for the same field.
 - **`AddImage` adds the image and its link in one save.** It shrinks the image, writes it into the task's image folder, and appends its Markdown link on a new line at the end of the description.
 
+### A task's tags travel as a list, beside the older one-tag field
+
+A task has [several tags in order](tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), and the first one groups it. Version 1 [only grows](#version-1-only-grows), so each message keeps its one-tag `tag` field and gains a list beside it. A program written before the list keeps working, and one written after uses the list. The user decided these rules:
+
+- **`TaskItem.tags` holds every tag in the task's order**, and `TaskItem.tag` still holds the first, the group tag, or is absent when there's none.
+- **`CreateTaskRequest.tags` sets the new task's tags in that order.** The older `tag` still sets one tag, and an empty `tag` still means none.
+- **`UpdateTaskRequest.tags` replaces the whole list when present**, and an empty list removes every tag. It's a small message holding the list, since proto3 can't tell an empty list from one left out. The older `tag` still replaces the whole list with that one tag, and an empty `tag` still removes them all, as it does today.
+- **`ListTasksRequest.tags` keeps the tasks that have every tag it names**, each anywhere in the task's list, as [Tasks' filter](tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) does. The older `tag` keeps the tasks that have that tag anywhere in their list, as it does today.
+- **A request that sets both `tag` and `tags` fails with `INVALID_ARGUMENT`**, before anything is written, so a program never has to guess which one won.
+- **Every tag a program sends is [normalized](tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case)**, in `tag` or `tags`, in every call: `My Work` is stored and matched as `my-work`. A repeated tag in a list is dropped, keeping its first place, with no error. Tasks does both, so the API adds no rule.
+- **An app not yet updated ignores `tags`**, as protobuf ignores a field it doesn't know. So a newer program talking to it gets an empty `tags` in every task, and a create or update that sent only `tags` sets no tags.
+
+Decided by the session, each a decision to confirm, as Tasks' `ArgumentException` maps:
+
+- **A tag that's empty once normalized fails with `INVALID_ARGUMENT`**, before anything is written: an empty string or only spaces in `tags`, or only spaces in `tag`. An empty `tag` still means none, as above.
+- **More than 15 tags, after normalizing and dropping repeats, fails with `INVALID_ARGUMENT`** in `CreateTask` and `UpdateTask`, before anything is written. A filter in `ListTasks` has no limit.
+- **"Sets both `tag` and `tags`" means the `tag` field is present, even when empty, and `tags` is non-empty**, or in `UpdateTask` present, even when its list is empty. So `tag = ""` with a non-empty `tags` fails with `INVALID_ARGUMENT` too.
+- **`SetTagColor` and `MoveTag` normalize the tags they name too**, and `GetSettings` returns each tag normalized.
 ### Watch streams send notices, and a slow reader gets one, not a queue
 
 - **`WatchTasks` and `WatchContacts` send an empty notice at once, then one after each change.** The program then reads whatever it needs.
@@ -83,10 +101,10 @@ option csharp_namespace = "Memoria.ToDo.Api.V1";
 import "google/protobuf/timestamp.proto";
 
 service Tasks {
-  rpc ListTasks(ListTasksRequest) returns (TaskList);   // query, optional tag, include_resolved
+  rpc ListTasks(ListTasksRequest) returns (TaskList);   // query, optional tag, include_resolved, tags
   rpc GetTask(GetTaskRequest) returns (TaskItem);
-  rpc CreateTask(CreateTaskRequest) returns (TaskItem); // title, description, optional tag
-  rpc UpdateTask(UpdateTaskRequest) returns (TaskItem); // id, base_updated, optional title, description, tag
+  rpc CreateTask(CreateTaskRequest) returns (TaskItem); // title, description, optional tag, tags
+  rpc UpdateTask(UpdateTaskRequest) returns (TaskItem); // id, base_updated, optional title, description, tag, tags
   rpc MoveTask(MoveTaskRequest) returns (TaskItem);     // id, optional previous_id, optional next_id
   rpc ResolveTask(ResolveTaskRequest) returns (TaskItem);
   rpc ReopenTask(ReopenTaskRequest) returns (TaskItem);
@@ -122,10 +140,17 @@ service Settings {
 }
 
 message TaskItem {
-  string id = 1; string title = 2; string description = 3; optional string tag = 4;
+  string id = 1; string title = 2; string description = 3; optional string tag = 4; // tag: the first of tags
   google.protobuf.Timestamp created = 5; google.protobuf.Timestamp updated = 6;
   google.protobuf.Timestamp resolved = 7; string link = 8;
+  repeated string tags = 9;                       // every tag, in the task's order
 }
+
+// Row 21 adds these fields; every other field stays as it is.
+message ListTasksRequest { /* query = 1, tag = 2, include_resolved = 3 */ repeated string tags = 4; } // tasks with every tag
+message CreateTaskRequest { /* title = 1, description = 2, tag = 3 */ repeated string tags = 4; }
+message UpdateTaskRequest { /* id = 1 ... tag = 5 */ TagNames tags = 6; }      // absent: unchanged
+message TagNames { repeated string names = 1; }                                // empty: no tags
 
 message Contact { map<string, string> fields = 1; } // file field name -> file text, such as "reportsTo"
 
@@ -190,3 +215,9 @@ export interface MemoriaClient {
 - **A contact message with a field for each contact field**: the field list would live in Contacts and in the contract.
 - **Streams that send the whole list after each change**: a slow reader would queue copies of it.
 - **Paging lists**: one person's tasks and contacts fit in one reply.
+- **A `v2` package where `tag` becomes a list**: every program would move to new generated types for one field, and the app would serve two packages.
+- **Changing `tag`'s type to `repeated string`**: a field's type never changes in version 1, and older programs would read the list wrongly.
+- **`UpdateTask`'s older `tag` replacing only the first tag**: the same request would do something different from before, and an empty `tag` would have no clear meaning, the first tag or all.
+- **When a request sets both `tag` and `tags`, `tags` wins**: a program that sets both would learn nothing of its mistake.
+- **In `ListTasks` only, `tag` and `tags` together both narrow the list**: `CreateTask` and `UpdateTask` would still need a rule, so there'd be two.
+- **A request with two tags that differ only in case fails with `INVALID_ARGUMENT`**: the user chose to normalize every tag and drop repeats.

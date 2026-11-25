@@ -17,7 +17,7 @@ internal static class GroupMoves
         var own = -1;
         for (var i = 0; i < shownTags.Count; i++)
         {
-            if (string.Equals(shownTags[i], tag, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(shownTags[i], tag, StringComparison.Ordinal))
             {
                 own = i;
             }

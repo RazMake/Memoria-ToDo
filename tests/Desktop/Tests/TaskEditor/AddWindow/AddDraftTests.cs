@@ -52,25 +52,25 @@ public class AddDraftTests
     }
 
     [Fact]
-    public void Restoring_a_draft_kept_with_several_older_tags_brings_back_its_first_tag_only()
+    public void Restoring_a_draft_kept_with_several_tags_brings_back_every_tag_in_order()
     {
         _services.Tasks.KeepDraft(_services.Tasks.StartDraft() with { Title = "Buy milk", Tags = ["first", "second"] });
 
         _draft.Restore();
 
         Assert.Equal("Buy milk", _editor.Value.Title);
-        Assert.Equal(["first"], _editor.Value.Tags);
+        Assert.Equal(["first", "second"], _editor.Value.Tags);
     }
 
     [Fact]
-    public void Saving_a_restored_draft_that_was_kept_with_several_older_tags_adds_the_task_with_its_first_tag()
+    public void Saving_a_restored_draft_that_was_kept_with_several_tags_adds_the_task_with_every_tag()
     {
         _services.Tasks.KeepDraft(_services.Tasks.StartDraft() with { Title = "Buy milk", Tags = ["first", "second"] });
         _draft.Restore();
 
         Assert.True(_draft.Save(keepOpen: false));
 
-        Assert.Equal(["first"], Assert.Single(_services.Tasks.All).Tags);
+        Assert.Equal(["first", "second"], Assert.Single(_services.Tasks.All).Tags);
     }
 
     [Fact]

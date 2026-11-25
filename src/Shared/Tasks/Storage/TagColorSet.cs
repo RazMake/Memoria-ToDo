@@ -21,27 +21,24 @@ internal sealed record TagColorEntry(string Tag, TagStamp? Color, TagStamp? Plac
         local is null || remote is not null && local.Updated <= remote.Updated ? remote : local;
 }
 
-/// <summary>The color entries of <c>tags.json</c>, one per tag with case ignored. Immutable.</summary>
+/// <summary>The color entries of <c>tags.json</c>, one per normalized tag. Immutable.</summary>
 internal sealed class TagColorSet
 {
-    public static readonly TagColorSet Empty = new(new Dictionary<string, TagColorEntry>(StringComparer.OrdinalIgnoreCase));
+    public static readonly TagColorSet Empty = new([]);
 
     private readonly Dictionary<string, TagColorEntry> byTag;
 
     private TagColorSet(Dictionary<string, TagColorEntry> byTag) => this.byTag = byTag;
 
-    /// <summary>The entries sorted by tag, ignoring case.</summary>
-    public IEnumerable<TagColorEntry> Entries => byTag.Values.OrderBy(entry => entry.Tag, StringComparer.OrdinalIgnoreCase);
+    /// <summary>The entries sorted by tag, ordinally.</summary>
+    public IEnumerable<TagColorEntry> Entries => byTag.Values.OrderBy(entry => entry.Tag, StringComparer.Ordinal);
 
-    /// <summary>Throws <see cref="InvalidDataException"/> when two entries name the same tag.</summary>
+    /// <summary>The first entry of a tag wins; a later entry of the same tag is dropped.</summary>
     public static TagColorSet Of(IEnumerable<TagColorEntry> entries)
     {
-        var byTag = new Dictionary<string, TagColorEntry>(StringComparer.OrdinalIgnoreCase);
+        var byTag = new Dictionary<string, TagColorEntry>();
         foreach (var entry in entries)
-        {
-            if (!byTag.TryAdd(entry.Tag, entry))
-                throw new InvalidDataException($"The tag '{entry.Tag}' has two entries.");
-        }
+            byTag.TryAdd(entry.Tag, entry);
 
         return new TagColorSet(byTag);
     }
@@ -51,7 +48,7 @@ internal sealed class TagColorSet
     /// <summary>These entries with <paramref name="entries"/> in place of any entry for the same tags.</summary>
     public TagColorSet With(IEnumerable<TagColorEntry> entries)
     {
-        var changed = new Dictionary<string, TagColorEntry>(byTag, StringComparer.OrdinalIgnoreCase);
+        var changed = new Dictionary<string, TagColorEntry>(byTag);
         foreach (var entry in entries)
             changed[entry.Tag] = entry;
         return new TagColorSet(changed);
@@ -60,7 +57,7 @@ internal sealed class TagColorSet
     /// <summary>Every entry of both, merging a tag on both sides entry by entry.</summary>
     public TagColorSet MergedWith(TagColorSet remote)
     {
-        var merged = new Dictionary<string, TagColorEntry>(byTag, StringComparer.OrdinalIgnoreCase);
+        var merged = new Dictionary<string, TagColorEntry>(byTag);
         foreach (var entry in remote.byTag.Values)
             merged[entry.Tag] = merged.TryGetValue(entry.Tag, out var local) ? local.MergedWith(entry) : entry;
         return new TagColorSet(merged);
@@ -68,7 +65,7 @@ internal sealed class TagColorSet
 
     /// <summary>
     /// <paramref name="tags"/> in the user's order: the tags with no place first, then the placed tags by place, equal
-    /// places and tags with none in alphabetical order, ignoring case.
+    /// places and tags with none in ordinal order.
     /// </summary>
     public List<string> Sort(IEnumerable<string> tags)
     {
@@ -80,7 +77,7 @@ internal sealed class TagColorSet
             var byPlace = placeA is null || placeB is null
                 ? (placeA is null ? 0 : 1) - (placeB is null ? 0 : 1)
                 : string.CompareOrdinal(placeA, placeB);
-            return byPlace != 0 ? byPlace : StringComparer.OrdinalIgnoreCase.Compare(a, b);
+            return byPlace != 0 ? byPlace : string.CompareOrdinal(a, b);
         });
         return sorted;
     }

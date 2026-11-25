@@ -14,27 +14,32 @@ public interface ITasks
     /// <summary>
     /// Adds the draft's task at the top, writes its file, moves its images into the clone, then deletes the kept draft.
     /// Throws <see cref="NoRepositoryFolderException"/> when no folder is set, and <see cref="ArgumentException"/>
-    /// for an empty or multi-line title, an invalid tag, or two or more tags, before any file is written.
+    /// for an empty or multi-line title, a tag that's empty once normalized, or more than 15 tags, before any file is written.
+    /// Keeps the draft's tags in order, normalized, each repeat dropped.
     /// </summary>
     TaskItem Add(TaskDraft draft);
 
-    /// <summary>The tags in use and how many tasks have each, most-used first, ties in alphabetical order.</summary>
+    /// <summary>The tags in use and how many tasks have each, most-used first, ties in ordinal order. Every tag of every task counts.</summary>
     IReadOnlyList<TagUse> TagsInUse();
 
     /// <summary>
-    /// <paramref name="tags"/> with the typed tag added, spelled as a matching tag in use; unchanged when already there.
-    /// Throws <see cref="ArgumentException"/> for an empty or multi-line tag.
+    /// <paramref name="tags"/> with the typed tag added at the end, normalized; unchanged when already there.
+    /// Throws <see cref="ArgumentException"/> for a tag that's empty once normalized, or when <paramref name="tags"/> already holds 15.
     /// </summary>
     IReadOnlyList<string> WithTag(IReadOnlyList<string> tags, string typed);
 
-    /// <summary>Tags in use that contain <paramref name="typed"/> anywhere, ignoring case, except those in <paramref name="tags"/>, most-used first.</summary>
+    /// <summary>Tags in use that contain <paramref name="typed"/>, normalized, anywhere, except those in <paramref name="tags"/>, most-used first.</summary>
     IReadOnlyList<string> SuggestTags(string typed, IReadOnlyList<string> tags);
 
     /// <summary>Tasks whose title, description, or tags hold every typed word, ignoring case, in rank order.</summary>
     IReadOnlyList<TaskItem> Search(string text);
 
-    /// <summary><see cref="Search(string)"/>, narrowed to the tasks that have <paramref name="tag"/>, ignoring case.</summary>
-    IReadOnlyList<TaskItem> Search(string text, string tag);
+    /// <summary>
+    /// <see cref="Search(string)"/>, narrowed to the tasks that have every one of <paramref name="tags"/>, normalized, each anywhere in the
+    /// task's list; a repeated tag counts once. Throws <see cref="ArgumentException"/> when <paramref name="tags"/> is empty or holds a tag
+    /// that's empty once normalized.
+    /// </summary>
+    IReadOnlyList<TaskItem> Search(string text, IReadOnlyCollection<string> tags);
 
     /// <summary>The address a link to the task uses: <c>task:&lt;id&gt;</c>.</summary>
     string LinkAddress(string taskId);
@@ -45,7 +50,7 @@ public interface ITasks
     /// <summary>A new, empty draft with a new task ID. Keeps nothing.</summary>
     TaskDraft StartDraft();
 
-    /// <summary>The kept draft, or null when there's none, with its first tag only. Throws <see cref="InvalidDataException"/> when it can't be read.</summary>
+    /// <summary>The kept draft, or null when there's none, with its tags normalized, each repeat dropped. Throws <see cref="InvalidDataException"/> when it can't be read.</summary>
     TaskDraft? LoadDraft();
 
     /// <summary>Replaces the kept draft with this one.</summary>
@@ -67,13 +72,13 @@ public interface ITasks
 
     /// <summary>
     /// Saves an edit of <paramref name="started"/>, the task as the editor got it, onto the task as it is now. A Title or
-    /// Description that differs from started's replaces the current one; a tag that differs from started's, ignoring case, replaces
-    /// every current tag, where no tag counts as a value, and the started task's first tag is its tag. Every other field keeps its
+    /// Description that differs from started's replaces the current one; a tag list that differs from started's, in order, once normalized, replaces
+    /// the current list whole. Every other field keeps its
     /// current value. Moves the edit's waiting images into the clone, on any save that changes something, then writes the file and sets Updated,
     /// unless nothing changed. Returns the task as saved.
     /// Throws, before any change: <see cref="NoRepositoryFolderException"/> when no folder is set;
     /// <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>; <see cref="ArgumentException"/> when
-    /// <c>edited.TaskId</c> isn't <c>started.Id</c>, or for an empty or multi-line title, an invalid tag, or two or more tags.
+    /// <c>edited.TaskId</c> isn't <c>started.Id</c>, or for an empty or multi-line title, a tag that's empty once normalized, or a new list of more than 15 tags.
     /// </summary>
     TaskItem SaveEdit(TaskItem started, TaskDraft edited);
 

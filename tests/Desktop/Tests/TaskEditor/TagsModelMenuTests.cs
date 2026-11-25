@@ -42,14 +42,14 @@ public class TagsModelMenuTests
     }
 
     [Fact]
-    public void Leaves_out_the_tags_the_task_has_ignoring_case_and_still_lists_eight()
+    public void Leaves_out_every_tag_the_task_has_and_still_lists_eight()
     {
         for (var i = 1; i <= 10; i++)
         {
             _services.UseTag($"tag{i}", i);
         }
 
-        _model.Tags = ["TAG10"];
+        _model.Tags = ["tag10"];
 
         Assert.Equal(["tag9", "tag8", "tag7", "tag6", "tag5", "tag4", "tag3", "tag2"], _model.MenuTags);
     }
@@ -87,16 +87,16 @@ public class TagsModelMenuTests
     }
 
     [Fact]
-    public void Adding_a_listed_tag_raises_TagAdded_after_Tags_holds_it()
+    public void Adding_a_listed_tag_raises_TagsChanged_with_the_whole_list_after_Tags_holds_it()
     {
         _services.UseTag("home");
-        var seen = new List<(string Tag, IReadOnlyList<string> Tags)>();
-        _model.TagAdded += tag => seen.Add((tag, _model.Tags));
+        var seen = new List<(IReadOnlyList<string> Raised, IReadOnlyList<string> Tags)>();
+        _model.TagsChanged += raised => seen.Add((raised, _model.Tags));
 
         _model.Add("HOME");
 
-        var (added, tagsThen) = Assert.Single(seen);
-        Assert.Equal("home", added);
+        var (raised, tagsThen) = Assert.Single(seen);
+        Assert.Equal(["home"], raised);
         Assert.Equal(["home"], tagsThen);
     }
 

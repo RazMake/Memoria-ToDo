@@ -10,31 +10,23 @@ using Serilog;
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
 /// <summary>
-/// A task's one tag as a pill in its color, with an x that clears it, or a "No tag" pill. A click elsewhere on the pill opens a
-/// menu under it with the eight most-used tags other than the current one, Search, which lists the tags that match what is typed
-/// in a submenu beside it, and Custom…. Custom opens below the pill: a New tag box and 30 colors, which show while the box holds
-/// text. A click on a color keeps it for the tag and chooses the tag; Enter chooses the tag with no new color.
+/// A task's tags as pills in order, each in its color with an x that removes it, then an add pill: "No tag" while there are none,
+/// "+" after, and off at 15 tags. A click on a pill opens a menu under it with the eight most-used tags the task doesn't have,
+/// Search, which lists the tags that match what is typed in a submenu beside it, and Custom…; the choice replaces that tag in place.
+/// The add pill opens the same menu, and its choice goes at the end. Custom opens below the pills: a New tag box and 30 colors, which
+/// show while the box holds text. A click on a color keeps it for the tag and chooses the tag; Enter chooses the tag with no new color.
+/// A pill dragged past Windows' drag distance moves with the pointer and the others make room; Alt+Left and Alt+Right move the pill
+/// that has the cursor one place. The first tag groups the task, so its pill is a little larger.
 /// </summary>
 public sealed class TagEditor : UserControl
 {
-    /// <summary>The words the pill shows when the task has no tag, and the Task list's "No tag" group heading.</summary>
+    /// <summary>The words the add pill shows when the task has no tag, and the Task list's "No tag" group heading.</summary>
     public const string NoTagText = "No tag";
-
-    private static readonly CornerRadius Rounded = new(10);
 
     private readonly TagsModel _model;
     private readonly TagMenuModel _menuModel;
-    private readonly TagLook _look;
-    private readonly Button _pill = new() { Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand };
-    private readonly Button _clear = new()
-    {
-        Content = "×",
-        Padding = new Thickness(2, 2, 8, 2),
-        Cursor = Cursors.Hand,
-        Template = TagBadgeVisuals.FlatButtonWith(new CornerRadius(0, 10, 10, 0)),
-    };
-    private readonly ControlTemplate _pillWithClear = TagBadgeVisuals.FlatButtonWith(new CornerRadius(10, 0, 0, 10));
-    private readonly ControlTemplate _pillAlone = TagBadgeVisuals.FlatButtonWith(Rounded);
+    private readonly TagPills _pills;
+    private readonly PillDrag _drag;
     private readonly TagMenu _menu;
     private readonly StackPanel _custom = new() { Visibility = Visibility.Collapsed };
     private readonly TextBox _input = new();
@@ -47,23 +39,23 @@ public sealed class TagEditor : UserControl
     };
     private readonly KeyMap _inputKeys = new();
     private readonly KeyMap _pillKeys = new();
+    private readonly KeyMap _moveKeys = new();
     private Window? _window;
+    private int _keyedPill = -1;
 
-    public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme, ILogger logger)
-        : this(tasks, new TagsModel(tasks, tagColors, Argument.Required(logger)), new TagLook(tagColors, theme))
+    public TagEditor(ITasks tasks, ITagColors tagColors, ITheme theme, IPointerPosition pointer, ILogger logger)
+        : this(tasks, new TagsModel(tasks, tagColors, Argument.Required(logger)), new TagLook(tagColors, theme), Argument.Required(pointer), logger)
     {
     }
 
-    internal TagEditor(ITasks tasks, TagsModel model, TagLook look)
+    internal TagEditor(ITasks tasks, TagsModel model, TagLook look, IPointerPosition pointer, ILogger logger)
     {
         _model = model;
-        _look = look;
+        _pills = new TagPills(look);
         _menuModel = new TagMenuModel(tasks, model);
-        _menu = new TagMenu(_menuModel, look, _pill);
+        _menu = new TagMenu(_menuModel, look, _pills.AddPill);
         _colors = new ColorGrid(look) { Visibility = Visibility.Collapsed };
-        AutomationProperties.SetAutomationId(_pill, "TagPill");
-        AutomationProperties.SetAutomationId(_clear, "ClearTag");
-        AutomationProperties.SetName(_clear, "Clear tag");
+        _drag = new PillDrag(this, pointer, _pills, ShowModel, model.Move, ShowModel, logger);
         AutomationProperties.SetAutomationId(_input, "Tags");
 
         var label = new TextBlock { Text = "New tag:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };
@@ -74,21 +66,18 @@ public sealed class TagEditor : UserControl
         _custom.Children.Add(box);
         _custom.Children.Add(_colors);
         _custom.Children.Add(_message);
-        var pill = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 6) };
-        pill.Children.Add(_pill);
-        pill.Children.Add(_clear);
         var panel = new StackPanel();
-        panel.Children.Add(pill);
+        panel.Children.Add(_pills);
         panel.Children.Add(_menu);
         panel.Children.Add(_custom);
         Content = panel;
 
-        model.TagAdded += tag => TagChanged?.Invoke(this, tag);
-        model.TagRemoved += _ => TagChanged?.Invoke(this, null);
+        model.TagsChanged += tags => TagsChanged?.Invoke(this, tags);
+        model.Chosen += index => KeyboardFocus.MoveTo(index < _pills.Count ? _pills.PillAt(index) : _pills.AddPill);
         model.Changed += ShowModel;
         look.Follow(this, () =>
         {
-            ShowPill();
+            _pills.Repaint();
             _colors.Show(model.MarkedColor);
         });
 
@@ -100,36 +89,33 @@ public sealed class TagEditor : UserControl
             .Try(ModifierKeys.None, Key.Space, OpenOrEnter)
             .Try(ModifierKeys.None, Key.Down, OpenOrDown)
             .Try(ModifierKeys.None, Key.Up, MenuUp);
+        _moveKeys
+            .Try(ModifierKeys.Alt, Key.Left, () => MoveFocusedPill(-1))
+            .Try(ModifierKeys.Alt, Key.Right, () => MoveFocusedPill(1));
+        new KeyRouter().Listen(this, _moveKeys);
 
-        _pill.Click += (_, _) =>
+        _pills.TagClicked += index => ToggleMenuFrom(index);
+        _pills.AddClicked += () => ToggleMenuFrom(_pills.Count);
+        _pills.TagPressed += index => _drag.Press(index, model.Tags);
+        _pills.TagRemoved += index =>
         {
-            KeyboardFocus.MoveTo(_pill);
-            _menuModel.Toggle();
+            model.RemoveAt(index);
+            // The x disappears with its tag, so the cursor goes to the pill that took its place, or to the add pill.
+            KeyboardFocus.MoveTo(index < _pills.Count ? _pills.PillAt(index) : _pills.AddPill);
         };
-        _pill.PreviewKeyDown += (_, e) => e.Handled = _pillKeys.TryRun(Keyboard.Modifiers, e.Key);
-        _pill.PreviewTextInput += (_, e) => e.Handled = e.Text.Length == 1 && _menuModel.TypeOutsideSearch(e.Text[0]);
-        // The x disappears with the tag, so the cursor goes to the pill.
-        _clear.Click += (_, _) =>
-        {
-            model.Clear();
-            KeyboardFocus.MoveTo(_pill);
-        };
+        _pills.PreviewKeyDown += (_, e) => e.Handled = RunPillKey(e);
+        _pills.PreviewTextInput += (_, e) => e.Handled = e.Text.Length == 1 && _menuModel.TypeOutsideSearch(e.Text[0]);
         _colors.Chosen += color =>
         {
             model.AddTypedTextInColor(color);
-            // Custom is hidden once the tag is chosen, so the cursor goes to the pill; it stays in Custom when the color couldn't be kept.
-            KeyboardFocus.MoveTo(model.IsCustomOpen ? _input : _pill);
-        };
-        _input.PreviewKeyDown += (_, e) => e.Handled = _inputKeys.TryRun(Keyboard.Modifiers, e.Key);
-        _input.TextChanged += (_, _) =>
-        {
-            if (model.TypedText != _input.Text)
+            // Custom is hidden once the tag is chosen, which puts the cursor on the tag; it stays in Custom when the color couldn't be kept.
+            if (model.IsCustomOpen)
             {
-                model.TypedText = _input.Text;
+                KeyboardFocus.MoveTo(_input);
             }
         };
-        DataObject.AddPastingHandler(_input, TagText.OnPaste);
-        _input.PreviewTextInput += OnInputText;
+        _input.PreviewKeyDown += (_, e) => e.Handled = _inputKeys.TryRun(Keyboard.Modifiers, e.Key);
+        _input.TextChanged += (_, _) => OnInputChanged();
         // Esc closes an open part wherever the cursor is in the window, before the window's own Esc. A key an editor
         // around this control handled first arrives handled and is left alone. A click outside the menu closes it, and
         // so does hiding the window or taking this control out of it, since a popup would stay on screen.
@@ -158,52 +144,62 @@ public sealed class TagEditor : UserControl
                 _window = null;
             }
 
+            _drag.Cancel();
             _menuModel.Close();
         });
         ShowModel();
     }
 
-    /// <summary>Raised after the user chooses or clears the tag, once <see cref="TaskTag"/> holds it: the chosen tag, spelled as Tasks' <c>WithTag</c> spells it, or null when cleared. Choosing the current tag, ignoring case, raises nothing.</summary>
-    public event EventHandler<string?>? TagChanged;
+    /// <summary>
+    /// Raised once for each change the user makes to the tags, once <see cref="TaskTags"/> holds them, with the whole list: a tag
+    /// chosen, added, replaced, or removed, or the order changed by a drop or Alt+Left and Alt+Right. Never while a pill is
+    /// still being dragged, and never for a drop where it started or a choice that changes nothing.
+    /// </summary>
+    public event EventHandler<IReadOnlyList<string>>? TagsChanged;
 
-    /// <summary>The tag the pill shows, or null for "No tag". Setting it changes the pill, raises nothing, and leaves an open menu or Custom as it is.</summary>
-    public string? TaskTag
+    /// <summary>The tags the pills show, in order. Setting them changes the pills, raises nothing, cancels a drag in progress since its places no longer fit, and leaves an open menu or Custom as it is.</summary>
+    public IReadOnlyList<string> TaskTags
     {
-        get => _model.Tags.Count > 0 ? _model.Tags[0] : null;
-        set => _model.ReplaceTags(value is null ? [] : [value]);
+        get => _model.Tags;
+        set
+        {
+            _drag.Abandon();
+            _model.ReplaceTags(value);
+        }
     }
 
-    /// <summary>Puts the cursor in the pill.</summary>
-    internal void FocusFirst() => KeyboardFocus.MoveTo(_pill);
+    /// <summary>Puts the cursor in the first pill, or in the add pill when there are none.</summary>
+    internal void FocusFirst() => _pills.FocusFirst();
 
     /// <summary>
-    /// Closes the innermost open part, in this order: the menu, then Custom, wherever the cursor is. Returns false,
-    /// doing nothing, when none is open.
+    /// Closes the innermost open part, in this order: a pill's drag, which puts the pill back, then the menu, then Custom, wherever
+    /// the cursor is. Returns false, doing nothing, when none is open.
     /// </summary>
-    public bool CloseEdit() => _menuModel.Escape() || _model.CloseCustom();
+    public bool CloseEdit() => _drag.Cancel() || _menuModel.Escape() || _model.CloseCustom();
 
-    /// <summary>Chooses the text typed in Custom as the tag, as Enter there does, raising <see cref="TagChanged"/>. Does nothing when Custom holds no text.</summary>
-    public void ChooseTypedText() => _model.AddTypedText();
+    /// <summary>
+    /// Chooses the text typed in Custom as the tag, as Enter there does, raising <see cref="TagsChanged"/>. Returns true when Custom holds
+    /// no text or the tag was chosen; false when the task has 15 tags, which leaves Custom open with the text and says why.
+    /// </summary>
+    public bool ChooseTypedText() => _model.AddTypedText();
 
-    // Typed letters become lowercase and typed whitespace does nothing, even over a selection, as pasted text does through the same rule.
-    private void OnInputText(object sender, TextCompositionEventArgs e)
+    // The box shows the text as TagText says; the typed text is what the model gets, once the box shows it.
+    private void OnInputChanged()
     {
-        if (string.IsNullOrWhiteSpace(e.Text))
+        var text = _input.Text;
+        var rewritten = TagText.Of(text);
+        if (rewritten != text)
         {
-            e.Handled = true;
+            var caret = TagText.Of(text[.._input.CaretIndex]).Length;
+            _input.Text = rewritten;
+            _input.CaretIndex = Math.Min(caret, rewritten.Length);
             return;
         }
 
-        var text = TagText.Of(e.Text);
-        if (text == e.Text)
+        if (_model.TypedText != text)
         {
-            return;
+            _model.TypedText = text;
         }
-
-        e.Handled = true;
-        var start = _input.SelectionStart;
-        _input.SelectedText = text;
-        _input.CaretIndex = start + text.Length;
     }
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
@@ -236,6 +232,62 @@ public sealed class TagEditor : UserControl
 
     private void OnTasksChanged(object? sender, EventArgs e) => OnElementThread.Run(this, _model.Refresh);
 
+    // A click on a pill opens the menu under it, or closes it when it is open under that pill.
+    private void ToggleMenuFrom(int index)
+    {
+        var anchor = AnchorOf(index);
+        KeyboardFocus.MoveTo(anchor);
+        if (_menuModel.IsOpen && ReferenceEquals(_menu.Anchor, anchor))
+        {
+            _menuModel.Close();
+            return;
+        }
+
+        OpenMenuFrom(index);
+    }
+
+    // The menu's choice replaces the tag at the place, or goes at the end for the add pill.
+    private void OpenMenuFrom(int index)
+    {
+        _menuModel.Close();
+        _model.Target = index < _pills.Count ? index : null;
+        _menu.Anchor = AnchorOf(index);
+        _menuModel.Open();
+    }
+
+    private UIElement AnchorOf(int index) => index < _pills.Count ? _pills.PillAt(index) : _pills.AddPill;
+
+    // The keys of a pill's own button; the x keeps its button keys.
+    private bool RunPillKey(KeyEventArgs e)
+    {
+        var index = _pills.IndexOfPill(e.OriginalSource);
+        if (index < 0 || !ReferenceEquals(e.OriginalSource, AnchorOf(index)))
+        {
+            return false;
+        }
+
+        _keyedPill = index;
+        return _pillKeys.TryRun(Keyboard.Modifiers, e.Key);
+    }
+
+    // Alt+Left and Alt+Right: the pill with the cursor moves one place and keeps it. At either end nothing moves, and the key is still taken.
+    private bool MoveFocusedPill(int step)
+    {
+        var index = _pills.IndexOfPill(Keyboard.FocusedElement);
+        if (index < 0 || index >= _pills.Count)
+        {
+            return false;
+        }
+
+        var to = index + step;
+        if (to >= 0 && to < _pills.Count)
+        {
+            _model.Move(index, to);
+        }
+
+        return true;
+    }
+
     // Tab from the box goes to the colors while they show; with none showing it keeps its usual meaning.
     private bool FocusColors()
     {
@@ -256,7 +308,7 @@ public sealed class TagEditor : UserControl
         }
         else
         {
-            _menuModel.Open();
+            OpenMenuFrom(_keyedPill);
         }
 
         return true;
@@ -270,7 +322,7 @@ public sealed class TagEditor : UserControl
         }
         else
         {
-            _menuModel.Open();
+            OpenMenuFrom(_keyedPill);
         }
 
         return true;
@@ -289,7 +341,7 @@ public sealed class TagEditor : UserControl
 
     private void ShowModel()
     {
-        ShowPill();
+        _pills.Show(_drag.IsDragging ? _drag.Order : _model.Tags, !_model.IsFull, _drag.Held);
         if (_input.Text != _model.TypedText)
         {
             _input.Text = _model.TypedText;
@@ -300,33 +352,6 @@ public sealed class TagEditor : UserControl
         _message.Text = _model.ColorMessage;
         _message.Visibility = _model.ColorMessage.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         ShowCustom(_model.IsCustomOpen);
-    }
-
-    // The tag in its color with an x, or "No tag" in the theme's plain look with none.
-    private void ShowPill()
-    {
-        var tag = TaskTag;
-        _pill.Content = tag ?? NoTagText;
-        _clear.Visibility = tag is null ? Visibility.Collapsed : Visibility.Visible;
-        if (tag is null)
-        {
-            _pill.Template = _pillAlone;
-            _pill.Background = Brushes.Transparent;
-            _pill.BorderThickness = new Thickness(1);
-            _pill.SetResourceReference(Control.BorderBrushProperty, "SurfaceStrokeColorDefaultBrush");
-            _pill.SetResourceReference(Control.ForegroundProperty, "TextFillColorPrimaryBrush");
-            return;
-        }
-
-        var fill = _look.FillOf(tag);
-        var background = TagLook.Paint(fill.Background);
-        var text = TagLook.Paint(fill.Text);
-        _pill.Template = _pillWithClear;
-        _pill.BorderThickness = new Thickness(0);
-        _pill.Background = background;
-        _pill.Foreground = text;
-        _clear.Background = background;
-        _clear.Foreground = text;
     }
 
     private void ShowCustom(bool open)
@@ -345,7 +370,8 @@ public sealed class TagEditor : UserControl
         }
         else if (hadFocus)
         {
-            KeyboardFocus.MoveTo(_pill);
+            var anchor = _menu.Anchor;
+            KeyboardFocus.MoveTo(anchor.IsDescendantOf(_pills) ? anchor : _pills.AddPill);
         }
     }
 }

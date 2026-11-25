@@ -1,45 +1,58 @@
 using System.Globalization;
-using System.Windows;
 using Memoria.ToDo.Testing;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.TaskEditor.Tests.TagControl;
 
-/// <summary>The rule for text typed or pasted into the tag box: lowercase, no whitespace, the same on every PC.</summary>
+/// <summary>
+/// The rewrite of the whole text of the New tag box after every change: the tag as <c>TagName.Normalize</c> spells it, except that a
+/// space typed at the end stays a space until the next character turns it into a hyphen. A leading or doubled space does nothing.
+/// </summary>
 [Unit]
 public class TagTextTests
 {
-    private static DataObjectPastingEventArgs Paste(DataObject data, string formatToApply) =>
-        new(data, false, formatToApply);
-
     [Theory]
     [InlineData("Work", "work")]
     [InlineData("WORK", "work")]
-    [InlineData("work", "work")]
     [InlineData("Grüße", "grüße")]
-    public void Letters_become_lowercase(string text, string expected) =>
+    [InlineData("Q3-2026_#1", "q3-2026_#1")]
+    public void Letters_become_lowercase_and_other_characters_are_kept(string text, string expected) =>
         Assert.Equal(expected, TagText.Of(text));
 
     [Theory]
-    [InlineData("to do", "todo")]
-    [InlineData(" to  do ", "todo")]
-    [InlineData("to\tdo", "todo")]
-    [InlineData("to\r\ndo", "todo")]
-    [InlineData("to\u00a0do", "todo")]
-    public void Whitespace_is_removed_and_the_words_join(string text, string expected) =>
+    [InlineData("to do", "to-do")]
+    [InlineData("My  Work", "my-work")]
+    [InlineData("to\tdo", "to-do")]
+    [InlineData("to\r\ndo", "to-do")]
+    [InlineData("to\u00a0do", "to-do")]
+    public void Whitespace_between_words_becomes_one_hyphen(string text, string expected) =>
         Assert.Equal(expected, TagText.Of(text));
 
     [Theory]
-    [InlineData(" ")]
-    [InlineData(" \t\r\n")]
-    [InlineData("")]
-    public void Text_of_only_whitespace_becomes_empty(string text) =>
-        Assert.Equal("", TagText.Of(text));
+    [InlineData("to ", "to ")]
+    [InlineData("to  ", "to ")]
+    [InlineData("to-do ", "to-do ")]
+    [InlineData("to \t", "to ")]
+    public void A_trailing_space_stays_one_space_until_the_next_character(string text, string expected) =>
+        Assert.Equal(expected, TagText.Of(text));
+
+    [Theory]
+    [InlineData(" ", "")]
+    [InlineData("  ", "")]
+    [InlineData(" \t\r\n", "")]
+    [InlineData("", "")]
+    [InlineData(" to", "to")]
+    [InlineData("   to  do", "to-do")]
+    public void A_leading_space_does_nothing_and_text_of_only_whitespace_becomes_empty(string text, string expected) =>
+        Assert.Equal(expected, TagText.Of(text));
 
     [Fact]
-    public void Characters_that_are_not_letters_or_whitespace_are_kept()
+    public void Rewriting_the_text_it_returned_changes_nothing()
     {
-        Assert.Equal("q3-2026_#1", TagText.Of("Q3-2026_#1"));
+        foreach (var text in new[] { "to ", "my-work", "a ", "" })
+        {
+            Assert.Equal(text, TagText.Of(text));
+        }
     }
 
     [Fact]
@@ -56,26 +69,5 @@ public class TagTextTests
         {
             CultureInfo.CurrentCulture = before;
         }
-    }
-
-    [Fact]
-    public void Pasted_text_is_replaced_by_its_lowercase_text_without_whitespace()
-    {
-        var args = Paste(new DataObject(DataFormats.UnicodeText, "To Do\r\nList"), DataFormats.UnicodeText);
-
-        TagText.OnPaste(this, args);
-
-        Assert.Equal("todolist", args.DataObject.GetData(DataFormats.UnicodeText));
-    }
-
-    [Fact]
-    public void A_paste_without_text_is_left_as_it_was()
-    {
-        var original = new DataObject(DataFormats.FileDrop, new[] { "a.txt" });
-        var args = Paste(original, DataFormats.FileDrop);
-
-        TagText.OnPaste(this, args);
-
-        Assert.Same(original, args.DataObject);
     }
 }

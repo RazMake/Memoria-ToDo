@@ -59,10 +59,9 @@ public class GroupMovesTests
     }
 
     [Fact]
-    public void A_tag_is_found_in_the_shown_groups_ignoring_letter_case()
+    public void A_tag_is_found_in_the_shown_groups_as_spelled()
     {
-        // "WORK" is the shown group "work", so the gaps next to it, 0 and 1, are its own.
-        Assert.Null(GroupMoves.Of(Shown, "WORK", gap: 0));
-        Assert.Null(GroupMoves.Of(Shown, "WORK", gap: 1));
+        // Tags are always normalized, so "WORK" is not the shown group "work".
+        Assert.NotNull(GroupMoves.Of(Shown, "WORK", gap: 0));
     }
 }

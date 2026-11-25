@@ -5,15 +5,15 @@ namespace Memoria.ToDo.Shared.Tasks;
 /// <summary>The direct changes: they share the store's lock, files, and notices, and never touch the draft or the edit images.</summary>
 internal sealed partial class TaskService : IDirectTaskChanges
 {
-    TaskItem IDirectTaskChanges.Add(string title, string description, string? tag)
+    TaskItem IDirectTaskChanges.Add(string title, string description, IReadOnlyList<string> tags)
     {
         var validTitle = TaskText.SingleLine(title, nameof(title));
         ArgumentNullException.ThrowIfNull(description);
-        var validTag = StoredTag(tag, nameof(tag));
+        var validTags = TagList.NewList(tags, nameof(tags));
         var task = repository.LockedChange(clone =>
         {
             var root = clone ?? throw new NoRepositoryFolderException();
-            var added = NewTask(TaskId.New(time), validTitle, description, validTag);
+            var added = NewTask(TaskId.New(time), validTitle, description, validTags);
             folder.Write(root, added);
             set = set.WithTask(added);
             return added;
@@ -23,12 +23,12 @@ internal sealed partial class TaskService : IDirectTaskChanges
         return task;
     }
 
-    TaskItem IDirectTaskChanges.Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, string? tag)
+    TaskItem IDirectTaskChanges.Update(string taskId, DateTimeOffset baseUpdated, string? title, string? description, IReadOnlyList<string>? tags)
     {
         TaskId.ThrowIfInvalid(taskId, nameof(taskId));
         var validTitle = title is null ? null : TaskText.SingleLine(title, nameof(title));
         var validDescription = description is null ? null : TaskText.LineFeeds(description);
-        var validTag = StoredTag(tag, nameof(tag));
+        var validTags = tags is null ? null : TagList.Normalized(tags, nameof(tags));
         return Change("Updated", taskId, task =>
         {
             if (task.Updated != baseUpdated)
@@ -37,11 +37,14 @@ internal sealed partial class TaskService : IDirectTaskChanges
                 throw new StaleTaskException(task);
             }
 
+            if (validTags is not null && !validTags.SequenceEqual(task.Tags))
+                TagList.RequireWithinLimit(validTags, nameof(tags));
+
             var changed = task with
             {
                 Title = validTitle ?? task.Title,
                 Description = validDescription ?? task.Description,
-                Tags = tag is null ? task.Tags : TagsOf(validTag),
+                Tags = validTags ?? task.Tags,
             };
             if (changed.Title == task.Title && changed.Description == task.Description && changed.Tags.SequenceEqual(task.Tags))
             {
@@ -103,8 +106,4 @@ internal sealed partial class TaskService : IDirectTaskChanges
             throw new AggregateException("Adding the image failed, and so did deleting it.", failure, undoFailure);
         }
     }
-
-    /// <summary>The tag as stored, trimmed, or null for a null or empty one. Throws <see cref="ArgumentException"/> for one that isn't a single non-empty line.</summary>
-    private static string? StoredTag(string? tag, string paramName) =>
-        string.IsNullOrEmpty(tag) ? null : TaskText.SingleLine(tag, paramName);
 }

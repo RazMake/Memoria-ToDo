@@ -196,11 +196,11 @@ internal sealed class TagMenuModel
         }
     }
 
-    /// <summary>Chooses the tag as the task's tag and closes the menu, dropping the Search text. Custom stays as it is.</summary>
+    /// <summary>Chooses the tag, replacing the tag the menu opened from or adding it at the end, and closes the menu, dropping the Search text. Custom stays as it is.</summary>
     public void ChooseTag(string tag)
     {
         Close();
-        _tags.Add(tag);
+        _tags.Choose(tag);
     }
 
     /// <summary>Chooses the match at the position, as <see cref="ChooseTag"/> does.</summary>
@@ -228,6 +228,12 @@ internal sealed class TagMenuModel
     {
         if (!IsOpen)
         {
+            return;
+        }
+
+        if (_tags.TargetLost)
+        {
+            Close();
             return;
         }
 

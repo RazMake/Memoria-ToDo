@@ -30,7 +30,7 @@ internal static class TaskFileFormat
         var id = JsonFields.String(root, "id");
         TaskId.ThrowIfInvalidData(id);
         return new TaskItem(id, JsonFields.String(root, "title"), JsonFields.String(root, "description"),
-            JsonFields.String(root, "rank"), JsonFields.Strings(root, "tags"), JsonFields.Time(root, "created"),
+            JsonFields.String(root, "rank"), TagList.Read(JsonFields.Strings(root, "tags")), JsonFields.Time(root, "created"),
             JsonFields.Time(root, "updated"), JsonFields.OptionalTime(root, "resolved"));
     }
 }

@@ -112,7 +112,7 @@ internal sealed class McpHarness : IAsyncDisposable
     public void UseContacts(params string[] members) => Contacts.UseContacts(Files, Clone, null, members);
 
     /// <summary>Adds a task as the direct changes do for an assistant, at the top.</summary>
-    public TaskItem AddTask(string title, string description = "", string? tag = null) => Direct.Add(title, description, tag);
+    public TaskItem AddTask(string title, string description = "", params string[] tags) => Direct.Add(title, description, tags);
 
     /// <summary>
     /// Adds a task that has several tags, as one synced from another device can, which the app's own changes can't make: writes its

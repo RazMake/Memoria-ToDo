@@ -47,13 +47,12 @@ public class GroupCollapseTests
     }
 
     [Fact]
-    public void A_tag_is_matched_ignoring_case()
+    public void A_tag_is_matched_as_spelled()
     {
         _collapse.Toggle("Home");
 
-        Assert.True(_collapse.IsCollapsed("home"));
-        _collapse.Toggle("HOME");
-        Assert.False(_collapse.IsCollapsed("Home"));
+        Assert.False(_collapse.IsCollapsed("home"));
+        Assert.True(_collapse.IsCollapsed("Home"));
     }
 
     [Fact]
@@ -93,43 +92,39 @@ public class GroupCollapseTests
     }
 
     [Fact]
-    public void Revealing_a_task_that_already_shows_in_an_expanded_group_changes_nothing()
+    public void Revealing_a_task_expands_the_group_of_its_first_tag_and_no_other()
     {
-        var task = _tasks.AddOlder("Buy milk", "", "home", "errand");
-        _collapse.Toggle("home");
-
-        _collapse.Reveal(task);
-
-        Assert.True(_collapse.IsCollapsed("home"));
-        Assert.False(_collapse.IsCollapsed("errand"));
-    }
-
-    [Fact]
-    public void Revealing_a_task_whose_groups_are_all_collapsed_expands_only_the_group_of_its_first_row_in_group_order()
-    {
-        var task = _tasks.AddOlder("Buy milk", "", "work", "home", "errand");
-        _collapse.Toggle("work");
+        var task = _tasks.Add("Buy milk", "", "home", "errand");
         _collapse.Toggle("home");
         _collapse.Toggle("errand");
 
         _collapse.Reveal(task);
 
-        Assert.False(_collapse.IsCollapsed("errand"));
-        Assert.True(_collapse.IsCollapsed("home"));
-        Assert.True(_collapse.IsCollapsed("work"));
+        Assert.False(_collapse.IsCollapsed("home"));
+        Assert.True(_collapse.IsCollapsed("errand"));
     }
 
     [Fact]
-    public void Group_order_for_a_reveal_ignores_the_case_of_the_tags()
+    public void Revealing_a_task_whose_first_tags_group_is_expanded_changes_nothing_even_when_its_other_tags_are_collapsed()
     {
-        var task = _tasks.AddOlder("Buy milk", "", "work", "Errand");
-        _collapse.Toggle("work");
-        _collapse.Toggle("Errand");
+        var task = _tasks.Add("Buy milk", "", "home", "errand");
+        _collapse.Toggle("errand");
 
         _collapse.Reveal(task);
 
-        Assert.False(_collapse.IsCollapsed("errand"));
-        Assert.True(_collapse.IsCollapsed("work"));
+        Assert.False(_collapse.IsCollapsed("home"));
+        Assert.True(_collapse.IsCollapsed("errand"));
+    }
+
+    [Fact]
+    public void Group_of_the_first_tag_is_matched_ignoring_case_for_a_reveal()
+    {
+        var task = _tasks.Add("Buy milk", "", "Home", "work");
+        _collapse.Toggle("home");
+
+        _collapse.Reveal(task);
+
+        Assert.False(_collapse.IsCollapsed("home"));
     }
 
     [Fact]

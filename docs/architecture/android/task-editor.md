@@ -48,16 +48,16 @@ Pictures are shrunk with Android's own image tools, as [Tasks](../tasks.md#image
 
 ### Tags sit as chips under the Title
 
-The five most-used tags show as chips under the Title, and tapping one chooses it. They're counted as [Tasks](../tasks.md#tags-and-search-ignore-case) decides.
+The five most-used tags show as chips under the Title, and tapping one chooses it. They're counted as [Tasks](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) decides.
 
 Proposed, each a decision to confirm:
 
 - A chosen tag shows as a checked chip, and tapping it again clears it.
 - A "+" chip opens a field that suggests the tags in use, for a tag that isn't among the five.
 
-The user decided that this design follows [one tag per task](../tasks.md#a-task-has-at-most-one-tag) now, before the app is built: one chip at most is checked. Tapping another chip, or choosing a tag in the "+" field, replaces the chosen tag. Tasks rejects two tags, so a design that checks several chips couldn't be built as written.
+The user's earlier decision followed one tag per task, with one chip at most checked. A task now has [several tags in order](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), and the first one groups it. Proposed, a decision to confirm: several chips can be checked, and the task's tags take the order the chips were checked in, so the first chip checked groups the task. Choosing a tag in the "+" field adds it at the end. A task opened in Edit keeps its tags' order, and clearing a chip removes only that tag. Tags typed in the "+" field follow [Tasks' tag rule](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case), through `TagName.Normalize`, and once a task has 15 tags, unchecked chips and the "+" chip are turned off, as Tasks' [limit](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) and the desktop's add pill do.
 
-Deferred: the desktop now shows a task's tag as [one colored pill with a tag menu](../desktop/task-editor.md#a-task-has-one-tag-shown-as-one-pill). [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color in the clone, so it reaches the phone, and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the 30 colors and picks a tag's default. When the Android app is built, this section decides whether the chips take each tag's color, show eight tags as the desktop's menu does, and let the user pick a color.
+Deferred: the desktop shows a task's tags as [colored pills that a drag reorders](../desktop/task-editor.md#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them), the first one larger. [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color in the clone, so it reaches the phone, and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the 30 colors and picks a tag's default. When the Android app is built, this section decides whether the chips take each tag's color, show eight tags as the desktop's menu does, let the user pick a color, show the first tag larger, and reorder tags by a drag.
 
 ### Back keeps a draft on this phone
 
@@ -88,7 +88,7 @@ Shell and the Task list use these parts:
 
 - **Show Add**: opens Add, with the draft if there is one. Shell calls it from the app shortcut and the widget, and the Task list from its floating button.
 - **Edit a task**: opens this screen with one task, and reports whether the user saved or left. The Task list calls it from Edit.
-- **The tag chips**: the tags its caller gives, as chips in that order, reporting the chosen tag. Add gives the five most-used tags; the Task list gives its [tags in the tags' order](task-list.md#tags-and-search-narrow-the-list), to filter.
+- **The tag chips**: the tags its caller gives, as chips in that order, reporting the chosen tags in the order they were checked. Add gives the five most-used tags; the Task list gives its [tags in the tags' order](task-list.md#tags-and-search-narrow-the-list), to filter, and there one chip at most is checked.
 
 The composition root gives the Task editor [Contacts](../contacts.md#public-interface), for the "@" list and the chips, as the desktop's does.
 
@@ -103,4 +103,4 @@ The options below were considered and rejected.
 
 - **An expanding bottom sheet**, and **full screen with "/" only, and no toolbar**: offered, and not chosen.
 - **Mentions only shown on the phone, with no "@" list until a later design**: the user chose the full list and the chips on the phone too.
-- **Following one tag per task only when the Android app is built**, with the Deferred tag questions: fewer edits now, but this page would describe several checked chips that Tasks rejects.
+- **Following one tag per task only when the Android app is built**, with the Deferred tag questions: fewer edits now, but this page would describe several checked chips that Tasks rejects. Superseded once Tasks took [several tags in order](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it).

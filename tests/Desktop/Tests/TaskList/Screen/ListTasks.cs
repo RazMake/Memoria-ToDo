@@ -1,6 +1,4 @@
 using System.IO;
-using System.Text;
-using System.Text.Json.Nodes;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
@@ -66,24 +64,9 @@ internal class ListTasks
     /// <summary>Makes deleting the pasted images fail, as a locked file would.</summary>
     public void StopDeleting(IReadOnlyList<string> images) => Files.FailDeletesUnder(Path.GetDirectoryName(images[0])!);
 
-    /// <summary>Saves an open task at the top of the list. It holds at most one tag, as Tasks' Add requires.</summary>
+    /// <summary>Saves an open task at the top of the list with these tags, in this order; the first one is the tag that groups it.</summary>
     public TaskItem Add(string title, string description = "", params string[] tags) =>
         Tasks.Add(Tasks.StartDraft() with { Title = title, Description = description, Tags = tags });
-
-    /// <summary>
-    /// Saves an open task at the top of the list that holds these tags, which can be two or more as a task saved before the
-    /// one-tag rule does: Tasks' Add refuses them, so the task's file is rewritten and the clone read again.
-    /// </summary>
-    public TaskItem AddOlder(string title, string description = "", params string[] tags)
-    {
-        var added = Add(title, description, [.. tags.Take(1)]);
-        var path = Path.Combine(TaskFolder, added.Id + ".json");
-        var file = JsonNode.Parse(Files.ReadFile(path))!.AsObject();
-        file["tags"] = new JsonArray([.. tags.Select(tag => (JsonNode?)JsonValue.Create(tag))]);
-        Files.WriteFile(path, Encoding.UTF8.GetBytes(file.ToJsonString()));
-        Tasks.UseRepositoryFolder(Clone);
-        return Tasks.All.Single(task => task.Id == added.Id);
-    }
 
     /// <summary>The task Tasks keeps with the title.</summary>
     public TaskItem Stored(string title) => Tasks.All.Single(task => task.Title == title);

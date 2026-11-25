@@ -16,14 +16,16 @@ internal static class EditorFields
     public const string Description = "Description";
     public const string Tags = "Tags";
 
-    /// <summary>The tag control's + button, which has the keyboard focus when the user tabs to the tags.</summary>
-    /// <summary>The tag control's pill, the element that has the keyboard focus when the user tabs to the tag. Its x has the id <see cref="ClearTag"/>, the next Tab stop.</summary>
+    /// <summary>The tag control's add pill: "No tag" or "+", the element that has the keyboard focus after the last tag's x.</summary>
+    public const string AddTagPill = "AddTagPill";
+
+    /// <summary>The start of a tag pill's id: the pill of the tag is <c>TagPill {tag}</c>, a Tab stop, and its x <c>ClearTag {tag}</c>, the next one.</summary>
     public const string TagPill = "TagPill";
 
-    /// <summary>The x at the end of the pill that clears the tag. It exists only while the task has a tag.</summary>
+    /// <summary>The start of the id of a tag pill's x, which removes that tag.</summary>
     public const string ClearTag = "ClearTag";
 
-    private static readonly string[] Names = [Title, Description, Tags, TagPill, ClearTag];
+    private static readonly string[] Names = [Title, Description, Tags, AddTagPill];
 
     /// <summary>The field with the name, found below <paramref name="root"/>.</summary>
     public static FrameworkElement Field(DependencyObject root, string name) => TextFields.Find(root, name);
@@ -156,7 +158,7 @@ internal static class EditorFields
         Field(root, name) as ICSharpCode.AvalonEdit.TextEditor
             ?? throw new InvalidOperationException($"The {name} field isn't a styled text editor.");
 
-    /// <summary>The tag the pill shows, or null when it shows "No tag".</summary>
+    /// <summary>The first tag's pill's tag, or null when the task has none and the add pill shows "No tag".</summary>
     public static string? ShownTag(DependencyObject root) => TagControls.PillTag(root);
 
     /// <summary>The texts of the text blocks the user can see below <paramref name="root"/>, such as the message line when it is shown.</summary>

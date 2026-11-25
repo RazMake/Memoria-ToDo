@@ -11,7 +11,7 @@ internal static class DraftFileFormat
         writer.WriteString("id", draft.TaskId);
         writer.WriteString("title", draft.Title);
         writer.WriteString("description", draft.Description);
-        JsonFields.WriteStrings(writer, "tags", draft.Tags);
+        JsonFields.WriteStrings(writer, "tags", TagList.Read(draft.Tags));
     });
 
     /// <summary>Throws <see cref="InvalidDataException"/> when the file isn't a draft this app can read.</summary>
@@ -23,6 +23,6 @@ internal static class DraftFileFormat
         var id = JsonFields.String(root, "id");
         TaskId.ThrowIfInvalidData(id);
         return new TaskDraft(id, JsonFields.String(root, "title"), JsonFields.String(root, "description"),
-            JsonFields.Strings(root, "tags"));
+            TagList.Read(JsonFields.Strings(root, "tags")));
     }
 }

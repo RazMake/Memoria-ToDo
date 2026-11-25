@@ -5,8 +5,8 @@ using Xunit;
 namespace Memoria.ToDo.Shared.Tasks.Tests;
 
 /// <summary>
-/// A task saved with two or more tags before the one-tag rule: it loads unchanged, and search, the tag filter, and the tags
-/// in use still see every one of its tags.
+/// A task with several tags, as a stored file: it loads with every tag in order, and search, the tag filter, and the tags
+/// in use see every one of its tags, not only the first. Also what reading does to tags and to files with more than 15.
 /// </summary>
 [Unit]
 public sealed class OlderTaskTagsTests
@@ -19,6 +19,82 @@ public sealed class OlderTaskTagsTests
         f.Seed(id, "Buy milk", "a0", "Oat milk", ["work", "home", "errand"]);
         f.SeedAndUse(TasksFixture.Id(2), "Other", "a1", ["solo"]);
         return f.Tasks.All.Single(task => task.Id == id);
+    }
+
+    [Fact]
+    public void Reads_the_tags_normalized_and_drops_repeats_keeping_the_first_place()
+    {
+        f.SeedAndUse(id, tags: ["Work", "my  Home", "WORK", " my-home ", "errand"]);
+
+        Assert.Equal(["work", "my-home", "errand"], f.Tasks.All.Single().Tags);
+    }
+
+    [Fact]
+    public void Reads_a_tag_with_a_line_break_as_hyphenated()
+    {
+        f.SeedAndUse(id, tags: ["to\ndo"]);
+
+        Assert.Equal(["to-do"], f.Tasks.All.Single().Tags);
+    }
+
+    [Fact]
+    public void Never_rewrites_a_task_file_it_read_with_unnormalized_tags()
+    {
+        f.Seed(id, tags: ["Work", "work", "My  Home"]);
+        var before = f.ReadText(f.TaskFile(id));
+
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
+    }
+
+    [Fact]
+    public void Writes_the_normalized_tags_at_the_next_save_of_the_task()
+    {
+        f.SeedAndUse(id, tags: ["Work", "work", "My  Home"]);
+
+        f.Tasks.Resolve(id);
+
+        using var json = f.ReadJson(f.TaskFile(id));
+        Assert.Equal(["work", "my-home"], json.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetString()));
+    }
+
+    [Fact]
+    public void Loads_every_tag_of_a_stored_file_with_more_than_fifteen()
+    {
+        var tags = Enumerable.Range(1, 20).Select(n => $"tag{n}").ToArray();
+
+        f.SeedAndUse(id, tags: tags);
+
+        Assert.Equal(tags, f.Tasks.All.Single().Tags);
+    }
+
+    [Fact]
+    public void Keeps_every_tag_of_a_task_with_more_than_fifteen_when_another_part_of_the_task_changes()
+    {
+        var tags = Enumerable.Range(1, 20).Select(n => $"tag{n}").ToArray();
+        f.SeedAndUse(id, tags: tags);
+
+        f.Tasks.Resolve(id);
+
+        Assert.Equal(tags, f.Tasks.All.Single().Tags);
+        using var json = f.ReadJson(f.TaskFile(id));
+        Assert.Equal(20, json.RootElement.GetProperty("tags").GetArrayLength());
+    }
+
+    [Fact]
+    public void Gives_the_first_tag_as_the_group_tag()
+    {
+        Assert.Equal("work", Load().GroupTag);
+        Assert.Equal("solo", f.Tasks.All.Single(t => t.Id == TasksFixture.Id(2)).GroupTag);
+    }
+
+    [Fact]
+    public void Gives_no_group_tag_for_a_task_without_tags()
+    {
+        f.SeedAndUse(id);
+
+        Assert.Null(f.Tasks.All.Single().GroupTag);
     }
 
     [Fact]
@@ -69,7 +145,7 @@ public sealed class OlderTaskTagsTests
     {
         Load();
 
-        Assert.Equal(["Buy milk"], f.Tasks.Search("", tag).Select(task => task.Title));
+        Assert.Equal(["Buy milk"], f.Tasks.Search("", [tag]).Select(task => task.Title));
     }
 
     [Fact]

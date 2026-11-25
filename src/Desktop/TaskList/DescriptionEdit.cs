@@ -24,7 +24,7 @@ internal sealed class DescriptionEdit : IDescriptionEdit
     {
         _tasks = tasks;
         Started = task;
-        Tag = task.Tags.FirstOrDefault();
+        Tags = task.Tags;
         _editor = new DescriptionEditor(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, pointer, logger) { TaskId = task.Id, Value = task.Description };
         _editor.SaveRequested += (_, _) => saveRequested();
         _editor.CancelRequested += (_, _) => cancelRequested();
@@ -36,11 +36,11 @@ internal sealed class DescriptionEdit : IDescriptionEdit
 
     public bool ShowsInRow => false;
 
-    public string? Tag { get; set; }
+    public IReadOnlyList<string> Tags { get; set; }
 
-    public bool HasChanges => _editor.HasChanges || EditSaves.TagChanged(Started, Tag);
+    public bool HasChanges => _editor.HasChanges || EditSaves.TagsChanged(Started, Tags);
 
-    public bool Save() => _editor.Save(EditSaves.Description(_tasks, Started, Tag));
+    public bool Save() => _editor.Save(EditSaves.Description(_tasks, Started, Tags));
 
     public void FocusEnd() => _editor.FocusEnd();
 

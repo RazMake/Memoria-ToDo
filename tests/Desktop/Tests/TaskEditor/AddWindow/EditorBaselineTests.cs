@@ -48,9 +48,9 @@ public class EditorBaselineTests
     }
 
     [Fact]
-    public void Tags_in_another_order_or_case_are_not_a_change()
+    public void Tags_in_another_order_are_a_change()
     {
-        Assert.False(Changed(tags: ["WORK", "home"]));
+        Assert.True(Changed(tags: ["work", "Home"]));
     }
 
     [Fact]

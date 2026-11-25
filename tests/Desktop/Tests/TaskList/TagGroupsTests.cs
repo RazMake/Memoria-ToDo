@@ -6,8 +6,8 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.TaskList.Tests;
 
 /// <summary>
-/// The groups the left side shows: one for each tag with the open tasks that carry it, and a last "No tag" group, built
-/// from the tasks the list leaves after the search.
+/// The groups the left side shows: one for each tag that is the first tag of an open task, with those tasks, and a last "No tag"
+/// group, built from the tasks the list leaves after the search.
 /// </summary>
 [Unit]
 public class TagGroupsTests
@@ -30,13 +30,24 @@ public class TagGroupsTests
     private TaskGroup Group(string? tag) => Groups().Single(group => group.Tag == tag);
 
     [Fact]
-    public void Makes_a_group_for_each_tag_in_alphabetical_order_ignoring_case()
+    public void Makes_a_group_for_each_tag_in_alphabetical_order()
     {
         _tasks.Add("One", "", "charlie");
-        _tasks.Add("Two", "", "Beta");
+        _tasks.Add("Two", "", "beta");
         _tasks.Add("Three", "", "alpha");
 
-        Assert.Equal(["alpha", "Beta", "charlie"], Tags(Groups()));
+        Assert.Equal(["alpha", "beta", "charlie"], Tags(Groups()));
+    }
+
+    [Fact]
+    public void Makes_a_group_for_each_first_tag_that_differs_only_in_a_letter_with_two_lowercase_forms()
+    {
+        _tasks.Add("One", "", "σ");
+        _tasks.Add("Two", "", "ς");
+
+        Assert.Equal(["ς", "σ"], Tags(Groups()).Order(StringComparer.Ordinal));
+        Assert.Equal(["One"], Titles(Group("σ")));
+        Assert.Equal(["Two"], Titles(Group("ς")));
     }
 
     [Fact]
@@ -52,15 +63,105 @@ public class TagGroupsTests
     }
 
     [Fact]
-    public void Shows_a_task_with_two_tags_in_both_groups()
+    public void Shows_a_task_with_several_tags_only_in_its_first_tags_group()
     {
-        _tasks.AddOlder("Buy milk", "", "home", "errand");
+        _tasks.Add("Buy milk", "", "home", "errand");
 
         var groups = Groups();
 
-        Assert.Equal(["errand", "home"], Tags(groups));
-        Assert.Equal(["Buy milk"], Titles(Group("errand")));
+        Assert.Equal(["home"], Tags(groups));
         Assert.Equal(["Buy milk"], Titles(Group("home")));
+    }
+
+    [Fact]
+    public void Makes_no_group_for_a_tag_that_is_never_the_first_tag_of_a_task()
+    {
+        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Call Ana", "", "work", "errand", "home");
+
+        Assert.Equal(["home", "work"], Tags(Groups()));
+    }
+
+    [Fact]
+    public void Gives_a_tag_a_group_once_a_task_has_it_first()
+    {
+        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Errands", "", "errand");
+
+        Assert.Equal(["errand", "home"], Tags(Groups()));
+        Assert.Equal(["Errands"], Titles(Group("errand")));
+        Assert.Equal(["Buy milk"], Titles(Group("home")));
+    }
+
+    [Fact]
+    public void Moves_a_task_to_the_group_of_its_new_first_tag_when_the_first_tag_changes()
+    {
+        var task = _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Other", "", "home");
+
+        _tasks.Tasks.SaveEdit(task, new TaskDraft(task.Id, task.Title, task.Description, ["errand", "home"]));
+
+        Assert.Equal(["errand", "home"], Tags(Groups()));
+        Assert.Equal(["Buy milk"], Titles(Group("errand")));
+        Assert.Equal(["Other"], Titles(Group("home")));
+    }
+
+    [Fact]
+    public void Moves_a_task_to_the_No_tag_group_when_its_last_tag_is_removed()
+    {
+        var task = _tasks.Add("Buy milk", "", "home");
+
+        _tasks.Tasks.SaveEdit(task, new TaskDraft(task.Id, task.Title, task.Description, []));
+
+        Assert.Equal([null], Tags(Groups()));
+        Assert.Equal(["Buy milk"], Titles(Group(null)));
+    }
+
+    [Fact]
+    public void Keeps_a_task_in_its_group_and_its_rank_place_when_a_change_keeps_the_first_tag()
+    {
+        _tasks.Add("C", "", "home");
+        var task = _tasks.Add("B", "", "home", "errand");
+        _tasks.Add("A", "", "home");
+
+        _tasks.Tasks.SaveEdit(task, new TaskDraft(task.Id, task.Title, task.Description, ["home", "milk"]));
+
+        Assert.Equal(["home"], Tags(Groups()));
+        Assert.Equal(["A", "B", "C"], Titles(Group("home")));
+    }
+
+    [Fact]
+    public void Keeps_a_task_in_its_group_when_the_tags_after_the_first_are_reordered()
+    {
+        var task = _tasks.Add("Buy milk", "", "home", "errand", "milk");
+
+        _tasks.Tasks.SaveEdit(task, new TaskDraft(task.Id, task.Title, task.Description, ["home", "milk", "errand"]));
+
+        Assert.Equal(["home"], Tags(Groups()));
+        Assert.Equal(["Buy milk"], Titles(Group("home")));
+    }
+
+    [Fact]
+    public void Finds_a_task_by_a_tag_that_is_not_its_first_and_shows_it_in_its_first_tags_group()
+    {
+        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Call Ana", "", "work");
+        _filter.SearchText = "errand";
+
+        var groups = Groups();
+
+        Assert.Equal(["home"], Tags(groups));
+        Assert.Equal(["Buy milk"], Titles(Group("home")));
+    }
+
+    [Fact]
+    public void Finds_a_task_by_its_first_tag_too()
+    {
+        _tasks.Add("Buy milk", "", "home", "errand");
+        _tasks.Add("Call Ana", "", "work");
+        _filter.SearchText = "home";
+
+        Assert.Equal(["home"], Tags(Groups()));
     }
 
     [Fact]
@@ -74,14 +175,14 @@ public class TagGroupsTests
     }
 
     [Fact]
-    public void Lists_a_task_with_two_tags_at_its_own_rank_place_in_each_group()
+    public void Lists_a_task_with_several_tags_at_its_own_rank_place_in_its_first_tags_group()
     {
         _tasks.Add("D", "", "home");
-        _tasks.AddOlder("Both", "", "work", "home");
+        _tasks.Add("Both", "", "work", "home");
         _tasks.Add("B", "", "work");
         _tasks.Add("A", "", "home");
 
-        Assert.Equal(["A", "Both", "D"], Titles(Group("home")));
+        Assert.Equal(["A", "D"], Titles(Group("home")));
         Assert.Equal(["B", "Both"], Titles(Group("work")));
     }
 
@@ -103,9 +204,9 @@ public class TagGroupsTests
     }
 
     [Fact]
-    public void Leaves_a_checked_task_out_of_every_group_at_once_and_counts_it_as_resolved()
+    public void Leaves_a_checked_task_out_of_its_group_at_once_and_counts_it_as_resolved()
     {
-        var task = _tasks.AddOlder("Buy milk", "", "home", "errand");
+        var task = _tasks.Add("Buy milk", "", "errand", "home");
         _tasks.Add("Other", "", "home");
 
         _tasks.Tasks.Resolve(task.Id);

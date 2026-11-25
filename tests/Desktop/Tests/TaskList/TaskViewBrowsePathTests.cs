@@ -18,7 +18,7 @@ public class TaskViewBrowsePathTests
     {
         var services = new ListServices();
         services.Add("Plain");
-        services.AddOlder("Both", "", "work", "errand");
+        services.Add("Both", "", "work", "errand");
         services.Add("Buy milk", "Remember the oat milk", "errand");
         using var screen = new TaskListScreen(services);
 
@@ -26,7 +26,7 @@ public class TaskViewBrowsePathTests
         Assert.Equal("Task View", screen.Window.Title);
         Assert.True(screen.SearchHasFocus);
         Assert.Equal(["errand", "work", "No tag"], screen.GroupNames);
-        Assert.Equal(["Buy milk", "Both"], screen.RowTitlesIn("errand"));
+        Assert.Equal(["Buy milk"], screen.RowTitlesIn("errand"));
         Assert.Equal(["Both"], screen.RowTitlesIn("work"));
 
         screen.Press(Key.Down);
@@ -42,8 +42,9 @@ public class TaskViewBrowsePathTests
         screen.ClickRow("Buy milk");
         Assert.Equal(["Buy milk"], screen.SelectedTitles);
         Assert.Contains("Remember the oat milk", screen.Web.Page);
-        screen.ClickRow("Both", "errand");
-        Assert.Equal(2, screen.SelectedRowCount);
+        screen.ClickRow("Both", "work");
+        Assert.Equal(["Both"], screen.SelectedTitles);
+        Assert.Equal(1, screen.SelectedRowCount);
 
         screen.ClickRow("Buy milk");
         screen.ToggleGroup("errand");

@@ -114,7 +114,7 @@ Proposed, each a decision to confirm:
 - **A badge's text is black or white, whichever has the higher contrast on its color**, and Rendering gives it with each value.
 - **Names are lowercase only**, like the palette's: `Red-1` names no color.
 - **A tag with no color kept gets a default from its text.** Rendering takes the tag in invariant uppercase, hashes its UTF-8 bytes with 32-bit FNV-1a ([FNV](https://datatracker.ietf.org/doc/html/draft-eastlake-fnv)), and picks the color at that hash modulo 30, counting through the table row by row: `red-1`, `red-2`, `red-3`, `orange-1`, and so on.
-  - Uppercase makes `Home` and `home` look the same, as [Tasks treats them as one tag](tasks.md#tags-and-search-ignore-case).
+  - Uppercase made `Home` and `home` look the same before [Tasks normalized every tag](tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) to lowercase. It stays, since dropping it would recolor every tag with no color kept.
   - .NET's own string hash isn't used, since it changes with each run of the app ([String.GetHashCode](https://learn.microsoft.com/en-us/dotnet/api/system.string.gethashcode)).
   - All 30 colors are used, so two of eight tags share a default about 64% of the time, against 98% with one shade per hue.
   - Changing the rule after release would recolor every tag with no color kept, so a unit test pins the default of a few fixed tags.

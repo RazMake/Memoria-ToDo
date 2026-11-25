@@ -25,12 +25,16 @@ public class TaskViewSearchPathTests
         services.Add("Call [Old Name](contact:ana \"{fullName}\") today");
         services.Add("Call [Bob Stan](contact:bob \"{fullName}\") today");
         services.Add("Buy milk");
+        services.Add("Wash car", "", "home", "errand");
         using var screen = new TaskListScreen(services);
 
         screen.TypeSearch("milk");
         Assert.Equal(["Buy milk"], screen.RowTitles);
+        screen.TypeSearch("errand");
+        Assert.Equal(["Wash car"], screen.RowTitles);
+        Assert.Equal(["home"], screen.GroupNames);
         screen.TypeSearch("");
-        Assert.Equal(3, screen.RowTitles.Count);
+        Assert.Equal(4, screen.RowTitles.Count);
 
         screen.TypeInSearch("@ana");
         Assert.Equal(["Ana Pop (anap)"], screen.ShownAliases);
@@ -43,7 +47,7 @@ public class TaskViewSearchPathTests
 
         screen.Press(Key.Escape);
         Assert.Equal("", screen.SearchText);
-        Assert.Equal(3, screen.RowTitles.Count);
+        Assert.Equal(4, screen.RowTitles.Count);
         Assert.True(screen.View.IsOpen);
 
         screen.PressToClose(Key.Escape);

@@ -19,7 +19,10 @@ internal sealed class TasksService : V1.Tasks.TasksBase
     /// <inheritdoc />
     public override Task<V1.TaskList> ListTasks(V1.ListTasksRequest request, ServerCallContext context)
     {
-        var found = request.HasTag ? tasks.Search(request.Query, request.Tag) : tasks.Search(request.Query);
+        RejectBoth(request.HasTag, request.Tags.Count > 0);
+        var found = request.HasTag ? tasks.Search(request.Query, [request.Tag])
+            : request.Tags.Count > 0 ? tasks.Search(request.Query, request.Tags)
+            : tasks.Search(request.Query);
         var reply = new V1.TaskList();
         foreach (var task in found)
         {
@@ -35,8 +38,11 @@ internal sealed class TasksService : V1.Tasks.TasksBase
         Task.FromResult(Item(tasks.All.FirstOrDefault(task => task.Id == request.Id) ?? throw new TaskNotFoundException()));
 
     /// <inheritdoc />
-    public override Task<V1.TaskItem> CreateTask(V1.CreateTaskRequest request, ServerCallContext context) =>
-        Task.FromResult(Item(tasks.Direct.Add(request.Title, request.Description, request.HasTag ? request.Tag : null)));
+    public override Task<V1.TaskItem> CreateTask(V1.CreateTaskRequest request, ServerCallContext context)
+    {
+        RejectBoth(request.HasTag, request.Tags.Count > 0);
+        return Task.FromResult(Item(tasks.Direct.Add(request.Title, request.Description, request.HasTag ? OlderTag(request.Tag) : request.Tags)));
+    }
 
     /// <inheritdoc />
     public override Task<V1.TaskItem> UpdateTask(V1.UpdateTaskRequest request, ServerCallContext context)
@@ -44,11 +50,12 @@ internal sealed class TasksService : V1.Tasks.TasksBase
         if (request.BaseUpdated is null)
             throw new ArgumentException("UpdateTask needs base_updated, the task's updated time as the program read it.");
 
+        RejectBoth(request.HasTag, request.Tags is not null);
         return Task.FromResult(Item(tasks.Direct.Update(
             request.Id, request.BaseUpdated.ToDateTimeOffset(),
             request.HasTitle ? request.Title : null,
             request.HasDescription ? request.Description : null,
-            request.HasTag ? request.Tag : null)));
+            request.HasTag ? OlderTag(request.Tag) : request.Tags?.Names)));
     }
 
     /// <inheritdoc />
@@ -93,6 +100,16 @@ internal sealed class TasksService : V1.Tasks.TasksBase
     public override Task WatchTasks(V1.WatchTasksRequest request, IServerStreamWriter<V1.ChangeNotice> responseStream, ServerCallContext context) =>
         ChangeStream.SendNoticesAsync(handler => tasks.Changed += handler, handler => tasks.Changed -= handler, responseStream, context.CancellationToken);
 
+    // A program that sets the older tag and the list learns of its mistake, since neither is told apart as the winner.
+    private static void RejectBoth(bool hasTag, bool hasTags)
+    {
+        if (hasTag && hasTags)
+            throw new ArgumentException("Set either tag or tags, not both.");
+    }
+
+    // The older tag is one tag, and only exactly "" means none; Tasks rejects a tag that is empty once normalized.
+    private static string[] OlderTag(string tag) => tag.Length == 0 ? [] : [tag];
+
     private V1.TaskItem Item(TaskItem task)
     {
         var item = new V1.TaskItem
@@ -104,8 +121,9 @@ internal sealed class TasksService : V1.Tasks.TasksBase
             Updated = Timestamp.FromDateTimeOffset(task.Updated),
             Link = tasks.LinkAddress(task.Id),
         };
-        if (task.Tags.Count > 0)
-            item.Tag = task.Tags[0];
+        item.Tags.AddRange(task.Tags);
+        if (task.GroupTag is { } groupTag)
+            item.Tag = groupTag;
         if (task.Resolved is { } resolved)
             item.Resolved = Timestamp.FromDateTimeOffset(resolved);
         return item;

@@ -91,11 +91,15 @@ public class LocalApiPipeTests
     {
         await using var api = await RealApi.StartAsync(NewPipeName());
 
-        var created = await api.Tasks.CreateTaskAsync(new V1.CreateTaskRequest { Title = "Buy milk", Tag = "home" }, deadline: Deadline);
+        var request = new V1.CreateTaskRequest { Title = "Buy milk" };
+        request.Tags.AddRange(["Home Page", "errands"]);
+        var created = await api.Tasks.CreateTaskAsync(request, deadline: Deadline);
         var listed = await api.Tasks.ListTasksAsync(new V1.ListTasksRequest(), deadline: Deadline);
 
         Assert.Equal([created.Id], listed.Tasks.Select(task => task.Id));
         Assert.Equal("Buy milk", listed.Tasks.Single().Title);
+        Assert.Equal(["home-page", "errands"], listed.Tasks.Single().Tags);
+        Assert.Equal("home-page", listed.Tasks.Single().Tag);
     }
 
     [Fact]

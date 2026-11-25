@@ -22,16 +22,16 @@ public class McpTaskChangeToolsTests
         await using var app = new McpHarness();
         app.AddTask("Older");
 
-        var answer = await app.OkAsync("add_task", new { title = "Plan the trip", description = "Book **flights**.", tag = "Home" });
+        var answer = await app.OkAsync("add_task", new { title = "Plan the trip", description = "Book **flights**.", tags = new[] { "home", "travel" } });
 
         var added = app.Tasks.All[0];
         Assert.Equal("Plan the trip", added.Title);
         Assert.Equal("Book **flights**.", added.Description);
-        Assert.Equal(new[] { "Home" }, added.Tags);
+        Assert.Equal(new[] { "home", "travel" }, added.Tags);
         Assert.Equal(added.Id, answer.Str("id"));
         Assert.Equal("Plan the trip", answer.Str("title"));
         Assert.Equal("Book **flights**.", answer.Str("description"));
-        Assert.Equal(new[] { "Home" }, answer.Strings("tags"));
+        Assert.Equal(new[] { "home", "travel" }, answer.Strings("tags"));
     }
 
     [Fact]
@@ -49,14 +49,48 @@ public class McpTaskChangeToolsTests
     }
 
     [Fact]
-    public async Task add_task_spells_the_tag_as_a_matching_tag_in_use()
+    public async Task add_task_normalizes_the_tags_and_drops_repeats_keeping_the_first_place()
     {
         await using var app = new McpHarness();
-        app.AddTask("Existing", "", "Work");
 
-        await app.OkAsync("add_task", new { title = "New", tag = "work" });
+        var answer = await app.OkAsync("add_task", new { title = "New", tags = new[] { "My Work", "home", " MY-WORK ", "Home" } });
 
-        Assert.Equal(new[] { "Work" }, app.Tasks.All[0].Tags);
+        Assert.Equal(new[] { "my-work", "home" }, app.Tasks.All[0].Tags);
+        Assert.Equal(new[] { "my-work", "home" }, answer.Strings("tags"));
+    }
+
+    [Fact]
+    public async Task add_task_takes_15_tags()
+    {
+        await using var app = new McpHarness();
+        var tags = Enumerable.Range(1, 15).Select(n => $"tag{n}").ToArray();
+
+        await app.OkAsync("add_task", new { title = "New", tags });
+
+        Assert.Equal(tags, app.Tasks.All.Single().Tags);
+    }
+
+    [Fact]
+    public async Task add_task_refuses_an_empty_tag_and_adds_nothing()
+    {
+        await using var app = new McpHarness();
+
+        var error = await app.ErrorAsync("add_task", new { title = "New", tags = new[] { "work", "  " } });
+
+        Assert.False(string.IsNullOrWhiteSpace(error));
+        Assert.Empty(app.Tasks.All);
+    }
+
+    [Fact]
+    public async Task add_task_refuses_more_than_15_tags_and_adds_nothing()
+    {
+        await using var app = new McpHarness();
+        var tags = Enumerable.Range(1, 16).Select(n => $"tag{n}").ToArray();
+
+        var error = await app.ErrorAsync("add_task", new { title = "New", tags });
+
+        Assert.False(string.IsNullOrWhiteSpace(error));
+        Assert.Empty(app.Tasks.All);
     }
 
     [Theory]
@@ -117,14 +151,14 @@ public class McpTaskChangeToolsTests
     public async Task edit_task_changes_only_the_title_when_only_a_title_is_given()
     {
         await using var app = new McpHarness();
-        var task = app.AddTask("Old title", "Keep this description", "Work");
+        var task = app.AddTask("Old title", "Keep this description", "work");
 
         var answer = await app.OkAsync("edit_task", new { id = task.Id, title = "New title" });
 
         var saved = app.Tasks.All.Single();
         Assert.Equal("New title", saved.Title);
         Assert.Equal("Keep this description", saved.Description);
-        Assert.Equal(new[] { "Work" }, saved.Tags);
+        Assert.Equal(new[] { "work" }, saved.Tags);
         Assert.Equal("New title", answer.Str("title"));
         Assert.Equal("Keep this description", answer.Str("description"));
     }
@@ -133,41 +167,95 @@ public class McpTaskChangeToolsTests
     public async Task edit_task_changes_only_the_description_when_only_a_description_is_given()
     {
         await using var app = new McpHarness();
-        var task = app.AddTask("Keep this title", "Old description", "Work");
+        var task = app.AddTask("Keep this title", "Old description", "work");
 
         await app.OkAsync("edit_task", new { id = task.Id, description = "New description" });
 
         var saved = app.Tasks.All.Single();
         Assert.Equal("Keep this title", saved.Title);
         Assert.Equal("New description", saved.Description);
-        Assert.Equal(new[] { "Work" }, saved.Tags);
+        Assert.Equal(new[] { "work" }, saved.Tags);
     }
 
     [Fact]
-    public async Task edit_task_replaces_the_tag_when_a_tag_is_given()
+    public async Task edit_task_replaces_the_whole_tag_list_in_the_order_given()
     {
         await using var app = new McpHarness();
-        var task = app.AddTask("Task", "Text", "Work");
+        var task = app.AddTask("Task", "Text", "work", "home");
 
-        var answer = await app.OkAsync("edit_task", new { id = task.Id, tag = "Home" });
+        var answer = await app.OkAsync("edit_task", new { id = task.Id, tags = new[] { "home", "errand", "work" } });
 
-        Assert.Equal(new[] { "Home" }, app.Tasks.All.Single().Tags);
-        Assert.Equal(new[] { "Home" }, answer.Strings("tags"));
+        Assert.Equal(new[] { "home", "errand", "work" }, app.Tasks.All.Single().Tags);
+        Assert.Equal(new[] { "home", "errand", "work" }, answer.Strings("tags"));
         Assert.Equal("Task", app.Tasks.All.Single().Title);
     }
 
     [Fact]
-    public async Task edit_task_removes_the_tag_when_the_tag_is_empty()
+    public async Task edit_task_removes_every_tag_when_the_tags_are_an_empty_list()
     {
         await using var app = new McpHarness();
-        var task = app.AddTask("Task", "Text", "Work");
+        var task = app.SeedTask("Many tags", "work", "home", "errand");
 
-        await app.OkAsync("edit_task", new { id = task.Id, tag = "" });
+        var answer = await app.OkAsync("edit_task", new { id = task.Id, tags = Array.Empty<string>() });
 
         var saved = app.Tasks.All.Single();
         Assert.Empty(saved.Tags);
-        Assert.Equal("Task", saved.Title);
+        Assert.Empty(answer.Strings("tags"));
+        Assert.Equal("Many tags", saved.Title);
         Assert.Equal("Text", saved.Description);
+    }
+
+    [Fact]
+    public async Task edit_task_normalizes_the_tags_and_drops_repeats_keeping_the_first_place()
+    {
+        await using var app = new McpHarness();
+        var task = app.AddTask("Task", "Text", "work");
+
+        var answer = await app.OkAsync("edit_task", new { id = task.Id, tags = new[] { "Home Office", "work", "HOME-OFFICE" } });
+
+        Assert.Equal(new[] { "home-office", "work" }, app.Tasks.All.Single().Tags);
+        Assert.Equal(new[] { "home-office", "work" }, answer.Strings("tags"));
+    }
+
+    [Fact]
+    public async Task edit_task_refuses_an_empty_tag_and_writes_nothing()
+    {
+        await using var app = new McpHarness();
+        var task = app.AddTask("Old title", "Text", "work", "home");
+
+        var error = await app.ErrorAsync("edit_task", new { id = task.Id, title = "New title", tags = new[] { "errand", "" } });
+
+        Assert.False(string.IsNullOrWhiteSpace(error));
+        var saved = app.Tasks.All.Single();
+        Assert.Equal("Old title", saved.Title);
+        Assert.Equal(new[] { "work", "home" }, saved.Tags);
+    }
+
+    [Fact]
+    public async Task edit_task_refuses_more_than_15_tags_and_writes_nothing()
+    {
+        await using var app = new McpHarness();
+        var task = app.AddTask("Old title", "Text", "work");
+        var tags = Enumerable.Range(1, 16).Select(n => $"tag{n}").ToArray();
+
+        var error = await app.ErrorAsync("edit_task", new { id = task.Id, title = "New title", tags });
+
+        Assert.False(string.IsNullOrWhiteSpace(error));
+        var saved = app.Tasks.All.Single();
+        Assert.Equal("Old title", saved.Title);
+        Assert.Equal(new[] { "work" }, saved.Tags);
+    }
+
+    [Fact]
+    public async Task edit_task_takes_15_tags()
+    {
+        await using var app = new McpHarness();
+        var task = app.AddTask("Task", "Text");
+        var tags = Enumerable.Range(1, 15).Select(n => $"tag{n}").ToArray();
+
+        await app.OkAsync("edit_task", new { id = task.Id, tags });
+
+        Assert.Equal(tags, app.Tasks.All.Single().Tags);
     }
 
     [Fact]
@@ -214,39 +302,15 @@ public class McpTaskChangeToolsTests
     }
 
     [Fact]
-    public async Task edit_task_spells_the_tag_as_a_matching_tag_in_use()
+    public async Task edit_task_keeps_every_tag_when_no_tags_are_given()
     {
         await using var app = new McpHarness();
-        app.AddTask("Existing", "", "Work");
-        var task = app.AddTask("Other", "", "Home");
-
-        var answer = await app.OkAsync("edit_task", new { id = task.Id, tag = "work" });
-
-        Assert.Equal(new[] { "Work" }, app.Tasks.All.Single(t => t.Id == task.Id).Tags);
-        Assert.Equal(new[] { "Work" }, answer.Strings("tags"));
-    }
-
-    [Fact]
-    public async Task edit_task_removes_every_tag_when_the_tag_is_empty()
-    {
-        await using var app = new McpHarness();
-        var task = app.SeedTask("Many tags", "Work", "Home", "Errand");
-
-        await app.OkAsync("edit_task", new { id = task.Id, tag = "" });
-
-        Assert.Empty(app.Tasks.All.Single().Tags);
-    }
-
-    [Fact]
-    public async Task edit_task_keeps_every_tag_when_no_tag_is_given()
-    {
-        await using var app = new McpHarness();
-        var task = app.SeedTask("Many tags", "Work", "Home", "Errand");
+        var task = app.SeedTask("Many tags", "work", "home", "errand");
 
         var answer = await app.OkAsync("edit_task", new { id = task.Id, title = "Renamed" });
 
-        Assert.Equal(new[] { "Work", "Home", "Errand" }, app.Tasks.All.Single().Tags);
-        Assert.Equal(new[] { "Work", "Home", "Errand" }, answer.Strings("tags"));
+        Assert.Equal(new[] { "work", "home", "errand" }, app.Tasks.All.Single().Tags);
+        Assert.Equal(new[] { "work", "home", "errand" }, answer.Strings("tags"));
         Assert.Equal("Renamed", app.Tasks.All.Single().Title);
     }
 

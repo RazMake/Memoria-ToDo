@@ -15,13 +15,13 @@ public class TagMenuModelTests
     private readonly TagsModel _tags;
     private readonly SuggestingTasks _suggesting;
     private readonly TagMenuModel _menu;
-    private readonly List<string> _added = [];
+    private readonly List<IReadOnlyList<string>> _raised = [];
 
     public TagMenuModelTests()
     {
         _services.UseRepository();
         _tags = new TagsModel(_services.Tasks, _services.TagColors, Serilog.Core.Logger.None);
-        _tags.TagAdded += _added.Add;
+        _tags.TagsChanged += _raised.Add;
         var (tasks, suggesting) = SuggestingTasks.Over(_services.Tasks);
         _suggesting = suggesting;
         _menu = new TagMenuModel(tasks, _tags);
@@ -99,6 +99,51 @@ public class TagMenuModelTests
     public void Setting_search_text_while_closed_is_rejected()
     {
         Assert.Throws<InvalidOperationException>(() => _menu.SearchText = "wo");
+    }
+
+    // A sync that changes the tags while the menu is open.
+
+    [Fact]
+    public void Choosing_still_replaces_its_tag_where_a_sync_moved_it()
+    {
+        _tags.Tags = ["work", "home"];
+        _tags.Target = 0;
+        _menu.Open();
+
+        _tags.ReplaceTags(["home", "remote", "work"]);
+        _menu.ChooseTag("ideas");
+
+        Assert.False(_menu.IsOpen);
+        Assert.Equal(["home", "remote", "ideas"], _tags.Tags);
+        Assert.Equal([["home", "remote", "ideas"]], _raised);
+    }
+
+    [Fact]
+    public void Closes_and_replaces_nothing_when_a_sync_removes_the_tag_it_was_opened_from()
+    {
+        _tags.Tags = ["work", "home"];
+        _tags.Target = 0;
+        _menu.Open();
+        _menu.SearchText = "wo";
+
+        _tags.ReplaceTags(["home", "remote"]);
+
+        Assert.False(_menu.IsOpen);
+        Assert.Equal("", _menu.SearchText);
+        Assert.Equal(["home", "remote"], _tags.Tags);
+        Assert.Empty(_raised);
+    }
+
+    [Fact]
+    public void Stays_open_when_a_sync_changes_the_tags_of_a_menu_opened_from_the_add_pill()
+    {
+        _tags.Tags = ["work"];
+        _tags.Target = null;
+        _menu.Open();
+
+        _tags.ReplaceTags(["home"]);
+
+        Assert.True(_menu.IsOpen);
     }
 
     // The top tags.
@@ -260,21 +305,21 @@ public class TagMenuModelTests
         _menu.ChooseTag("b");
 
         Assert.Equal(["b"], _tags.Tags);
-        Assert.Equal(["b"], _added);
+        Assert.Equal([["b"]], _raised);
         Assert.False(_menu.IsOpen);
         Assert.False(_menu.IsSubmenuOpen);
         Assert.Equal("", _menu.SearchText);
     }
 
     [Fact]
-    public void A_top_tag_is_added_as_Tasks_spells_it_and_keeps_no_color()
+    public void A_top_tag_is_added_normalized_and_keeps_no_color()
     {
-        _services.UseTag("Work");
+        _services.UseTag("work");
         _menu.Open();
 
-        _menu.ChooseTag("Work");
+        _menu.ChooseTag("work");
 
-        Assert.Equal(["Work"], _tags.Tags);
+        Assert.Equal(["work"], _tags.Tags);
         Assert.Empty(_services.TagColors.Kept);
     }
 
@@ -288,7 +333,7 @@ public class TagMenuModelTests
         _menu.ChooseMatch(1);
 
         Assert.Equal(["network"], _tags.Tags);
-        Assert.Equal(["network"], _added);
+        Assert.Equal([["network"]], _raised);
         Assert.False(_menu.IsOpen);
         Assert.False(_menu.IsSubmenuOpen);
         Assert.Equal("", _menu.SearchText);

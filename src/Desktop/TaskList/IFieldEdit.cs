@@ -15,13 +15,13 @@ internal interface IFieldEdit
     /// <summary>True when the editor sits in the task's row on the left; false when it sits on the right side.</summary>
     bool ShowsInRow { get; }
 
-    /// <summary>The tag the pill shows for the edit: the started task's first tag until the user chooses or clears one. It saves with the edit and is dropped with it.</summary>
-    string? Tag { get; set; }
+    /// <summary>The tags the pills show for the edit: the started task's until the user changes them. They save with the edit and are dropped with it.</summary>
+    IReadOnlyList<string> Tags { get; set; }
 
-    /// <summary>True when the editor reports a change, or the <see cref="Tag"/> differs from the started one.</summary>
+    /// <summary>True when the editor reports a change, or the <see cref="Tags"/> differ from the started ones in tags or order.</summary>
     bool HasChanges { get; }
 
-    /// <summary>Saves the text and the <see cref="Tag"/> through Tasks in one save. False, with the edit open, when it can't be saved; the editor says why.</summary>
+    /// <summary>Saves the text and the <see cref="Tags"/> through Tasks in one save. False, with the edit open, when it can't be saved; the editor says why.</summary>
     bool Save();
 
     void FocusEnd();

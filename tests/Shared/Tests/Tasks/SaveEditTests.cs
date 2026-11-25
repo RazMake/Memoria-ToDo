@@ -81,7 +81,7 @@ public sealed class SaveEditTests
         TaskAssert.SameTask(saved, restarted.All.Single());
     }
 
-    // The tag: one at most. The edit's tag replaces every current tag only when it differs from the started one.
+    // The tags: the edit's list replaces every current tag only when it differs from the started one.
 
     [Fact]
     public void Sets_the_tag_the_edit_chose_when_the_task_had_none()
@@ -191,15 +191,13 @@ public sealed class SaveEditTests
     }
 
     [Fact]
-    public void Spells_the_chosen_tag_as_the_matching_tag_in_use_and_trims_it()
+    public void Normalizes_the_chosen_tags_and_drops_repeats_keeping_the_first_place()
     {
         var started = Seeded();
-        f.Seed(TasksFixture.Id(1), "Other", "a1", tags: ["Home"]);
-        f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["  home "]));
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["  My  Home ", "WORK", "my-home", "work"]));
 
-        Assert.Equal(["Home"], saved.Tags);
+        Assert.Equal(["my-home", "work"], saved.Tags);
     }
 
     [Fact]
@@ -229,44 +227,63 @@ public sealed class SaveEditTests
         Assert.Equal(["work"], saved.Tags);
     }
 
-    // A task saved with two or more tags before the one-tag rule keeps them until its tag is chosen or cleared. The
-    // editor shows its first tag, so the first tag is the tag the edit started with.
+    // The tags are an ordered list. The edit's list replaces the current one whole only when it differs from the started one, in order.
 
     [Fact]
-    public void Keeps_every_older_tag_when_the_edit_keeps_the_first_one_the_editor_showed()
+    public void Adds_a_tag_at_the_end_of_the_list()
     {
-        var started = Seeded(tags: ["work", "home", "errand"]);
+        var started = Seeded(tags: ["work", "home"]);
 
-        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: ["work"]));
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["work", "home", "errand"]));
 
         Assert.Equal(["work", "home", "errand"], saved.Tags);
+        Assert.Equal("work", saved.GroupTag);
+    }
+
+    [Fact]
+    public void Counts_a_reorder_as_a_change_and_saves_the_new_order()
+    {
+        var started = Seeded(tags: ["work", "home", "errand"]);
+        f.Time.Advance(TimeSpan.FromHours(1));
+        var changes = f.CountChanges();
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["errand", "work", "home"]));
+
+        Assert.Equal(["errand", "work", "home"], saved.Tags);
+        Assert.Equal("errand", saved.GroupTag);
+        Assert.Equal(f.Time.GetUtcNow(), saved.Updated);
+        Assert.Equal(1, changes.Count);
+    }
+
+    [Fact]
+    public void Replaces_a_tag_list_another_device_set_meanwhile_when_the_edit_reordered_the_tags()
+    {
+        var started = Seeded(tags: ["work", "home"]);
+        f.Seed(id, "Old title", "a0", "Old text", ["work", "home", "remote"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["home", "work"]));
+
+        Assert.Equal(["home", "work"], saved.Tags);
+    }
+
+    [Fact]
+    public void Keeps_the_current_tags_when_the_edit_kept_the_started_list_in_the_same_order_after_normalizing()
+    {
+        var started = Seeded(tags: ["work", "home", "errand"]);
+        f.Seed(id, "Old title", "a0", "Old text", ["remote", "other"]);
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: ["WORK", " Home", "errand", "work"]));
+
+        Assert.Equal(["remote", "other"], saved.Tags);
         Assert.Equal("New title", saved.Title);
     }
 
     [Fact]
-    public void Keeps_every_older_tag_when_the_edit_keeps_the_first_one_in_another_case()
-    {
-        var started = Seeded(tags: ["Work", "home"]);
-
-        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: ["WORK"]));
-
-        Assert.Equal(["Work", "home"], saved.Tags);
-    }
-
-    [Fact]
-    public void Replaces_every_older_tag_with_the_one_the_edit_chose()
+    public void Replaces_the_whole_list_with_a_shorter_one()
     {
         var started = Seeded(tags: ["work", "home", "errand"]);
-
-        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["urgent"]));
-
-        Assert.Equal(["urgent"], saved.Tags);
-    }
-
-    [Fact]
-    public void Replaces_every_older_tag_with_the_second_one_when_the_edit_chose_it()
-    {
-        var started = Seeded(tags: ["work", "home"]);
 
         var saved = f.Tasks.SaveEdit(started, Edit(started, tags: ["home"]));
 
@@ -274,17 +291,18 @@ public sealed class SaveEditTests
     }
 
     [Fact]
-    public void Clears_every_older_tag_when_the_edit_has_none()
+    public void Clears_every_tag_when_the_edit_has_none()
     {
         var started = Seeded(tags: ["work", "home"]);
 
         var saved = f.Tasks.SaveEdit(started, Edit(started, tags: []));
 
         Assert.Empty(saved.Tags);
+        Assert.Null(saved.GroupTag);
     }
 
     [Fact]
-    public void Keeps_the_older_tags_a_save_finds_in_the_current_task_when_the_edit_kept_the_started_tag()
+    public void Keeps_the_current_tags_a_save_finds_when_the_edit_kept_the_started_tags()
     {
         var started = Seeded(tags: ["work"]);
         f.Seed(id, "Old title", "a0", "Old text", ["remote", "other"]);
@@ -295,29 +313,28 @@ public sealed class SaveEditTests
         Assert.Equal(["remote", "other"], saved.Tags);
     }
 
+    // At most 15 tags, counted after normalizing and dropping repeats. Only a new list is limited.
+
+    private static string[] Numbered(int count) => Enumerable.Range(1, count).Select(n => $"tag{n}").ToArray();
+
     [Fact]
-    public void Refuses_an_edit_that_still_holds_all_of_a_tasks_older_tags()
+    public void Saves_fifteen_tags()
     {
-        var started = Seeded(tags: ["work", "home"]);
-        var before = f.ReadText(f.TaskFile(id));
+        var started = Seeded();
 
-        Assert.Throws<ArgumentException>(() => f.Tasks.SaveEdit(started, Edit(started, title: "New title")));
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: Numbered(15)));
 
-        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
+        Assert.Equal(Numbered(15), saved.Tags);
     }
 
-    // Two or more tags in the edit are refused before anything changes.
-
-    [Theory]
-    [InlineData("work", "home")]
-    [InlineData("work", "home", "errand")]
-    public void Refuses_an_edit_with_two_or_more_tags_and_changes_nothing(params string[] tags)
+    [Fact]
+    public void Refuses_more_than_fifteen_tags_and_changes_nothing()
     {
         var started = Seeded(tags: ["work"]);
         var before = f.ReadText(f.TaskFile(id));
         var changes = f.CountChanges();
 
-        Assert.Throws<ArgumentException>(() => f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: tags)));
+        Assert.Throws<ArgumentException>(() => f.Tasks.SaveEdit(started, Edit(started, title: "New title", tags: Numbered(16))));
 
         Assert.Equal(before, f.ReadText(f.TaskFile(id)));
         Assert.Equal("Old title", f.Tasks.All.Single().Title);
@@ -325,12 +342,47 @@ public sealed class SaveEditTests
     }
 
     [Fact]
-    public void Refuses_an_edit_with_two_tags_before_moving_the_edits_images()
+    public void Counts_the_fifteen_tags_after_dropping_repeats()
+    {
+        var started = Seeded();
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, tags: [.. Numbered(15), "TAG3"]));
+
+        Assert.Equal(Numbered(15), saved.Tags);
+    }
+
+    [Fact]
+    public void Saves_a_task_that_holds_more_than_fifteen_tags_keeping_all_of_them_when_the_edit_did_not_change_the_tags()
+    {
+        var started = Seeded(tags: Numbered(17));
+
+        var saved = f.Tasks.SaveEdit(started, Edit(started, title: "New title"));
+
+        Assert.Equal(Numbered(17), saved.Tags);
+        Assert.Equal("New title", saved.Title);
+        using var json = f.ReadJson(f.TaskFile(id));
+        Assert.Equal(17, json.RootElement.GetProperty("tags").GetArrayLength());
+    }
+
+    [Fact]
+    public void Saves_the_normalized_form_of_tags_read_unnormalized_on_the_next_save()
+    {
+        var started = Seeded(tags: ["Work", "My  Home"]);
+        Assert.Equal(["work", "my-home"], started.Tags);
+
+        f.Tasks.SaveEdit(started, Edit(started, title: "New title"));
+
+        using var json = f.ReadJson(f.TaskFile(id));
+        Assert.Equal(["work", "my-home"], json.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetString()));
+    }
+
+    [Fact]
+    public void Refuses_an_edit_with_too_many_tags_before_moving_the_edits_images()
     {
         var started = Seeded();
         var (markdown, _) = PasteImage();
 
-        Assert.Throws<ArgumentException>(() => f.Tasks.SaveEdit(started, Edit(started, description: markdown, tags: ["a", "b"])));
+        Assert.Throws<ArgumentException>(() => f.Tasks.SaveEdit(started, Edit(started, description: markdown, tags: Numbered(16))));
 
         Assert.Empty(f.Files.AllFilesUnder(f.CloneImages(id)));
         Assert.NotEmpty(f.Files.AllFilesUnder(f.Device));
@@ -455,8 +507,8 @@ public sealed class SaveEditTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("two\nlines")]
-    public void Refuses_an_empty_or_multi_line_tag_and_changes_nothing(string tag)
+    [InlineData(" \r\n ")]
+    public void Refuses_a_tag_that_is_empty_once_normalized_and_changes_nothing(string tag)
     {
         var started = Seeded();
         var before = f.ReadText(f.TaskFile(id));

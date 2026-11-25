@@ -82,25 +82,33 @@ public sealed class AddTaskTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("two\nlines")]
-    public void Refuses_a_tag_that_is_empty_or_has_a_line_break(string tag)
+    [InlineData(" \n ")]
+    public void Refuses_a_tag_that_is_empty_once_normalized(string tag)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.ThrowsAny<ArgumentException>(() => f.Tasks.Add(f.Draft("Title", "", tag)));
+        Assert.ThrowsAny<ArgumentException>(() => f.Tasks.Add(f.Draft("Title", "", "work", tag)));
 
         Assert.Empty(f.Files.ListFiles(Path.Combine(f.Clone, "tasks")));
     }
 
-    [Theory]
-    [InlineData("work", "home")]
-    [InlineData("work", "home", "errand")]
-    public void Refuses_two_or_more_tags_and_writes_nothing(params string[] tags)
+    private static string[] Numbered(int count) => Enumerable.Range(1, count).Select(n => $"tag{n}").ToArray();
+
+    [Fact]
+    public void Adds_a_task_with_fifteen_tags_in_order()
+    {
+        var task = f.AddTask("T", "", Numbered(15));
+
+        Assert.Equal(Numbered(15), task.Tags);
+    }
+
+    [Fact]
+    public void Refuses_more_than_fifteen_tags_and_writes_nothing()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
         var changes = f.CountChanges();
 
-        Assert.Throws<ArgumentException>(() => f.Tasks.Add(f.Draft("Title", "", tags)));
+        Assert.Throws<ArgumentException>(() => f.Tasks.Add(f.Draft("Title", "", Numbered(16))));
 
         Assert.Empty(f.Files.ListFiles(Path.Combine(f.Clone, "tasks")));
         Assert.Empty(f.Tasks.All);
@@ -108,10 +116,20 @@ public sealed class AddTaskTests
     }
 
     [Fact]
-    public void Keeps_the_kept_draft_and_its_images_when_two_tags_are_refused()
+    public void Counts_the_fifteen_tags_after_normalizing_and_dropping_repeats()
+    {
+        string[] tags = [.. Numbered(15), "TAG1", " Tag2 "];
+
+        var task = f.AddTask("T", "", tags);
+
+        Assert.Equal(Numbered(15), task.Tags);
+    }
+
+    [Fact]
+    public void Keeps_the_kept_draft_and_its_images_when_too_many_tags_are_refused()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
-        var draft = f.Draft("Keep", "text", "work", "home");
+        var draft = f.Draft("Keep", "text", Numbered(16));
         f.Tasks.KeepDraft(draft);
         f.Tasks.SaveImage(draft.TaskId, TasksFixture.TinyPng(), "pic");
 
@@ -200,35 +218,30 @@ public sealed class AddTaskTests
     }
 
     [Fact]
-    public void Trims_the_tags()
+    public void Keeps_the_tags_in_the_drafts_order_normalized()
     {
-        var task = f.AddTask("T", "", "  work ");
+        var task = f.AddTask("T", "", "  Work ", "My  Home", "to\ndo");
 
-        Assert.Equal(["work"], task.Tags);
+        Assert.Equal(["work", "my-home", "to-do"], task.Tags);
+        Assert.Equal("work", task.GroupTag);
     }
 
     [Fact]
-    public void Spells_a_tag_as_the_matching_tag_in_use()
+    public void Drops_a_repeated_tag_keeping_its_first_place()
     {
-        f.Seed(TasksFixture.Id(1), tags: ["Work"]);
-        f.Tasks.UseRepositoryFolder(f.Clone);
+        var task = f.AddTask("T", "", "Work", "home", "work", " HOME ");
 
-        var task = f.Tasks.Add(f.Draft("T", "", "work"));
-
-        Assert.Equal(["Work"], task.Tags);
+        Assert.Equal(["work", "home"], task.Tags);
     }
 
     [Fact]
-    public void Saves_the_tag_the_task_ends_up_with()
+    public void Saves_the_normalized_tags_in_order()
     {
-        f.Seed(TasksFixture.Id(1), tags: ["Work"]);
-        f.Tasks.UseRepositoryFolder(f.Clone);
-
-        var task = f.Tasks.Add(f.Draft("T", "", "work"));
+        var task = f.AddTask("T", "", "Work", "home", "WORK");
 
         using var json = f.ReadJson(f.TaskFile(task.Id));
         var tags = json.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetString()).ToList();
-        Assert.Equal(["Work"], tags);
+        Assert.Equal(["work", "home"], tags);
     }
 
     [Fact]

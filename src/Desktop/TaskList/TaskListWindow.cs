@@ -305,42 +305,43 @@ internal sealed class TaskListWindow : Window
     // The task the right side shows: the selected one, or the one a description edit is of when a filter hides it.
     private TaskItem? ShownTask() => _selected ?? _editing.Describing?.Started;
 
-    // A new control for each task, so selecting another drops what was typed in Custom. A change from Sync updates the pill and
-    // leaves an open menu or Custom as it is. During an edit of the task the pill shows the edit's tag, and Sync doesn't change it.
+    // A new control for each task, so selecting another drops what was typed in Custom. A change from Sync updates the pills and
+    // leaves an open menu or Custom as it is. During an edit of the task the pills show the edit's tags, and Sync doesn't change them.
     private TagEditor TagControlFor(TaskItem task)
     {
-        var tag = PillTagOf(task);
+        var tags = PillTagsOf(task);
         if (_tagEditor is null || _tagEditorId != task.Id)
         {
             _tagEditor = NewTagControl(task);
             _tagEditorId = task.Id;
         }
-        else if (_tagEditor.TaskTag != tag)
+        else if (!_tagEditor.TaskTags.SequenceEqual(tags))
         {
-            _tagEditor.TaskTag = tag;
+            _tagEditor.TaskTags = tags;
         }
 
         return _tagEditor;
     }
 
-    private string? PillTagOf(TaskItem task) =>
-        _editing.Current is { } edit && edit.Started.Id == task.Id ? edit.Tag : task.Tags.FirstOrDefault();
+    private IReadOnlyList<string> PillTagsOf(TaskItem task) =>
+        _editing.Current is { } edit && edit.Started.Id == task.Id ? edit.Tags : task.Tags;
 
     private TagEditor NewTagControl(TaskItem task)
     {
-        var control = new TagEditor(_tasks, _tagColors, _theme, _logger) { TaskTag = PillTagOf(task) };
-        control.TagChanged += (_, tag) => ChangeTag(control, tag);
+        var control = new TagEditor(_tasks, _tagColors, _theme, _pointer, _logger) { TaskTags = PillTagsOf(task) };
+        control.TagsChanged += (_, tags) => ChangeTags(control, tags);
         return control;
     }
 
-    // During an edit the choice only changes the pill and the edit keeps it, for the edit's one save. Otherwise the control already
-    // shows the change, and when it can't be saved the pill goes back to the task as shown.
-    private void ChangeTag(TagEditor control, string? tag)
+    // During an edit the change only changes the pills and the edit keeps the list, for the edit's one save. Otherwise the control
+    // already shows the change, and when it can't be saved the pills go back to the task as shown. A change of the first tag moves
+    // the task to its new group, where it stays selected and the list scrolls to its row.
+    private void ChangeTags(TagEditor control, IReadOnlyList<string> tags)
     {
         _header.ShowMessage(null);
         if (_editing.Current is { } edit)
         {
-            edit.Tag = tag;
+            edit.Tags = tags;
             return;
         }
 
@@ -349,13 +350,23 @@ internal sealed class TaskListWindow : Window
             return;
         }
 
-        if ((tag is null ? _tagChanges.Clear(shown) : _tagChanges.Choose(shown, tag)) is null)
+        if (_tagChanges.Change(shown, tags) is not { } saved)
         {
-            control.TaskTag = shown.Tags.FirstOrDefault();
+            control.TaskTags = shown.Tags;
+            return;
         }
-        else
+
+        var moved = !string.Equals(shown.GroupTag, saved.GroupTag, StringComparison.Ordinal);
+        if (moved)
         {
-            Refresh();
+            _collapse.Reveal(saved);
+        }
+
+        Refresh();
+        if (moved)
+        {
+            UpdateLayout();
+            _rows.FirstRowOf(saved.Id)?.BringIntoView();
         }
     }
 
@@ -419,7 +430,7 @@ internal sealed class TaskListWindow : Window
             return;
         }
 
-        // Focus scrolls the row into view; this row, not the task's first one, since a task can show in two groups.
+        // Focus scrolls the row into view.
         Keyboard.Focus(row);
         SelectTask(row.Task.Id);
     }
@@ -508,7 +519,12 @@ internal sealed class TaskListWindow : Window
     private bool SaveEdit()
     {
         // Text left in Custom becomes the pill's tag first, as Save does in Add; the edit's one save then carries it.
-        _tagEditor?.ChooseTypedText();
+        // A full task refuses it, which leaves Custom open with the text and the reason, and the edit open.
+        if (_tagEditor is { } tagControl && !tagControl.ChooseTypedText())
+        {
+            return false;
+        }
+
         if (!_editing.Save())
         {
             if (ShowEditInFull())
@@ -772,9 +788,9 @@ internal sealed class TaskListWindow : Window
         {
             e.Handled = true;
         }
-        else if (key == Key.Escape && modifiers == ModifierKeys.None && _tagEditor is { } tagControl && tagControl.CloseEdit())
+        else if (key == Key.Escape && modifiers == ModifierKeys.None &&         _tagEditor is { } tagControl && tagControl.CloseEdit())
         {
-            // The tag control's menu or Custom closes before an edit does, wherever the cursor is.
+                    // The tag control's drag, then its menu or Custom, closes before an edit does, wherever the cursor is.
             e.Handled = true;
         }
         else if (key == Key.Escape && modifiers == ModifierKeys.None && _editing.Current is not null && !_editing.Contains(e.OriginalSource))

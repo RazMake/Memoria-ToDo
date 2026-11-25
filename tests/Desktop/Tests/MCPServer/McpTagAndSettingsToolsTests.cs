@@ -16,7 +16,7 @@ public class McpTagAndSettingsToolsTests
 
         await app.OkAsync("set_tag_color", new { tag = "Work", color = "red" });
 
-        Assert.Contains(("Work", "red"), app.TagColors.Kept);
+        Assert.Contains(("work", "red"), app.TagColors.Kept);
     }
 
     [Fact]
@@ -34,15 +34,15 @@ public class McpTagAndSettingsToolsTests
     public async Task move_tag_puts_the_tag_between_the_two_given_tags_and_answers_the_new_order()
     {
         await using var app = new McpHarness();
-        app.AddTask("A", "", "Alpha");
-        app.AddTask("B", "", "Beta");
-        app.AddTask("C", "", "Gamma");
-        app.TagOrder.Seed("Alpha", "Beta", "Gamma");
+        app.AddTask("A", "", "alpha");
+        app.AddTask("B", "", "beta");
+        app.AddTask("C", "", "gamma");
+        app.TagOrder.Seed("alpha", "beta", "gamma");
 
-        var answer = await app.OkAsync("move_tag", new { tag = "Gamma", previousTag = "Alpha", nextTag = "Beta" });
+        var answer = await app.OkAsync("move_tag", new { tag = "gamma", previousTag = "alpha", nextTag = "beta" });
 
-        Assert.Contains(("Gamma", (string?)"Alpha", (string?)"Beta"), app.TagOrder.Moves);
-        Assert.Equal(new[] { "Alpha", "Gamma", "Beta" }, answer.Items("tags").Select(tag => tag.Str("tag")));
+        Assert.Contains(("gamma", (string?)"alpha", (string?)"beta"), app.TagOrder.Moves);
+        Assert.Equal(new[] { "alpha", "gamma", "beta" }, answer.Items("tags").Select(tag => tag.Str("tag")));
     }
 
     // deletion delay

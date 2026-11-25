@@ -14,11 +14,12 @@ public sealed class TagOrderSortTests
     private ITagOrder Order => f.Store.TagOrder;
 
     [Fact]
-    public void Sorts_tags_with_no_place_alphabetically_ignoring_case()
+    public void Sorts_tags_with_no_place_alphabetically_ordinally_after_normalizing()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Equal(["Apple", "banana", "Cherry"], Order.Sort(["Cherry", "banana", "Apple"]));
+        Assert.Equal(["apple", "banana", "cherry"], Order.Sort(["Cherry", "banana", "Apple"]));
+        Assert.Equal(["a_z", "az"], Order.Sort(["az", "A_Z"]));
     }
 
     [Fact]
@@ -27,25 +28,33 @@ public sealed class TagOrderSortTests
         f.SeedTags(Placed("pear", "a1"), Placed("fig", "a0"));
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Equal(["Apple", "kiwi", "fig", "pear"], Order.Sort(["pear", "fig", "kiwi", "Apple"]));
+        Assert.Equal(["apple", "kiwi", "fig", "pear"], Order.Sort(["pear", "fig", "kiwi", "Apple"]));
     }
 
     [Fact]
-    public void Sorts_tags_with_equal_places_alphabetically_ignoring_case()
+    public void Sorts_tags_with_equal_places_ordinally()
     {
-        f.SeedTags(Placed("b", "a0"), Placed("A", "a0"), Placed("c", "a0"));
+        f.SeedTags(Placed("b", "a0"), Placed("a", "a0"), Placed("c", "a0"));
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Equal(["A", "b", "c"], Order.Sort(["c", "b", "A"]));
+        Assert.Equal(["a", "b", "c"], Order.Sort(["c", "b", "A"]));
     }
 
     [Fact]
-    public void Matches_an_entry_ignoring_case_and_keeps_each_tags_spelling()
+    public void Matches_an_entry_by_the_normalized_tag_and_returns_normalized_tags()
     {
-        f.SeedTags(Placed("work", "a1"), Placed("home", "a0"));
+        f.SeedTags(Placed("work", "a1"), Placed("my-home", "a0"));
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Equal(["New", "HOME", "Work"], Order.Sort(["Work", "HOME", "New"]));
+        Assert.Equal(["new", "my-home", "work"], Order.Sort(["Work", "My  Home", "New"]));
+    }
+
+    [Fact]
+    public void Drops_a_repeated_tag_keeping_its_first_place_in_the_input_and_orders_the_rest()
+    {
+        f.Tasks.UseRepositoryFolder(f.Clone);
+
+        Assert.Equal(["a", "b"], Order.Sort(["B", "a", "b", " A "]));
     }
 
     [Fact]
@@ -97,20 +106,11 @@ public sealed class TagOrderSortTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData(" padded ")]
-    [InlineData("two\nlines")]
-    public void Refuses_to_sort_an_invalid_tag(string tag)
+    [InlineData(" \r\n ")]
+    public void Refuses_to_sort_a_tag_that_is_empty_once_normalized(string tag)
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
         Assert.ThrowsAny<ArgumentException>(() => Order.Sort(["ok", tag]));
-    }
-
-    [Fact]
-    public void Refuses_to_sort_the_same_tag_twice_ignoring_case()
-    {
-        f.Tasks.UseRepositoryFolder(f.Clone);
-
-        Assert.ThrowsAny<ArgumentException>(() => Order.Sort(["Work", "work"]));
     }
 }

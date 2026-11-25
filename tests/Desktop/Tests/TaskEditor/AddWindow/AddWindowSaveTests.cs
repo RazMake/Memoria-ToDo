@@ -40,7 +40,7 @@ public class AddWindowSaveTests
         var saved = Assert.Single(screen.Saved);
         Assert.Equal("Buy milk", saved.Title);
         Assert.Equal("Two litres", saved.Description);
-        Assert.Equal(["errand"], saved.Tags);
+        Assert.Equal(["home", "errand"], saved.Tags);
         Assert.False(screen.IsShowing);
         Assert.Null(screen.KeptDraft);
 
@@ -68,7 +68,7 @@ public class AddWindowSaveTests
         Assert.Equal("", screen.TypedTag);
 
         screen.Fill("   ", "A description");
-        screen.Focus(EditorFields.TagPill);
+        screen.Focus(EditorFields.AddTagPill);
         screen.ClickSave();
 
         Assert.Empty(screen.Saved);
@@ -86,7 +86,7 @@ public class AddWindowSaveTests
         Assert.Equal(["errand"], screen.Editor.Value.Tags);
 
         screen.Fill("Buy milk", "Two litres", "home");
-        screen.Focus(EditorFields.TagPill);
+        screen.Focus(EditorFields.AddTagPill);
         screen.SaveAndClear();
 
         Assert.Equal("Buy milk", Assert.Single(screen.Saved).Title);
@@ -152,7 +152,7 @@ public class AddWindowSaveTests
 
         screen.Services.SaveKeys.Set(ModifierKeys.Shift, Key.Escape);
         var count = 2;
-        foreach (var field in new[] { EditorFields.Title, EditorFields.Description, EditorFields.TagPill })
+        foreach (var field in new[] { EditorFields.Title, EditorFields.Description, EditorFields.AddTagPill })
         {
             screen.Show();
             screen.Fill("Via " + field);
@@ -226,6 +226,7 @@ public class AddWindowSaveTests
             sequence.FindIndex(e => IsInside(e, EditorFields.Field(screen.Window, EditorFields.Description))),
             sequence.FindIndex(e => e == TagControls.PillButton(screen.Window)),
             sequence.FindIndex(e => e == TagControls.ClearButton(screen.Window)),
+            sequence.FindIndex(e => e == TagControls.AddPill(screen.Window)),
             sequence.FindIndex(e => e == screen.SaveButton),
         };
         Assert.DoesNotContain(-1, order);

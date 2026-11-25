@@ -12,15 +12,8 @@ internal sealed partial class TaskService
         public IReadOnlyList<string> Sort(IReadOnlyCollection<string> tags)
         {
             ArgumentNullException.ThrowIfNull(tags);
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var tag in tags)
-            {
-                RequireTag(tag, nameof(tags));
-                if (!seen.Add(tag))
-                    throw new ArgumentException($"The tag '{tag}' is there twice.", nameof(tags));
-            }
-
-            return owner.repository.Locked(_ => owner.tagColors.Value.Sort(tags));
+            var normalized = TagList.Normalized(tags, nameof(tags));
+            return owner.repository.Locked(_ => owner.tagColors.Value.Sort(normalized));
         }
 
         public event EventHandler? Changed
@@ -31,11 +24,11 @@ internal sealed partial class TaskService
 
         public void Move(string tag, string? previousTag, string? nextTag)
         {
-            RequireTag(tag, nameof(tag));
+            tag = RequireTag(tag, nameof(tag));
             if (previousTag is not null)
-                RequireNeighbor(previousTag, tag, nameof(previousTag));
+                previousTag = RequireNeighbor(previousTag, tag, nameof(previousTag));
             if (nextTag is not null)
-                RequireNeighbor(nextTag, tag, nameof(nextTag));
+                nextTag = RequireNeighbor(nextTag, tag, nameof(nextTag));
             var written = false;
             owner.repository.LockedChange(clone =>
             {
@@ -56,18 +49,14 @@ internal sealed partial class TaskService
             }
         }
 
-        private static void RequireTag(string tag, string paramName)
-        {
-            ArgumentNullException.ThrowIfNull(tag, paramName);
-            if (!TaskText.IsStoredTag(tag))
-                throw new ArgumentException("Must be one non-empty line with no spaces around it.", paramName);
-        }
+        /// <summary>The normalized tag. Throws <see cref="ArgumentException"/> when it's empty once normalized.</summary>
+        private static string RequireTag(string tag, string paramName) =>
+            TagList.Normalized([tag], paramName)[0];
 
-        private static void RequireNeighbor(string neighbor, string tag, string paramName)
+        private static string RequireNeighbor(string neighbor, string tag, string paramName)
         {
-            RequireTag(neighbor, paramName);
-            if (string.Equals(neighbor, tag, StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("A tag can't be its own neighbor.", paramName);
+            var normalized = RequireTag(neighbor, paramName);
+            return normalized == tag ? throw new ArgumentException("A tag can't be its own neighbor.", paramName) : normalized;
         }
     }
 }

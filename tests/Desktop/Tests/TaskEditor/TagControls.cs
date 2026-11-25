@@ -12,9 +12,11 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 /// <summary>
 /// How tests find and read the tag parts, by automation id, so they don't depend on the controls the parts are built from.
 /// A badge (read-only, in TagBadges and a group heading) is the element with id <c>Badge {tag}</c>: its background is the
-/// color's value and the text block in it has the color's text color. The tag control is one pill, the focusable element with
-/// id <c>TagPill</c>: it holds one text block, the tag or the words "No tag", and, with a tag, paints the tag's color. Its x is a
-/// separate focusable button with id <c>ClearTag</c>, which exists only while the task has a tag. The menu is a
+/// color's value and the text block in it has the color's text color. The tag control is a row of pills. The pill of a tag is
+/// the focusable button with id <c>TagPill {tag}</c>: it holds one text block, the tag, and paints the tag's color. Its x is a
+/// separate focusable button with id <c>ClearTag {tag}</c>. After them comes the add pill, the focusable button with id
+/// <c>AddTagPill</c>, which says "No tag" or "+". The pills are in the order they show, left to right and line by line, whatever
+/// order the controls were added in. The menu is a
 /// popup whose content has id <c>TagMenu</c> and is showing only while open; its items are buttons with ids <c>MenuTag {tag}</c>
 /// and <c>MenuCustom</c>, and the Search box, a text box labeled "Search:", has id <c>MenuSearch</c>. The matches submenu is a
 /// popup whose content has id <c>SearchMatches</c>, showing only while Search holds text; its items are buttons with ids
@@ -24,8 +26,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor.Tests;
 /// </summary>
 internal static class TagControls
 {
-    public const string Pill = EditorFields.TagPill;
-    public const string ClearTag = EditorFields.ClearTag;
+    public const string AddPillId = EditorFields.AddTagPill;
     public const string Menu = "TagMenu";
     public const string MenuCustom = "MenuCustom";
     public const string MenuSearch = "MenuSearch";
@@ -34,6 +35,8 @@ internal static class TagControls
     public const string ColorGrid = "TagColorGrid";
 
     private const string BadgePrefix = "Badge ";
+    private const string PillPrefix = EditorFields.TagPill + " ";
+    private const string ClearPrefix = EditorFields.ClearTag + " ";
     private const string RemovePrefix = "Remove ";
     private const string MenuTagPrefix = "MenuTag ";
     private const string SearchMatchPrefix = "SearchMatch ";
@@ -74,28 +77,84 @@ internal static class TagControls
     public static IReadOnlyList<string> RemovableTags(DependencyObject root) =>
         [.. WithIdPrefix(root, RemovePrefix).Select(element => IdOf(element)[RemovePrefix.Length..])];
 
-    /// <summary>The pill of the tag control below <paramref name="root"/>.</summary>
-    public static Button PillButton(DependencyObject root) => (Button)Part(root, Pill);
+    /// <summary>The tags of the pills below <paramref name="root"/>, in the order the pills show: line by line, left to right.</summary>
+    public static IReadOnlyList<string> PillTags(DependencyObject root) =>
+    [
+        .. WithIdPrefix(root, PillPrefix).OfType<Button>()
+            .OrderBy(pill => Math.Round(Corner(root, pill).Y)).ThenBy(pill => Corner(root, pill).X)
+            .Select(pill => IdOf(pill)[PillPrefix.Length..]),
+    ];
 
-    /// <summary>The words the pill shows: the tag, or "No tag".</summary>
-    public static string PillText(DependencyObject root) =>
-        OpenWindows.TextOf(Visuals(PillButton(root)).OfType<TextBlock>().First(block => block.Text.Length > 0));
+    /// <summary>The id of the tag's pill, the element the keyboard focus is on while the cursor is in that pill.</summary>
+    public static string PillId(string tag) => PillPrefix + tag;
 
-    /// <summary>The x that clears the tag. Throws when the task has no tag, so it isn't there.</summary>
-    public static Button ClearButton(DependencyObject root) => (Button)Part(root, ClearTag);
+    /// <summary>The id of the x of the tag's pill.</summary>
+    public static string ClearId(string tag) => ClearPrefix + tag;
 
-    /// <summary>Whether the pill shows an x, which it does only while the task has a tag.</summary>
-    public static bool HasClearButton(DependencyObject root) => TextFields.FindShowing(root, ClearTag) is not null;
+    /// <summary>The pill of the tag.</summary>
+    public static Button TagPill(DependencyObject root, string tag) => (Button)Part(root, PillPrefix + tag);
 
-    /// <summary>The tag the pill shows, or null when it shows "No tag" and no x.</summary>
-    public static string? PillTag(DependencyObject root) => HasClearButton(root) ? PillText(root) : null;
+    /// <summary>The x of the tag's pill, which removes the tag.</summary>
+    public static Button ClearButton(DependencyObject root, string tag) => (Button)Part(root, ClearPrefix + tag);
 
-    /// <summary>The value and text color the pill paints now, as "#rrggbb".</summary>
-    public static TagFill PillFill(DependencyObject root)
+    /// <summary>The add pill, after the last tag's.</summary>
+    public static Button AddPill(DependencyObject root) => (Button)Part(root, AddPillId);
+
+    /// <summary>The words the add pill shows: "No tag" or "+".</summary>
+    public static string AddPillText(DependencyObject root) => TextOfPill(AddPill(root));
+
+    /// <summary>The size the pill shows, with any scaling it or its parents apply: the distance between its corners, in the coordinates of <paramref name="root"/>.</summary>
+    public static Size ShownSize(DependencyObject root, FrameworkElement element)
     {
-        var pill = PillButton(root);
+        Layout(root);
+        var visual = (Visual)root;
+        var start = element.TransformToAncestor(visual).Transform(new Point(0, 0));
+        var end = element.TransformToAncestor(visual).Transform(new Point(element.ActualWidth, element.ActualHeight));
+        return new Size(end.X - start.X, end.Y - start.Y);
+    }
+
+    /// <summary>The middle of the element, in the coordinates of <paramref name="root"/>, which is the control the tests hand the fake pointer's positions in.</summary>
+    public static Point CenterIn(UIElement root, FrameworkElement element)
+    {
+        root.UpdateLayout();
+        return element.TranslatePoint(new Point(element.ActualWidth / 2, element.ActualHeight / 2), root);
+    }
+
+    /// <summary>The first tag's pill, or the add pill when the task has no tag: the one pill a task with at most one tag has had.</summary>
+    public static Button PillButton(DependencyObject root) =>
+        PillTags(root) is [var first, ..] ? TagPill(root, first) : AddPill(root);
+
+    /// <summary>The words the first pill shows: the first tag, or the add pill's.</summary>
+    public static string PillText(DependencyObject root) => TextOfPill(PillButton(root));
+
+    /// <summary>The x of the first tag's pill. Throws when the task has no tag.</summary>
+    public static Button ClearButton(DependencyObject root) => ClearButton(root, PillTags(root)[0]);
+
+    /// <summary>Whether the task has a tag, so its first pill has an x.</summary>
+    public static bool HasClearButton(DependencyObject root) => PillTags(root).Count > 0;
+
+    /// <summary>The first tag, or null when the task has none and the add pill shows "No tag".</summary>
+    public static string? PillTag(DependencyObject root) => PillTags(root).FirstOrDefault();
+
+    /// <summary>The value and text color the first pill paints now, as "#rrggbb".</summary>
+    public static TagFill PillFill(DependencyObject root) => FillOfPill(PillButton(root));
+
+    /// <summary>The value and text color the tag's pill paints now, as "#rrggbb".</summary>
+    public static TagFill PillFill(DependencyObject root, string tag) => FillOfPill(TagPill(root, tag));
+
+    private static TagFill FillOfPill(Button pill)
+    {
         var text = Visuals(pill).OfType<TextBlock>().FirstOrDefault(block => block.Text.Length > 0)?.Foreground ?? pill.Foreground;
         return new TagFill(Hex(pill.Background), Hex(text));
+    }
+
+    private static string TextOfPill(Button pill) =>
+        OpenWindows.TextOf(Visuals(pill).OfType<TextBlock>().First(block => block.Text.Length > 0));
+
+    private static Point Corner(DependencyObject root, FrameworkElement element)
+    {
+        Layout(root);
+        return element.TransformToAncestor((Visual)root).Transform(new Point(0, 0));
     }
 
     /// <summary>Whether the menu is showing.</summary>
@@ -107,7 +166,9 @@ internal static class TagControls
     /// </summary>
     public static bool MenuPopupIsOpen(DependencyObject root) =>
         OpenWindows.Descendants(root).OfType<Popup>()
-            .Single(popup => popup.PlacementTarget is { } target && AutomationProperties.GetAutomationId(target) == Pill).IsOpen;
+            .Single(popup => popup.PlacementTarget is { } target && IsPill(AutomationProperties.GetAutomationId(target))).IsOpen;
+
+    private static bool IsPill(string id) => id == AddPillId || id.StartsWith(PillPrefix, StringComparison.Ordinal);
 
     /// <summary>The tags the open menu lists, in order; empty while it is closed.</summary>
     public static IReadOnlyList<string> MenuTags(DependencyObject root) =>

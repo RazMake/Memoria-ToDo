@@ -12,7 +12,7 @@ internal sealed partial class TaskService
         public string? ColorOf(string tag)
         {
             ArgumentNullException.ThrowIfNull(tag);
-            return owner.repository.Locked(_ => owner.tagColors.Failure is null ? owner.tagColors.Value.Find(tag)?.Color?.Value : null);
+            return owner.repository.Locked(_ => owner.tagColors.Failure is null ? owner.tagColors.Value.Find(TagName.Normalize(tag))?.Color?.Value : null);
         }
 
         public event EventHandler? Changed
@@ -25,8 +25,9 @@ internal sealed partial class TaskService
         {
             ArgumentNullException.ThrowIfNull(tag);
             ArgumentNullException.ThrowIfNull(colorName);
-            if (!TaskText.IsStoredTag(tag))
-                throw new ArgumentException("Must be one non-empty line with no spaces around it.", nameof(tag));
+            tag = TagName.Normalize(tag);
+            if (tag.Length == 0)
+                throw new ArgumentException("A tag can't be empty.", nameof(tag));
             if (!TaskText.IsSingleLine(colorName))
                 throw new ArgumentException("Must be one non-empty line.", nameof(colorName));
             var written = false;

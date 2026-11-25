@@ -12,13 +12,13 @@ Memoria.ToDo.Desktop.TaskEditor.IClipboard.Text() -> string?
 Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser
 Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser.Choose() -> string?
 Memoria.ToDo.Desktop.TaskEditor.TagEditor
-Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme, Serilog.ILogger! logger) -> void
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.Platform.IPointerPosition! pointer, Serilog.ILogger! logger) -> void
 const Memoria.ToDo.Desktop.TaskEditor.TagEditor.NoTagText = "No tag" -> string!
-Memoria.ToDo.Desktop.TaskEditor.TagEditor.TaskTag.get -> string?
-Memoria.ToDo.Desktop.TaskEditor.TagEditor.TaskTag.set -> void
-Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagChanged -> System.EventHandler<string?>?
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.TaskTags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.TaskTags.set -> void
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagsChanged -> System.EventHandler<System.Collections.Generic.IReadOnlyList<string!>!>?
 Memoria.ToDo.Desktop.TaskEditor.TagEditor.CloseEdit() -> bool
-Memoria.ToDo.Desktop.TaskEditor.TagEditor.ChooseTypedText() -> void
+Memoria.ToDo.Desktop.TaskEditor.TagEditor.ChooseTypedText() -> bool
 Memoria.ToDo.Desktop.TaskEditor.TagBadges
 Memoria.ToDo.Desktop.TaskEditor.TagBadges.TagBadges(Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme) -> void
 Memoria.ToDo.Desktop.TaskEditor.TagBadges.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!

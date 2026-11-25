@@ -124,7 +124,7 @@ internal sealed class EditorServices
         public DescriptionEditor CreateDescriptionEditor() => new(Tasks, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys, Pointer, Serilog.Core.Logger.None);
 
     /// <summary>The tag control over this Tasks, these tag colors, and this theme.</summary>
-        public TagEditor CreateTagEditor() => new(Tasks, TagColors, Theme, Serilog.Core.Logger.None);
+    public TagEditor CreateTagEditor() => new(Tasks, TagColors, Theme, Pointer, Serilog.Core.Logger.None);
 
     public TagBadges CreateTagBadges() => new(TagColors, Theme);
 

@@ -15,26 +15,27 @@ public sealed class DirectAddTests
     private IDirectTaskChanges Direct => f.Store.Direct;
 
     [Fact]
-    public void Adds_an_open_task_with_the_given_title_description_and_tag()
+    public void Adds_an_open_task_with_the_given_title_description_and_tags()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var task = Direct.Add("  Buy milk  ", "Two liters", "home");
+        var task = Direct.Add("  Buy milk  ", "Two liters", ["home", "errand"]);
 
         Assert.Equal("Buy milk", task.Title);
         Assert.Equal("Two liters", task.Description);
-        Assert.Equal(["home"], task.Tags);
+        Assert.Equal(["home", "errand"], task.Tags);
+        Assert.Equal("home", task.GroupTag);
         Assert.Null(task.Resolved);
         Assert.True(Guid.TryParseExact(task.Id, "D", out _));
         TaskAssert.SameTask(task, Assert.Single(f.Tasks.All));
     }
 
     [Fact]
-    public void Adds_a_task_with_no_tag_when_the_tag_is_null()
+    public void Adds_a_task_with_no_tag_when_the_list_is_empty()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Empty(Direct.Add("No tag", "", null).Tags);
+        Assert.Empty(Direct.Add("No tag", "", []).Tags);
     }
 
     [Fact]
@@ -42,7 +43,7 @@ public sealed class DirectAddTests
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var task = Direct.Add("Timed", "", null);
+        var task = Direct.Add("Timed", "", []);
 
         Assert.Equal(TasksFixture.Start, task.Created);
         Assert.Equal(TasksFixture.Start, task.Updated);
@@ -53,7 +54,7 @@ public sealed class DirectAddTests
     {
         f.SeedAndUse(TasksFixture.Id(1), "Old", rank: "a0");
 
-        var task = Direct.Add("New", "", null);
+        var task = Direct.Add("New", "", []);
 
         Assert.Equal([task.Id, TasksFixture.Id(1)], f.Ids);
         Assert.True(string.CompareOrdinal(task.Rank, "a0") < 0, task.Rank);
@@ -64,8 +65,8 @@ public sealed class DirectAddTests
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var first = Direct.Add("One", "", null);
-        var second = Direct.Add("Two", "", null);
+        var first = Direct.Add("One", "", []);
+        var second = Direct.Add("Two", "", []);
 
         Assert.NotEqual(first.Id, second.Id);
     }
@@ -75,7 +76,7 @@ public sealed class DirectAddTests
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var task = Direct.Add("Stored", "one\r\ntwo", null);
+        var task = Direct.Add("Stored", "one\r\ntwo", []);
 
         Assert.Equal("one\ntwo", task.Description);
         using var json = f.ReadJson(f.TaskFile(task.Id));
@@ -90,25 +91,29 @@ public sealed class DirectAddTests
         var changes = f.CountChanges();
         var saves = f.CountLocalSaves();
 
-        Direct.Add("Announced", "", null);
+        Direct.Add("Announced", "", []);
 
         Assert.Equal(1, changes.Count);
         Assert.Equal(1, saves.Count);
     }
 
     [Fact]
-    public void Trims_the_tag()
+    public void Normalizes_the_tags_and_drops_repeats_keeping_the_first_place()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        Assert.Equal(["work"], Direct.Add("T", "", "  work ").Tags);
+        var task = Direct.Add("T", "", ["  Work ", "My  Home", "WORK", "my-home", "to\ndo"]);
+
+        Assert.Equal(["work", "my-home", "to-do"], task.Tags);
+        using var json = f.ReadJson(f.TaskFile(task.Id));
+        Assert.Equal(["work", "my-home", "to-do"], json.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetString()));
     }
 
     [Fact]
     public void Keeps_the_task_after_the_app_restarts()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
-        var task = Direct.Add("Persistent", "body", "tag");
+        var task = Direct.Add("Persistent", "body", ["tag", "other"]);
 
         var again = f.Restarted();
         again.UseRepositoryFolder(f.Clone);
@@ -121,7 +126,7 @@ public sealed class DirectAddTests
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
 
-        var task = Direct.Add("Alone", "", null);
+        var task = Direct.Add("Alone", "", []);
 
         Assert.Equal([f.TaskFile(task.Id)], f.Files.AllFilesUnder(f.Clone));
     }
@@ -132,7 +137,7 @@ public sealed class DirectAddTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var before = f.Logs.Events.Count;
 
-        var task = Direct.Add("Buy milk", "", null);
+        var task = Direct.Add("Buy milk", "", []);
 
         f.Logs.After(before).SingleAt(LogEventLevel.Information, task.Id, "Buy milk");
     }
@@ -146,7 +151,7 @@ public sealed class DirectAddTests
         f.Tasks.KeepDraft(draft);
         var draftFilesBefore = f.DeviceSnapshot();
 
-        Direct.Add("Direct", "", null);
+        Direct.Add("Direct", "", []);
 
         f.AssertDraftKept(draft);
         Assert.Equal(draftFilesBefore, f.DeviceSnapshot());
@@ -160,7 +165,7 @@ public sealed class DirectAddTests
         f.Tasks.SaveImage(edited, TasksFixture.TinyPng(), "pic");
         var deviceBefore = f.DeviceSnapshot();
 
-        Direct.Add("Direct", "", null);
+        Direct.Add("Direct", "", []);
 
         Assert.Equal(deviceBefore, f.DeviceSnapshot());
     }
@@ -175,47 +180,63 @@ public sealed class DirectAddTests
         f.Tasks.UseRepositoryFolder(f.Clone);
         var before = f.Snapshot();
 
-        Assert.ThrowsAny<ArgumentException>(() => Direct.Add(title, "", null));
+        Assert.ThrowsAny<ArgumentException>(() => Direct.Add(title, "", []));
+
+        Assert.Equal(before, f.Snapshot());
+        Assert.Empty(f.Tasks.All);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(" \r\n ")]
+    public void Refuses_a_tag_that_is_empty_once_normalized_and_writes_nothing(string tag)
+    {
+        f.Tasks.UseRepositoryFolder(f.Clone);
+        var before = f.Snapshot();
+
+        Assert.ThrowsAny<ArgumentException>(() => Direct.Add("Title", "", ["work", tag]));
 
         Assert.Equal(before, f.Snapshot());
         Assert.Empty(f.Tasks.All);
     }
 
     [Fact]
-    public void Adds_a_task_with_no_tag_when_the_tag_is_empty()
+    public void Adds_a_task_with_fifteen_tags()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
+        var tags = Enumerable.Range(1, 15).Select(n => $"tag{n}").ToArray();
 
-        Assert.Empty(Direct.Add("Empty tag", "", "").Tags);
+        Assert.Equal(tags, Direct.Add("Many", "", tags).Tags);
     }
 
     [Fact]
-    public void Refuses_a_tag_that_is_only_whitespace_and_writes_nothing()
+    public void Refuses_more_than_fifteen_tags_and_writes_nothing()
     {
         f.Tasks.UseRepositoryFolder(f.Clone);
         var before = f.Snapshot();
+        var changes = f.CountChanges();
 
-        Assert.ThrowsAny<ArgumentException>(() => Direct.Add("Title", "", "   "));
-
-        Assert.Equal(before, f.Snapshot());
-    }
-
-    [Fact]
-    public void Refuses_a_tag_with_a_line_break_and_writes_nothing()
-    {
-        f.Tasks.UseRepositoryFolder(f.Clone);
-        var before = f.Snapshot();
-
-        Assert.ThrowsAny<ArgumentException>(() => Direct.Add("Title", "", "two\nlines"));
+        Assert.Throws<ArgumentException>(() => Direct.Add("Too many", "", Enumerable.Range(1, 16).Select(n => $"tag{n}").ToArray()));
 
         Assert.Equal(before, f.Snapshot());
         Assert.Empty(f.Tasks.All);
+        Assert.Equal(0, changes.Count);
+    }
+
+    [Fact]
+    public void Counts_the_fifteen_tags_after_dropping_repeats()
+    {
+        f.Tasks.UseRepositoryFolder(f.Clone);
+        var tags = Enumerable.Range(1, 15).Select(n => $"tag{n}").Append("TAG1").ToArray();
+
+        Assert.Equal(15, Direct.Add("Many", "", tags).Tags.Count);
     }
 
     [Fact]
     public void Refuses_to_add_when_no_folder_is_set_and_writes_nothing()
     {
-        Assert.Throws<NoRepositoryFolderException>(() => Direct.Add("Nowhere", "", null));
+        Assert.Throws<NoRepositoryFolderException>(() => Direct.Add("Nowhere", "", []));
 
         Assert.Empty(f.Files.AllFilesUnder(f.Clone));
     }
@@ -227,7 +248,7 @@ public sealed class DirectAddTests
         f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
         var changes = f.CountChanges();
 
-        Assert.Throws<IOException>(() => Direct.Add("Unwritable", "", null));
+        Assert.Throws<IOException>(() => Direct.Add("Unwritable", "", []));
 
         Assert.Empty(f.Tasks.All);
         Assert.Equal(0, changes.Count);

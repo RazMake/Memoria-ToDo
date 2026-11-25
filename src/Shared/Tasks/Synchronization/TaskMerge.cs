@@ -54,15 +54,15 @@ internal static class TaskMerge
         return localChanged ? local : remote;
     }
 
-    /// <summary>Two tag lists are the same when they hold the same tags in the same order, ignoring case.</summary>
+    /// <summary>Two tag lists are the same when they hold the same tags in the same order. Tags are normalized when read, so they compare ordinally.</summary>
     private sealed class TagListComparer : IEqualityComparer<IReadOnlyList<string>>
     {
         public static readonly TagListComparer Instance = new();
 
         public bool Equals(IReadOnlyList<string>? x, IReadOnlyList<string>? y) =>
-            ReferenceEquals(x, y) || x is not null && y is not null && x.SequenceEqual(y, StringComparer.OrdinalIgnoreCase);
+            ReferenceEquals(x, y) || x is not null && y is not null && x.SequenceEqual(y);
 
         public int GetHashCode(IReadOnlyList<string> tags) =>
-            tags.Aggregate(0, (hash, tag) => HashCode.Combine(hash, StringComparer.OrdinalIgnoreCase.GetHashCode(tag)));
+            tags.Aggregate(0, (hash, tag) => HashCode.Combine(hash, tag));
     }
 }
