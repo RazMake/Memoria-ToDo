@@ -1,4 +1,4 @@
-# Plans, tests, tags, then publishes one release. Started by hand, by the release command.
+# Plans, tests, tags, then publishes one release. Started from Actions or the optional release command.
 # Design: docs/architecture/releasing.md, "A release run plans, tests, tags, then publishes".
 name: Test then Tag and Release
 

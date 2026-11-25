@@ -1,8 +1,10 @@
-# Builds and runs every test kind, and publishes nothing. Started by hand, or called by the release workflow.
-# Design: docs/architecture/releasing.md, "Three workflows, one for pushes, two you start by hand".
+# Builds and runs every test kind without publishing.
+# Design: docs/architecture/releasing.md, "Every push to main runs every test".
 name: Run All tests
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   workflow_call:
 

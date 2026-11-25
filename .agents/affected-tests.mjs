@@ -436,7 +436,7 @@ export function formatPlan(plan) {
   if (plan.commands.length) lines.push('Commands:', ...plan.commands);
   else lines.push('No tests to run');
   if (plan.cloud.length) {
-    lines.push(`Only the cloud checks: ${plan.cloud.join(', ')}`, 'Push the branch, then start Run All tests with node .agents/run-all-tests.mjs, or the run all tests task, to check it.');
+    lines.push(`Only the cloud checks: ${plan.cloud.join(', ')}`, "Check Run All tests for the pushed commit on GitHub's Actions page, or start it with node .agents/run-all-tests.mjs.");
   }
   return `${lines.join('\n')}\n`;
 }

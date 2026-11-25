@@ -58,7 +58,7 @@ export async function run(args, { interactive, ask, write, waitForGitHub, git, f
       return { code: 0, stderr: '' };
     }
     if (args.length > 1 || (args.length === 1 && !parts.includes(args[0]))) throw new Error(usage);
-    if (!interactive) throw new Error('Run the release command in an interactive terminal, or use the VS Code "release a version" task.');
+    if (!interactive) throw new Error('Start the release from the GitHub Actions page (see docs/architecture/releasing.md), or run this command in an interactive terminal.');
     const part = args[0] ?? ((await ask(`Version part (${parts.join('/')}; Enter for ${defaultPart}): `)).trim() || defaultPart);
     if (!parts.includes(part)) throw new Error(usage);
 

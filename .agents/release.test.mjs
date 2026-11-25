@@ -80,9 +80,12 @@ describe('release command: preparing (unit)', () => {
     });
   }
 
-  test('names the interactive terminal and the VS Code task when input is redirected', async () => {
+  test('names the interactive terminal and the GitHub Actions way to release when input is redirected', async () => {
     const s = session({ services: { interactive: false } });
-    assert.match((await run([], s.services)).stderr, /interactive terminal/i);
+    const { stderr } = await run([], s.services);
+    assert.match(stderr, /interactive terminal/i);
+    assert.match(stderr, /GitHub Actions/i);
+    assert.doesNotMatch(stderr, /VS Code "release a version" task/i);
   });
 
   for (const part of ['major', 'minor', 'patch']) {

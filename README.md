@@ -11,8 +11,8 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
 | See what changed in each version, or add an entry | [Changelog](CHANGELOG.md), and [how to write it](docs/contributing/changelog.md) |
 | Let an AI assistant use the desktop app | [Connect an AI assistant](docs/user/connect-an-ai-assistant.md) |
 | Run the desktop app with F5 | [What you need](#what-you-need) |
-| Publish a version with one guided command | [Release a version](docs/architecture/releasing.md) |
-| Run every test in the cloud, without releasing | [The Run All tests command](docs/architecture/releasing.md#the-run-all-tests-command-tests-the-commit-you-pushed) |
+| Publish a version from GitHub's Actions page | [Release a version](docs/architecture/releasing.md) |
+| Run every test in the cloud, without releasing | [Start Run All tests](docs/architecture/releasing.md#start-a-release-or-an-extra-test-run-from-github) |
 | Clear a version tag | [How a version tag is made and cleared](docs/architecture/version-tags.md) |
 
 ## What you need
@@ -33,7 +33,7 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
   ```
 
 - **Git on `PATH`**, for [Sync's integration tests](docs/architecture/technology-stack.md#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), which run it behind their own SSH server, and for the version tag script. Its version isn't pinned.
-- **GitHub CLI (`gh`)**, signed in with `gh auth login`, to [release a version](docs/architecture/releasing.md) or run every test in the cloud. Both commands explain missing sign-in.
+- **GitHub CLI (`gh`)** for the **open GitHub Actions** shortcut and optional [terminal commands](docs/architecture/releasing.md). The commands need sign-in with `gh auth login`; releasing from GitHub's page needs only your browser.
 - **Visual Studio Code with the [C# extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp)** (`ms-dotnettools.csharp`). F5 builds and runs the desktop app with the debugger, and Ctrl+F5 runs it without. Both use the pinned SDK. Code completion needs Visual Studio Code to find that SDK on `PATH`, so start it from the repository root like this ([why](docs/architecture/technology-stack.md#visual-studio-code-runs-the-desktop-app-with-f5-on-the-pinned-sdk)):
 
   ```powershell

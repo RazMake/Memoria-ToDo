@@ -616,11 +616,13 @@ describe('the printed plan (unit)', () => {
     assert.ok(!text.includes('No tests to run'));
   });
 
-  test('says that only the cloud checks a changed workflow file, and to start Run All tests with the command or the task', () => {
+  test('says that only the cloud checks a changed workflow file, and to check Run All tests on the Actions page or start it with the command', () => {
     const text = formatPlan(plan(modified('.github/workflows/ci.yml')));
     assert.ok(text.includes('.github/workflows/ci.yml'));
     assert.ok(text.includes('node .agents/run-all-tests.mjs'), text);
-    assert.match(text, /run all tests/);
+    assert.match(text, /run all tests/i);
+    assert.match(text, /actions page/i);
+    assert.doesNotMatch(text, /\brun all tests task\b/i);
     assert.doesNotMatch(text, /Start the manual run/);
   });
 

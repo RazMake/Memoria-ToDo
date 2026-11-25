@@ -1,24 +1,42 @@
-# How you release a version with one command
+# How you release a version and run every test on GitHub
 
 Status: Decided
 
-Run `node .agents\release.mjs`, or choose **Tasks: Run Task > release a version** in VS Code. The [release command](../../.agents/release.mjs) previews the next version tag, asks you once, then starts **Test then Tag and Release** on GitHub, which runs every test, tags the tested commit, and publishes. The command follows that run, downloads the installer, and guides your manual checks. To run every test without releasing, start **Run All tests** with `node .agents\run-all-tests.mjs` or the **run all tests** task.
+Push to `main` to run every test automatically. To release, open the repository's **Actions** page and start **Test then Tag and Release** on `main`. It tests the commit or reuses its passed full run, then tags and publishes it. In VS Code, **Tasks: Run Task > open GitHub Actions** opens that page. The [terminal commands](#the-release-command-previews-asks-once-then-follows-the-run) remain optional.
 
 ## Behavior
 
-You decided this design on November 23, 2026. This page owns the two workflows you start by hand and the commands that start them. The [technology stack](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) owns what all workflows share and the release steps, and [version tags](version-tags.md) own the tag. The commands are repository tooling, not an app module.
+This page owns Run All tests, Test then Tag and Release, their VS Code shortcut, and the optional commands that start them. The [technology stack](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) owns what all workflows share and the release steps, and [version tags](version-tags.md) own the tag. The commands are repository tooling, not an app module.
 
-### Three workflows: one for pushes, two you start by hand
+### Three workflows: unit tests on each push, every test on main, releases by hand
 
 The table lists them:
 
 | File | Name on the Actions page | Starts on | What it does |
 | --- | --- | --- | --- |
 | `build.yml` | Build and unit tests | Each branch push | Builds and runs the unit tests, and [times](technology-stack.md#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue) the default branch's run |
-| `all-tests.yml` | Run All tests | **Run workflow** on any pushed branch or tag, or a call from `release.yml` | Its `full-tests` job, the one home of the full-test steps: the [desktop check](technology-stack.md#agents-check-the-desktop-before-they-start-screen-tests), then the [full-suite command](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-kind-of-test). When tests fail, it keeps only their [reports](technology-stack.md#a-failed-real-pointer-move-reports-what-each-step-saw). It publishes nothing. |
+| `all-tests.yml` | Run All tests | [Each push to `main`](#every-push-to-main-runs-every-test), **Run workflow** on any pushed branch or tag, or a call from `release.yml` | Its `full-tests` job, the one home of the full-test steps: the [desktop check](technology-stack.md#agents-check-the-desktop-before-they-start-screen-tests), then the [full-suite command](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-kind-of-test). When tests fail, it keeps only their [reports](technology-stack.md#a-failed-real-pointer-move-reports-what-each-step-saw). It publishes nothing. |
 | `release.yml` | Test then Tag and Release | **Run workflow** on the default branch | Plans, tests, tags, and publishes, [below](#a-release-run-plans-tests-tags-then-publishes). The only way a version is published. |
 
 No workflow starts on a tag, so a version tag pushed any other way, such as with `git tag`, publishes nothing.
+
+### Every push to main runs every test
+
+A push to `main`, including a merged pull request, starts Run All tests on the pushed commit. Other branches' pushes still start only Build and unit tests. No pull-request trigger is added.
+
+- **The trigger filters on `main`**, so other branches and tag pushes create no full-test run. If the default branch is renamed, update that filter too.
+- **A newer push does not cancel an earlier run.** Each push keeps its own result.
+- **Unit tests run in both workflows on `main`.** Build and unit tests keeps its [timing check](technology-stack.md#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue); Run All tests keeps every test kind.
+
+### Start a release or an extra test run from GitHub
+
+Open the repository's **Actions** page. Starting a workflow needs repository write access, not admin access ([GitHub's instructions](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)).
+
+| To | Do this |
+| --- | --- |
+| Release a version | Select **Test then Tag and Release**, choose **Run workflow** on `main`, enter a `part` or leave it empty, and leave `tag` and `commit` empty. Starting the run approves publishing: Plan shows the tag in its log, and the run does not pause to ask again. |
+| Run every test without releasing | A push to `main` does this automatically. For an extra run on any pushed branch or tag, select **Run All tests** and choose **Run workflow**. |
+| Investigate a failed release | Open the failed job's log, then use the [failure table](#a-failed-release-run-leaves-a-tag-only-once-tag-passed). |
 
 ### A release run plans, tests, tags, then publishes
 
@@ -47,8 +65,8 @@ Its four jobs run in order:
 
 You decided on November 22, 2026, that a release never runs the same tests twice on one commit, and kept it on November 23. Plan runs the [run check](../../.agents/full-run-check.mjs), the rule's one home. Each point below is a decision to confirm:
 
-- **A pass is the newest Run All tests run of that exact commit, started with Run workflow, whose newest attempt passed, `full-tests` job included.** It may have run on any branch or tag, since the commit fixes both the code and the workflow files.
-- **An unfinished or failed newest run isn't a pass**, so Tests runs every test itself. Plan never waits for another run.
+- **A pass is the newest Run All tests run of that exact commit, started by `push` or `workflow_dispatch`, whose newest attempt passed, `full-tests` job included.** Automatic and manual runs are considered together. Other events never count; adding a trigger later does not silently make its runs eligible.
+- **An unfinished or failed newest eligible run isn't a pass**, so Tests runs every test itself. Plan never waits for another run. To reuse the automatic run, start the release after that run passes.
 - **A release run's own Tests never counts**, even when Tag or Publish failed after it. GitHub lists a called workflow's jobs under the caller's run, so counting them would give the rule a second kind of run to read. A failed Publish needs no new tests anyway, as [below](#a-failed-release-run-leaves-a-tag-only-once-tag-passed).
 - **A run shows what Plan found.** Plan writes a notice, shown on the run's summary page, and a line in its job summary ([workflow commands](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands)). It names the commit and links the reused run, or says Tests runs every test.
 - **The check needs only the repository and the commit**, and Plan's token reads Actions results (`actions: read`). Its `--ref` option goes: it only named where to start a missing run, and Plan now runs the tests instead.
@@ -65,7 +83,7 @@ The table lists what a failed run leaves, and what you do:
 
 ### The release command previews, asks once, then follows the run
 
-`node .agents\release.mjs [<part>]` needs Node.js, git, and GitHub CLI (`gh`), signed in with access to origin. It works on the repository beside the script, whatever the current folder, and origin must name one repository on github.com.
+This optional terminal command previews the tag and commit before asking you to start the same release workflow. `node .agents\release.mjs [<part>]` needs Node.js, git, and GitHub CLI (`gh`), signed in with access to origin. It works on the repository beside the script, whatever the current folder, and origin must name one repository on github.com.
 
 1. **It prepares.** It takes the part or asks for one, checks your sign-in and origin, and runs the Node tooling tests. It runs no .NET test: every test runs [only in the cloud](test-selection.md#the-full-suite-runs-only-in-the-cloud).
 2. **It previews the tag**, which checks your clone and the committed changelog. When the preview refuses, you fix the named problem in another terminal; Enter retries, anything else cancels. The command never edits files, commits, pulls, switches branches, stashes, discards changes, or pushes.
@@ -78,7 +96,7 @@ It never looks for an earlier Run All tests run, since Plan does that, and never
 
 ### The Run All tests command tests the commit you pushed
 
-`node .agents\run-all-tests.mjs`, or the **run all tests** task, starts Run All tests on your current branch and follows it. It takes no arguments and asks nothing.
+The optional `node .agents\run-all-tests.mjs` command starts Run All tests on your current branch and follows it. It takes no arguments and asks nothing.
 
 - **It refuses before starting** when you aren't on a branch, or your branch's newest commit isn't exactly origin's, so the run tests the commit you have. Uncommitted changes don't stop it; it warns that they aren't tested.
 - **It checks the started run's commit**, as the release command does, then follows the run.
@@ -95,21 +113,22 @@ One GitHub component, `.agents/github-runs.mjs`, reads origin's repository, chec
 
 ### Installation and the smoke check stay manual
 
-The release command downloads the installer to its own new temporary folder, prints the path, and never launches it; a decision to confirm. It warns about the [unsigned installer](desktop/shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), then guides installation and a short check of the installed app. Success means GitHub published the release and you confirmed the checks, not that the script saw the app work.
+After releasing through the browser, download the Windows setup executable from GitHub's **Releases** page. The optional release command downloads it to its own new temporary folder, prints the path, and never launches it; a decision to confirm. It warns about the [unsigned installer](desktop/shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), then guides installation and a short check of the installed app. Success means GitHub published the release and you confirmed the checks, not that the script saw the app work.
 
 ### Tests check the guide without publishing anything
 
 - **One fake GitHub, `github-runs.fake-github.mjs`, serves every test** of both commands, the shared component, and the run check. The version tag script's [fake git](../../.agents/version-tag.fake-git.mjs) serves the release command's tests.
-- **Unit tests** cover approval, preparation, a run started on another commit, following, failed jobs, release validation, and the run check against made-up runs: a pass, another commit, workflow, or event, a failed or unfinished attempt, a missing `full-tests` job, and none.
+- **Unit tests** cover approval, preparation, a run started on another commit, following, failed jobs, release validation, and the run check against made-up runs: push and manual passes, their newest run deciding, another commit or workflow, an ineligible event, a failed or unfinished attempt, a missing `full-tests` job, and none.
 - **Integration tests** run the commands as child processes against the fake, with isolated downloads; none calls real GitHub or launches an installer.
-- **Only hosted runs check the workflow files**: Plan, the skipped Tests, Tag's condition, and the queue, along with VS Code's terminal and installation.
+- **Only hosted runs check the workflow files**: the automatic trigger, Plan, the skipped Tests, Tag's condition, and the queue. Opening the VS Code task and installing the app remain manual checks.
 
 ## Public interface
 
 No app module uses this tooling. You use:
 
-- **`node .agents\release.mjs [<part>]`**, and the **release a version** task in [tasks.json](../../.vscode/tasks.json). Exit code 0 means a cancel before any run started, or a published release whose checks you confirmed. Anything else exits nonzero.
-- **`node .agents\run-all-tests.mjs`**, and the **run all tests** task. Exit code 0 means the run passed.
+- **The open GitHub Actions task** in [tasks.json](../../.vscode/tasks.json). It runs `gh browse --actions` in the workspace, opening origin's Actions page without starting a run. One browser shortcut replaces the two run-command tasks; a decision to confirm.
+- **`node .agents\release.mjs [<part>]`**, optional. Exit code 0 means a cancel before any run started, or a published release whose checks you confirmed. Anything else exits nonzero.
+- **`node .agents\run-all-tests.mjs`**, optional. Exit code 0 means the run passed.
 - **Test then Tag and Release's inputs**, [above](#a-release-run-plans-tests-tags-then-publishes).
 
 Both commands describe themselves with `--help`. Plan reads the run check's command line, `node .agents/full-run-check.mjs --repo <owner/name> --commit <ID>`. A decision to confirm:
@@ -134,13 +153,16 @@ Both commands describe themselves with `--help`. Plan reads the run check's comm
 
 - How the workflows split:
   - **Two files, with `build.yml` as Run All tests when started by hand**: a called workflow sees its caller's event, so every job's condition must tell three cases apart, and push runs show as Run All tests.
+- How automatic full tests start:
+  - **Trigger on every branch, then skip non-default branches in the job**: each branch would leave a skipped run. A newer skipped run for the same commit could hide its earlier pass from the release check.
+  - **Cancel an older run on a newer push**: it saves runner time but leaves the older commit without a completed result.
   - **One workflow with a mode input**: one **Run workflow** entry with a list, not two named entries, and every condition grows.
   - **File names that spell the display names**, such as `test-tag-release.yml`: more links change, and GitHub lists a renamed file's past runs apart.
 - How a release is tested:
   - **Each release run always runs every test itself**: a release right after a passing Run All tests would run the suite twice, which reverses your November 22 choice.
   - **A release run's passed Tests counts as a pass**: a second kind of run for the rule to read.
   - **The release command also looks for an earlier run**: Plan already does, and the rule would have a second caller.
-  - **Every test on each push, or on your PC before tagging**: each push would wait for the full suite; on your PC, releases depended on its desktop, as from November 16 to 22, 2026.
+  - **Every test on each branch push, or on your PC before tagging**: each branch push would wait for the full suite; on your PC, releases depended on its desktop, as from November 16 to 22, 2026.
   - **A release trusts another run's uploaded files or a signed attestation**, or a pass of another commit with the same files: more to get right than asking GitHub for one commit's result.
 - How a tag is made and published:
   - **A pushed version tag still publishes**: two publishing paths to keep correct.
@@ -152,6 +174,7 @@ Both commands describe themselves with `--help`. Plan reads the run check's comm
 - How you approve and start runs:
   - **Your yes after the tests, through a GitHub environment you review**: a repository setting outside the review surface, and runs started on GitHub's page wait for approval.
   - **A task that runs `gh workflow run` itself, or no task**: nothing would check which commit the run tests.
+  - **Keep the release a version and run all tests tasks**: routine use would still lead through local commands instead of the Actions page.
   - **One concurrency group without `queue: max`**, or one on Tag and Publish only: a third run cancels the waiting second, or a failed publish re-runs a tagging that refuses.
 - What the command does for you:
   - **Automatic commits, branch changes, changelog edits, installation, or deletion of a release**: these need your judgment.

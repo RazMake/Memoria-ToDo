@@ -11,7 +11,7 @@ import { commitA, commitB } from './version-tag.fake-git.mjs';
 //   source = { runs(commit) -> run[], jobs(databaseId) -> job[] }, where a run is
 //     { databaseId, path, event, headSha, status, conclusion, url } and a job is { name, conclusion };
 //     `jobs` gives the jobs of the run's newest attempt only.
-//   createSource(github) -> source, reading all-tests.yml's workflow_dispatch runs and jobs through the github-runs.mjs component.
+//   createSource(github) -> source, reading all-tests.yml's runs of the commit and jobs through the github-runs.mjs component.
 //   run(args, source) -> { code, stdout, stderr }, the command line:
 //     --repo <owner/name> --commit <40 hex>
 //     A pass prints the run link on stdout and exits 0; no pass prints nothing and exits 0; wrong arguments or a GitHub error
@@ -44,7 +44,8 @@ describe('the run that proves a commit passed every test (unit)', () => {
 
   for (const [label, changes] of [
     ['a run of another commit', { headSha: commitB }],
-    ['a run started by a push', { event: 'push' }],
+    ['a run started by a pull request', { event: 'pull_request' }],
+    ['a run started by another workflow', { event: 'workflow_call' }],
     ['a scheduled run', { event: 'schedule' }],
     ['a run of another workflow file', { path: '.github/workflows/other.yml' }],
     ['the Build and unit tests workflow', { path: '.github/workflows/build.yml' }],
@@ -113,11 +114,33 @@ describe('the run that proves a commit passed every test (unit)', () => {
   });
 
   test('ignores newer runs that do not count when choosing the newest', async () => {
-    const runs = [manual({ databaseId: 20 }), manual({ databaseId: 50, event: 'push', conclusion: 'failure' }),
+    const runs = [manual({ databaseId: 20 }), manual({ databaseId: 50, event: 'pull_request', conclusion: 'failure' }),
       manual({ databaseId: 60, headSha: commitB, conclusion: 'failure' }), manual({ databaseId: 70, path: releaseWorkflowPath, conclusion: 'failure' })];
     const result = await checkFullRun(commitA, sourceOf(runs));
     assert.equal(result.state, 'passed');
     assert.equal(result.run.databaseId, 20);
+  });
+
+  for (const [label, runs, state, id] of [
+    ['a passed push run', [manual({ databaseId: 30, event: 'push' })], 'passed', 30],
+    ['a newer passed push run over an older failed manual run', [manual({ databaseId: 20, conclusion: 'failure' }), manual({ databaseId: 40, event: 'push' })], 'passed', 40],
+    ['a newer failed push run over an older passed manual run', [manual({ databaseId: 20 }), manual({ databaseId: 40, event: 'push', conclusion: 'failure' })], 'failed', 40],
+    ['a newer running push run over an older passed manual run', [manual({ databaseId: 20 }), manual({ databaseId: 40, event: 'push', status: 'in_progress', conclusion: null })], 'running', 40],
+    ['a newer passed manual run over an older failed push run', [manual({ databaseId: 20, event: 'push', conclusion: 'failure' }), manual({ databaseId: 40 })], 'passed', 40],
+    ['a newer failed manual run over an older passed push run', [manual({ databaseId: 20, event: 'push' }), manual({ databaseId: 40, conclusion: 'failure' })], 'failed', 40],
+    ['a newer running manual run over an older passed push run', [manual({ databaseId: 20, event: 'push' }), manual({ databaseId: 40, status: 'queued', conclusion: null })], 'running', 40],
+    ['an older passed push run when a newer pull request run failed', [manual({ databaseId: 20, event: 'push' }), manual({ databaseId: 40, event: 'pull_request', conclusion: 'failure' })], 'passed', 20],
+  ]) {
+    test(`judges ${label} by the highest run id across push and manual runs`, async () => {
+      const result = await checkFullRun(commitA, sourceOf(runs));
+      assert.equal(result.state, state);
+      assert.equal(result.run.databaseId, id);
+    });
+  }
+
+  test('does not accept a successful push run whose full-tests job failed', async () => {
+    const result = await checkFullRun(commitA, sourceOf([manual({ event: 'push' })], { 30: [{ name: 'full-tests', conclusion: 'failure' }] }));
+    assert.equal(result.state, 'failed');
   });
 
   test('looks at the jobs of the chosen run only', async () => {
@@ -150,7 +173,7 @@ describe('the check reads all-tests.yml through the GitHub component (unit)', ()
     assert.equal(result.run.headSha, commitA);
   });
 
-  test('lists the runs of all-tests.yml, not build.yml, started by hand for the commit', async () => {
+  test('lists the runs of all-tests.yml, not build.yml, for the commit with no event filter, so push runs come back', async () => {
     const fake = fakeWith([restRun()]);
     await checkFullRun(commitA, sourceFrom(fake));
     const listing = fake.calls.find((call) => call.some((arg) => /\/workflows\/[^/]+\/runs/.test(arg)));
@@ -159,11 +182,17 @@ describe('the check reads all-tests.yml through the GitHub component (unit)', ()
     assert.ok(text.includes('/workflows/all-tests.yml/runs'), text);
     assert.ok(!text.includes('build.yml'), text);
     assert.ok(text.includes(`head_sha=${commitA}`), text);
-    assert.ok(text.includes('event=workflow_dispatch'), text);
+    assert.ok(!text.includes('event='), text);
   });
 
-  test('does not count a push run or a run of another commit that GitHub returned', async () => {
-    const fake = fakeWith([restRun({ event: 'push' }), restRun({ id: 31, head_sha: commitB })]);
+  test('counts a push run of the commit that GitHub returned', async () => {
+    const result = await checkFullRun(commitA, sourceFrom(fakeWith([restRun({ event: 'push' })])));
+    assert.equal(result.state, 'passed');
+    assert.equal(result.run.databaseId, 30);
+  });
+
+  test('does not count a pull request or scheduled run, or a run of another commit, that GitHub returned', async () => {
+    const fake = fakeWith([restRun({ event: 'pull_request' }), restRun({ id: 32, event: 'schedule' }), restRun({ id: 31, head_sha: commitB, event: 'push' })]);
     assert.equal((await checkFullRun(commitA, sourceFrom(fake))).state, 'none');
   });
 
@@ -260,6 +289,12 @@ describe('the check command as a child process (integration)', () => {
 
   test('exits 0 and prints the link of a passed Run All tests run of the commit', { timeout: 60_000 }, async (t) => {
     const result = await start(t, args, { runs: [restRun()], jobs: { 30: [restJob('full-tests', 'success')] } });
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stdout.trim(), runUrl(30));
+  });
+
+  test('exits 0 and prints the link of a passed push run of the commit', { timeout: 60_000 }, async (t) => {
+    const result = await start(t, args, { runs: [restRun({ event: 'push' })], jobs: { 30: [restJob('full-tests', 'success')] } });
     assert.equal(result.code, 0, result.stderr);
     assert.equal(result.stdout.trim(), runUrl(30));
   });

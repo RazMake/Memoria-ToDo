@@ -21,7 +21,7 @@ Why: before this design, a full local run was about 6,800 tests, about 1,140 of 
 
 ### The full suite runs only in the cloud
 
-Every test, of every kind, runs only in the [Run All tests](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) workflow on GitHub, which you start by hand and each release run calls. No session runs the full suite on your PC, unless a change selects every module, as the [rules below](#each-changed-path-selects-tests-by-one-rule) say for build files.
+Every test, of every kind, runs only in the [Run All tests](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) workflow on GitHub, through its [automatic and manual triggers or a release](releasing.md#three-workflows-unit-tests-on-each-push-every-test-on-main-releases-by-hand). No session runs the full suite on your PC, unless a change selects every module, as the [rules below](#each-changed-path-selects-tests-by-one-rule) say for build files.
 
 - **A [release run](releasing.md#a-release-run-plans-tests-tags-then-publishes) tags and publishes only after every test passed on the commit it tags.** The [release command](releasing.md#the-release-command-previews-asks-once-then-follows-the-run) runs no .NET test on your PC.
 - **A release run [reuses a passed Run All tests run](releasing.md#a-release-reuses-a-passed-run-all-tests-run-of-its-commit) of its commit, and runs every test itself only when there's none.** So a release is checked by every test, once.
@@ -43,7 +43,7 @@ What it prints, in this order:
 - **Why each module or screen is selected**: changed, the files that changed it; narrowed, the screens every changed file sits in; a dependent, the module it depends on; or a user of test code, the folder whose code it uses. A wrong selection is explained by the output alone, as [Log so problems can be traced](../../AGENTS.md#code-design) asks.
 - **Whether the desktop check is needed**: yes whenever a command runs desktop tests, so the agent runs the [desktop check](technology-stack.md#agents-check-the-desktop-before-they-start-screen-tests) first, as [Run timing](../../AGENTS.md#run-timing) asks.
 - **The commands**, one per line, each runnable from the repository root, or "No tests to run" when nothing is selected.
-- **What only the cloud checks**: a changed workflow file is checked only by a workflow run, so the output says to start [Run All tests](releasing.md#the-run-all-tests-command-tests-the-commit-you-pushed) on a pushed branch, with `node .agents/run-all-tests.mjs` or the **run all tests** task.
+- **What only the cloud checks**: a changed workflow file is checked only by a workflow run, so the output points to [Run All tests](releasing.md#start-a-release-or-an-extra-test-run-from-github) on GitHub's Actions page, or the optional `node .agents/run-all-tests.mjs` command.
 
 Proposed, a decision to confirm: the script only prints. The agent runs each command, so the [hang bound](technology-stack.md#a-hang-dump-stops-a-test-application-that-hangs-despite-its-bounds) and the desktop check stay with the agent, as today. A `--run` option that runs them too was left out as code nobody needs yet.
 

@@ -11,10 +11,10 @@ const fullJobName = 'full-tests';
 const usage = 'usage: node .agents/full-run-check.mjs --repo <owner/name> --commit <40 hex digits>';
 const options = ['--repo', '--commit'];
 
-// Only a finished run of this workflow, started by hand on this exact commit, counts; the newest such run decides.
+// The newest eligible run decides across automatic and manual runs of the exact commit.
 export async function checkFullRun(commit, source) {
   const counted = (await source.runs(commit))
-    .filter((run) => run.path === workflowPath && run.event === 'workflow_dispatch' && run.headSha === commit);
+    .filter((run) => run.path === workflowPath && ['push', 'workflow_dispatch'].includes(run.event) && run.headSha === commit);
   if (!counted.length) return { state: 'none' };
   const run = counted.reduce((newest, next) => (next.databaseId > newest.databaseId ? next : newest));
   if (run.status !== 'completed') return { state: 'running', run };
@@ -26,7 +26,7 @@ export async function checkFullRun(commit, source) {
 /** Reads the runs and jobs `checkFullRun` judges through the GitHub component. */
 export function createSource(github) {
   return {
-    runs: (commit) => github.runs(workflowFile, commit, 'workflow_dispatch'),
+    runs: (commit) => github.runs(workflowFile, commit),
     jobs: (databaseId) => github.jobs(databaseId),
   };
 }

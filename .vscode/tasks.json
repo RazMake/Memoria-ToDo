@@ -15,40 +15,12 @@
       "group": "build"
     },
     {
-      "label": "release a version",
-      "type": "shell",
-      "command": "node",
-      "args": ["${workspaceFolder}\\.agents\\release.mjs"],
+      "label": "open GitHub Actions",
+      "type": "process",
+      "command": "gh",
+      "args": ["browse", "--actions"],
       "options": {
-        "cwd": "${workspaceFolder}",
-        "env": {
-          "DOTNET_ROOT": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet",
-          "PATH": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet;${env:PATH}"
-        }
-      },
-      "presentation": {
-        "reveal": "always",
-        "focus": true,
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "run all tests",
-      "type": "shell",
-      "command": "node",
-      "args": ["${workspaceFolder}\\.agents\\run-all-tests.mjs"],
-      "options": {
-        "cwd": "${workspaceFolder}",
-        "env": {
-          "DOTNET_ROOT": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet",
-          "PATH": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet;${env:PATH}"
-        }
-      },
-      "presentation": {
-        "reveal": "always",
-        "focus": true,
-        "panel": "dedicated"
+        "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
     },

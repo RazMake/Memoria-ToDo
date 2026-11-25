@@ -165,7 +165,7 @@ The `version-tag` skill sits in `.agents/skills/version-tag/SKILL.md`, as [AGENT
 2. It runs that command with `--dry-run` and shows you the plan.
 3. After you say yes, it runs the command on the preview's last line, exactly as printed, with no argument added, dropped, or changed. Anything but yes stops it.
 4. When a check fails, or the approved run refuses because something changed, it shows the script's message and stops. To try again, ask again; it starts with a new preview.
-5. Asked to release a version, it makes no tag. It names the [release command](releasing.md) and its **release a version** task, which need you at a terminal.
+5. Asked to release a version, it makes no tag. It points to [Release a version](releasing.md#start-a-release-or-an-extra-test-run-from-github).
 
 The user decided steps 2 and 3, which [AGENTS.md](../../AGENTS.md#contributions) names as the one exception to "AI never pushes", and on November 23, 2026, that the skill makes no tag. Proposed, each a decision to confirm: the skill's name, steps 1 and 4, and a file with only the two fields the [Agent Skills standard](https://agentskills.io/specification) requires, `name` and `description`, so every AI tool reads it the same way. No settings file approves the script, unlike `repo-map.mjs`, so your AI tool also asks before it runs, unless you've turned its approvals off.
 
