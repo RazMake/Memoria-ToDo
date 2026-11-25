@@ -13,32 +13,41 @@ internal static class ClassConstructorWarmUp
     /// they all ran. Throws <see cref="InvalidOperationException"/> naming the type and carrying the original exception when a
     /// class constructor throws, and <see cref="TimeoutException"/> naming the type in progress when it takes longer than <paramref name="bound"/>.
     /// </summary>
-    internal static void Run(IEnumerable<Type> types, TimeSpan bound)
+    internal static void Run(IEnumerable<Type> types, TimeSpan bound, TimeProvider time)
     {
+        ArgumentNullException.ThrowIfNull(time);
         Type? inProgress = null;
         Exception? failure = null;
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
-            foreach (var type in types)
+            try
             {
-                if (type.ContainsGenericParameters)
+                foreach (var type in types)
                 {
-                    continue;
+                    if (type.ContainsGenericParameters)
+                    {
+                        continue;
+                    }
+
+                    Volatile.Write(ref inProgress, type);
+                    try
+                    {
+                        RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+                    }
+                    catch (Exception error)
+                    {
+                        failure = new InvalidOperationException($"The class constructor of {type.FullName} failed during the WPF warm-up: {error.Message}", error);
+                        return;
+                    }
                 }
 
-                Volatile.Write(ref inProgress, type);
-                try
-                {
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-                }
-                catch (Exception error)
-                {
-                    failure = new InvalidOperationException($"The class constructor of {type.FullName} failed during the WPF warm-up: {error.Message}", error);
-                    return;
-                }
+                Volatile.Write(ref inProgress, null);
             }
-
-            Volatile.Write(ref inProgress, null);
+            finally
+            {
+                finished.SetResult();
+            }
         })
         {
             IsBackground = true,
@@ -47,7 +56,18 @@ internal static class ClassConstructorWarmUp
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
 
-        if (!thread.Join(bound))
+        using var timeout = new CancellationTokenSource(bound, time);
+        var completed = false;
+        try
+        {
+            completed = finished.Task.Wait(bound, timeout.Token);
+        }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        {
+            // The injected clock ended the wait.
+        }
+
+        if (!completed)
         {
             throw new TimeoutException($"The WPF warm-up didn't finish within {bound}; it was running the class constructor of {Volatile.Read(ref inProgress)?.FullName}.");
         }

@@ -16,10 +16,12 @@ internal sealed class LogPipeline : IDisposable
 
     private readonly Logger _logger;
     private readonly LostEntries _lost;
+    private readonly TimeProvider _time;
     private int _disposed;
 
     private LogPipeline(Action<LoggerSinkConfiguration> writeTo, TimeProvider time)
     {
+        _time = time;
         _lost = new LostEntries(time);
         _logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
@@ -64,7 +66,15 @@ internal sealed class LogPipeline : IDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
-            Task.Run(_logger.Dispose).Wait(FlushLimit);
+            using var timeout = new CancellationTokenSource(FlushLimit, _time);
+            try
+            {
+                Task.Run(_logger.Dispose).Wait(FlushLimit, timeout.Token);
+            }
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                // The flush bound ends the wait, not the writer.
+            }
         }
     }
 }

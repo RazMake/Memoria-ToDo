@@ -7,9 +7,6 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 internal sealed class PointerMoveRecorder
 {
     private const string Failed = "failed";
-    private const uint FirstMouseMessage = 0x0200;
-    private const uint LastMouseMessage = 0x020E;
-
     private static readonly Dictionary<uint, (string Name, bool ShowsWParam)> Lifecycle = new()
     {
         [0x0002] = ("WM_DESTROY", false),
@@ -29,6 +26,9 @@ internal sealed class PointerMoveRecorder
     private readonly nint _owner;
     private ExceptionDispatchInfo? _callbackFailure;
     private int _otherMessages;
+    private int _otherRemoved;
+    private int _otherPeeked;
+    private readonly Dictionary<string, Stage> _stages = [];
     private bool _reported;
     private readonly IPointerReadings _readings;
     private readonly Action _stopWait;
@@ -136,22 +136,57 @@ internal sealed class PointerMoveRecorder
 
     private void AtSend(Win32.Point point) => _trace.Keep(_move, PointerTrace.AtSend, _readings.Snapshot(point, TargetWindow));
 
-    public void Mouse(ObservedMessage message) => Note(
-        $"mouse message 0x{message.Id:X} marker {message.ExtraInfo} at ({message.Screen.X}, {message.Screen.Y}), expected window {message.InExpectedWindow}");
-
-    public void Fetched(uint id)
+    public void Retrieved(Win32.Message message, bool removed)
     {
-        if (id < FirstMouseMessage || id > LastMouseMessage)
+        if (IsInput(message.Id))
+        {
+            RecordStage("retrieval", $"{(removed ? "removed" : "peeked")} {InputDetails(message)}");
+        }
+        else if (removed)
+        {
+            _otherRemoved++;
+        }
+        else
+        {
+            _otherPeeked++;
+        }
+    }
+
+    public void MouseObserved(uint id, Win32.MouseHook packet, bool processed) =>
+        RecordStage("mouse hook",
+            $"{(processed ? "processed" : "peeked")} 0x{id:X} window {packet.Window:X} at ({packet.Point.X}, {packet.Point.Y}), marker {packet.ExtraInfo}, hit test {unchecked((int)packet.HitTest)}");
+
+    public void Filtered(Win32.Message message)
+    {
+        if (IsInput(message.Id))
+        {
+            RecordStage("WPF loop", InputDetails(message));
+        }
+        else
         {
             _otherMessages++;
         }
     }
 
+    public void Arrived(nint window, uint id)
+    {
+        if (IsInput(id))
+        {
+            RecordStage("target window", $"0x{id:X} window {window:X}");
+        }
+    }
+
     public void Moved(Win32.Point screen, bool accepted) =>
-        Note($"WPF routed a move at ({screen.X}, {screen.Y}), {(accepted ? "accepted" : "not accepted")}");
+        RecordStage("routed move", $"WPF routed a move at ({screen.X}, {screen.Y}), {(accepted ? "accepted" : "not accepted")}");
 
     public void SentMessage(Win32.SentMessage message)
     {
+        if (message.Id == 0x0084)
+        {
+            var x = unchecked((short)(long)message.LParam);
+            var y = unchecked((short)((long)message.LParam >> 16));
+            RecordStage("hit test", $"WM_NCHITTEST window {message.Window:X} at ({x}, {y}), result {message.Result}");
+        }
         if (Lifecycle.TryGetValue(message.Id, out var known))
         {
             Note($"{known.Name} handled by window {message.Window:X}"
@@ -161,7 +196,41 @@ internal sealed class PointerMoveRecorder
 
     public void TimerFired() => Note("wait timer fired");
 
-    private void WaitEnded() => Note($"wait ended; {_otherMessages} other messages counted, their content not recorded");
+    private void WaitEnded()
+    {
+        _trace.Keep(_move, "other retrievals", $"{_otherRemoved} removed, {_otherPeeked} peeked");
+        Note($"wait ended; {_otherMessages} other filtered messages counted, their content not recorded");
+    }
+
+    private static bool IsInput(uint id) => id is
+        >= 0x0200 and <= 0x020E or
+        >= 0x00A0 and <= 0x00AD or
+        >= 0x0241 and <= 0x0253 or
+        >= 0x02A0 and <= 0x02A3 or 0x00FF;
+
+    private static string InputDetails(Win32.Message message) =>
+        $"0x{message.Id:X} window {message.Window:X}"
+        + (message.Id == 0x00FF ? "" : $" at ({message.Point.X}, {message.Point.Y})");
+
+    private void RecordStage(string name, string details)
+    {
+        var now = _trace.Elapsed;
+        if (!_stages.TryGetValue(name, out var stage))
+        {
+            stage = new Stage(now);
+            _stages.Add(name, stage);
+        }
+        stage.Count++;
+        _trace.Keep(_move, name,
+            $"count {stage.Count}, first +{(long)stage.First.TotalMilliseconds} ms, last +{(long)now.TotalMilliseconds} ms; {details}");
+        _trace.Record(now, _move, $"{name}: {details}");
+    }
+
+    private sealed class Stage(TimeSpan first)
+    {
+        public TimeSpan First { get; } = first;
+        public int Count { get; set; }
+    }
 
     private void ReportFailure(FailureList failures, Win32.Point point)
     {

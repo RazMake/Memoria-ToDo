@@ -17,6 +17,12 @@ public class WindowsDeviceKeyStoreTests
 
     // Real 3072-bit keys cost seconds; the real size is checked once in the integration tests.
     private const int SmallKeyBits = 1024;
+    private static readonly Lazy<RSAParameters[]> SmallKeys = new(() =>
+    {
+        using var first = RSA.Create(SmallKeyBits);
+        using var second = RSA.Create(SmallKeyBits);
+        return [first.ExportParameters(true), second.ExportParameters(true)];
+    });
 
     [Fact]
     public void A_missing_key_cannot_be_opened_and_is_not_silently_generated()
@@ -39,7 +45,7 @@ public class WindowsDeviceKeyStoreTests
         IDeviceKeyStore keys = new WindowsDeviceKeyStore(files, protection, Folder, bits =>
         {
             requested.Add(bits);
-            return RSA.Create(SmallKeyBits);
+            return RSA.Create(SmallKeys.Value[0]);
         });
 
         using (keys.Generate()) { }
@@ -286,6 +292,9 @@ public class WindowsDeviceKeyStoreTests
         Assert.Equal([KeyFile], files.AllFilesUnder(Folder));
     }
 
-    private static WindowsDeviceKeyStore SmallKeyStore(IFileSystem files, IUserProtection protection) =>
-        new(files, protection, Folder, _ => RSA.Create(SmallKeyBits));
+    private static WindowsDeviceKeyStore SmallKeyStore(IFileSystem files, IUserProtection protection)
+    {
+        var generation = 0;
+        return new(files, protection, Folder, _ => RSA.Create(SmallKeys.Value[generation++ % SmallKeys.Value.Length]));
+    }
 }

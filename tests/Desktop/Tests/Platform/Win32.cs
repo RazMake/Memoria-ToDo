@@ -105,6 +105,7 @@ internal static class Win32
     [RealInput]
     public static nint HookMouseMessages(MessageHook callback) => HookThread(WhMouse, callback);
 
+    private const int WhGetMessage = 3;
     private const int WhMouse = 7;
     private const int WhCallWndProcRet = 12;
     private const int ErrorInvalidWindowHandle = 1400;
@@ -113,6 +114,9 @@ internal static class Win32
 
     [RealInput]
     public static nint HookSentMessages(MessageHook callback) => HookThread(WhCallWndProcRet, callback);
+
+    [RealInput]
+    public static nint HookRetrievedMessages(MessageHook callback) => HookThread(WhGetMessage, callback);
 
     [RealInput]
     private static nint HookThread(int kind, MessageHook callback)

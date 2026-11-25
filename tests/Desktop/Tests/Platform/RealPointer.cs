@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Runtime.InteropServices;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -83,53 +82,24 @@ internal static class RealPointer
         Win32.Point? last = null;
         ObservedMessage? lastPacket = null;
         var mouseMessages = 0;
-        Win32.MessageHook fetched = (code, message, data) =>
+        var source = HwndSource.FromHwnd(expectedWindow)
+            ?? throw new InvalidOperationException("The pointer target has no WPF window source.");
+        var observer = new PointerMessageObserver(source, recorder, processed: packet =>
         {
-            recorder.Guard(() =>
+            mouseMessages++;
+            lastPacket = packet;
+            receipt.Observe(packet);
+            if (receipt.MisplacedAt is not null)
             {
-                if (code == 0) // HC_ACTION, not HC_NOREMOVE.
-                {
-                    var packet = Marshal.PtrToStructure<Win32.MouseHook>(data);
-                    var observedPacket = new ObservedMessage(
-                        (uint)message, packet.ExtraInfo, packet.Point,
-                        packet.Window == expectedWindow || Win32.IsChildOf(packet.Window, expectedWindow));
-                    mouseMessages++;
-                    lastPacket = observedPacket;
-                    recorder.Mouse(observedPacket);
-                    receipt.Observe(observedPacket);
-                    if (receipt.MisplacedAt is not null)
-                    {
-                        stopWait();
-                    }
-                }
-            });
-
-            return Win32.NextMessage(code, message, data);
-        };
-        Win32.MessageHook sent = (code, message, data) =>
+                stopWait();
+            }
+        }, filtered: id =>
         {
-            recorder.Guard(() =>
+            if (id != 0x0200)
             {
-                if (code == 0)
-                {
-                    recorder.SentMessage(Marshal.PtrToStructure<Win32.SentMessage>(data));
-                }
-            });
-
-            return Win32.NextMessage(code, message, data);
-        };
-        void FilterMessage(ref MSG message, ref bool handled)
-        {
-            var id = (uint)message.message;
-            recorder.Guard(() =>
-            {
-                recorder.Fetched(id);
-                if (id != 0x0200)
-                {
-                    receipt.Observe(new ObservedMessage(id, 0, default, false));
-                }
-            });
-        }
+                receipt.Observe(new ObservedMessage(id, 0, default, false));
+            }
+        });
 
         MouseEventHandler moved = (_, e) => recorder.Guard(() =>
         {
@@ -151,15 +121,11 @@ internal static class RealPointer
             stopWait();
         });
 
-        nint mouseHook = 0;
-        nint sentHook = 0;
         recorder.Run(target, new PointerMoveSteps(
             Acquire: () =>
             {
-                mouseHook = Win32.HookMouseMessages(fetched);
-                sentHook = Win32.HookSentMessages(sent);
+                observer.Attach();
                 element.AddHandler(Mouse.PreviewMouseMoveEvent, moved, handledEventsToo: true);
-                ComponentDispatcher.ThreadFilterMessage += FilterMessage;
             },
             Send: () =>
             {
@@ -197,11 +163,11 @@ internal static class RealPointer
                 var timedOut =
                     $"WPF did not observe the pointer on {element.GetType().Name}: "
                     + "SendInput accepted the packet; "
-                    + $"{(receipt.Received ? "its marked WM_MOUSEMOVE was fetched but no routed move followed it" : "its marked WM_MOUSEMOVE was never fetched")} "
-                    + $"({mouseMessages} mouse messages fetched while waiting), "
+                    + $"{(receipt.Received ? "the processed-mouse hook observed its move but no routed move followed it" : "the processed-mouse hook did not observe its move")} "
+                    + $"({mouseMessages} processed mouse-hook messages while waiting), "
                     + $"requested screen ({target.X}, {target.Y}), "
                     + $"{PointerSnapshot.Cursor()}, last observed event {(last is { } seen ? $"({seen.X}, {seen.Y})" : "none")}, "
-                    + $"expected marker {marker}, last fetched mouse message "
+                    + $"expected marker {marker}, last processed mouse-hook message "
                     + $"{(lastPacket is { } packet ? $"0x{packet.Id:X} marker {packet.ExtraInfo} at ({packet.Screen.X}, {packet.Screen.Y}), expected window {packet.InExpectedWindow}" : "none")}, "
                     + $"directly over {PointerSnapshot.TypeName(Mouse.DirectlyOver)}, captured by {PointerSnapshot.TypeName(Mouse.Captured)}; "
                     + $"{PointerSnapshot.Windows(target, expectedWindow)}.";
@@ -210,20 +176,8 @@ internal static class RealPointer
             Release: failures =>
             {
                 failures.Attempt(timeout.Stop);
-                failures.Attempt(() => ComponentDispatcher.ThreadFilterMessage -= FilterMessage);
                 failures.Attempt(() => element.RemoveHandler(Mouse.PreviewMouseMoveEvent, moved));
-                if (sentHook != 0)
-                {
-                    failures.Attempt(() => Win32.UnhookMessages(sentHook));
-                }
-
-                if (mouseHook != 0)
-                {
-                    failures.Attempt(() => Win32.UnhookMessages(mouseHook));
-                }
-
-                GC.KeepAlive(fetched);
-                GC.KeepAlive(sent);
+                observer.Release(failures);
             }));
     }
 }

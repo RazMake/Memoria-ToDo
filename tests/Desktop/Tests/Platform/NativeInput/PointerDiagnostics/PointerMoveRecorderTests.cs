@@ -252,4 +252,145 @@ public class PointerMoveRecorderTests
         Assert.Contains(leaves.Skip(1), leaf => leaf.Message == "stop-failure");
         Assert.Equal(1, scenario.Released);
     }
+
+    [Theory]
+    [InlineData(0x0200, true)]
+    [InlineData(0x00A0, false)]
+    [InlineData(0x0245, true)]
+    [InlineData(0x00FF, false)]
+    public void Names_retrieved_input_and_its_destination_without_recording_its_payload(int id, bool removed)
+    {
+        var scenario = new Scenario();
+
+        scenario.Recorder.Retrieved(new Win32.Message
+        {
+            Id = (uint)id, Window = Cover, Point = Target, WParam = 123456789, LParam = 987654321,
+        }, removed);
+        var text = scenario.Trace.Describe();
+
+        Assert.Contains("retrieval", text);
+        Assert.Contains($"0x{id:X}", text);
+        Assert.Contains("window 99", text);
+        Assert.Contains(removed ? "removed" : "peeked", text);
+        if (id == 0x00FF)
+        {
+            Assert.DoesNotContain("(100, 50)", text);
+        }
+        else
+        {
+            Assert.Contains("(100, 50)", text);
+        }
+        Assert.DoesNotContain("123456789", text);
+        Assert.DoesNotContain("987654321", text);
+        Assert.Equal(0, scenario.Readings.PendingReads);
+    }
+
+    [Fact]
+    public void Counts_unlisted_retrievals_without_recording_their_identity_or_contents()
+    {
+        var scenario = new Scenario();
+        var message = new Win32.Message
+        {
+            Id = 0x0102, Window = 0xABCDE, Point = new() { X = 8765, Y = 4321 }, WParam = 123456789,
+        };
+
+        scenario.Run(wait: () =>
+        {
+            scenario.Recorder.Retrieved(message, removed: true);
+            scenario.Recorder.Retrieved(message, removed: false);
+        });
+        var text = scenario.Trace.Describe();
+
+        Assert.Contains("other retrievals: 1 removed, 1 peeked", text);
+        Assert.DoesNotContain("0x102", text);
+        Assert.DoesNotContain("ABCDE", text);
+        Assert.DoesNotContain("8765", text);
+        Assert.DoesNotContain("123456789", text);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Distinguishes_mouse_hook_peeks_from_processed_messages_with_their_routing_details(bool processed)
+    {
+        var scenario = new Scenario();
+
+        scenario.Recorder.MouseObserved(0x0200, new Win32.MouseHook
+        {
+            Window = Own, Point = Target, ExtraInfo = 37, HitTest = 1,
+        }, processed);
+        var text = scenario.Trace.Describe();
+
+        Assert.Contains("mouse hook", text);
+        Assert.Contains(processed ? "processed" : "peeked", text);
+        Assert.Contains("window 20", text);
+        Assert.Contains("marker 37", text);
+        Assert.Contains("hit test 1", text);
+        Assert.Contains("(100, 50)", text);
+    }
+
+    [Fact]
+    public void Records_the_windows_actual_hit_test_result_and_signed_screen_point()
+    {
+        var scenario = new Scenario();
+
+        scenario.Recorder.SentMessage(new Win32.SentMessage
+        {
+            Id = 0x0084, Window = Own, Result = -1,
+            LParam = unchecked((nint)(int)0xFFF9FFFB), WParam = 123456789,
+        });
+        var text = scenario.Trace.Describe();
+
+        Assert.Contains("WM_NCHITTEST", text);
+        Assert.Contains("window 20", text);
+        Assert.Contains("(-5, -7)", text);
+        Assert.Contains("result -1", text);
+        Assert.DoesNotContain("123456789", text);
+    }
+
+    [Fact]
+    public void Distinguishes_the_dispatcher_filter_from_target_window_arrival_without_unlisted_payloads()
+    {
+        var scenario = new Scenario();
+
+        scenario.Recorder.Filtered(new Win32.Message { Id = 0x0200, Window = Own, Point = Target });
+        scenario.Recorder.Arrived(Own, 0x0200);
+        scenario.Recorder.Filtered(new Win32.Message { Id = 0x0102, Window = 0xABCDE, WParam = 123456789 });
+        scenario.Recorder.Arrived(0xABCDE, 0x0102);
+        var text = scenario.Trace.Describe();
+
+        Assert.Contains("WPF loop", text);
+        Assert.Contains("target window", text);
+        Assert.Contains("0x200", text);
+        Assert.Contains("window 20", text);
+        Assert.DoesNotContain("ABCDE", text);
+        Assert.DoesNotContain("123456789", text);
+    }
+
+    [Fact]
+    public void Keeps_each_stages_count_and_latest_observation_when_old_entries_are_dropped()
+    {
+        var scenario = new Scenario();
+        scenario.Recorder.MouseObserved(0x0200, new Win32.MouseHook { Window = Own, Point = Target }, true);
+        scenario.Recorder.SentMessage(new Win32.SentMessage { Id = 0x0084, Window = Own, Result = 1 });
+        scenario.Recorder.Filtered(new Win32.Message { Id = 0x0200, Window = Own });
+        scenario.Recorder.Arrived(Own, 0x0200);
+        scenario.Recorder.Moved(Target, true);
+        for (var i = 0; i < 300; i++)
+        {
+            scenario.Recorder.Retrieved(new Win32.Message { Id = 0x0200, Window = Own, Point = new() { X = i, Y = 50 } }, true);
+        }
+        var summary = scenario.Trace.Describe().Split("Entries, oldest first:", StringSplitOptions.None)[0];
+
+        Assert.True(scenario.Trace.Dropped > 0);
+        Assert.Contains("retrieval: count 300", summary);
+        Assert.Contains("(299, 50)", summary);
+        Assert.Contains("mouse hook: count 1", summary);
+        Assert.Contains("hit test: count 1", summary);
+        Assert.Contains("WPF loop: count 1", summary);
+        Assert.Contains("target window: count 1", summary);
+        Assert.Contains("routed move: count 1", summary);
+        Assert.Contains("first", summary);
+        Assert.Contains("last", summary);
+    }
 }

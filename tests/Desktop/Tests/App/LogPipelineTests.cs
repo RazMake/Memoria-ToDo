@@ -130,8 +130,13 @@ public sealed class LogPipelineTests
         var disposing = Task.Run(pipeline.Dispose, TestContext.Current.CancellationToken);
         try
         {
-            var first = await Task.WhenAny(disposing, Task.Delay(Limit, TestContext.Current.CancellationToken));
-            Assert.True(first == disposing, "Dispose waited for a stuck writer without a limit.");
+            await _time.WaitForActiveTimerAsync();
+            _time.Advance(TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(1));
+            Assert.Equal(1, _time.ActiveTimerCount);
+            Assert.False(disposing.IsCompleted, "Dispose stopped waiting before the two-second limit.");
+
+            _time.Advance(TimeSpan.FromMilliseconds(1));
+            await disposing.WaitAsync(Limit, TestContext.Current.CancellationToken);
         }
         finally
         {

@@ -44,7 +44,7 @@ public class ClassConstructorWarmUpTests
     [Fact]
     public void Runs_the_class_constructor_of_every_type_it_is_given_on_one_STA_thread_that_is_not_the_callers_and_returns_after_they_ran()
     {
-        ClassConstructorWarmUp.Run([typeof(RecordsFirst), typeof(RecordsSecond), typeof(RecordsThird)], TestWait.ForSignal);
+        ClassConstructorWarmUp.Run([typeof(RecordsFirst), typeof(RecordsSecond), typeof(RecordsThird)], TestWait.ForSignal, TimeProvider.System);
 
         var threads = new[] { RecordsFirst.RanOn, RecordsSecond.RanOn, RecordsThird.RanOn };
         Assert.All(threads, Assert.NotNull);
@@ -70,7 +70,7 @@ public class ClassConstructorWarmUpTests
     [Fact]
     public void Skips_an_open_generic_type_without_failing_and_still_runs_the_types_after_it()
     {
-        ClassConstructorWarmUp.Run([typeof(OpenGeneric<>), typeof(RecordsAfterGeneric)], TestWait.ForSignal);
+        ClassConstructorWarmUp.Run([typeof(OpenGeneric<>), typeof(RecordsAfterGeneric)], TestWait.ForSignal, TimeProvider.System);
 
         Assert.NotNull(_ranAfterGeneric);
     }
@@ -86,7 +86,7 @@ public class ClassConstructorWarmUpTests
     [Fact]
     public void Fails_with_a_message_naming_the_type_and_carrying_the_original_exception_when_a_class_constructor_throws()
     {
-        var error = Assert.Throws<InvalidOperationException>(() => ClassConstructorWarmUp.Run([typeof(Throws)], TestWait.ForSignal));
+        var error = Assert.Throws<InvalidOperationException>(() => ClassConstructorWarmUp.Run([typeof(Throws)], TestWait.ForSignal, TimeProvider.System));
 
         Assert.Contains(typeof(Throws).FullName!, error.Message);
         Assert.Contains(ThrownByThrows, ChainOf(error).Skip(1).ToList());
@@ -94,27 +94,42 @@ public class ClassConstructorWarmUpTests
 
     // The signal lives outside the waiting type: touching a type whose class constructor is still running would block the test too.
     private static readonly ManualResetEventSlim Release = new(false);
+    private static readonly TaskCompletionSource Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private static class WaitsForSignal
     {
-        static WaitsForSignal() => Release.Wait(TestWait.ForSignal);
+        static WaitsForSignal()
+        {
+            Entered.SetResult();
+            Release.Wait(TestWait.ForSignal);
+        }
     }
 
-    // The test waits this out, so it's short, yet far longer than the warm-up's thread takes to reach the class constructor.
     private static readonly TimeSpan ShortBound = TimeSpan.FromSeconds(1);
 
     [Fact]
-    public void Fails_naming_the_type_in_progress_when_the_warm_up_does_not_finish_within_its_bound()
+    public async Task Fails_naming_the_type_in_progress_when_the_warm_up_does_not_finish_within_its_bound()
     {
+        var time = new FakeTimeProvider();
+        var warming = Task.Run(
+            () => Record.Exception(() => ClassConstructorWarmUp.Run([typeof(WaitsForSignal)], ShortBound, time)),
+            TestContext.Current.CancellationToken);
         try
         {
-            var error = Assert.Throws<TimeoutException>(() => ClassConstructorWarmUp.Run([typeof(WaitsForSignal)], ShortBound));
+            await Entered.Task.WaitAsync(TestWait.ForSignal, TestContext.Current.CancellationToken);
+            await time.WaitForActiveTimerAsync();
+            time.Advance(ShortBound - TimeSpan.FromTicks(1));
+            Assert.Equal(1, time.ActiveTimerCount);
+            Assert.False(warming.IsCompleted, "The warm-up stopped waiting before its bound.");
 
+            time.Advance(TimeSpan.FromTicks(1));
+            var error = Assert.IsType<TimeoutException>(await warming.WaitAsync(TestWait.ForSignal, TestContext.Current.CancellationToken));
             Assert.Contains(typeof(WaitsForSignal).FullName!, error.Message);
         }
         finally
         {
             Release.Set(); // Lets the warm-up's thread end.
+            await warming.WaitAsync(TestWait.ForSignal, TestContext.Current.CancellationToken);
         }
     }
 

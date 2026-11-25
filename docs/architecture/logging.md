@@ -95,6 +95,8 @@ The file sink sits inside [Serilog.Sinks.Async](https://github.com/serilog/seril
 - **A module's call only puts the entry in a queue in memory**, and returns. The background thread writes queued entries in the order they came, and each written entry reaches the disk at once, since the file sink's buffered mode is off.
 - **The queue holds at most 10,000 entries.** When the writer falls that far behind, new entries are dropped and counted, never waited for, since a log must not stop the app. That's Serilog.Sinks.Async's default.
 - **When the app ends, the writer gets at most 2 seconds to write what's waiting.** The composition root disposes the logger once, at the end of `Main` or in .NET's [ProcessExit](https://learn.microsoft.com/en-us/dotnet/api/system.appdomain.processexit), which `Environment.Exit` raises too, so it also runs when the app ends after an error. Disposing waits for the queue to empty with no limit of its own, so the composition root stops waiting after 2 seconds; entries still waiting are lost.
+  The bound uses the [pipeline's clock](../../src/Desktop/App/Logging/LogPipeline.cs): the system clock in the app, and a fake clock in its tests.
+  A timed wait also enforces the real bound if thread-pool starvation prevents the clock's callback from running.
 
 Proposed: the 10,000-entry queue and the 2-second wait. Each a decision to confirm.
 
