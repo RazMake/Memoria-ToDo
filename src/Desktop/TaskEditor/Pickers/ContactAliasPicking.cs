@@ -6,8 +6,8 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 /// The "@" list of a plain text box: no header and no templates, and choosing a contact leaves "@" and the contact's alias,
 /// or its ID when it has none, in place of what was typed.
 /// </summary>
-internal sealed class ContactAliasPicking(ITextField field, ChoiceList list, PopupLists popups, IContacts contacts)
-    : ContactPicking(field, list, popups, contacts)
+internal sealed class ContactAliasPicking(ITextField field, ChoiceList list, PopupLists popups, IContacts contacts, Serilog.ILogger? logger = null)
+    : ContactPicking(field, list, popups, contacts, logger)
 {
     /// <summary>Tab: closes the list. Returns false, so the key moves the focus as it would with no list.</summary>
     public bool Tab()

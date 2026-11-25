@@ -78,16 +78,15 @@ internal sealed class TitleScreen : IDisposable
     /// <summary>Whether the text is shown in the style: bold, italic, struck through or code.</summary>
     public static bool HasStyle(string style, TitleScreen screen, string text) => style switch
     {
-        "bold" => screen.Run(text).FontWeight == FontWeights.Bold,
-        "italic" => screen.Run(text).FontStyle == FontStyles.Italic,
+        "bold" => RunStyles.IsBold(screen.Run(text)),
+        "italic" => RunStyles.IsItalic(screen.Run(text)),
         "struck through" => screen.IsStruckThrough(text),
-        "code" => IsMonospaced(screen.Run(text).FontFamily),
+        "code" => RunStyles.IsMonospaced(screen.Run(text)),
         _ => throw new ArgumentOutOfRangeException(nameof(style)),
     };
 
     /// <summary>Whether the text's own run, or the link around it, sets a color of its own.</summary>
-    public bool HasOwnColor(string text) =>
-        Run(text).ReadLocalValue(TextElement.ForegroundProperty) != DependencyProperty.UnsetValue;
+    public bool HasOwnColor(string text) => RunStyles.HasOwnColor(Run(text));
 
     /// <summary>
     /// Presses and releases the left mouse button on the text, as the routed events a click raises. Native hover and
@@ -169,19 +168,7 @@ internal sealed class TitleScreen : IDisposable
 
     public Color ColorOf(string text) => Assert.IsType<SolidColorBrush>(Run(text).Foreground).Color;
 
-    public bool IsStruckThrough(string text)
-    {
-        for (TextElement? element = Run(text); element is not null; element = element.Parent as TextElement)
-        {
-            if (element is Inline { TextDecorations: { } decorations }
-                && decorations.Any(decoration => decoration.Location == TextDecorationLocation.Strikethrough))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    public bool IsStruckThrough(string text) => RunStyles.IsStruckThrough(Run(text));
 
     /// <summary>Closes the window and returns once the title has raised Unloaded, so it is off screen as far as WPF is concerned.</summary>
     public void Close() => LoadSync.Close(window!, Title);
@@ -214,16 +201,5 @@ internal sealed class TitleScreen : IDisposable
         return element as Hyperlink;
     }
 
-    private static bool IsMonospaced(FontFamily family)
-    {
-        var typeface = new Typeface(family, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-        if (!typeface.TryGetGlyphTypeface(out var glyphs))
-        {
-            return false;
-        }
-
-        return glyphs.AdvanceWidths[glyphs.CharacterToGlyphMap['i']] == glyphs.AdvanceWidths[glyphs.CharacterToGlyphMap['W']];
-    }
-
-    private IEnumerable<Run> Runs() => TitleChips.Walk(Title.Inlines).OfType<Run>();
+    private IEnumerable<Run> Runs() => ChipRuns.Walk(Title.Inlines).OfType<Run>();
 }

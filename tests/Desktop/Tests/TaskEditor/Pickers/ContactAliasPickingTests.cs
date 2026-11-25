@@ -87,6 +87,37 @@ public class ContactAliasPickingTests
     }
 
     [Fact]
+    public void An_erase_that_leaves_the_cursor_at_the_end_of_a_partial_word_opens_the_list_for_it()
+    {
+        UseContacts();
+        var field = new FakeTextField("hi @anap", 8);
+        _ = new ContactAliasPicking(field, _list, _popups, _services.Contacts);
+        Assert.False(_list.IsOpen);
+
+        field.Backspace();
+
+        Assert.Equal("hi @ana", field.Text);
+        Assert.Equal(["Ana Pop (anap)"], _list.Items);
+    }
+
+    [Fact]
+    public void Erasing_back_to_a_bare_at_sign_opens_the_list_and_erasing_the_at_sign_itself_opens_nothing()
+    {
+        UseContacts();
+        var field = new FakeTextField("hi @ana", 7);
+        _ = new ContactAliasPicking(field, _list, _popups, _services.Contacts);
+
+        field.Erase(4, 3);
+        Assert.Equal(7, _list.Items.Count());
+
+        _popups.CloseOpen();
+        field.Backspace();
+
+        Assert.Equal("hi ", field.Text);
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
     public void An_at_sign_after_a_letter_opens_no_list()
     {
         UseContacts();
@@ -257,6 +288,20 @@ public class ContactAliasPickingTests
 
         Assert.Equal("see @anap", _field.Text);
         Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void Choosing_does_not_move_a_mention_template()
+    {
+        UseContacts();
+        var file = TestContactStore.PathOf(_services.Clone, TestContactStore.TemplatesFile);
+        var before = _services.Files.ReadFile(file);
+        _field.Type("@");
+
+        _list.Choose(1);
+
+        Assert.Equal(before, _services.Files.ReadFile(file));
+        Assert.Equal(["{fullName} ({title})", "{firstName}"], _services.Contacts.MentionTemplates);
     }
 
     [Fact]

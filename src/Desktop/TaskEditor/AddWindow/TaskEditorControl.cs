@@ -38,11 +38,11 @@ internal sealed class TaskEditorControl : UserControl, IDraftEditor
     {
         _tagsModel = tagsModel;
         _tags = new TagEditor(tasks, _tagsModel, new TagLook(tagColors, theme), pointer, logger);
-        _lists = new PickerLists(tasks, contacts, palette, theme);
+        _lists = new PickerLists(tasks, contacts, palette, theme, logger);
         _images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId, _message.Show, logger);
         var snippets = new SnippetInserter(time, clipboard, _lists.TaskReferences.Open, _images.InsertClipboardOrChosen);
-        _title = new TitleField(theme, _lists, snippets, _router, pointer, logger);
-        _description = new DescriptionField(theme, _lists, snippets, _images, _router, pointer, logger);
+        _title = new TitleField(theme, _lists, snippets, _router, pointer, _message.Show, logger);
+        _description = new DescriptionField(theme, _lists, snippets, _images, _router, pointer, _message.Show, logger);
         _save = new EditorSave(_tagsModel.AddTypedText, () => Value, _title.MarkMissing, FocusTitle, _message.Show, logger);
 
         var panel = new StackPanel { Margin = new Thickness(16) };

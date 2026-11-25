@@ -2,43 +2,51 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
+using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Rendering;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
 /// <summary>
-/// The contact list as buttons, only while open: a header button that shows the contact in the current template and moves to the
-/// next template when clicked, a hint line, and a row of the contact's bold name and italic alias for each contact.
-/// Nothing in it takes the keyboard focus. Rows and header come from the <see cref="ContactPicking"/> that shows the list;
-/// a list with no header shows none.
+/// The contact list, only while open: a header that is the contact in the current template as a <see cref="MentionChip"/> and moves
+/// to the next template when clicked, a hint line in the theme's tertiary text color, and a row of the contact's bold name and
+/// italic alias for each contact. Nothing in it takes the keyboard focus. Rows and header come from the <see cref="ContactPicking"/>
+/// that shows the list; a list with no header shows none. The header follows a switch between light and dark.
 /// </summary>
 internal sealed class MentionPopupList : ListBox
 {
-    private const string HelpBrush = "TextFillColorSecondaryBrush";
+    private const string TextBrush = "TextFillColorPrimaryBrush";
+    private const string HelpBrush = "TextFillColorTertiaryBrush";
     private const string HeaderName = "Header";
     private const string HintName = "Hint";
 
     private static readonly DependencyProperty HeaderProperty =
         DependencyProperty.Register("Header", typeof(string), typeof(MentionPopupList), new PropertyMetadata(""));
 
+    // The header's chip; null while there's no header. A chip doesn't follow the theme, so a theme switch makes a new one.
+    private static readonly DependencyProperty HeaderChipProperty =
+        DependencyProperty.Register("HeaderChip", typeof(UIElement), typeof(MentionPopupList));
+
     private static readonly DependencyProperty HintProperty =
         DependencyProperty.Register("Hint", typeof(string), typeof(MentionPopupList), new PropertyMetadata(""));
 
-    // The header's chip background and the alias's italic color, from the theme; the follower keeps them current while loaded.
-    private static readonly DependencyProperty ChipBackgroundProperty =
-        DependencyProperty.Register("ChipBackground", typeof(Brush), typeof(MentionPopupList));
-
+    // The alias's italic color, from the theme; the follower keeps it current while loaded.
     private static readonly DependencyProperty AliasBrushProperty =
         DependencyProperty.Register("AliasBrush", typeof(Brush), typeof(MentionPopupList));
 
     public MentionPopupList(ChoiceList list, Func<ContactPicking?> shower, Func<bool> headerClicked, ITheme theme)
     {
-        _ = new ThemeFollower(this, theme, () => ShowTheme(theme));
+        void ShowHeader() => ShowHeaderOf(shower()?.Header ?? "", theme);
+        _ = new ThemeFollower(this, theme, () =>
+        {
+            ShowTheme(theme);
+            ShowHeader();
+        });
         ShowTheme(theme);
         Focusable = false;
         ScrollViewer.SetHorizontalScrollBarVisibility(this, ScrollBarVisibility.Disabled);
@@ -50,29 +58,32 @@ internal sealed class MentionPopupList : ListBox
         this.ShowChoices(list);
         list.Changed += () =>
         {
-            SetValue(HeaderProperty, shower()?.Header ?? "");
+            ShowHeader();
             SetValue(HintProperty, shower()?.TemplateHint ?? "");
         };
     }
 
-    private void ShowTheme(ITheme theme)
+    private void ShowTheme(ITheme theme) =>
+        SetValue(AliasBrushProperty, TagLook.Paint(TextLooks.Of(theme.IsDark).Italic));
+
+    private void ShowHeaderOf(string header, ITheme theme)
     {
-        var look = TextLooks.Of(theme.IsDark);
-        SetValue(ChipBackgroundProperty, TagLook.Paint(look.MentionBackground));
-        SetValue(AliasBrushProperty, TagLook.Paint(look.Italic));
+        SetValue(HeaderProperty, header);
+        SetValue(HeaderChipProperty, header == "" ? null : new MentionChip(header, theme.IsDark));
     }
 
     private static ControlTemplate HeaderHintAndRows(Func<bool> headerClicked)
     {
-        var header = new FrameworkElementFactory(typeof(Button), HeaderName);
+        // A click on the chip moves to the next template. The host never takes the focus, since a field that loses it closes the list.
+        var header = new FrameworkElementFactory(typeof(ContentControl), HeaderName);
         header.SetValue(FocusableProperty, false);
-        header.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
-        header.SetValue(HorizontalContentAlignmentProperty, HorizontalAlignment.Left);
+        header.SetValue(BackgroundProperty, Brushes.Transparent);
+        header.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Left);
         header.SetValue(MarginProperty, new Thickness(0, 0, 0, 4));
+        header.SetResourceReference(ForegroundProperty, TextBrush);
         header.SetValue(AutomationProperties.AutomationIdProperty, "MentionHeader");
-        header.SetValue(ContentControl.ContentProperty, new TemplateBindingExtension(HeaderProperty));
-        header.SetValue(BackgroundProperty, new TemplateBindingExtension(ChipBackgroundProperty));
-        header.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler((_, e) =>
+        header.SetValue(ContentControl.ContentProperty, new TemplateBindingExtension(HeaderChipProperty));
+        header.AddHandler(MouseLeftButtonUpEvent, new MouseButtonEventHandler((_, e) =>
         {
             headerClicked();
             e.Handled = true;
@@ -81,7 +92,7 @@ internal sealed class MentionPopupList : ListBox
         var hint = new FrameworkElementFactory(typeof(TextBlock), HintName);
         hint.SetValue(TextBlock.TextProperty, new TemplateBindingExtension(HintProperty));
         hint.SetValue(AutomationProperties.AutomationIdProperty, "MentionHint");
-        hint.SetValue(MarginProperty, new Thickness(0, 0, 0, 4));
+        hint.SetValue(MarginProperty, new Thickness(5, 0, 0, 4));
         hint.SetResourceReference(TextBlock.ForegroundProperty, HelpBrush);
 
         var rows = new FrameworkElementFactory(typeof(ScrollViewer));

@@ -94,6 +94,18 @@ internal sealed class ContactsFixture
     /// <summary>Seeds <c>autocomplete/contacts/&lt;name&gt;.json</c> as a group with the members, given as JSON objects.</summary>
     public string SeedGroup(string name, int position, params string[] members) => Disk.SeedGroup(Clone, name, position, members);
 
+    /// <summary>Seeds team contact "1" and the data types, selects the clone, and forgets the writes, so a test seeds the templates file first.</summary>
+    public void LoadWithContacts()
+    {
+        SeedGroup("team", 1000, ContactFiles.Person("1", "Ana"));
+        SeedDataTypes();
+        Load();
+        ForgetWrites();
+    }
+
+    /// <summary>The templates in the templates file now, in file order.</summary>
+    public List<string> TemplatesInFile() => ContactFiles.TemplatesIn(Bytes(TemplatesFile));
+
     public void SeedMe(int position, string details) => Disk.SeedMe(Clone, position, details);
 
     /// <summary>Pronouns "he" and "she" and career paths "em" (Engineering Manager) and "se", with invented properties.</summary>

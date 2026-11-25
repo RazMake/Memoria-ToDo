@@ -201,11 +201,40 @@ public class SnippetInsertionTests
     }
 
     [Fact]
-    public void Task_reference_puts_a_backslash_before_each_bracket_and_backslash_in_the_title()
+    public void Task_reference_puts_a_backslash_before_each_bracket_that_has_none()
+    {
+        var input = new SnippetInput { Task = new TaskToReference("task:0abc", "see [x]") };
+
+        Assert.Equal(@"[see \[x\]](task:0abc)«»", Insert(Snippets.TaskReference, "«»", input));
+    }
+
+    [Theory]
+    [InlineData(@"ana\.pop")]
+    [InlineData(@"a \* b")]
+    [InlineData(@"\[x\]")]
+    [InlineData(@"a \\ b")]
+    [InlineData(@"ends with a pair \\")]
+    public void Task_reference_keeps_the_escapes_of_the_title_as_written(string title)
+    {
+        var input = new SnippetInput { Task = new TaskToReference("task:0abc", title) };
+
+        Assert.Equal($"[{title}](task:0abc)«»", Insert(Snippets.TaskReference, "«»", input));
+    }
+
+    [Fact]
+    public void Task_reference_keeps_a_backslash_in_the_middle_of_the_title_single()
     {
         var input = new SnippetInput { Task = new TaskToReference("task:0abc", @"fix [a] \ b") };
 
-        Assert.Equal(@"[fix \[a\] \\ b](task:0abc)«»", Insert(Snippets.TaskReference, "«»", input));
+        Assert.Equal(@"[fix \[a\] \ b](task:0abc)«»", Insert(Snippets.TaskReference, "«»", input));
+    }
+
+    [Fact]
+    public void Task_reference_adds_a_backslash_after_one_that_ends_the_title()
+    {
+        var input = new SnippetInput { Task = new TaskToReference("task:0abc", @"path\") };
+
+        Assert.Equal(@"[path\\](task:0abc)«»", Insert(Snippets.TaskReference, "«»", input));
     }
 
     [Fact]

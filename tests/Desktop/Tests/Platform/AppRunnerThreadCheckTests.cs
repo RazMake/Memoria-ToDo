@@ -1,4 +1,5 @@
 using Xunit;
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Serilog;
 using Serilog.Core;
@@ -27,11 +28,14 @@ public class AppRunnerThreadCheckTests
             {
                 error = e;
             }
-        });
+        })
+        {
+            IsBackground = true, // A thread stuck past the bound mustn't keep the test application running.
+        };
         thread.SetApartmentState(ApartmentState.MTA);
 
         thread.Start();
-        thread.Join();
+        Assert.True(thread.Join(TestWait.ForSignal), "AppRunner.Run didn't return.");
 
         Assert.IsType<InvalidOperationException>(error);
         Assert.False(lifetimeBuilt);
@@ -56,11 +60,14 @@ public class AppRunnerThreadCheckTests
             {
                 error = e;
             }
-        });
+        })
+        {
+            IsBackground = true,
+        };
         thread.SetApartmentState(ApartmentState.STA);
 
         thread.Start();
-        thread.Join();
+        Assert.True(thread.Join(TestWait.ForSignal), "AppRunner.Run didn't return.");
 
         Assert.Equal("logger", Assert.IsType<ArgumentNullException>(error).ParamName);
         Assert.False(lifetimeBuilt);

@@ -76,6 +76,23 @@ internal sealed class FakeTextField : ITextField
         Select(_caret, 0);
     }
 
+    /// <summary>Deletes the character after the cursor, which stays where it is.</summary>
+    public void Delete()
+    {
+        Document.Remove(_caret, 1);
+        Select(_caret, 0);
+    }
+
+    /// <summary>Removes the range, as Ctrl+Backspace removes a word: the cursor lands where the range began.</summary>
+    public void Erase(int start, int length)
+    {
+        Document.Remove(start, length);
+        Select(_caret, 0);
+    }
+
+    /// <summary>Cuts the selection: removes it and leaves the cursor where it began.</summary>
+    public void Cut() => Erase(SelectionStart, SelectionLength);
+
     public void Undo() => Document.UndoStack.Undo();
 
     /// <summary>Runs the command the way an editor key does, on this field.</summary>

@@ -88,7 +88,55 @@ public sealed class TemplateTextTests
             ExitDate = new DateOnly(2026, 1, 2),
         };
 
-        Assert.Equal("09:05 2025-03-01 2020-12-31 2026-01-02", f.Contacts.TextOf(contact, "{dayStartTime} {levelStartDate} {teamMemberSince} {exitDate}"));
+        Assert.Equal(@"09\:05 2025\-03\-01 2020\-12\-31 2026\-01\-02", f.Contacts.TextOf(contact, "{dayStartTime} {levelStartDate} {teamMemberSince} {exitDate}"));
+    }
+
+    [Fact]
+    public void Keeps_the_Markdown_of_the_templates_own_text_as_written()
+    {
+        var contact = Ana with { Alias = "anap" };
+
+        Assert.Equal("Ana Pop (_anap_)", f.Contacts.TextOf(contact, "{fullName} (_{alias}_)"));
+        Assert.Equal("**Ana**", f.Contacts.TextOf(contact, "**{nickname}**"));
+        Assert.Equal(@"~~x~~ `y` :red[anap] \* \[Ana\]", f.Contacts.TextOf(contact, @"~~x~~ `y` :red[{alias}] \* \[{firstName}\]"));
+    }
+
+    [Fact]
+    public void Puts_a_backslash_before_each_punctuation_character_of_a_field_value()
+    {
+        Assert.Equal(@"ana\_pop", f.Contacts.TextOf(Ana with { Alias = "ana_pop" }, "{alias}"));
+        Assert.Equal(@"Ana \*QA\*", f.Contacts.TextOf(Ana with { FullName = "Ana *QA*" }, "{fullName}"));
+        Assert.Equal(@"Ana Pop (_ana\_pop_)", f.Contacts.TextOf(Ana with { Alias = "ana_pop" }, "{fullName} (_{alias}_)"));
+    }
+
+    [Fact]
+    public void Escapes_every_ASCII_punctuation_and_symbol_character_in_a_value()
+    {
+        const string punctuation = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+        const string escaped = @"\!\""\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~";
+
+        Assert.Equal(escaped, f.Contacts.TextOf(Ana with { Title = punctuation }, "{title}"));
+    }
+
+    [Fact]
+    public void Leaves_letters_digits_spaces_and_non_ASCII_characters_in_a_value_unescaped()
+    {
+        Assert.Equal("Ana Pop 42 ă é – ñ", f.Contacts.TextOf(Ana with { Title = "Ana Pop 42 ă é – ñ" }, "{title}"));
+    }
+
+    [Fact]
+    public void Does_not_read_braces_or_placeholders_inside_a_value_as_template_text()
+    {
+        Assert.Equal(@"\{title\} x", f.Contacts.TextOf(Ana with { Alias = "{title}" }, "{alias} x"));
+    }
+
+    [Fact]
+    public void Escapes_the_full_name_it_falls_back_to()
+    {
+        var contact = new Contact("2", "Ana *QA*");
+
+        Assert.Equal(@"Ana \*QA\*", f.Contacts.TextOf(contact, "{title}"));
+        Assert.Equal(@"Ana \*QA\*", f.Contacts.TextOf(contact, "{nickname}"));
     }
 
     [Theory]
@@ -124,10 +172,57 @@ public sealed class TemplateTextTests
     [InlineData("{firstName")]
     [InlineData("firstName}")]
     [InlineData("{{{firstName")]
+    [InlineData("[{alias}")]
+    [InlineData("{alias}]")]
+    [InlineData("][{alias}")]
+    [InlineData("[x]({alias})")]
+    [InlineData("![{alias}]")]
+    [InlineData("{alias}\\")]
+    [InlineData("{alias}\\\\\\")]
+    [InlineData(@"\{alias}")]
+    [InlineData(@"a \{fullName} b")]
+    [InlineData(@"\\\{alias}")]
+    [InlineData("{alias}\n{title}")]
+    [InlineData("{alias}\r{title}")]
     public void Rejects_an_invalid_template(string template)
     {
         Assert.Throws<ArgumentException>(() => f.Contacts.TextOf(Ana, template));
         Assert.Throws<ArgumentException>(() => f.Contacts.MentionOf(Ana, template));
+    }
+
+    [Theory]
+    [InlineData("[{alias}]")]
+    [InlineData(@"\[{alias}\]")]
+    [InlineData(@"\[{alias}")]
+    [InlineData(@"{alias}\\")]
+    [InlineData(@"[\]{alias}]")]
+    [InlineData("[{alias}] [{title}]")]
+    [InlineData("!{alias}")]
+    public void Accepts_a_template_whose_brackets_pair_and_that_makes_no_link_image_or_trailing_backslash(string template)
+    {
+        Assert.NotEmpty(f.Contacts.TextOf(Ana, template));
+        Assert.StartsWith("[", f.Contacts.MentionOf(Ana, template));
+    }
+
+    [Theory]
+    [InlineData(@"\\{alias}")]
+    [InlineData(@"\{{alias}}")]
+    public void Accepts_an_escaped_backslash_or_a_literal_brace_right_after_a_backslash(string template)
+    {
+        Assert.NotEmpty(f.Contacts.TextOf(Ana, template));
+        Assert.StartsWith("[", f.Contacts.MentionOf(Ana, template));
+    }
+
+    [Fact]
+    public void Gives_null_for_a_stored_address_whose_template_breaks_a_new_rule()
+    {
+        var loaded = new ContactsFixture();
+        loaded.SeedGroup("team", 1000, ContactFiles.Person("12", "Ana Pop", ("alias", "apop")));
+        loaded.SeedDataTypes();
+        loaded.Load();
+
+        Assert.Null(loaded.Contacts.TextOf(ContactAddress.Of("12"), "[{alias}"));
+        Assert.Null(loaded.Contacts.TextOf(ContactAddress.Of("12"), "{alias}\\"));
     }
 }
 
@@ -256,7 +351,15 @@ public sealed class MentionTests
     }
 
     [Fact]
-    public void Escapes_the_text_for_a_Markdown_label()
+    public void Stores_the_text_as_the_Markdown_the_template_makes_with_one_backslash_per_escape()
+    {
+        var link = f.Contacts.MentionOf(new Contact("12", "Ana Pop", Alias: "ana_pop"), "{alias}");
+
+        Assert.Equal(@"[ana\_pop](contact:12 ""{alias}"")", link);
+    }
+
+    [Fact]
+    public void Stores_a_full_name_with_brackets_and_a_backslash_escaped_once()
     {
         var link = f.Contacts.MentionOf(new Contact("12", @"Ana [the] \ Pop"), "{fullName}");
 
@@ -264,10 +367,44 @@ public sealed class MentionTests
     }
 
     [Fact]
+    public void Stores_the_templates_own_Markdown_and_the_escaped_values_in_the_text()
+    {
+        var link = f.Contacts.MentionOf(new Contact("12", "Ana *QA*", Alias: "ana_pop"), "{fullName} (_{alias}_)");
+
+        Assert.Equal(@"[Ana \*QA\* (_ana\_pop_)](contact:12 ""{fullName} (_{alias}_)"")", link);
+    }
+
+    [Fact]
+    public void Stores_the_escaped_full_name_when_the_template_falls_back()
+    {
+        var link = f.Contacts.MentionOf(new Contact("12", "Ana *QA*"), "{title}");
+
+        Assert.Equal(@"[Ana \*QA\*](contact:12 ""{title}"")", link);
+    }
+
+    [Fact]
     public void Escapes_quotes_and_backslashes_in_the_title_part()
     {
-        var link = f.Contacts.MentionOf(new Contact("12", "Ana Pop"), "\"{fullName}\" \\");
+        var link = f.Contacts.MentionOf(new Contact("12", "Ana Pop"), "\"{fullName}\" \\\\");
 
-        Assert.Equal("[\"Ana Pop\" \\\\](contact:12 \"\\\"{fullName}\\\" \\\\\")", link);
+        Assert.Equal(@"[""Ana Pop"" \\](contact:12 ""\""{fullName}\"" \\\\"")", link);
+    }
+}
+
+/// <summary>A key field's entry property shows in a mention as Markdown.</summary>
+[Unit]
+public sealed class KeyFieldTextTests
+{
+    [Fact]
+    public void Puts_a_backslash_before_each_punctuation_character_of_an_entry_property()
+    {
+        var f = new ContactsFixture();
+        f.Seed(ContactsFixture.CareerPathsFile, ContactFiles.DataType("careerPaths", ContactFiles.Object(("id", "em"), ("short", "E.M. *lead*"))));
+        f.SeedGroup("team", 1000);
+        f.Load();
+        var contact = new Contact("1", "Ana Pop", CareerPathKey: "em");
+
+        Assert.Equal(@"E\.M\. \*lead\*", f.Contacts.TextOf(contact, "{careerPath.short}"));
+        Assert.Equal(@"[Ana Pop (E\.M\. \*lead\*)](contact:1 ""{fullName} ({careerPath.short})"")", f.Contacts.MentionOf(contact, "{fullName} ({careerPath.short})"));
     }
 }

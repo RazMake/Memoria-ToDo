@@ -66,6 +66,10 @@ internal sealed class ContactSnapshot
         throw new SkippedFileException(Skipped.Last(file => file.RelativePath == path));
     }
 
+    /// <summary>The snapshot with the mention templates replaced.</summary>
+    public ContactSnapshot WithTemplates(IReadOnlyList<string> templates) =>
+        new(HasContactFiles, GroupFiles, DataTypes, templates, Skipped, skippedGroups);
+
     /// <summary>The snapshot with each given group file replacing the loaded one of its name.</summary>
     public ContactSnapshot With(IEnumerable<GroupFile> changed)
     {

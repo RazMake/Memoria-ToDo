@@ -4,6 +4,7 @@ using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -14,6 +15,7 @@ namespace Memoria.ToDo.Desktop.TaskEditor;
 internal sealed class PickerLists
 {
     private readonly ITheme _theme;
+    private readonly ILogger _logger;
     private readonly ChoiceList _colorChoices = new();
     private readonly ChoiceList _snippetChoices = new();
     private readonly ChoiceList _taskChoices = new();
@@ -21,10 +23,12 @@ internal sealed class PickerLists
     private readonly List<MentionPicking> _mentionPickings = [];
     private readonly Dictionary<ITextField, IPopupPlace> _mentionPlaces = [];
 
-    public PickerLists(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme)
+    public PickerLists(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(theme);
         _theme = theme;
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(palette);
@@ -38,10 +42,11 @@ internal sealed class PickerLists
 
     public IContacts Contacts { get; }
 
-    /// <summary>Makes "@" in the field open the contact list in a popup under it.</summary>
-    public void PickMentionsIn(StyledTextEditor field)
+    /// <summary>Makes "@" in the field open the contact list in a popup under it. <paramref name="report"/> gets the message to show when choosing a contact can't move its template first.</summary>
+    public void PickMentionsIn(StyledTextEditor field, Action<string> report)
     {
-        _mentionPickings.Add(new MentionPicking(field, _mentionChoices, Popups, Contacts));
+        ArgumentNullException.ThrowIfNull(report);
+        _mentionPickings.Add(new MentionPicking(field, _mentionChoices, Popups, Contacts, _logger, report));
         _mentionPlaces.Add(field, field);
     }
 

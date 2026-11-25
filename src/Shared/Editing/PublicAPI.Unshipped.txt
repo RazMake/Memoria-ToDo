@@ -61,6 +61,7 @@ static Memoria.ToDo.Shared.Editing.Formatting.Strikethrough(Memoria.ToDo.Shared.
 static Memoria.ToDo.Shared.Editing.Lists.Enter(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
 static Memoria.ToDo.Shared.Editing.Lists.Indent(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
 static Memoria.ToDo.Shared.Editing.Lists.Outdent(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> Memoria.ToDo.Shared.Editing.TextAndSelection?
+static Memoria.ToDo.Shared.Editing.MentionPicker.AtBefore(Memoria.ToDo.Shared.Editing.TextAndSelection! field) -> int?
 static Memoria.ToDo.Shared.Editing.MentionPicker.Insert(Memoria.ToDo.Shared.Editing.TextAndSelection! field, int atIndex, string! mention) -> Memoria.ToDo.Shared.Editing.TextAndSelection!
 static Memoria.ToDo.Shared.Editing.MentionPicker.OpensAt(string! text, int atIndex) -> bool
 static Memoria.ToDo.Shared.Editing.MentionPicker.QueryOf(Memoria.ToDo.Shared.Editing.TextAndSelection! field, int atIndex) -> string?

@@ -27,8 +27,7 @@ internal class ListTasks
     public void UseContacts(string[]? templates, params string[] members) => Contacts.UseContacts(Files, Clone, templates, members);
 
     /// <summary>Rewrites the "team" group with the members and has Contacts read it again, as a sync does, which raises its Changed event on the calling thread.</summary>
-    public void ChangeContacts(params string[] members) =>
-        Contacts.RepositoryOf().Update(Clone, () => Files.SeedGroup(Clone, "team", 1000, members));
+    public void ChangeContacts(params string[] members) => Contacts.ChangeContacts(Files, Clone, members);
 
     /// <summary>Every file the fake file system holds, task files and images alike.</summary>
     public IReadOnlyList<string> AllFiles => Files.AllFilesUnder(Root);

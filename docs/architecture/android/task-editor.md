@@ -79,6 +79,7 @@ The user decided that the phone gets the full "@" list and the mention chips, as
 
 - **The list opens as a dropdown under the field being typed in**, and a tap chooses a contact. It closes as the desktop's does, and on Back.
 - **A button at the list's top shows the current template, and a tap on it moves to the next one**, since a phone keyboard has no Tab key.
+- **Tapping a contact moves its template to the top of the list**, as on the [desktop](../desktop/task-editor.md#the-list-starts-on-the-template-used-last), so the phone also starts on the template used last.
 - **A chip is drawn in place of the mention's Markdown**, on Rendering's mention background, with an Android [ReplacementSpan](https://developer.android.com/reference/android/text/style/ReplacementSpan). The field moves the cursor out of a chip to its nearer side, and widens a deletion that touches a chip to the whole mention, so the keyboard's delete key removes it whole.
 - **The toolbar gets no "@" button**, since every phone keyboard has the key.
 

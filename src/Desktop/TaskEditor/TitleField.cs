@@ -15,7 +15,7 @@ internal sealed class TitleField
 {
     private const string MissingStatus = "The title is empty. Type a title to save.";
 
-    public TitleField(ITheme theme, PickerLists lists, SnippetInserter snippets, KeyRouter router, IPointerPosition pointer, Serilog.ILogger logger)
+    public TitleField(ITheme theme, PickerLists lists, SnippetInserter snippets, KeyRouter router, IPointerPosition pointer, Action<string> report, Serilog.ILogger logger)
     {
         Editor = new StyledTextEditor("Title", MarkdownField.Title, theme, lists.Contacts, pointer, logger)
         {
@@ -24,7 +24,7 @@ internal sealed class TitleField
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
         lists.TaskReferences.Watch(Editor);
-        lists.PickMentionsIn(Editor);
+        lists.PickMentionsIn(Editor, report);
         Editor.Chips.AddKeysTo(Keys);
         Keys.On(ModifierKeys.Shift, Key.Enter, () => { }); // The Title is one line, so no key breaks it.
         FormattingKeys.AddInline(Keys, Editor, () => lists.Colors.Open(Editor));

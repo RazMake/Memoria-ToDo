@@ -1,12 +1,13 @@
 using Memoria.ToDo.Shared.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Shared.Contacts;
 
 /// <summary>Sync's rules for contact files, dispatched to the kind of file the path names.</summary>
 internal sealed class ContactFileRules(IReadOnlyList<IContactFileKind> kinds) : IContactFileRules
 {
-    /// <summary>The rules for every kind of contact file there is.</summary>
-    public static ContactFileRules Create() => new([new GroupFileKind(), new DataTypeFileKind(), new TemplatesFileKind()]);
+    /// <summary>The rules for every kind of contact file there is; the kinds that log their merge choices log to <paramref name="logger"/>.</summary>
+    public static ContactFileRules Create(ILogger logger) => new([new GroupFileKind(), new DataTypeFileKind(), new TemplatesFileKind(logger)]);
 
     public bool Holds(string relativePath) => KindOf(RepositoryPath.Split(relativePath)) is not null;
 

@@ -1,7 +1,10 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Input;
+using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.FormattedView.Tests;
 using Memoria.ToDo.Shared.Tasks;
 using Xunit;
 
@@ -203,15 +206,50 @@ internal sealed class AddScreen : IDisposable
             .Single(button => AutomationProperties.GetName(button) == text);
     }
 
-    /// <summary>The header at the top of the open mention list: a button with the id "MentionHeader" whose content is the highlighted contact in the current template.</summary>
-    public System.Windows.Controls.Button MentionHeader =>
-        (System.Windows.Controls.Button)EditorFields.Field(EditorFields.Field(Window, EditorFields.MentionList), EditorFields.MentionHeader);
+    /// <summary>The header at the top of the open mention list: the mention chip of the highlighted contact in the current template.</summary>
+    public MentionChip MentionHeader
+    {
+        get
+        {
+            // A new template's chip joins the visual tree at the next layout pass.
+            var list = EditorFields.Field(Window, EditorFields.MentionList);
+            list.UpdateLayout();
+            return VisualTree.Visuals(list).OfType<MentionChip>().Single();
+        }
+    }
 
-    /// <summary>The header's text.</summary>
-    public string MentionHeaderText => (string)MentionHeader.Content;
+    /// <summary>The header's text as it shows, without Markdown characters.</summary>
+    public string MentionHeaderText => ChipRuns.ShownBy(MentionHeader);
 
-    /// <summary>Clicks the header, which moves to the next template as Tab does.</summary>
-    public void ClickMentionHeader() => OpenWindows.Click(MentionHeader);
+    /// <summary>Clicks the header, which moves to the next template as Tab does: its button when it sits in one, else the chip itself.</summary>
+    public void ClickMentionHeader()
+    {
+        var header = MentionHeader;
+        DependencyObject? button = header;
+        while (button is not null and not System.Windows.Controls.Primitives.ButtonBase)
+        {
+            button = VisualTreeHelper.GetParent(button);
+        }
+
+        if (button is System.Windows.Controls.Button found)
+        {
+            OpenWindows.Click(found);
+        }
+        else
+        {
+            VisualTree.MouseClick(header, MouseButton.Left);
+            header.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>The chips the field shows for its mentions, in order.</summary>
+    public IReadOnlyList<MentionChip> ChipsIn(string field)
+    {
+        var editor = (ICSharpCode.AvalonEdit.TextEditor)EditorFields.Field(Window, field);
+        Window.UpdateLayout();
+        editor.TextArea.TextView.EnsureVisualLines();
+        return [.. VisualTree.Visuals(editor.TextArea.TextView).OfType<MentionChip>()];
+    }
 
     /// <summary>The help line under the header: a text block with the id "MentionHint", in the help style.</summary>
     public System.Windows.Controls.TextBlock MentionHint =>

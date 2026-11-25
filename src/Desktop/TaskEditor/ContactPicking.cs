@@ -1,6 +1,8 @@
 using ICSharpCode.AvalonEdit.Document;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Editing;
+using Memoria.ToDo.Shared.Rendering;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
@@ -17,19 +19,25 @@ internal abstract class ContactPicking
 
     private readonly ChoiceList _list;
     private readonly PopupLists _popups;
+    private readonly ILogger _logger;
     private TextAnchor? _at;
     private bool _closingForNoMatch;
     private IReadOnlyList<Contact> _shown = [];
     private IReadOnlyList<MentionRow> _rows = [];
     private IReadOnlyList<string> _items = [];
 
-    protected ContactPicking(ITextField field, ChoiceList list, PopupLists popups, IContacts contacts)
+    protected ContactPicking(ITextField field, ChoiceList list, PopupLists popups, IContacts contacts, ILogger? logger = null)
     {
         Field = field;
         Contacts = contacts;
         _list = list;
         _popups = popups;
+        _logger = logger ?? Serilog.Core.Logger.None;
         var otherListWasOpen = popups.WatchOtherTypedListOpenAtEdits(field, list);
+
+        // An edit that only removes text may leave the cursor at the end of a typed query: see OpenAfterErase.
+        var erased = false;
+        field.Document.Changing += (_, e) => erased = e.InsertionLength == 0 && e.RemovalLength > 0;
         field.TextEntered += text =>
         {
             if (text == "@" && !otherListWasOpen())
@@ -39,9 +47,15 @@ internal abstract class ContactPicking
         };
         field.Changed += () =>
         {
+            var erase = erased;
+            erased = false;
             if (_at is not null)
             {
                 Update(opening: false);
+            }
+            else if (erase)
+            {
+                OpenAfterErase();
             }
         };
         field.FocusLost += () =>
@@ -97,6 +111,11 @@ internal abstract class ContactPicking
     /// <summary>The text that replaces the "@" and what was typed after it when the contact is chosen.</summary>
     protected abstract string TextFor(Contact contact);
 
+    /// <summary>Called after a chosen contact's text is inserted; the list is closed and the field has the focus.</summary>
+    protected virtual void Chosen(Contact contact)
+    {
+    }
+
     /// <summary>Ends the typing of the "@" and closes the list.</summary>
     protected void End()
     {
@@ -109,10 +128,41 @@ internal abstract class ContactPicking
         var at = Field.CaretOffset - 1;
         if (at >= 0 && MentionPicker.OpensAt(Field.Current().Text, Field.LfOffset(at)))
         {
-            _at = Field.AnchorAt(at, staysBefore: false);
-            Opening();
-            Update(opening: true);
+            Start(at);
         }
+    }
+
+    // An edit that only removed text opens the list when it left the cursor where a typed query would end, as if the user had typed
+    // it: at the "@" Editing finds before the cursor. Not while another list is open, nor when a mention lies between the "@" and
+    // the cursor or holds the "@" (a chip ended that query; a mention shown as Markdown isn't a query).
+    private void OpenAfterErase()
+    {
+        var current = Field.Current();
+        if (_popups.IsOpen || current.SelectionLength != 0 || MentionPicker.AtBefore(current) is not { } at)
+        {
+            return;
+        }
+
+        var cursor = current.SelectionStart;
+        if (MentionOverlaps(current.Text, at, cursor))
+        {
+            _logger.Debug("Erasing left the cursor after an \"@\" at {At}, but a mention lies on it, so the contact list stays closed", at);
+            return;
+        }
+
+        _logger.Debug("Erasing left the cursor at the end of a {Length}-character query after the \"@\" at {At}, so the contact list opens", cursor - at - 1, at);
+        Start(Field.CaretOffset - (cursor - at));
+    }
+
+    private static bool MentionOverlaps(string text, int at, int cursor) =>
+        text.Contains("](", StringComparison.Ordinal)
+        && Mentions.In(text, true).Any(mention => mention.Start < cursor && mention.Start + mention.Length > at);
+
+    private void Start(int at)
+    {
+        _at = Field.AnchorAt(at, staysBefore: false);
+        Opening();
+        Update(opening: true);
     }
 
     // Lists the contacts that match, or closes the list when none do (keeping the "@" in case erasing brings a match back)
@@ -161,10 +211,12 @@ internal abstract class ContactPicking
         }
 
         var offset = _at?.Offset ?? throw new InvalidOperationException("A contact was chosen with no \"@\" typed.");
-        var text = TextFor(_shown[position]);
+        var contact = _shown[position];
+        var text = TextFor(contact);
         End();
         var at = Field.LfOffset(offset);
         Field.Run(current => MentionPicker.Insert(current, at, text));
         Field.FocusField();
+        Chosen(contact);
     }
 }

@@ -9,13 +9,19 @@ internal sealed class MentionTemplate
 
     private MentionTemplate(IReadOnlyList<TemplateSegment> segments) => this.segments = segments;
 
-    /// <summary>The template, or null with the problem when it's empty, names an unknown field, or has an unmatched brace.</summary>
+    /// <summary>The template, or null with the problem when it's empty, names an unknown field, has an unmatched brace, or its text can't sit in a link's text (see <see cref="LinkTextShape"/>).</summary>
     public static MentionTemplate? Parse(string template, out string? problem)
     {
         problem = null;
         if (template.Length == 0)
         {
             problem = "The template is empty.";
+            return null;
+        }
+
+        if (LinkTextShape.ProblemWith(template) is { } shapeProblem)
+        {
+            problem = shapeProblem;
             return null;
         }
 
@@ -67,14 +73,14 @@ internal sealed class MentionTemplate
         return new MentionTemplate(segments);
     }
 
-    /// <summary>The text for the contact, or its full name when it lacks any value the template names.</summary>
+    /// <summary>The Markdown for the contact, with each value escaped, or its escaped full name when it lacks any value the template names.</summary>
     public string Render(Contact contact, IReadOnlyList<DataType> dataTypes)
     {
         var text = new StringBuilder();
         foreach (var segment in segments)
         {
             if (segment.Text(contact, dataTypes) is not { } part)
-                return contact.FullName;
+                return MarkdownValue.Escape(contact.FullName);
             text.Append(part);
         }
 

@@ -65,6 +65,13 @@ internal sealed class ContactFolder(IFileSystem files)
     public void Write(string clone, GroupFile group) =>
         files.WriteFile(ContactLayout.GroupFile(clone, group.Name), GroupFileFormat.Write(group));
 
+    /// <summary>The templates file as it is on disk now: no value when it's missing or empty, <see cref="FileLoad{T}.Failure"/> when it can't be read.</summary>
+    public FileLoad<TemplatesFile?> ReadTemplates(string clone) =>
+        FileLoad<TemplatesFile?>.Read(files, ContactLayout.File(clone, ContactLayout.TemplatesRelativePath), TemplatesFileFormat.Parse, null);
+
+    public void WriteTemplates(string clone, TemplatesFile file) =>
+        files.WriteFile(ContactLayout.File(clone, ContactLayout.TemplatesRelativePath), TemplatesFileFormat.Write(file));
+
     private DataType ReadDataType(string clone, KeyField key, bool hasContactFiles, List<ISkippedRepositoryFile> skipped)
     {
         var load = FileLoad<IReadOnlyList<ObjectFields>>.Read(files, ContactLayout.File(clone, key.RelativePath),

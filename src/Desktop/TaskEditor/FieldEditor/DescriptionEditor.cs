@@ -21,7 +21,7 @@ public sealed class DescriptionEditor : UserControl
 
     public DescriptionEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, IPointerPosition pointer, ILogger logger)
-                : this(Argument.Required(pointer), tasks, new PickerLists(tasks, contacts, palette, theme), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files, Argument.Required(logger))
+                : this(Argument.Required(pointer), tasks, new PickerLists(tasks, contacts, palette, theme, logger), Argument.Required(saveKeys), theme, time, clipboard, imageFiles, files, Argument.Required(logger))
     {
     }
 
@@ -33,7 +33,7 @@ public sealed class DescriptionEditor : UserControl
         var message = new MessageLine();
         var images = new ImageInsertion(tasks, clipboard, imageFiles, files, () => _taskId, message.Show, logger);
         var snippets = new SnippetInserter(time, clipboard, lists.TaskReferences.Open, images.InsertClipboardOrChosen);
-        _description = new DescriptionField(theme, lists, snippets, images, router, pointer, logger);
+        _description = new DescriptionField(theme, lists, snippets, images, router, pointer, message.Show, logger);
         var editor = _description.Editor;
         _grownCap = editor.MaxHeight;
         ListKeys.AddTo(_description.Keys, editor, () => Leave(FocusNavigationDirection.Next), () => Leave(FocusNavigationDirection.Previous));

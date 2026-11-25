@@ -245,6 +245,33 @@ public class DescriptionPageTests
     }
 
     [Fact]
+    public void Shows_the_emphasis_inside_a_mentions_text_with_no_underscore_showing()
+    {
+        var page = Page("[Ana Pop (_anap_)](contact:a1 \"{fullName} (_{alias}_)\")");
+
+        AssertTag(page, "<span class=\"mention\"[^>]*>Ana Pop \\(<(em|i)\\b[^>]*>anap</(em|i)>\\)</span>");
+        Assert.DoesNotContain("_", Assert.Single(NumberedMentions(page)).Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Shows_a_palette_color_inside_a_mentions_span()
+    {
+        var page = Page("[Ana :red[Pop]](contact:a1 \"{fullName}\")");
+
+        AssertTag(page, "<span class=\"mention\"[^>]*>Ana <span style=\"color: ?#[0-9a-f]{6}\">Pop</span></span>");
+        Assert.DoesNotContain(":red", page.Substring(page.IndexOf("<body", StringComparison.OrdinalIgnoreCase)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Shows_escaped_punctuation_in_a_mentions_text_as_the_literal_character()
+    {
+        var page = Page("[Ana \\*QA\\* (_ana\\.pop_)](contact:a1 \"{fullName}\")");
+
+        AssertTag(page, "<span class=\"mention\"[^>]*>Ana \\*QA\\* \\(<(em|i)\\b[^>]*>ana\\.pop</(em|i)>\\)</span>");
+        Assert.DoesNotContain("\\", Assert.Single(NumberedMentions(page)).Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Shows_a_link_to_a_web_address_beside_a_mention_as_a_link()
     {
         var page = Page($"{Mention} and [site](https://example.org)");

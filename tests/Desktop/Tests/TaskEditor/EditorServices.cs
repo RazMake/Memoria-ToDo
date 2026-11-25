@@ -57,6 +57,9 @@ internal sealed class EditorServices
     /// </summary>
     public void UseContacts(string[]? templates, params string[] members) => Contacts.UseContacts(Files, Clone, templates, members);
 
+    /// <summary>Rewrites the "team" group with the members and has Contacts read it again, as a sync does, which raises its Changed event on the calling thread.</summary>
+    public void ChangeContacts(params string[] members) => Contacts.ChangeContacts(Files, Clone, members);
+
     /// <summary>Gives Tasks its repository folder, as Configure's choice does.</summary>
     public void UseRepository() => Tasks.UseRepositoryFolder(Clone);
 

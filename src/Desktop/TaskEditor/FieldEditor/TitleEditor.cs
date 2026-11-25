@@ -17,7 +17,7 @@ public sealed class TitleEditor : UserControl
 
     public TitleEditor(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, SaveKeys saveKeys, IPointerPosition pointer, ILogger logger)
-        : this(Argument.Required(pointer), new PickerLists(tasks, contacts, palette, theme), Argument.Required(saveKeys), theme, time, clipboard, Argument.Required(logger))
+        : this(Argument.Required(pointer), new PickerLists(tasks, contacts, palette, theme, logger), Argument.Required(saveKeys), theme, time, clipboard, Argument.Required(logger))
     {
     }
 
@@ -27,7 +27,7 @@ public sealed class TitleEditor : UserControl
         var router = new KeyRouter();
         var message = new MessageLine();
         var snippets = new SnippetInserter(time, clipboard, lists.TaskReferences.Open, NoImages);
-        _title = new TitleField(theme, lists, snippets, router, pointer, logger);
+        _title = new TitleField(theme, lists, snippets, router, pointer, message.Show, logger);
         _title.Keys.On(ModifierKeys.None, Key.Enter, RequestSave);
         var panel = new StackPanel();
         panel.Children.Add(_title.Editor);

@@ -77,6 +77,124 @@ public sealed class TemplatesMergeTests
     }
 
     [Fact]
+    public void Takes_the_side_that_edited_when_the_other_only_reordered_the_templates()
+    {
+        var basis = Templates("{fullName}", "{firstName}", "{title}");
+        var reordered = Templates("{title}", "{fullName}", "{firstName}");
+        var edited = Templates("{fullName}", "{firstName}", "{title}", "{alias}");
+
+        Assert.Equal(edited, f.Rules.Merge(Path, basis, reordered, edited));
+        Assert.Equal(edited, f.Rules.Merge(Path, basis, edited, reordered));
+    }
+
+    [Fact]
+    public void Deletes_a_file_deleted_on_one_side_when_the_other_only_reordered_the_templates()
+    {
+        var basis = Templates("{fullName}", "{firstName}");
+        var reordered = Templates("{firstName}", "{fullName}");
+
+        Assert.Null(f.Rules.Merge(Path, basis, reordered, null));
+        Assert.Null(f.Rules.Merge(Path, basis, null, reordered));
+    }
+
+    [Fact]
+    public void Takes_the_remote_file_when_both_sides_only_reordered_the_templates()
+    {
+        var basis = Templates("{fullName}", "{firstName}", "{title}");
+        var local = Templates("{title}", "{fullName}", "{firstName}");
+        var remote = Templates("{firstName}", "{title}", "{fullName}");
+
+        Assert.Equal(remote, f.Rules.Merge(Path, basis, local, remote));
+    }
+
+    [Fact]
+    public void Counts_a_reorder_that_also_changes_a_template_as_an_edit()
+    {
+        var basis = Templates("{fullName}", "{firstName}", "{title}");
+        var reorderedAndChanged = Templates("{title}", "{fullName}", "{alias}");
+        var reordered = Templates("{firstName}", "{title}", "{fullName}");
+
+        Assert.Equal(reorderedAndChanged, f.Rules.Merge(Path, basis, reorderedAndChanged, reordered));
+        Assert.Equal(reorderedAndChanged, f.Rules.Merge(Path, basis, reordered, reorderedAndChanged));
+    }
+
+    [Fact]
+    public void Counts_a_change_in_how_many_times_a_template_is_listed_as_an_edit()
+    {
+        var basis = Templates("{fullName}", "{fullName}", "{firstName}");
+        var recounted = Templates("{fullName}", "{firstName}", "{firstName}");
+        var reordered = Templates("{firstName}", "{fullName}", "{fullName}");
+
+        Assert.Equal(recounted, f.Rules.Merge(Path, basis, recounted, reordered));
+        Assert.Equal(recounted, f.Rules.Merge(Path, basis, reordered, recounted));
+    }
+
+    [Fact]
+    public void Counts_a_reorder_that_also_changes_another_top_level_field_as_an_edit()
+    {
+        var basis = ContactFiles.Utf8("""{ "version": 1, "templates": [ "{fullName}", "{firstName}" ], "note": "x" }""");
+        var reorderedWithNewNote = ContactFiles.Utf8("""{ "version": 1, "templates": [ "{firstName}", "{fullName}" ], "note": "y" }""");
+        var reordered = ContactFiles.Utf8("""{ "version": 1, "templates": [ "{firstName}", "{fullName}" ], "note": "x" }""");
+
+        Assert.Equal(reorderedWithNewNote, f.Rules.Merge(Path, basis, reorderedWithNewNote, reordered));
+        Assert.Equal(reorderedWithNewNote, f.Rules.Merge(Path, basis, reordered, reorderedWithNewNote));
+    }
+
+    [Fact]
+    public void Takes_the_side_that_edited_or_deleted_when_the_other_only_changed_whitespace_and_layout()
+    {
+        var basis = Templates("{fullName}", "{firstName}");
+        var relaid = ContactFiles.Utf8("{\n\n  \"templates\": [\"{fullName}\",   \"{firstName}\"],\n \"version\": 1 }");
+        var edited = Templates("{fullName}", "{firstName}", "{title}");
+
+        Assert.Equal(edited, f.Rules.Merge(Path, basis, relaid, edited));
+        Assert.Equal(edited, f.Rules.Merge(Path, basis, edited, relaid));
+        Assert.Null(f.Rules.Merge(Path, basis, relaid, null));
+        Assert.Null(f.Rules.Merge(Path, basis, null, relaid));
+    }
+
+    [Fact]
+    public void Takes_the_side_that_only_reordered_the_templates_over_a_side_left_as_it_was()
+    {
+        var basis = Templates("{fullName}", "{firstName}", "{title}");
+        var reordered = Templates("{title}", "{fullName}", "{firstName}");
+
+        Assert.Equal(reordered, f.Rules.Merge(Path, basis, reordered, basis));
+        Assert.Equal(reordered, f.Rules.Merge(Path, basis, basis, reordered));
+    }
+
+    [Fact]
+    public void Takes_the_side_that_only_reordered_the_templates_over_a_side_that_only_changed_the_layout()
+    {
+        var basis = Templates("{fullName}", "{firstName}", "{title}");
+        var reordered = Templates("{title}", "{fullName}", "{firstName}");
+        var relaid = ContactFiles.Utf8("{\n\n  \"templates\": [\"{fullName}\",   \"{firstName}\", \"{title}\"],\n \"version\": 1 }");
+
+        Assert.Equal(reordered, f.Rules.Merge(Path, basis, reordered, relaid));
+        Assert.Equal(reordered, f.Rules.Merge(Path, basis, relaid, reordered));
+    }
+
+    [Fact]
+    public void Takes_the_side_that_only_changed_the_layout_over_a_side_left_as_it_was()
+    {
+        var basis = Templates("{fullName}", "{firstName}");
+        var relaid = ContactFiles.Utf8("{\n\n  \"templates\": [\"{fullName}\",   \"{firstName}\"],\n \"version\": 1 }");
+
+        Assert.Equal(relaid, f.Rules.Merge(Path, basis, relaid, basis));
+        Assert.Equal(relaid, f.Rules.Merge(Path, basis, basis, relaid));
+    }
+
+    [Fact]
+    public void Takes_the_remote_file_when_both_sides_only_changed_the_layout()
+    {
+        var basis = Templates("{fullName}", "{firstName}");
+        var local = ContactFiles.Utf8("{\n\n  \"templates\": [\"{fullName}\",   \"{firstName}\"],\n \"version\": 1 }");
+        var remote = ContactFiles.Utf8("{ \"version\": 1,   \"templates\": [\n\"{fullName}\", \"{firstName}\"\n] }");
+
+        Assert.Equal(remote, f.Rules.Merge(Path, basis, local, remote));
+    }
+
+    [Fact]
     public void Counts_an_empty_side_as_a_file()
     {
         var basis = Templates("{fullName}");

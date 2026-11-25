@@ -92,7 +92,7 @@ public class TaskReferenceMentionTests
     }
 
     [Fact]
-    public void Choosing_a_task_turns_each_mention_into_its_live_text_as_plain_text()
+    public void Choosing_a_task_turns_each_mention_into_its_live_text_without_the_link()
     {
         var task = _services.AddTaskTitled("Call [Old Name](contact:ana \"{fullName}\") and [Zed Old](contact:zed \"{fullName}\")");
         Open();
@@ -100,6 +100,63 @@ public class TaskReferenceMentionTests
         _list.Choose(0);
 
         Assert.Equal($"see [Call Ana Pop and Zed Old](task:{task.Id})", _field.Text);
+    }
+
+    [Fact]
+    public void A_mentions_template_styling_stays_as_Markdown_in_the_reference()
+    {
+        _services.UseContacts(["{fullName}"], ContactFiles.Person("ana", "Ana Pop", ("alias", "anap")));
+        var task = _services.AddTaskTitled("Ask [x](contact:ana \"{fullName} (_{alias}_)\")");
+        Open();
+
+        _list.Choose(0);
+
+        Assert.Equal($"see [Ask Ana Pop (_anap_)](task:{task.Id})", _field.Text);
+    }
+
+    [Fact]
+    public void A_contacts_escaped_value_stays_escaped_in_the_reference_so_it_shows_as_written()
+    {
+        _services.UseContacts(["{fullName}"], ContactFiles.Person("ana", "Ana *QA*"));
+        var task = _services.AddTaskTitled("Ask [x](contact:ana \"{fullName}\")");
+        Open();
+
+        _list.Choose(0);
+
+        Assert.Equal($"see [Ask Ana \\*QA\\*](task:{task.Id})", _field.Text);
+    }
+
+    [Fact]
+    public void A_stored_text_with_Markdown_stays_Markdown_in_the_reference_when_Contacts_has_no_such_contact()
+    {
+        var task = _services.AddTaskTitled("Ask [Zed **Old** \\*QA\\*](contact:zed \"{fullName}\")");
+        Open();
+
+        _list.Choose(0);
+
+        Assert.Equal($"see [Ask Zed **Old** \\*QA\\*](task:{task.Id})", _field.Text);
+    }
+
+    [Fact]
+    public void The_rest_of_the_title_keeps_its_Markdown_and_escapes_beside_a_mention()
+    {
+        var task = _services.AddTaskTitled("*Urgent* ask [x](contact:ana \"{fullName}\") a\\*b [c]");
+        Open();
+
+        _list.Choose(0);
+
+        Assert.Equal($"see [*Urgent* ask Ana Pop a\\*b \\[c\\]](task:{task.Id})", _field.Text);
+    }
+
+    [Fact]
+    public void The_list_shows_a_mentions_template_styling_as_a_reader_sees_it_without_markers()
+    {
+        _services.UseContacts(["{fullName}"], ContactFiles.Person("ana", "Ana *QA*", ("alias", "anap")));
+        _services.AddTaskTitled("Ask [x](contact:ana \"{fullName} (_{alias}_)\")");
+
+        Open();
+
+        Assert.Equal(["Ask Ana *QA* (anap)"], _list.Items);
     }
 
     [Fact]

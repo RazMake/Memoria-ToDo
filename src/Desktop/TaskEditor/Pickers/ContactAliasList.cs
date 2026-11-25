@@ -22,19 +22,20 @@ public static class ContactAliasList
     /// Typing "@" in the box lists the contacts under it, each as its full name and alias. The list narrows as the user types;
     /// Down and Up move in it, Enter chooses the contact moved to and leaves "@" and its alias, or its ID when it has no alias,
     /// where "@" and what was typed were, and Esc closes the list. Tab closes the list and moves the focus as usual. The list
-    /// closes when the box loses the focus or its window moves, changes size, or is deactivated.
+    /// closes when the box loses the focus or its window moves, changes size, or is deactivated. The list logs to <paramref name="logger"/>.
     /// </summary>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
-    public static void Attach(TextBox box, IContacts contacts, ITheme theme)
+    public static void Attach(TextBox box, IContacts contacts, ITheme theme, Serilog.ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(box);
         ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(theme);
+        ArgumentNullException.ThrowIfNull(logger);
 
         var choices = new ChoiceList();
         var popups = new PopupLists(choices);
         var field = new TextBoxField(box);
-        var picking = new ContactAliasPicking(field, choices, popups, contacts);
+        var picking = new ContactAliasPicking(field, choices, popups, contacts, logger);
         _ = new MentionPopup(choices, () => picking.IsShowing ? picking : null, new Dictionary<ITextField, IPopupPlace> { [field] = field }, () => false, theme);
         PopupClosers.Attach(box, () => choices.Close());
         box.SetValue(KeysProperty, popups.AddKeysTo(new KeyMap())

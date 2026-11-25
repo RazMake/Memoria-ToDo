@@ -83,12 +83,13 @@ internal sealed class TaskReferencePicking
         var task = _shown[position];
         var offset = replaceFrom.Offset;
         _list.Close();
-        var input = new SnippetInput { Task = new TaskToReference(_tasks.LinkAddress(task.Id), PlainMentions(task.Title)) };
+        var input = new SnippetInput { Task = new TaskToReference(_tasks.LinkAddress(task.Id), WithoutMentionLinks(task.Title)) };
         SnippetInsertion.Apply(field, snippet, offset, input);
     }
 
-    // The title with each mention as its live (or stored) text, plain; the reference text is escaped like the rest of the text.
-    private string PlainMentions(string title)
+    // The title with each mention as its live (or stored) text's Markdown, without the link around it, since a link can't hold a
+    // link; the rest of the title keeps its Markdown and escapes, which Editing's snippet escapes as link text.
+    private string WithoutMentionLinks(string title)
     {
         var text = new System.Text.StringBuilder(title);
         foreach (var mention in Mentions.In(title, true).Reverse())

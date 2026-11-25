@@ -21,7 +21,7 @@ internal abstract class ContactFileKind<T> : IContactFileKind where T : class
     protected abstract byte[] Write(T file);
 
     /// <summary>The merge of both present sides; the basis is null when no common version exists.</summary>
-    protected abstract T MergeSides(T? basis, T local, T remote);
+    protected abstract T MergeSides(IReadOnlyList<string> parts, T? basis, T local, T remote);
 
     public byte[]? Merge(IReadOnlyList<string> parts, byte[]? basis, byte[]? local, byte[]? remote)
     {
@@ -31,14 +31,16 @@ internal abstract class ContactFileKind<T> : IContactFileKind where T : class
             var present = l ?? r;
             if (present is null)
                 return null;
-            var written = Write(present);
-            return b is not null && Write(b).AsSpan().SequenceEqual(written) ? null :             written;
-                    }
+            return b is not null && DeletionWins(parts, b, present) ? null : Write(present);
+        }
 
-                    return Write(MergeSides(b, l, r));
+        return Write(MergeSides(parts, b, l, r));
     }
 
-                private T? ReadSide(IReadOnlyList<string> parts, byte[]? bytes) => bytes is null ? null : Read(parts, bytes);
+    /// <summary>Whether one side's deletion wins over the other side's <paramref name="kept"/> file. By default, when the kept file writes the common version's bytes.</summary>
+    protected virtual bool DeletionWins(IReadOnlyList<string> parts, T basis, T kept) => Write(basis).AsSpan().SequenceEqual(Write(kept));
+
+    private T? ReadSide(IReadOnlyList<string> parts, byte[]? bytes) => bytes is null ? null : Read(parts, bytes);
 
     /// <summary>Whether the path is a file directly in the folder, which is a "/" path.</summary>
     protected static bool IsIn(IReadOnlyList<string> parts, string folder)

@@ -49,7 +49,8 @@ internal static class Program
         // Raised at the end of Main and by Environment.Exit, so an app ended by an error flushes the log too.
         AppDomain.CurrentDomain.ProcessExit += (_, _) => log.Dispose();
 
-        return AppRunner.Run(() =>
+        CloneReloads? reloads = null;
+        var exitCode = AppRunner.Run(() =>
         {
             var files = new WindowsFileSystem();
             var repository = new SyncedRepository(log.ForModule("Platform"));
@@ -61,7 +62,13 @@ internal static class Program
             var browser = new ShellDefaultBrowser();
             var deviceFolder = DeviceFolder();
             var appLog = log.ForModule("App");
-            var repositories = new RepositorySelection(files, repository.Select, System.IO.Path.Combine(deviceFolder, "repository-folder.txt"), appLog);
+            var watching = new CloneReloads(new WindowsFolderWatcher(), repository, TimeProvider.System, appLog);
+            reloads = watching;
+            var repositories = new RepositorySelection(
+                files,
+                selected => watching.Select(selected, repository.Select),
+                System.IO.Path.Combine(deviceFolder, "repository-folder.txt"),
+                appLog);
             var closeWindowKeys = new CloseWindowKeys();
             // Each open of a description web view serves the folder the repository is in then.
             Func<IDescriptionWebView> createWebView = () => new WpfDescriptionWebView(
@@ -132,6 +139,8 @@ internal static class Program
                 sync,
                 log.ForModule("Shell"));
         }, log.ForModule("Platform"));
+        reloads?.Dispose();
+        return exitCode;
     }
 
     private static int RunMcpBridge() => new McpBridge(

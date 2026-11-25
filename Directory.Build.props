@@ -26,11 +26,11 @@
     <MemoriaTestKindsText>$([System.IO.File]::ReadAllText($(MemoriaTestKindsFile)))</MemoriaTestKindsText>
     <MemoriaTraitName>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'TraitName = "([^"]+)"').Groups[1].Value)</MemoriaTraitName>
     <MemoriaUnitKind>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'UnitKind = "([^"]+)"').Groups[1].Value)</MemoriaUnitKind>
-    <!-- Default: unit tests only. Every run, of any kind, gets the hang dump. -p:MemoriaAllTestKinds=true drops only the unit filter.
-         Design: technology-stack.md, "A hang dump stops a test application…". -->
-    <MemoriaHangDumpArguments>--hangdump --hangdump-timeout 2m</MemoriaHangDumpArguments>
-    <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' == 'true'">$(MemoriaHangDumpArguments)</MemoriaTestArguments>
-    <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' != 'true'">$(MemoriaHangDumpArguments) --filter-trait "$(MemoriaTraitName)=$(MemoriaUnitKind)"</MemoriaTestArguments>
+    <!-- Default: unit tests only. Every run, of any kind, gets the hang dump and the crash dump. -p:MemoriaAllTestKinds=true drops only the unit filter.
+         Design: technology-stack.md, "A hang dump stops a test application…" and "A crash dump saves a test application…". -->
+    <MemoriaDumpArguments>--hangdump --hangdump-timeout 2m --crashdump</MemoriaDumpArguments>
+    <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' == 'true'">$(MemoriaDumpArguments)</MemoriaTestArguments>
+    <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' != 'true'">$(MemoriaDumpArguments) --filter-trait "$(MemoriaTraitName)=$(MemoriaUnitKind)"</MemoriaTestArguments>
     <TestingPlatformCommandLineArguments>$(MemoriaTestArguments)</TestingPlatformCommandLineArguments>
   </PropertyGroup>
 
@@ -42,6 +42,7 @@
   <ItemGroup Condition="'$(MemoriaIsTestProject)' == 'true'">
     <PackageReference Include="xunit.v3.mtp-v2" />
     <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CrashDump" />
     <!-- A skipped test fails every run; the one copy of the setting. -->
     <Content Include="$(MSBuildThisFileDirectory)tests\xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
@@ -52,9 +53,9 @@
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <!-- A hand-set TestingPlatformCommandLineArguments would silently drop the unit filter and the hang dump. -->
+  <!-- A hand-set TestingPlatformCommandLineArguments would silently drop the unit filter, the hang dump, and the crash dump. -->
   <Target Name="MemoriaCheckTestArguments" BeforeTargets="Build" Condition="'$(MemoriaIsTestProject)' == 'true'">
-    <Error Condition="'$(TestingPlatformCommandLineArguments)' != '$(MemoriaTestArguments)'" Text="Don't set TestingPlatformCommandLineArguments: it would drop the unit filter and the hang dump. To run UX or integration tests, pass -p:MemoriaAllTestKinds=true. See docs/architecture/technology-stack.md." />
+    <Error Condition="'$(TestingPlatformCommandLineArguments)' != '$(MemoriaTestArguments)'" Text="Don't set TestingPlatformCommandLineArguments: it would drop the unit filter, the hang dump, and the crash dump. To run UX or integration tests, pass -p:MemoriaAllTestKinds=true. See docs/architecture/technology-stack.md." />
   </Target>
 
   <!-- Every project under src/ lists its public interface in two files. -->

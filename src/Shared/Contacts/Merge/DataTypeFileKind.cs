@@ -17,6 +17,6 @@ internal sealed class DataTypeFileKind : ContactFileKind<DataTypeFile>
 
     protected override byte[] Write(DataTypeFile file) => DataTypeFileFormat.Write(file.ListName, file.Entries);
 
-    protected override DataTypeFile MergeSides(DataTypeFile? basis, DataTypeFile local, DataTypeFile remote) =>
+    protected override DataTypeFile MergeSides(IReadOnlyList<string> parts, DataTypeFile? basis, DataTypeFile local, DataTypeFile remote) =>
         local with { Entries = KeyedMerge.Merge(basis?.Entries, local.Entries, remote.Entries) };
 }

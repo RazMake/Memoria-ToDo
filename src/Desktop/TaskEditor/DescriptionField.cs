@@ -17,7 +17,7 @@ internal sealed class DescriptionField
     private const double MinHeight = 140;
     private const double MaxHeight = 400;
 
-    public DescriptionField(ITheme theme, PickerLists lists, SnippetInserter snippets, ImageInsertion images, KeyRouter router, IPointerPosition pointer, Serilog.ILogger logger)
+    public DescriptionField(ITheme theme, PickerLists lists, SnippetInserter snippets, ImageInsertion images, KeyRouter router, IPointerPosition pointer, Action<string> report, Serilog.ILogger logger)
     {
         Editor = new StyledTextEditor("Description", MarkdownField.Description, theme, lists.Contacts, pointer, logger)
         {
@@ -31,7 +31,7 @@ internal sealed class DescriptionField
         _ = new SnippetPicking(Editor, lists.SnippetChoices, lists.Popups, snippets);
         ImageDrop.AddTo(Editor, images);
         lists.TaskReferences.Watch(Editor);
-        lists.PickMentionsIn(Editor);
+        lists.PickMentionsIn(Editor, report);
         Editor.Chips.AddKeysTo(Keys);
         FormattingKeys.AddInline(Keys, Editor, () => lists.Colors.Open(Editor));
         FormattingKeys.AddHeadings(Keys, Editor);

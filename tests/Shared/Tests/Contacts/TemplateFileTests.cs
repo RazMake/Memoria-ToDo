@@ -99,6 +99,15 @@ public sealed class TemplateFileTests
     [InlineData("{fullName")]
     [InlineData("fullName}")]
     [InlineData("{careerPath.}")]
+    [InlineData("[{firstName}")]
+    [InlineData("{firstName}]")]
+    [InlineData("][{firstName}")]
+    [InlineData("[x]({firstName})")]
+    [InlineData("![{firstName}]")]
+    [InlineData("{firstName}\\")]
+    [InlineData(@"\{firstName}")]
+    [InlineData("{firstName}\n{title}")]
+    [InlineData("{firstName}\r{title}")]
     public void Reports_a_file_with_an_invalid_template_and_offers_the_default(string template)
     {
         f.Seed(ContactsFixture.TemplatesFile, ContactFiles.Templates("{firstName}", template));
@@ -107,6 +116,18 @@ public sealed class TemplateFileTests
 
         Assert.Equal(Default, f.Contacts.MentionTemplates);
         f.AssertSkipped(ContactsFixture.TemplatesFile);
+    }
+
+    [Fact]
+    public void Offers_a_file_whose_templates_hold_balanced_or_escaped_brackets_and_an_escaped_backslash()
+    {
+        var templates = new[] { "[{firstName}]", @"\[{firstName}\]", @"{firstName}\\", "**{nickname}** (_{alias}_)" };
+        f.Seed(ContactsFixture.TemplatesFile, ContactFiles.Templates(templates));
+
+        LoadWithContacts();
+
+        Assert.Equal(templates, f.Contacts.MentionTemplates);
+        Assert.Empty(f.Contacts.SkippedFiles);
     }
 
     [Fact]

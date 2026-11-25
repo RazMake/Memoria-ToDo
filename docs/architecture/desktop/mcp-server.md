@@ -97,7 +97,7 @@ The contact tools follow these rules:
 - **Saving an existing contact changes only the fields given**, as editing a task does. A field left out keeps its latest value, and an empty value clears it. A new contact gets only the fields given. Proposed, each a decision to confirm, from the independent review's findings; they change Contacts' public interface, so they get a [re-review](../../contributing/process.md#independent-review):
   - **The tool applies the given fields through Contacts' [save through a change](../contacts.md#saving-adding-and-deleting-change-one-group-file)**, which reads the contact and saves it under one lock. So a sync's reload or a window's save between the read and the write isn't undone for the fields left out.
   - **The full name is optional too.** Left out on an existing contact, it keeps its value. Contacts' own rules refuse a new contact without a full name, and an empty full name, as they refuse any invalid contact.
-- **A mention uses the first mention template when the call names none**, as the editor's mention popup starts on it.
+- **A mention uses the first mention template when the call names none**, as the editor's mention popup starts on it. That's the template the user [chose last](../contacts.md#mention-templates-come-from-a-synced-file) in an editor; the server never moves a template.
 
 ### Adding and editing never touch the user's open work
 

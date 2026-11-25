@@ -52,6 +52,49 @@ internal sealed partial class ContactService
             logger.Information("Moved the group in {GroupFile}", ContactLayout.GroupRelativePath(groupName)));
     }
 
+    public void MoveTemplateFirst(string template)
+    {
+        ArgumentNullException.ThrowIfNull(template);
+        var (wrote, listChanged) = repository.LockedChange(clone => MoveTemplateFirstIn(clone ?? throw new NoRepositoryFolderException(), template));
+        if (wrote)
+            Announce(null);
+        else if (listChanged)
+            Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Moves the template first in the file as it is on disk now. Returns whether it wrote, and, when it didn't, whether the list
+    /// changed to the file as read. Call inside the repository lock.
+    /// </summary>
+    private (bool Wrote, bool ListChanged) MoveTemplateFirstIn(string root, string template)
+    {
+        const string path = ContactLayout.TemplatesRelativePath;
+        if (snapshot.Skipped.Any(file => file.RelativePath == path))
+            return NothingToMove(template, "the latest load skipped the file", null);
+        var load = folder.ReadTemplates(root);
+        if (load.Require() is not { } file)
+            return NothingToMove(template, load.Present ? "the file is empty" : "the file is missing", TemplatesFileFormat.Default);
+        var at = file.Templates.ToList().IndexOf(template);
+        if (at <= 0)
+            return NothingToMove(template, at < 0 ? "the file doesn't list the template" : "the template is already first", file.Templates);
+
+        var moved = file.WithFirst(at);
+        folder.WriteTemplates(root, moved);
+        snapshot = snapshot.WithTemplates(moved.Templates);
+        logger.Information("Moved the mention template {Template} first in {TemplatesFile}, from place {OldPlace}", template, path, at + 1);
+        return (true, false);
+    }
+
+    /// <summary>Logs why nothing moved, then keeps <paramref name="read"/> (null: leave the list) as the list.</summary>
+    private (bool Wrote, bool ListChanged) NothingToMove(string template, string reason, IReadOnlyList<string>? read)
+    {
+        logger.Debug("Left the mention template {Template} where it is in {TemplatesFile}: {Reason}", template, ContactLayout.TemplatesRelativePath, reason);
+        if (read is null || snapshot.Templates.SequenceEqual(read))
+            return (false, false);
+        snapshot = snapshot.WithTemplates(read);
+        return (false, true);
+    }
+
     private static string GroupFileOf(GroupFile group) => ContactLayout.GroupRelativePath(group.Name);
 
     /// <summary>
@@ -89,15 +132,18 @@ internal sealed partial class ContactService
 
             return (written.Count > 0, failed);
         });
+        if (wrote)
+            Announce(writeFailure);
+    }
+
+    /// <summary>Raises Changed, then reports the local save, each even when the other fails; throws what failed, in order: <paramref name="writeFailure"/>'s, Changed's, the report's.</summary>
+    private void Announce(Exception? writeFailure)
+    {
         var failures = new FailureList();
         if (writeFailure is not null)
             failures.Add(writeFailure);
-        if (wrote)
-        {
-            failures.Attempt(() => Changed?.Invoke(this, EventArgs.Empty));
-            failures.Attempt(repository.ReportLocalSave);
-        }
-
+        failures.Attempt(() => Changed?.Invoke(this, EventArgs.Empty));
+        failures.Attempt(repository.ReportLocalSave);
         failures.ThrowIfAny();
     }
 

@@ -16,7 +16,7 @@ internal sealed record LiteralSegment(string Value) : TemplateSegment
 internal sealed record FieldSegment(ContactField Field) : TemplateSegment
 {
     public override string? Text(Contact contact, IReadOnlyList<DataType> dataTypes) =>
-        Field.TemplateTextOf(contact) is { Length: > 0 } value ? value : null;
+        Field.TemplateTextOf(contact) is { Length: > 0 } value ? MarkdownValue.Escape(value) : null;
 }
 
 /// <summary>A property of the entry a key field names, such as <c>{careerPath.short}</c>.</summary>
@@ -29,6 +29,6 @@ internal sealed record EntrySegment(KeyField Key, string Property) : TemplateSeg
             ? null
             : dataTypes.FirstOrDefault(type => type.KeyField == Key.Field)?.Entries
                 .FirstOrDefault(candidate => candidate.Id.Equals(key, StringComparison.OrdinalIgnoreCase));
-        return entry is not null && entry.Text.TryGetValue(Property, out var value) && value.Length > 0 ? value : null;
+        return entry is not null && entry.Text.TryGetValue(Property, out var value) && value.Length > 0 ? MarkdownValue.Escape(value) : null;
     }
 }

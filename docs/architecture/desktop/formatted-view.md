@@ -15,7 +15,7 @@ The user decided that Task View shows titles and descriptions formatted, as a re
 - **A description shown as an edit's preview** shows Rendering's page with [resizable images](#a-resized-image-is-reported-not-saved) instead. Its user turns the preview on and off; the description starts as a plain one, whose images have no resize corner.
 - **Both follow the theme**: when Windows switches between light and dark, a shown title and description switch too.
 
-The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview) doesn't use the Formatted view. It shows Markdown source, with its markers dimmed, which changes for different reasons than what a reader sees. Add's preview isn't built yet: it will reopen the editor's no-preview rule, and will then add a dependency of the Task editor on the Formatted view.
+The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview) doesn't use the Formatted view to show its text. It shows Markdown source, with its markers dimmed, which changes for different reasons than what a reader sees. Add's preview isn't built yet: it will reopen the editor's no-preview rule. The user decided that the Task editor uses the Formatted view's [mention chip](#public-interface) alone, since a chip shows a mention as a reader sees it.
 
 Proposed, each a decision to confirm:
 
@@ -241,6 +241,24 @@ For [a mention's card](#a-mention-shows-a-card-its-user-makes), proposed, each a
 
 /// A mention on the description page: its number, counted from 0, and its box in the web view's coordinates.
 public sealed record MentionAt(int Mention, Rect Box);
+```
+
+The user asked that a mention's Markdown show as styling everywhere a mention shows, the [Task editor's](task-editor.md#typing-an-at-sign-mentions-a-contact) "@" list and chips included. The user decided that the Formatted view publishes the chip a title already draws for a mention, so the title, the "@" list's header, and the editor's chips share one look and one way of formatting a mention's text. Before, the title and the editor each drew the chip's background, padding, and corners their own way. Proposed, each a decision to confirm: the chip's shape below, and that a chip shows only its own text's styles, so in a title a style around a whole mention, such as `**` around it, no longer reaches the chip.
+
+```csharp
+namespace Memoria.ToDo.Desktop.FormattedView;
+
+/// A mention's text as one chip, as a reader sees it: its Markdown formatted as a title's is, with no Markdown
+/// characters, in the normal text color, on the theme's mention background, with the mention padding and rounded
+/// corners. The room above and below the text doesn't make a line taller, and the chip sits on the text's baseline.
+/// It takes its font from where it sits, and doesn't follow the theme: its user makes a new chip when the theme changes.
+/// Its AutomationProperties.Name is the text it shows.
+public sealed class MentionChip : Border
+{
+    /// text: the mention's text as a mention link's text holds it, such as "Ana Pop (_anap_)".
+    /// Throws ArgumentNullException for a null text.
+    public MentionChip(string text, bool dark);
+}
 ```
 
 ## Failure modes

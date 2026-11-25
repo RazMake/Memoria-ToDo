@@ -635,4 +635,244 @@ public class MentionPickingTests
 
         Assert.Equal("see @bo", _field.Text);
     }
+
+    [Fact]
+    public void The_header_is_the_templates_Markdown_with_each_value_escaped()
+    {
+        _services.UseContacts(["{fullName} (_{alias}_)"], ContactFiles.Person("ana", "Ana *QA*", ("alias", "ana_pop")));
+
+        _field.Type("@");
+
+        Assert.Equal("Ana \\*QA\\* (_ana\\_pop_)", _picking.Header);
+    }
+
+    // Erasing back into a partial mention opens the list as typing it would have. "al" finds Alan and Alex; "ale" only Alex.
+    private const string Alan = "[Alan Rus](contact:alan \"{fullName}\")";
+
+    private void UseAlans() =>
+        _services.UseContacts([FullName],
+            ContactFiles.Person("alan", "Alan Rus"),
+            ContactFiles.Person("alex", "Alex Mic"),
+            ContactFiles.Person("bob", "Bob Stan"));
+
+    // "@ale" typed, then the list closed by Esc, so only an erase can open it again.
+    private void TypeAleAndPressEsc()
+    {
+        UseAlans();
+        _field.Type("@ale");
+        Assert.True(_popups.CloseOpen());
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void Backspace_erasing_back_into_a_partial_mention_opens_the_list_for_it_after_Esc()
+    {
+        TypeAleAndPressEsc();
+
+        _field.Backspace();
+
+        Assert.Equal(["Alan Rus", "Alex Mic"], FullNames);
+        Assert.Equal("@al", _field.Text);
+    }
+
+    [Fact]
+    public void Backspace_erasing_back_into_a_partial_mention_opens_the_list_after_the_field_lost_the_focus()
+    {
+        UseAlans();
+        _field.Type("@ale");
+        _field.LoseFocus();
+        Assert.False(_list.IsOpen);
+
+        _field.Backspace();
+
+        Assert.Equal(["Alan Rus", "Alex Mic"], FullNames);
+    }
+
+    [Fact]
+    public void Backspace_erasing_back_into_a_partial_mention_opens_the_list_in_a_field_that_opened_with_the_text()
+    {
+        UseAlans();
+        _field.Document.Text = "see @ale";
+        _field.Cursor(8);
+        Assert.False(_list.IsOpen);
+
+        _field.Backspace();
+
+        Assert.Equal(["Alan Rus", "Alex Mic"], FullNames);
+    }
+
+    [Fact]
+    public void Delete_erasing_back_into_a_partial_mention_opens_the_list()
+    {
+        TypeAleAndPressEsc();
+        _field.Cursor(3);
+
+        _field.Delete();
+
+        Assert.Equal("@al", _field.Text);
+        Assert.Equal(["Alan Rus", "Alex Mic"], FullNames);
+    }
+
+    [Fact]
+    public void Erasing_a_word_with_Ctrl_Backspace_back_into_a_partial_mention_opens_the_list()
+    {
+        UseAlans();
+        _field.Type("@alan");
+        _popups.CloseOpen();
+
+        _field.Erase(3, 2);
+
+        Assert.Equal("@al", _field.Text);
+        Assert.Equal(["Alan Rus", "Alex Mic"], FullNames);
+    }
+
+    [Fact]
+    public void Cutting_a_selection_back_into_a_partial_mention_opens_the_list()
+    {
+        UseAlans();
+        _field.Type("@alan");
+        _popups.CloseOpen();
+        _field.Select(3, 2);
+
+        _field.Cut();
+
+        Assert.Equal("@al", _field.Text);
+        Assert.Equal(["Alan Rus", "Alex Mic"], FullNames);
+    }
+
+    [Fact]
+    public void An_undo_that_only_removes_text_back_into_a_partial_mention_opens_the_list()
+    {
+        TypeAleAndPressEsc();
+
+        _field.Undo();
+
+        Assert.Equal("@al", _field.Text);
+        Assert.Equal(["Alan Rus", "Alex Mic"], FullNames);
+    }
+
+    [Fact]
+    public void Erasing_back_to_a_bare_at_sign_opens_the_list_with_the_first_seven_contacts()
+    {
+        UseNineContacts(FullName);
+        _field.Type("@ana");
+        _popups.CloseOpen();
+
+        _field.Erase(1, 3);
+
+        Assert.Equal("@", _field.Text);
+        Assert.Equal(["Ana Pop", "Bob Stan", "Cris Ilie", "Dan Rus", "Eva Mic", "Fay Nan", "Gus Oro"], FullNames);
+    }
+
+    [Fact]
+    public void Erasing_the_at_sign_itself_opens_nothing()
+    {
+        UseNineContacts(FullName);
+        _field.Type("@");
+        _popups.CloseOpen();
+
+        _field.Backspace();
+
+        Assert.Equal("", _field.Text);
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void Erasing_text_before_the_at_sign_opens_nothing()
+    {
+        UseAlans();
+        _field.Type("x @ale");
+        _popups.CloseOpen();
+        _field.Cursor(1);
+
+        _field.Backspace();
+
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void Choosing_after_erasing_back_into_a_partial_mention_replaces_the_at_sign_and_the_rest()
+    {
+        TypeAleAndPressEsc();
+        _field.Backspace();
+
+        _list.Choose(1);
+
+        Assert.Equal("[Alex Mic](contact:alex \"{fullName}\")", _field.Text);
+    }
+
+    [Fact]
+    public void Typing_over_a_selection_is_typing_so_it_opens_nothing()
+    {
+        TypeAleAndPressEsc();
+        _field.Select(1, 3);
+
+        _field.Type("a");
+
+        Assert.Equal("@a", _field.Text);
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void Moving_the_cursor_back_into_a_partial_mention_opens_nothing()
+    {
+        TypeAleAndPressEsc();
+
+        _field.Cursor(3);
+        _field.Cursor(2);
+        _field.Cursor(4);
+
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void Erasing_opens_nothing_while_another_list_is_open()
+    {
+        TypeAleAndPressEsc();
+        _popups.Show(_other, ["Red"]);
+
+        _field.Backspace();
+
+        Assert.False(_list.IsOpen);
+        Assert.True(_other.IsOpen);
+    }
+
+    [Fact]
+    public void Erasing_opens_nothing_when_a_chip_lies_between_the_at_sign_and_the_cursor()
+    {
+        // Search needs every word of the text between the "@" and the cursor, the chip's Markdown included, in one field: only this title has them.
+        _services.UseContacts([FullName], ContactFiles.Person("ref", "Ref Mic", ("title", $"{Alan}ale")));
+        _field.Document.Text = $"@{Alan}ale";
+        _field.Cursor(_field.Text.Length);
+
+        _field.Backspace();
+
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void Erasing_opens_nothing_for_an_at_sign_inside_a_mention_shown_as_Markdown_across_a_line_break()
+    {
+        UseAlans();
+        _field.Document.Text = "[Ana\n@ale](contact:ana \"{fullName}\")";
+        _field.Cursor("[Ana\n@ale".Length);
+
+        _field.Backspace();
+
+        Assert.Equal("[Ana\n@al](contact:ana \"{fullName}\")", _field.LfText);
+        Assert.False(_list.IsOpen);
+    }
+
+    [Fact]
+    public void Erasing_while_the_list_is_open_keeps_narrowing_it()
+    {
+        UseAlans();
+        _field.Type("@alex");
+        Assert.Equal(["Alex Mic"], FullNames);
+
+        _field.Backspace();
+        _field.Backspace();
+
+        Assert.Equal(["Alan Rus", "Alex Mic"], FullNames);
+    }
 }

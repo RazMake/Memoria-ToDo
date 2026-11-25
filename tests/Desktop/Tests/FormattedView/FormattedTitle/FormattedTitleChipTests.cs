@@ -1,4 +1,5 @@
 using System.Windows.Automation;
+using System.Windows.Documents;
 using Memoria.ToDo.Testing;
 using Xunit;
 using static Memoria.ToDo.Desktop.FormattedView.Tests.FormattedTitle.TitleScreen;
@@ -17,7 +18,7 @@ public class FormattedTitleChipTests
         screen.Title.Markdown = $"Ask {EscapedMention} now";
 
         var chip = Assert.Single(screen.Title.Chips());
-        Assert.Equal("Ana Pop (SDE)", TitleChips.TextOf(chip));
+        Assert.Equal("Ana Pop (SDE)", ChipRuns.ShownBy(chip));
         Assert.Equal("Ask Ana Pop (SDE) now", screen.Text);
         Assert.Equal("Ask Ana Pop (SDE) now", AutomationProperties.GetName(screen.Title));
     }
@@ -32,9 +33,53 @@ public class FormattedTitleChipTests
         screen.Title.Markdown = $"Ask {mention} now";
 
         var chip = Assert.Single(screen.Title.Chips());
-        Assert.Equal("Ana Pop Li", TitleChips.TextOf(chip));
+        Assert.Equal("Ana Pop Li", ChipRuns.ShownBy(chip));
         Assert.True(HasStyle(style, screen, "Pop"), $"'Pop' isn't {style}.");
         Assert.False(HasStyle(style, screen, "Ana"), $"'Ana' is {style} too.");
         Assert.False(HasStyle(style, screen, "Li"), $"'Li' is {style} too.");
     }
+
+    [WpfFact]
+    public void Shows_each_mention_as_a_mention_chip()
+    {
+        using var screen = new TitleScreen(inWindow: false);
+
+        screen.Title.Markdown = $"Ask {AnaMention} and {BoMention} now";
+
+        var containers = ChipRuns.Walk(screen.Title.Inlines).OfType<InlineUIContainer>().ToList();
+        Assert.Equal(2, containers.Count);
+        Assert.All(containers, container => Assert.IsType<MentionChip>(container.Child));
+    }
+
+    [WpfFact]
+    public void Shows_the_alias_of_a_mention_in_italic_with_no_underscores_showing()
+    {
+        using var screen = new TitleScreen(inWindow: false);
+
+        screen.Title.Markdown = $"Ask {AliasMention} now";
+
+        var chip = Assert.Single(screen.Title.Chips());
+        Assert.Equal("Ana Pop (anap)", ChipRuns.ShownBy(chip));
+        Assert.True(HasStyle("italic", screen, "anap"), "'anap' isn't italic.");
+        Assert.False(HasStyle("italic", screen, "Ana Pop"), "'Ana Pop' is italic too.");
+        Assert.Equal("Ask Ana Pop (anap) now", screen.Text);
+        Assert.Equal("Ask Ana Pop (anap) now", AutomationProperties.GetName(screen.Title));
+    }
+
+    [WpfFact]
+    public void Shows_a_mention_whose_text_escapes_asterisks_as_written_and_not_italic()
+    {
+        using var screen = new TitleScreen(inWindow: false);
+
+        screen.Title.Markdown = $"Ask {AsterisksMention} now";
+
+        var chip = Assert.Single(screen.Title.Chips());
+        Assert.Equal("Ana *QA*", ChipRuns.ShownBy(chip));
+        Assert.False(HasStyle("italic", screen, "QA"), "'QA' is italic.");
+        Assert.Equal("Ask Ana *QA* now", AutomationProperties.GetName(screen.Title));
+    }
+
+    private const string AliasMention = "[Ana Pop (_anap_)](contact:a1 \"{fullName} (_{alias}_)\")";
+
+    private const string AsterisksMention = "[Ana \\*QA\\*](contact:a1 \"{fullName}\")";
 }

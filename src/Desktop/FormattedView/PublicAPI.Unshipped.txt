@@ -15,6 +15,8 @@ Memoria.ToDo.Desktop.FormattedView.MentionAt.Equals(Memoria.ToDo.Desktop.Formatt
 Memoria.ToDo.Desktop.FormattedView.MentionAt.Mention.get -> int
 Memoria.ToDo.Desktop.FormattedView.MentionAt.Mention.init -> void
 Memoria.ToDo.Desktop.FormattedView.MentionAt.MentionAt(int Mention, System.Windows.Rect Box) -> void
+Memoria.ToDo.Desktop.FormattedView.MentionChip
+Memoria.ToDo.Desktop.FormattedView.MentionChip.MentionChip(string! text, bool dark) -> void
 override Memoria.ToDo.Desktop.FormattedView.MentionAt.Equals(object? obj) -> bool
 override Memoria.ToDo.Desktop.FormattedView.MentionAt.GetHashCode() -> int
 override Memoria.ToDo.Desktop.FormattedView.MentionAt.ToString() -> string!

@@ -126,6 +126,45 @@ public class MentionPickerTests
         Assert.Throws<ArgumentNullException>(() => MentionPicker.QueryOf(null!, 0));
     }
 
+    // Finding the at sign before the cursor
+
+    [Theory]
+    [InlineData("Ask @ana«»", 4)]
+    [InlineData("@«»", 0)]
+    [InlineData("@«»ana", 0)]
+    [InlineData("(@«»", 1)]
+    [InlineData("Ask @ana pop«»", 4)]
+    [InlineData("@ana «»", 0)]
+    [InlineData("@a«»b @c", 0)]
+    [InlineData("@a @b«»", 3)]
+    [InlineData("@@«»", 1)]
+    [InlineData("@a\n@b«»", 3)]
+    [InlineData("@a b@c«»", 0)]
+    public void Finds_the_last_at_sign_before_the_cursor_whose_query_ends_at_the_cursor(string marked, int atIndex)
+    {
+        Assert.Equal(atIndex, MentionPicker.AtBefore(Marked.Field(marked)));
+    }
+
+    [Theory]
+    [InlineData("a@b«»")]
+    [InlineData("Ask ana«»")]
+    [InlineData("«»")]
+    [InlineData("«»@ana")]
+    [InlineData("a«»b @c")]
+    [InlineData("@ana\npop«»")]
+    [InlineData("@\n«»")]
+    [InlineData("@a\nb@c«»")]
+    public void Finds_no_at_sign_when_none_opens_a_list_with_a_query_on_the_cursors_line(string marked)
+    {
+        Assert.Null(MentionPicker.AtBefore(Marked.Field(marked)));
+    }
+
+    [Fact]
+    public void Finding_the_at_sign_rejects_a_missing_field()
+    {
+        Assert.Throws<ArgumentNullException>(() => MentionPicker.AtBefore(null!));
+    }
+
     // Inserting
 
     [Fact]

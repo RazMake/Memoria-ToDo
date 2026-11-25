@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using System.Windows.Media;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Rendering;
 
@@ -11,11 +10,9 @@ namespace Memoria.ToDo.Desktop.FormattedView;
 /// <summary>A task's title as a reader sees it: native text, with no Markdown characters.</summary>
 public sealed class FormattedTitle : TextBlock
 {
-    private static readonly FontFamily CodeFont = new(TextLooks.CodeFont);
-
     private readonly ITheme _theme;
     private readonly LinkOpener _links;
-    private readonly List<Chip> _chips = [];
+    private readonly List<(MentionChip Chip, Mention Mention)> _chips = [];
     private string _markdown = "";
     private string? _shownMarkdown;
     private bool _shownDark;
@@ -79,7 +76,6 @@ public sealed class FormattedTitle : TextBlock
         var look = TextLooks.Of(dark);
         var spans = TitleText.ShownSpans(_markdown);
         var mentions = Mentions.In(_markdown, title: true);
-        var background = Frozen(new SolidColorBrush(ColorOf(look.MentionBackground)));
         for (var i = 0; i < spans.Count; i++)
         {
             if (!spans[i].Styles.HasFlag(SpanStyle.Mention))
@@ -91,17 +87,15 @@ public sealed class FormattedTitle : TextBlock
             // A mention is one chip, however many styled spans its text has. A chip is not a link: its clicks go to the
             // element around the title.
             var mention = mentions.First(m => spans[i].Start >= m.Start && spans[i].Start < m.Start + m.Length);
-            var runs = new List<Run> { RunOf(spans[i], look) };
             while (i + 1 < spans.Count
                 && spans[i + 1].Styles.HasFlag(SpanStyle.Mention)
                 && spans[i + 1].Start < mention.Start + mention.Length)
             {
                 i++;
-                runs.Add(RunOf(spans[i], look));
             }
 
-            var chip = new Chip(mention, runs, background);
-            _chips.Add(chip);
+            var chip = new MentionChip(mention.StoredText, dark);
+            _chips.Add((chip, mention));
             Inlines.Add(new InlineUIContainer(chip));
         }
 
@@ -115,58 +109,25 @@ public sealed class FormattedTitle : TextBlock
     {
         HoverPart? part = null;
         if (MentionCard is { } makeCard
-            && _chips.FirstOrDefault(chip => BoxOf(chip).Contains(inTitle)) is { } hit
+            && _chips.FirstOrDefault(entry => BoxOf(entry.Chip).Contains(inTitle)) is { Chip: not null } hit
             && makeCard(hit.Mention) is { } card)
         {
-            part = new HoverPart(BoxOf(hit), card);
+            part = new HoverPart(BoxOf(hit.Chip), card);
         }
 
         return Task.FromResult(part);
     }
 
     // The chip's whole background, padding included, in the title's coordinates. Empty while the chip isn't laid out in the title.
-    private Rect BoxOf(Chip chip) =>
+    private Rect BoxOf(MentionChip chip) =>
         chip.IsDescendantOf(this)
             ? chip.TransformToAncestor(this).TransformBounds(new Rect(chip.RenderSize))
             : Rect.Empty;
 
-    // The span's text with the span's own styles.
-    private Run RunOf(StyledSpan span, TextLook look)
-    {
-        var run = new Run(_markdown.Substring(span.Start, span.Length));
-        if (span.Styles.HasFlag(SpanStyle.Bold))
-        {
-            run.FontWeight = FontWeights.Bold;
-        }
-
-        if (span.Styles.HasFlag(SpanStyle.Italic))
-        {
-            run.FontStyle = FontStyles.Italic;
-        }
-
-        if (span.Styles.HasFlag(SpanStyle.Code))
-        {
-            run.FontFamily = CodeFont;
-            run.Background = Frozen(new SolidColorBrush(ColorOf(look.CodeBackground)) { Opacity = look.CodeBackgroundOpacity });
-        }
-
-        if (span.Styles.HasFlag(SpanStyle.Strikethrough))
-        {
-            run.TextDecorations = System.Windows.TextDecorations.Strikethrough;
-        }
-
-        if (look.ColorOf(span) is { } color)
-        {
-            run.Foreground = Frozen(new SolidColorBrush(ColorOf(color)));
-        }
-
-        return run;
-    }
-
     // A span outside any mention: its run, or a link around it.
     private Inline InlineOf(StyledSpan span, TextLook look)
     {
-        var run = RunOf(span, look);
+        var run = StyledRun.Of(_markdown, span, look);
         if (span.LinkAddress is not { } address)
         {
             return run;
@@ -180,40 +141,4 @@ public sealed class FormattedTitle : TextBlock
         return link;
     }
 
-    private static Color ColorOf(string hex) => (Color)ColorConverter.ConvertFromString(hex);
-
-    // A mention's text on its background, with room around it, sitting on the title's baseline. The negative margin keeps the
-    // room above and below from making the line taller.
-    private sealed class Chip : Border
-    {
-        private readonly TextBlock _text;
-
-        public Chip(Mention mention, IEnumerable<Run> runs, Brush background)
-        {
-            Mention = mention;
-            _text = new TextBlock();
-            _text.Inlines.AddRange(runs);
-            Child = _text;
-            Background = background;
-            Padding = new Thickness(TextLooks.MentionPaddingSides, TextLooks.MentionPaddingTop, TextLooks.MentionPaddingSides, TextLooks.MentionPaddingBottom);
-            Margin = new Thickness(0, -TextLooks.MentionPaddingTop, 0, -TextLooks.MentionPaddingBottom);
-            CornerRadius = new CornerRadius(TextLooks.MentionCornerRadius);
-        }
-
-        public Mention Mention { get; }
-
-        // The title lines the chip up by this offset; without it the chip's bottom would sit on the baseline.
-        protected override Size MeasureOverride(Size constraint)
-        {
-            var size = base.MeasureOverride(constraint);
-            TextBlock.SetBaselineOffset(this, _text.FontFamily.Baseline * _text.FontSize);
-            return size;
-        }
-    }
-
-    private static T Frozen<T>(T freezable) where T : Freezable
-    {
-        freezable.Freeze();
-        return freezable;
-    }
 }

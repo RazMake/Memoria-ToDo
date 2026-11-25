@@ -77,6 +77,10 @@ public static class TestContactStore
         contacts.UseRepositoryFolder(clone);
     }
 
+    /// <summary>Rewrites the "team" group with the members and has Contacts read it again, as a sync does, which raises its Changed event on the calling thread.</summary>
+    public static void ChangeContacts(this IContacts contacts, IFileSystem files, string clone, params string[] members) =>
+        contacts.RepositoryOf().Update(clone, () => files.SeedGroup(clone, "team", 1000, members));
+
     public static void SeedMe(this IFileSystem files, string clone, int position, string details) =>
         files.Seed(clone, MeFile, ContactFiles.Me(position, details));
 

@@ -26,6 +26,27 @@ public static class MentionPicker
         return typed.Contains('\n') ? null : typed.ToString();
     }
 
+    /// <summary>
+    /// The index of the last "@" before the cursor, on the cursor's line, where <see cref="OpensAt"/> is true and
+    /// <see cref="QueryOf"/> answers a query; null when there's none. The cursor is where <see cref="QueryOf"/> reads it.
+    /// </summary>
+    public static int? AtBefore(TextAndSelection field)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        var cursor = field.SelectionStart;
+        var lineStart = Lines.StartOf(field.Text, cursor);
+        for (var index = cursor - 1; index >= lineStart; index--)
+        {
+            // Every index here is before the cursor on its line, so OpensAt is the only rule left of QueryOf.
+            if (OpensAt(field.Text, index))
+            {
+                return index;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Replaces the "@" through the end of the selection, and the text typed after it, with <paramref name="mention"/>, and puts the cursor after it.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The list would be closed: <see cref="QueryOf"/> would answer null.</exception>
     /// <exception cref="ArgumentException"><paramref name="mention"/> is empty.</exception>

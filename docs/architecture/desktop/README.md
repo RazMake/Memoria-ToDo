@@ -530,6 +530,36 @@ The [MCP server](mcp-server.md#an-assistant-reaches-it-through-a-pipe-and-a-brid
   - The `--mcp` branch of `Main` blocks on the bridge's one task, since it has no message pump; the rule above against `GetAwaiter().GetResult()` covers the WPF app only.
 - **The setup actions' `CopyText` refuses a null or blank text**, as `CopyPublicKey` does, since `CopyPublicKey` now calls it.
 
+### The composition root reloads the clone when a file in it changes
+
+A file you edit by hand in the clone, such as the [mention templates file](../contacts.md#mention-templates-come-from-a-synced-file), shows in the app about half a second after you save it, not at the next sync. The user chose a watcher, so every window, the [MCP server](mcp-server.md), and the [local API](../local-api.md) see the edit. Android needs none: its clone sits in the app's private storage, where nothing else writes ([Configure](../android/configure.md#each-setting-has-one-owner)).
+
+- **The app watches every file in the selected clone**, subfolders included, and moves the watch when Configure selects another folder. The watch moves before the stores read the new folder, so an edit saved while they read is seen. When a selection fails, the watch follows the folder the repository still holds, the old one or, when only a notice failed, the new one. With no folder, nothing is watched.
+- **Any change except to `.git` or a file in it reloads the whole clone**, the user's choice: a file created, changed, deleted, or renamed, in any store's files. The [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) reloads every part at once, so a narrower watch would save nothing. `.git` itself is left out too, since Windows reports it as changed whenever Git adds or removes a file directly in it.
+- **The reload is the repository's `Update` with a change that does nothing.** So it runs under the lock, reloads every store, raises their notices after releasing the lock, and reports no local save. A hand edit starts no sync; it travels with the next one, as before.
+- **The reload waits until no change has come for 500 ms**, even when the timer's call comes late, so an editor's save or a checkout, which make many changes, reloads once. A file read halfway through a save is skipped, as any unreadable file is, and the save's last change reloads it again.
+- **A reload for a folder no longer selected does nothing**, even when the selection changes just as the reload starts. Stopping the app cancels a waiting reload and stops the watch.
+- **The app's own saves and Sync's merges also reload once.** That's accepted: Sync already reloads after each save, and telling the app's writes apart would need the file system to report them. On a clone of 500 tasks and 200 contacts, a reload took about 130 ms and allocated about 5 MB that the next collection frees. It holds the repository's lock all that time, so a save made meanwhile waits for it.
+- **Each reload logs at Debug** why it ran, how many changes it saw, and the first changed path. Single changes aren't logged.
+
+Proposed, each a decision to confirm:
+
+- The 500 ms wait restarts with each change and has no upper limit, as Sync's [wait after a save](../sync.md#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) does.
+- The watcher's buffer is 64 KB, its [maximum](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher.internalbuffersize). When it overflows, as in a large checkout, the app reloads anyway.
+- A watch that can't start logs a Warning, and the selection still succeeds. Any other watcher error logs a Warning, reloads once, and stops the watch until the next selection or start, so hand edits again wait for the next sync.
+- A reload that fails logs an Error and isn't thrown; the next change tries again.
+- A change to `.git` itself starts no reload, though in a [worktree](https://git-scm.com/docs/git-worktree) `.git` is a file. Windows can't tell the two apart, and that file only says where the worktree's Git data is.
+- A selection that fails before the stores read the new folder watches the old folder again. An edit to the old folder while the selection ran waits for the next sync.
+- The watcher lives in the composition root, behind a small internal interface its unit tests fake, not in the shared platform, since only the desktop needs it.
+
+These were ruled out:
+
+- **Re-reading when the "@" list opens, or when a window gets focus**: the MCP server and the local API would still wait for a sync, and focus would reload at every switch to the app.
+- **Checking file times every 30 seconds**: up to 30 seconds late, and constant disk work.
+- **Watching only Contacts' files, or only the templates file**: hand edits to task files and settings would still wait for a sync, and the repository can only reload everything.
+- **A watcher in the shared platform, or in each store**: Android doesn't need one, and a store reloading on its own was [ruled out](../contacts.md#ruled-out).
+- **Starting a sync after a hand edit**: not asked for, and Sync's own merges would start more passes.
+
 ## Split panes, search band, and drag parts serve every window that needs them
 
 The user decided that Task View's split bar and search band move into the platform, so Task View and Contacts share one of each, and Task View works exactly as before. The user also confirmed the rest:

@@ -31,6 +31,13 @@ public static class ContactFiles
 
     public static byte[] Utf8(string text) => Encoding.UTF8.GetBytes(text);
 
+    /// <summary>A templates file's templates, in file order.</summary>
+    public static List<string> TemplatesIn(byte[] bytes)
+    {
+        using var json = JsonDocument.Parse(bytes);
+        return [.. json.RootElement.GetProperty("templates").EnumerateArray().Select(template => template.GetString()!)];
+    }
+
     /// <summary>What a test checks of a file's JSON: each object's fields by name (strings as text, anything else as its JSON), in file order.</summary>
     public sealed record Parsed(int? Position, IReadOnlyList<IReadOnlyDictionary<string, string>> Objects, IReadOnlyDictionary<string, string> Top)
     {

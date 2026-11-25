@@ -10,7 +10,7 @@ Contacts keeps the people the user works with, in files in the synced repository
 
 The user decided that contacts are a module of their own, `Memoria.ToDo.Shared.Contacts` in `src/Shared/Contacts/`, not a part of Tasks. It uses no other module. It owns the contact files, their reading, writing, and merge rules, search, relations, the mention format, the mention templates, and the data types key fields choose from.
 
-It shares the clone with Tasks through the shared platform's [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload): the same selected folder, the same lock, the same reload after a sync, and the same list of skipped files. So neither store knows the other, and a sync updates both under one lock. It also writes and skips files by the platform's [JSON style and file rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules), as Tasks does.
+It shares the clone with Tasks through the shared platform's [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload): the same selected folder, the same lock, the same reload after a sync, or on the desktop [after a file in the clone changes](desktop/README.md#the-composition-root-reloads-the-clone-when-a-file-in-it-changes), and the same list of skipped files. So neither store knows the other, and a sync updates both under one lock. It also writes and skips files by the platform's [JSON style and file rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules), as Tasks does.
 
 These modules use it:
 
@@ -18,7 +18,7 @@ These modules use it:
 | --- | --- |
 | [Sync](sync.md#sync-manages-contact-files-through-contacts-rules) | Which files are contact files, and how two versions of one merge |
 | Desktop [Contact list](desktop/contact-list.md) | Everything: groups, details, search, saving, adding, deleting, and moving groups; and the contact a mention names, for the [contact card](desktop/contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) |
-| Desktop [Task editor](desktop/task-editor.md#typing-an-at-sign-mentions-a-contact) and [Android Task editor](android/task-editor.md#typing-an-at-sign-mentions-a-contact) | Search, the templates, and the mention to insert, for the "@" list; and the live text, for the mention chips |
+| Desktop [Task editor](desktop/task-editor.md#typing-an-at-sign-mentions-a-contact) and [Android Task editor](android/task-editor.md#typing-an-at-sign-mentions-a-contact) | Search, the templates, the mention to insert, and moving the used template first, for the "@" list; and the live text, for the mention chips |
 | Desktop [Task list](desktop/task-list.md#mentions-show-each-contacts-current-details) and [Android Task list](android/task-list.md#mentions-show-each-contacts-current-details) | The live text of each mention they show, and the editors' contacts; and, proposed on the desktop, the contact a search word such as `@anap` names |
 | Each app's composition root | Creating the store |
 
@@ -180,19 +180,23 @@ The user confirmed that **a mention is stored as `[text](contact:<id> "<template
 Proposed, each a decision to confirm:
 
 - **The mention keeps the template's text itself, not its name or place in the list**, so editing, reordering, or removing templates never changes an existing mention.
-- **The stored text** escapes `[`, `]`, and `\` as a task link's text does, through the platform's [Markdown label](../../src/Shared/Platform/MarkdownLabel.cs). In the title, `"` and `\` take a backslash.
+- **A mention's text is Markdown, and every screen shows it formatted.** The user asked that a template's Markdown show as styling wherever a mention shows, so `{fullName} (_{alias}_)` shows "Ana Pop (*anap*)" with the alias in italic and no `_` visible.
+  - `TextOf` answers Markdown that fits in a link's text: the template's own text as written, and each value with a backslash before every ASCII punctuation character, so the value shows exactly as written. The user chose this. The full-name fallback is escaped the same way.
+  - So only the template styles a mention: a full name written `Ana *QA*` shows its stars, and an alias `ana_pop` is stored as `ana\_pop`. A value inside a template's code span, such as `` `{alias}` ``, shows its backslashes, since Markdown keeps them there; the user accepted this.
+- **The stored text** is `TextOf`'s Markdown as it is, with no second escape. In the title, `"` and `\` take a backslash. Proposed, a decision to confirm. A mention stored before this change holds its text with only `[`, `]`, and `\` escaped, so a Markdown character in it shows as styling when its stored text shows.
 - **A mention shows on a soft accent background**, one per theme, as the user decided and [Rendering](rendering.md#a-mention-shows-on-a-colored-background) owns.
 - **Clicking a mention does nothing.**
 - **Task search matches a mention's stored text**, since Tasks searches the task as saved. Task View's search box also finds every mention of one contact from a word such as `@anap`, as the user decided for the [Task list](desktop/task-list.md#search-narrows-the-list), through the mention's address; Tasks' own search doesn't change. Proposed, a decision to confirm: the word finds its contact through `Find`. The user decided `Find` doesn't look up nicknames, since they may repeat and hold spaces; the box's "@" list finds a contact by nickname through [search](#search-matches-every-typed-word-in-any-field) instead.
 
 ### Mention templates come from a synced file
 
-The user decided that the templates are a list in a synced file the user writes by hand, with no editor for now, and that Tab in the "@" list cycles through them.
+The user decided that the templates are a list in a synced file the user writes by hand, with no editor for now, and that Tab in the "@" list cycles through them. The user then asked that the "@" list start on the template used last, on every device that syncs.
 
 - **The file is `autocomplete/contacts/dataTypes/mentionTemplates.json`**, the user's choice: `{ "version": 1, "templates": ["{fullName}", "{fullName} ({careerPath.short})", "{firstName}"] }`. Its order is the order Tab cycles them in. It isn't a [data type](#key-fields-choose-from-the-users-data-type-files): no key field chooses from it.
 - **With no file, the list is `["{fullName}"]`**, and nothing is reported. The user decided an empty file, of zero bytes, counts as no file.
 - **A template shows a time as `HH:mm`**, as [search](#search-matches-every-typed-word-in-any-field) does, the user's choice. Proposed, a decision to confirm: a date shows as `yyyy-MM-dd`.
 - **`{nickname}` shows the [nickname, else the first name](#a-nickname-falls-back-to-the-first-name)**, the user's choice, so `{nickname}` shows "Cami" for a contact with that nickname, and "Ana" for one with only `firstName: "Ana"`. It's the one placeholder that doesn't show its field's stored value. `{firstName}` still shows only the first name.
+- **Choosing a contact in a Task editor's "@" list moves the template it used to the top of the file**, the user's choice, keeping the others in their order. So the next "@" list starts on it, on every device the file syncs to, and Tab goes through the others in their new order. `MoveTemplateFirst` does it, and Sync carries the file as it carries any change.
 
 Proposed, each a decision to confirm:
 
@@ -200,7 +204,16 @@ Proposed, each a decision to confirm:
 - **A placeholder can also reach a key field's entry**, as `{<field without Key>.<property>}`: `{careerPath.short}` shows "EM" for `careerPathKey: "em"`, so `{fullName} ({careerPath.short})` shows "Razvan Popov (EM)", and `{pronouns.subject}` shows "he". The property is any text property of the entry, since entries differ.
 - **A templates file that lists no template is unreadable**, the same as one with an invalid template; only a file of zero bytes means the default.
 - **A template is invalid when it's empty, names an unknown field or key field, or has an unmatched brace.** A file with an invalid template, or that can't be read, is skipped and reported, and the default list is used.
+- **A template's own text is Markdown**, which shows as styling wherever the mention shows, such as `{fullName} (_{alias}_)` or `**{nickname}**`. The user chose that it may hold every inline style: bold, italic, strikethrough, code, colors such as `:red[{alias}]`, and backslash escapes. A mention is a link, and Markdown allows only inline styles in a link's text, so it holds no headings, lists, or other blocks, and no link or image.
+- **A template is also invalid when its unescaped brackets don't pair, when it holds `](` or `![`, when it ends with a backslash, when a backslash sits right before a placeholder, or when it holds a line break**, the user's choice. `](` or `![` would start a link or an image, an ending backslash would swallow the link's closing `]`, a backslash before a placeholder would cancel the escape on the value's first character, so `\{alias}` would show an alias `_ana_` in italic, and no chip can show a line break. A backslash that is itself escaped, as in `\\{alias}`, is a literal backslash and is allowed. Its file is skipped, as for any invalid template.
+- **Three rare leftovers each change only one mention's look**, and the user accepted them:
+  - a bracketed word that matches a link definition elsewhere in the same description, such as `[EM]` beside `[EM]: https://…`, becomes a link;
+  - a web address in the template's own text, such as `<https://example.org>` or `www.example.org`, becomes a link inside the mention; a value's can't, since its `.`, `/`, and `:` are escaped;
+  - a backtick in a value inside the template's code span, such as `` `{alias}` ``, ends the code span early, since Markdown keeps a code span's backslashes.
 - **When the contact lacks any value the template names, the mention shows the contact's full name**: a missing field, a key its data type doesn't list, or an entry without the property. `{nickname}` lacks its value only when both the nickname and the first name are missing. So a mention never shows half a text such as "Ana ()".
+- **Moving a template first writes nothing when there's nothing to move**: the template is already first, the file is missing or empty so the list is the default, or the latest load skipped the file. So the app never creates the file, and never touches one that Sync's status reports.
+- **Moving re-reads the file under the repository's lock**, so a hand edit saved since the latest load is kept, with the move applied to it, and the list then holds the file as written. When the file no longer lists the template, or is now missing or empty, nothing is written. The user decided that the list still becomes the file as read whenever the re-read succeeds and nothing is written, or the default for a missing or empty file, so a move never leaves an old list, even on Android, where nothing [watches the clone](desktop/README.md#the-composition-root-reloads-the-clone-when-a-file-in-it-changes). Changed is then raised only when the list differs, and no local save is reported. The file is written in the platform's JSON style: this app's `version`, then `templates`, then any other top-level fields as the file had them. So the first move turns a hand-written file into the app's layout once, keeping every template.
+- **Only the Task editors move a template, when the user chooses a contact.** The [MCP server](desktop/mcp-server.md) and the [local API](local-api.md) never do, so an assistant's or a script's mention never changes the template the user starts on.
 
 ### A mention's text is rebuilt from the contact each time it shows
 
@@ -221,7 +234,7 @@ Sync commits and merges the contact files, the data type files, and the template
 - **A contact added on either side is kept.**
 - **A deletion on one side deletes**, unless the other side changed that contact; then the edit is kept.
 
-The user also decided that when one side deletes the templates file and the other edits it, the edit wins, so a merge never drops templates the user wrote.
+The user also decided that when one side deletes the templates file and the other edits it, the edit wins, so a merge never drops templates the user wrote. The user then decided that a side that only [moved a template first](#mention-templates-come-from-a-synced-file), or otherwise only reordered the templates, counts as unchanged. So a reorder never beats a hand edit made on another device between syncs; that one reorder is lost instead. Proposed, a decision to confirm: a reorder still beats a side that left the templates as they were, so the template used last reaches the other devices even when they synced other changes.
 
 The user decided that a merged group or data type file is always written in this app's layout, as task files are, even when only one side changed it. So a hand-written file another device pushed is reformatted when it merges.
 
@@ -234,6 +247,7 @@ Proposed, each a decision to confirm:
 - With no common version, such as a file both sides added, every contact is kept, and a field that differs takes the remote's value.
 - A data type file merges the same way, by entry `id` and property, with the remote winning a property both changed, and an edit beating a deletion. A list property, such as `alternatives`, counts as one value. The merged entries keep the remote's order, with entries only the local side added after them, in its order.
 - The templates file merges as a whole file, since a template's place in the list is its meaning: the changed side wins, and the remote when both changed, except the edit over a deletion above. The merge returns the winning side's bytes unchanged. An empty file is a file with its own bytes here, not a missing one.
+- Each side's change from the common version is one of four, from least to most: none, when its bytes are the same; only the layout, when, read, it holds the same templates in the same order; only the order, when it holds each of them as many times, in any order; or an edit. A change of layout or order also keeps the same `version` and the same other top-level fields. The side that changed more wins, and the remote when both changed as much. So an edit beats a reorder, whichever side syncs first, and a reorder beats a file left as it was. A side that only reordered or changed the layout counts as unchanged against a deletion, so the deletion wins. With no common version, the remote wins, as before.
 - A file that can't be read on one side follows [Sync's rule](sync.md#sync-manages-contact-files-through-contacts-rules) for contact files: it's kept and reported.
 
 ### Contacts stays out of the screens
@@ -242,7 +256,7 @@ Contacts decides data, never look or layout. The [Contact list](desktop/contact-
 
 ## Public interface
 
-The project is `Memoria.ToDo.Shared.Contacts`. It uses the shared platform's [`IFileSystem`](modules.md#the-file-system-interface-reads-and-writes-whole-files), [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), [JSON style and file rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules), [`ContactAddress`](modules.md#a-contact-address-has-one-home), and [`MarkdownLabel`](../../src/Shared/Platform/MarkdownLabel.cs). The user confirmed these declarations, with `IsTeam` added for [team groups](#team-groups-show-more-fields), and Contacts implements them in [`src/Shared/Contacts/`](../../src/Shared/Contacts/IContacts.cs). The desktop composition root creates the store right after Tasks' store, before the first Select, and hands its `Files` to [Sync](sync.md#sync-manages-contact-files-through-contacts-rules), from slice (c) of [step 15](desktop/README.md#delivery-backlog). The Android composition root does the same when the Android app is built:
+The project is `Memoria.ToDo.Shared.Contacts`. It uses the shared platform's [`IFileSystem`](modules.md#the-file-system-interface-reads-and-writes-whole-files), [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), [JSON style and file rules](modules.md#stores-share-one-json-style-and-one-set-of-file-rules), and [`ContactAddress`](modules.md#a-contact-address-has-one-home). The user confirmed these declarations, with `IsTeam` added for [team groups](#team-groups-show-more-fields), and Contacts implements them in [`src/Shared/Contacts/`](../../src/Shared/Contacts/IContacts.cs). The desktop composition root creates the store right after Tasks' store, before the first Select, and hands its `Files` to [Sync](sync.md#sync-manages-contact-files-through-contacts-rules), from slice (c) of [step 15](desktop/README.md#delivery-backlog). The Android composition root does the same when the Android app is built:
 
 ```csharp
 namespace Memoria.ToDo.Shared.Contacts;
@@ -348,6 +362,16 @@ public interface IContacts
     /// The templates, in file order, or the default list when the file is missing, empty, or skipped.
     IReadOnlyList<string> MentionTemplates { get; }
 
+    /// The user decided this member: moves the template to the top of the mention templates file, keeping the others' order,
+    /// writes the file, then raises Changed and reports the local save. Re-reads the file under the lock first, so a change
+    /// on disk is kept. Writes nothing and reports no local save when the template is already first, when the file is missing
+    /// or empty, was skipped at the latest load, or no longer lists the template. Unless the file was skipped, the list then
+    /// holds the file as read, or the default for a missing or empty file, and Changed is raised when that differs from before.
+    /// Throws, before writing: ArgumentNullException for a null template; NoRepositoryFolderException with no clone;
+    /// InvalidDataException when the file can't be read now or needs a newer app, keeping the list; InvalidOperationException
+    /// inside a Save change, which holds the lock. A failed write throws the file system's exception and leaves the file whole.
+    void MoveTemplateFirst(string template);
+
     /// Every key field's data type, in the order the form shows the fields, such as "careerPathKey".
     IReadOnlyList<DataType> DataTypes { get; }
 
@@ -363,11 +387,13 @@ public interface IContacts
     /// Contacts with every word of text in a known field, ignoring case, by full name, then ID.
     IReadOnlyList<Contact> Search(string text);
 
-    /// The template's text for the contact, or its full name when it lacks a value the template names.
+    /// The template's text for the contact, or its full name when it lacks a value the template names, as Markdown
+    /// that fits a mention link's text: the template's own text as written, and each value with a backslash before every
+    /// ASCII punctuation character, so it shows as written.
     /// Throws ArgumentException for an invalid template.
     string TextOf(Contact contact, string template);
 
-    /// The live text for a stored mention; null when the address finds no single contact,
+    /// The live text for a stored mention, as the other TextOf gives it; null when the address finds no single contact,
     /// or the template is invalid. The caller then shows the stored text.
     string? TextOf(string address, string template);
 
@@ -377,7 +403,7 @@ public interface IContacts
     /// Throws ArgumentNullException for a null address, as TextOf does.
     Contact? ContactOf(string address);
 
-    /// The whole Markdown link for a new mention: [text](contact:<id> "<template>").
+    /// The whole Markdown link for a new mention: [text](contact:<id> "<template>"), with TextOf's text as it is.
     /// Throws ArgumentException for an invalid template.
     string MentionOf(Contact contact, string template);
 
@@ -394,7 +420,7 @@ public interface IContacts
     /// So a caller that changes some fields keeps the latest value of the others, even when a sync or a window saves between.
     /// Throws as Save does for no clone, an unknown group, or a skipped group file, before calling change.
     /// An exception change throws reaches the caller, with nothing written. Because change runs under the lock,
-    /// a Save, Delete, or MoveGroup inside it throws InvalidOperationException.
+    /// a Save, Delete, MoveGroup, or MoveTemplateFirst inside it throws InvalidOperationException.
     void Save(string groupName, string id, Func<Contact?, Contact> change);
 
     /// Removes the contact from the group's file, then raises Changed. Throws, before writing:
@@ -436,7 +462,8 @@ public interface IContactFileRules
 - **A data type file can't be read**: it's skipped and listed in the skipped files, and its key field takes no new choice while keeping every stored key, as [above](#key-fields-choose-from-the-users-data-type-files). A missing one is treated the same, but listed only when the clone has contacts.
 - **A contact's key isn't in its data type file**: the key is kept and shown as written, and a template that reads its entry shows the full name.
 - **Two contacts share a name**: both load, the name finds nobody, and it's listed in the shared names.
-- **No clone is selected**: every list is empty, and Save, Delete, and MoveGroup fail with `NoRepositoryFolderException` before writing.
+- **No clone is selected**: every list is empty, and Save, Delete, MoveGroup, and MoveTemplateFirst fail with `NoRepositoryFolderException` before writing.
+- **Moving a template first fails**, because the templates file can't be read now, needs a newer app, or can't be written: `MoveTemplateFirst` throws, the file stays whole, and the list keeps its order. The [Task editor](desktop/task-editor.md#failure-modes) keeps the mention it inserted and says why.
 - **A call names a group whose file was skipped**: Save, Delete, and MoveGroup fail with the platform's [`SkippedFileException`](modules.md#a-call-that-needs-a-skipped-file-throws-one-type), naming that file, before writing. The user decided that Contacts, which owns the file layout, says so with a type, so no caller matches paths. Proposed, a decision to confirm: MoveGroup checks the moved group first, then the previous and next neighbors, and checks them before any other rule; until now it said such a group was unknown.
 - **A write fails**: the call throws the file system's exception; the file stays whole, as the [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files) promises, and the screen that asked says why.
 - **A Changed handler or the local save report fails**: after a write, Contacts still raises Changed and reports the local save, each even when the other fails. The user decided this follows the [synced repository's rule](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload): one failure is thrown as it is, and several make an `AggregateException`, the write's own failure first, then Changed's, then the report's.
@@ -473,6 +500,19 @@ public interface IContactFileRules
 - **A separate `Contact.NicknameOrFirstName` beside a plain stored `Nickname`, or the fallback only inside templates**: a caller could read the stored value and miss the fallback, or a later screen would copy the rule. The user chose `Nickname` itself to fall back.
 - **`Find` falling back to a nickname only one contact holds, or nicknames joining IDs and aliases as unique names**: adding a second contact with the same nickname would silently stop a search word working, or shared nicknames would be reported and couldn't hold spaces. The user kept `Find` to aliases and IDs.
 - **`nickname` as a team field**: the user asked for it on all contacts.
+- How a mention's text holds a template's Markdown:
+  - **Plain text, shown as written**: the first design; the user asked that a template's Markdown show as styling wherever a mention shows.
+  - **Escaping only `[`, `]`, and `\` in a value**: a value's own Markdown characters would style it, such as a full name written `Ana *QA*` showing "QA" in italic. The user chose that every value shows as written.
+- How the "@" list starts on the template used last:
+  - **A separate synced file naming the template used last**: a reorder would never meet a hand edit, but it adds a file, a format, a merge rule, and a path Sync manages, and the user asked to move the template first and sync that.
+  - **Today's whole-file merge for a reorder too**: a template moved first on one device would drop a hand edit made on another between syncs. The user chose that a reorder counts as unchanged.
+  - **A reorder tying with a file left as it was** (proposed, a decision to confirm): the remote would win whenever another device had synced any change, so the template used last would rarely reach the other devices.
+  - **`MentionOf` moving the template itself**: a read with a hidden write, which the MCP server and the local API call too.
+  - **A separate small interface for the move**: a second object for one method, while Contacts publishes everything else on `IContacts`. The user chose `IContacts`.
+  - **Moving on the MCP server's and the local API's mentions too** (proposed, a decision to confirm): an assistant or a script would change the template the user starts on, on every device.
+  - **Swapping the used template with the first** (proposed, a decision to confirm): the old first would jump to the used one's place.
+- Which Markdown a template may hold:
+  - **Every inline style except those that need brackets**: simpler, but colors such as `:red[…]` would show as text, so not all of the app's Markdown would work.
 
 ## Open questions
 

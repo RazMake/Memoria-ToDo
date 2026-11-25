@@ -111,9 +111,9 @@ Proposed, each a decision to confirm:
 - Empty or missing clipboard text counts as no web address for the link, so the link gets an empty address and no error shows.
 - The task list shows every open task, newest first, until the user types; what is typed after it opens narrows it by Tasks' search. With no open task, or none matching, no list shows. Choosing a snippet that needs a task from the snippet list opens the task list, and choosing a task replaces the "/" and what was typed.
 
-The reference to another task opens a list, as above. It lists open tasks only, and typing filters them with [Tasks' search](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case). The link's text is the chosen task's title with its Markdown kept, and only brackets and backslashes escaped; the list itself shows the title as a reader sees it, without its Markdown, which [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) mark.
+The reference to another task opens a list, as above. It lists open tasks only, and typing filters them with [Tasks' search](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case). The link's text is the chosen task's title with its Markdown kept, escaped as [Editing's reference snippet](../editing.md#snippets-insert-common-blocks) says; the list itself shows the title as a reader sees it, without its Markdown, which [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) mark.
 
-A title's [mentions](#typing-an-at-sign-mentions-a-contact) show in the task list with their live text, or their stored text when Contacts has none, as in Task View's rows. Markdown can't put a link inside another link's text, so when the reference is inserted, each mention in the title becomes its live text, or its stored text, as plain text. Later changes to the contact don't reach the reference, as later changes to the title don't. Proposed, each a decision to confirm. The user decided that a contact's text keeps any Markdown characters it holds, as the rest of the title's text does, since the reference escapes only brackets and backslashes: a name such as `Ana *QA*` shows "QA" in italic in the reference. Such names are rare, so the reference snippet's escaping stays as it is.
+A title's [mentions](#typing-an-at-sign-mentions-a-contact) show in the task list with their live text, or their stored text when Contacts has none, as in Task View's rows. Markdown can't put a link inside another link's text, so when the reference is inserted, each mention in the title becomes its live text, or its stored text, as its Markdown without the link around it. Later changes to the contact don't reach the reference, as later changes to the title don't. Proposed, each a decision to confirm. The rest of the title's text keeps its Markdown and its escapes. A mention's text is [Markdown](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) whose values are escaped, so in the reference a contact's name shows as written, such as `Ana *QA*` with its stars, and its template's styling shows, such as the alias in italic for `{fullName} (_{alias}_)`. A color shows as written, not as a color, since [Editing escapes its brackets](../editing.md#snippets-insert-common-blocks). The user decided how values and the reference are escaped; the reference keeping the mention's Markdown is proposed, a decision to confirm.
 
 ### Typing an at sign mentions a contact
 
@@ -127,10 +127,11 @@ The user then asked for three changes: the list opens at the cursor, in a popup 
 
 The user then decided how the list uses the theme, so it looks like the text it inserts:
 
-- **The header shows its text as a mention chip**: on the theme's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), in the normal text color, as the editor's chips show a mention, below.
+- **The header shows its text as a mention chip**: on the theme's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), in the normal text color, as the editor's chips show a mention, below. The user then asked that its Markdown show as styling, as a chip's does: for `{fullName} (_{alias}_)`, the alias shows in italic and no `_` shows.
 - **Each row's alias shows in the theme's italic color**, [Rendering's text look](../rendering.md#public-interface) for italic text, in this list and in the [alias list](#a-plain-text-box-can-offer-contacts-by-alias) alike. The full name keeps the normal text color.
 - **Both follow a switch between light and dark while the list is open**, through the platform's [theme follower](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
 - **The popup's surface keeps the Windows theme's colors**: its background, border, row highlight, and help text, as today.
+- **The header and every chip are the Formatted view's [mention chip](formatted-view.md#public-interface)**, which a title's mentions use too, so a mention looks the same everywhere. The user decided this. The header's name, which screen readers read, is the text it shows, without Markdown characters.
 
 The theme comes from the editor that owns the list, which already takes it, and from the theme the [alias list](#public-interface) is attached with. No public part changes.
 
@@ -145,25 +146,44 @@ Proposed, each a decision to confirm:
 - **It shows up to seven contacts.** With nothing typed yet, the search matches everyone, so it shows the first seven by full name.
 - **While no contact is moved to, the header shows the first row's contact.** It changes as Down and Up move, and when the template changes. Under it, in the help style, "Tab or click: next template" shows while there are two or more templates.
 - **A click on the header moves to the next template**, exactly as Tab does. The cursor stays in the field, and the row moved to stays moved to.
-- **The help style is the theme's secondary text color**, which the Task editor sets on the list's help parts itself, as the Task list and the Contact list do.
-- **Tab, while the list is open, moves to the next template**, in the file's order, back to the first after the last, and the header shows its new text at once. Each opening starts at the first template. With one template, Tab and a click on the header do nothing, and Tab never leaves the field while the list is open.
+- **The help style is the theme's tertiary text color**, `TextFillColorTertiaryBrush`, which the [tag menu](#a-click-on-a-pill-opens-the-tag-menu) already uses for its dimmed text. The Task editor sets it on the list's help parts itself. The user asked for a more discreet, more transparent color than the secondary one used before; the tertiary color is the Windows theme's next, fainter step. Proposed, a decision to confirm.
+- **The "Tab or click: next template" line sits 5 pixels in from the list's left edge**, the user's choice, so it reads as a note under the header.
+- **Tab, while the list is open, moves to the next template**, in the file's order, back to the first after the last, and the header shows its new text at once. Each opening starts at the first template, which is the one [used last](#the-list-starts-on-the-template-used-last). With one template, Tab and a click on the header do nothing, and Tab never leaves the field while the list is open.
 - **Choosing a contact inserts the mention** Contacts makes from the contact and the current template, through Editing, as one undo step.
 - **With no contacts, or no repository, no list shows**, and the "@" stays as typed.
 
+The user asked that erasing back into a partial mention work as if the user had typed it: with `@ale` typed, erasing the "e" shows the list for `@al`, and so on, even when the list was closed. Proposed, each a decision to confirm:
+
+- **An edit that only removes text, and leaves the cursor where a typed query would end, opens the list** for the "@" [Editing finds](../editing.md#typing-an-at-sign-opens-the-mention-list) before the cursor, with that query, at that "@". Backspace, Delete, Ctrl+Backspace, Cut, and an undo that only removes text all count. Typing over a selection is typing, not erasing, and works as typing does today.
+- **Erasing back to a bare "@" opens the list with everyone**, as typing "@" does. Erasing the "@" itself closes it, as today.
+- **It works after Esc, after the field lost the focus, and in a field that opened with text in it**, since typing the same text there would open the list. Esc closes it again.
+- **Moving the cursor, by keys or a click, opens nothing**, as today.
+- **It opens nothing while the color, snippet, or task list is open**, since one list is open at a time, and an "@" is then filter text for that list.
+- **It opens nothing when a chip sits between the "@" and the cursor**, since the chip ended that mention, nor for an "@" inside a mention's Markdown shown as text.
+- **Erasing while the list is open keeps updating it**, as today.
+
 The chips work the same in the Title and the Description:
 
-- **A mention shows as one chip**: its live text on Rendering's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), with none of its link's Markdown showing. When Contacts has no live text, the chip shows the stored text. The chips show the new text when contacts change, without changing the task's Markdown.
+- **A mention shows as one chip**: its live text on Rendering's [mention background](../rendering.md#a-mention-shows-on-a-colored-background), with none of its link's Markdown showing. Its text's own Markdown shows as styling, as in a title: for `{fullName} (_{alias}_)`, the alias shows in italic and no `_` shows. When Contacts has no live text, the chip shows the stored text, formatted the same way. The chips show the new text when contacts change, without changing the task's Markdown.
 - **The cursor steps over a chip as over one character**, and a click on a chip puts the cursor before or after it, whichever side is nearer. A selection takes a chip whole or not at all.
 - **Backspace after a chip and Delete before it remove the whole mention**, as one undo step.
 - **Saving keeps each mention's Markdown as it is**, stored text included, so the editor changes no mention the user didn't touch.
 - **Copying a chip copies its Markdown**, so pasting it makes the same mention again.
 - **A mention whose Markdown spans a line break shows as its Markdown, not a chip**, since a chip is one piece of one line. Contacts never writes one; only a hand-typed mention can. This is a decision to confirm.
 
+#### The list starts on the template used last
+
+The user asked that the "@" list start on the template used last, on every device that syncs, and decided that choosing a contact moves its template to the top of the [templates file](../contacts.md#mention-templates-come-from-a-synced-file), keeping the others in their order. Proposed, each a decision to confirm:
+
+- **Enter, or a click on a row, moves the template first right after it inserts the mention**, through Contacts' `MoveTemplateFirst`, in the Title and the Description, in Add and in Task View alike. So the next opening starts on that template, and Tab goes through the others in their new order.
+- **The move is kept when the task isn't saved**, as a [clicked tag color](#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them) is, and Undo removes the mention but not the move.
+- **Nothing else moves a template**: not Tab, a click on the header, or closing the list.
+
 ### A plain text box can offer contacts by alias
 
 The user asked that "@" in Task View's [search box](task-list.md#search-narrows-the-list) insert the contact's alias. The Task editor publishes its "@" list for any plain WPF text box, so a contact is found the same way in both, and the popup, its rows, and its keys have one home. Proposed, each a decision to confirm:
 
-- **It opens and closes as in the Title**: by Editing's rule for where "@" opens and what it searches with, at the "@", in a popup, with the same rows, keys, and closing rules. It opens only when "@" is typed, so moving the cursor back into a word such as `@anap` opens nothing.
+- **It opens and closes as in the Title**: by Editing's rule for where "@" opens and what it searches with, at the "@", in a popup, with the same rows, keys, and closing rules. It opens when "@" is typed, and when an erase leaves the cursor at the end of a partial word such as `@ana`, [as in the Title](#typing-an-at-sign-mentions-a-contact). Moving the cursor back into a word such as `@anap` opens nothing. The erase rule is proposed, a decision to confirm.
 - **It has no header and no templates**, since what it inserts isn't a mention. Tab, while it's open, closes it and then moves the focus as it would with no list.
 - **Choosing a contact replaces the "@" and the text typed after it with "@" and the contact's alias**, or its ID when it has none, through Editing's [mention picker](../editing.md#public-interface), with the cursor right after it and no space added. An alias and an ID hold no spaces, so the result is one search word.
 - **While it's open, it takes Down, Up, Enter, and Esc first**, so the box's owner sees them only while it's closed: in the search box, Down and Up then move through contacts, not to the [top or bottom row](task-list.md#search-narrows-the-list), and Esc closes the list before it [empties the search](task-list.md#esc-goes-back-one-step-then-closes-task-view). While it's closed, it takes none of them, so the box and its owner work exactly as with no list.
@@ -381,9 +401,11 @@ public static class ContactAliasList
 {
     /// From now on, box offers the list, and while it's open, Down, Up, Enter, and Esc reach the list before any other
     /// handler of the box or its ancestors. Throws ArgumentNullException for a null argument. Use it on the UI thread.
-    public static void Attach(System.Windows.Controls.TextBox box, IContacts contacts, ITheme theme);
+    public static void Attach(System.Windows.Controls.TextBox box, IContacts contacts, ITheme theme, ILogger logger);
 }
 ```
+
+The user decided that `ContactAliasList.Attach` takes a required `ILogger logger` last, so the alias list logs why it opened after an erase, as the editors do; Task View passes its own logger.
 
 The user decided that `TitleEditor`, `DescriptionEditor`, and `TagEditor` each take a required `ILogger logger` as their last constructor argument, as every module's create method does, and null is refused with an `ArgumentNullException`. The editor that catches a failure it shows logs it, so a host such as the Task list doesn't log the same failure again.
 
@@ -537,6 +559,7 @@ Until row 21 is built, the code still has row 14's members.
 - **A clicked color can't be kept**, because there's no clone folder, `tags.json` can't be read or is newer, or the file can't be written: the tag isn't chosen, and Custom keeps the text and says why, as [above](#custom-adds-a-new-tag-in-the-color-clicked).
 - **`tags.json` can't be read**: every badge shows its tag's default color, and the editor still opens and saves tasks.
 - **The draft can't be read**: Add opens empty, says the draft couldn't be loaded, and leaves the draft file as it is.
+- **A chosen contact's template can't be [moved first](#the-list-starts-on-the-template-used-last)**, because the templates file can't be read now, needs a newer app, or can't be written: the mention stays inserted, the editor says why where it shows a failed save, the failure is logged at Error, and the list keeps its order. Proposed, a decision to confirm.
 
 ## Ruled out
 
@@ -662,5 +685,22 @@ The options below were considered and rejected, grouped by decision.
   - **All four lists**: more work and more UX tests now, for a change the user asked only of the "@" list.
 - What Up does while the color, snippet, or task list is open:
   - **It moves the cursor in the field, as before**: Up would move through the "@" list but not the others, so the lists would work differently.
+- When a template moves first (proposed, a decision to confirm):
+  - **When Tab or a click on the header reaches it**: browsing the templates would reorder the list.
+  - **When the task is saved**: the editor would track the templates each task used, across drafts, and an unsaved task would forget them.
+  - **Undoing the move with the mention, or taking the mention back when the move fails**: the user's edit would depend on a side feature.
 - How the "@" lists use the theme:
   - **Only the Windows theme's colors, with a plain header and an alias in the normal text color**: the header wouldn't look like the chip Enter inserts.
+- How the "Tab or click: next template" line is dimmed (proposed, a decision to confirm):
+  - **The secondary text color at a lower opacity**: a color the Windows theme doesn't define, whose contrast nobody checked, against a fainter step the theme already has.
+- Which edits open the "@" list again (proposed, a decision to confirm):
+  - **Only Backspace and Delete**: Ctrl+Backspace, Cut, and undo would leave the same text but act differently.
+  - **Moving the cursor too**: the list would pop up while the user only moves through text that holds a mention-like word.
+  - **Not after Esc, until "@" is typed again**: the user asked that erasing work as typing the same text would, and typing `@al` opens the list.
+- Where the one part that draws a mention as a chip lives:
+  - **The Task editor formats the mention's Markdown itself**: no new dependency, but a second copy of how a styled stretch of text becomes WPF text, which the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) forbids: a change to how italic or code looks would need two edits.
+  - **The desktop platform holds the chip**: the platform [never names a module](../modules.md#the-platform-serves-every-module-and-knows-none), and the chip needs Rendering's spans and text look.
+
+## Open questions
+
+None.

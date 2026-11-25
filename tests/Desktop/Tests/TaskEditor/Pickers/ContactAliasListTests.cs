@@ -32,7 +32,7 @@ public class ContactAliasListTests : IDisposable
             ["{fullName}"],
             ContactFiles.Person("ana", "Ana Pop", ("alias", "anap")),
             ContactFiles.Person("bob", "Bob Stan"));
-        ContactAliasList.Attach(_box, _services.Contacts, _services.Theme);
+        ContactAliasList.Attach(_box, _services.Contacts, _services.Theme, Serilog.Core.Logger.None);
         _window = new Window { Content = new StackPanel { Children = { _box } }, Width = 400, Height = 300 };
         _window.PreviewKeyDown += (_, e) => _reachedTheWindow.Add(e.Key);
         _window.Show();
@@ -91,6 +91,21 @@ public class ContactAliasListTests : IDisposable
         Assert.False(Press(Key.Tab));
         Assert.Empty(Items());
         Assert.Equal("@an", _box.Text);
+
+        // Erasing back to the end of a partial word opens the list for it; moving the cursor into a word opens nothing.
+        _box.Clear();
+        EditorFields.TypeOnFocused("@anap");
+        Press(Key.Escape);
+        Assert.Empty(Items());
+        _box.Select(4, 1);
+        _box.SelectedText = "";
+
+        Assert.Equal("@ana", _box.Text);
+        Assert.Equal(["Ana Pop (anap)"], Items());
+        Press(Key.Escape);
+        _box.Text = "@anap";
+        _box.CaretIndex = 3;
+        Assert.Empty(Items());
     }
 
     [WpfFact]

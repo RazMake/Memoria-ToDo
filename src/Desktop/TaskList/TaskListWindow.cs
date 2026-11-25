@@ -112,7 +112,7 @@ internal sealed class TaskListWindow : Window
         _details.TabChosen += (_, preview) => SwitchTab(preview);
 
         _header = new ListHeader(_filter);
-        ContactAliasList.Attach(_header.SearchBox, contacts, theme);
+        ContactAliasList.Attach(_header.SearchBox, contacts, theme, logger);
         _content = new ListContent(tasks, _filter);
         _links = new ListLinks(tasks, _filter, _content);
         _actions = new ListActions(tasks, Report, logger);

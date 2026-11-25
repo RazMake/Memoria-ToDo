@@ -20,6 +20,18 @@ public interface IContacts
     /// <summary>The templates, in file order, or the default list when the file is missing, empty, or skipped.</summary>
     IReadOnlyList<string> MentionTemplates { get; }
 
+    /// <summary>
+    /// The user decided this member: moves the template to the top of the mention templates file, keeping the others' order,
+    /// writes the file, then raises Changed and reports the local save. Re-reads the file under the lock first, so a change
+    /// on disk is kept. Writes nothing and reports no local save when the template is already first, when the file is missing
+    /// or empty, was skipped at the latest load, or no longer lists the template. Unless the file was skipped, the list then
+    /// holds the file as read, or the default for a missing or empty file, and Changed is raised when that differs from before.
+    /// Throws, before writing: <see cref="ArgumentNullException"/> for a null template; <see cref="NoRepositoryFolderException"/> with no clone;
+    /// <see cref="InvalidDataException"/> when the file can't be read now or needs a newer app, keeping the list; <see cref="InvalidOperationException"/>
+    /// inside a Save change, which holds the lock. A failed write throws the file system's exception and leaves the file whole.
+    /// </summary>
+    void MoveTemplateFirst(string template);
+
     /// <summary>Every key field's data type, in the order the form shows the fields, such as "careerPathKey".</summary>
     IReadOnlyList<DataType> DataTypes { get; }
 
@@ -36,13 +48,14 @@ public interface IContacts
     IReadOnlyList<Contact> Search(string text);
 
     /// <summary>
-    /// The template's text for the contact, or its full name when it lacks a value the template names.
+    /// The template's Markdown for the contact, fit for a link's text: the template's own text as written, each value
+    /// with ASCII punctuation and symbols backslash-escaped. A contact lacking a value the template names gets its escaped full name.
     /// Throws <see cref="ArgumentException"/> for an invalid template.
     /// </summary>
     string TextOf(Contact contact, string template);
 
     /// <summary>
-    /// The live text for a stored mention; null when the address finds no single contact,
+    /// The live Markdown text for a stored mention, as <see cref="TextOf(Contact, string)"/> writes it; null when the address finds no single contact,
     /// or the template is invalid. The caller then shows the stored text.
     /// </summary>
     string? TextOf(string address, string template);
@@ -56,7 +69,7 @@ public interface IContacts
     Contact? ContactOf(string address);
 
     /// <summary>
-    /// The whole Markdown link for a new mention: <c>[text](contact:&lt;id&gt; "&lt;template&gt;")</c>.
+    /// The whole Markdown link for a new mention: <c>[text](contact:&lt;id&gt; "&lt;template&gt;")</c>, with the text exactly as <see cref="TextOf(Contact, string)"/> gives it.
     /// Throws <see cref="ArgumentException"/> for an invalid template.
     /// </summary>
     string MentionOf(Contact contact, string template);
@@ -77,7 +90,7 @@ public interface IContacts
     /// So a caller that changes some fields keeps the latest value of the others, even when a sync or a window saves between.
     /// Throws as Save does for no clone, an unknown group, or a skipped group file, before calling change.
     /// An exception change throws reaches the caller, with nothing written; a null it returns is refused with <see cref="ArgumentException"/>. Because change runs under the lock,
-    /// a Save, Delete, or MoveGroup inside it throws <see cref="InvalidOperationException"/>.
+    /// a Save, Delete, MoveGroup, or MoveTemplateFirst inside it throws <see cref="InvalidOperationException"/>.
     /// </summary>
     void Save(string groupName, string id, Func<Contact?, Contact> change);
 

@@ -1,5 +1,4 @@
 using System.Globalization;
-using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Editing;
 
@@ -37,7 +36,7 @@ public static class Snippets
 
     public static ISnippet TaskReference { get; } = new Snippet(
         "Task reference", SnippetNeeds.TaskToReference, SnippetPlacement.Inline,
-        (_, input) => new($"[{MarkdownLabel.Escape(input.Task!.Title)}]({input.Task.Address})"),
+        (_, input) => new($"[{LinkLabelEscaping.Of(input.Task!.Title)}]({input.Task.Address})"),
         worksInTitle: true);
 
     public static ISnippet Table { get; } = new Snippet(

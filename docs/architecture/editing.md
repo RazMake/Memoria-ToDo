@@ -66,7 +66,7 @@ For the task reference, each app lets the user pick a task, as the desktop [Task
 Proposed, each a decision to confirm:
 
 - A snippet of more than one line starts on a line of its own, with a blank line before it where Markdown needs one. For example, `---` right under a line of text would turn that text into a heading.
-- The task reference's link text is the title's own Markdown, so `*urgent* milk` gives `[*urgent* milk](task:ID)`. Only `[`, `]`, and `\` get a backslash before them, so the title can't break the link.
+- The task reference's link text is the title's own Markdown, so `*urgent* milk` gives `[*urgent* milk](task:ID)`. The title's escapes stay as written, so `\*` still shows a star and a [mention's](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) escaped values show as written. Only what could break the link gets a backslash: each `[` or `]` that has none, and a backslash that ends the title. The user chose this. So a color's brackets get one too, and a color such as `:red[late]`, in the title's own text or in a mention's, shows in the reference as written, not in red; the user accepted this.
 
 ### Typing a slash opens the snippet picker
 
@@ -90,6 +90,11 @@ Editing decides where the list opens, what text it searches with, and where the 
 Editing alone decides when the mention list must close: when the "@" no longer opens a list, the cursor is at or before the "@", or a line break lies between them. Its query then answers nothing, and the app closes the list, so no app repeats these rules. [Contacts' search](contacts.md#search-matches-every-typed-word-in-any-field) splits on whitespace and would still match a query across two lines, which is why the line break is Editing's rule.
 
 The "@" opens after more characters than the "/" does, by your choice, so the two pickers keep separate opening rules.
+
+The user asked that erasing back into a partial mention work as if the user had typed it: with `@ale` typed, erasing the "e" shows the list for `@al`, and so on. The user decided that Editing holds the rule for which "@" that is, so the Android Task editor uses the same one. Proposed, each a decision to confirm:
+
+- **Editing finds the "@" whose query ends at the cursor**: the last "@" before the cursor, on the cursor's line, where the list opens and `QueryOf` answers a query. So `Ask @ana|` finds the "@" of `@ana`, `a@b|` finds none, and `@|` finds the "@" with an empty query. Its query may hold spaces, as a typed one may.
+- **The app decides when to ask**: after an edit that only removes text, as the [Task editor](desktop/task-editor.md#typing-an-at-sign-mentions-a-contact) says. Editing doesn't see keys, so it can't tell an erase from a cursor move.
 
 The desktop's Task View search box uses the same rules, through the Task editor's [alias list](desktop/task-editor.md#a-plain-text-box-can-offer-contacts-by-alias): there, the text Editing's insertion puts in place is "@" and the contact's alias, not a mention, so Editing doesn't change. Proposed, a decision to confirm.
 
@@ -210,6 +215,11 @@ public static class MentionPicker
     /// Null when the list must close: the "@" no longer opens a list, the cursor is at or before it, or a line break lies between them.
     public static string? QueryOf(TextAndSelection field, int atIndex);
 
+    /// The index of the last "@" before the cursor, on the cursor's line, where OpensAt
+    /// is true and QueryOf answers a query; null when there's none. The cursor is where QueryOf reads it.
+    /// Throws ArgumentNullException for a null field.
+    public static int? AtBefore(TextAndSelection field);
+
     /// Replaces the "@" and the text typed after it with the mention's Markdown, unchanged, and puts the cursor
     /// after it. Throws ArgumentOutOfRangeException when QueryOf would answer null, and ArgumentException for an empty mention.
     public static TextAndSelection Insert(TextAndSelection field, int atIndex, string mention);
@@ -241,3 +251,12 @@ The options below were considered and rejected, grouped by decision.
   - **Each app checks the close cases itself**: the rules would live in both apps' editors.
 - Where an "@" opens the list:
   - **Only at a line start or after a space, the same rule as "/"**: a mention right after "(" or "-" would need a space first.
+- Where the rule for finding the "@" before the cursor lives:
+  - **The desktop Task editor scans back itself, with `OpensAt` and `QueryOf`**: the rule for which "@" counts would live in the Task editor, and the Android app would copy it. The user chose `MentionPicker.AtBefore`.
+- How the task reference escapes the title:
+  - **A backslash before every `[`, `]`, and `\`**: each of the title's escapes would show its backslash, such as "ana\.pop" for a mentioned alias.
+  - **The Task editor removes the escapes from a mention's text first**: a name such as `Ana *QA*` would show "QA" in italic in the reference.
+
+## Open questions
+
+None.

@@ -283,6 +283,35 @@ A UX test builds one screen inside the test process, with fake services, and nev
 - **If no runner can host our Android views, Android screens get no UX tests.** Their view models still get unit tests on the PC, since [each Android module builds for both](#each-android-module-builds-for-both-the-pc-and-android), and emulator tests check the screens as integration tests. The hand-written code that updates Android views from view models ([Model-View-ViewModel](overview.md#each-pattern-serves-one-requirement)) then gets few checks.
 - **In Android UX tests, the Task list's web view is replaced** as the [Android Task list](android/task-list.md#one-web-view-starts-the-first-time-a-task-expands) says.
 
+### WPF's first uses run on one thread before any desktop test
+
+Before any desktop test runs, one thread runs the class constructors of every type in WPF and in each themed library the tests load. Parallel tests then can't deadlock while WPF sets itself up. You decided this on 2026-11-25, after a final validation run hung, and its hang dump showed a dozen unit tests, old and new, each stuck building its first control of some type.
+
+The cause is WPF bug [dotnet/wpf#6609](https://github.com/dotnet/wpf/issues/6609), open since 2022:
+1. One thread reads WPF's theme while holding WPF's locks.
+2. It needs a class, such as `ContentPresenter`, whose class constructor another thread is running.
+3. That constructor waits for the same locks.
+
+.NET breaks a deadlock only when every thread in it waits for a class constructor, so this one never ends. The issue's workaround is to run those class constructors before the threads start. The app has one UI thread, so only the tests can hit the bug: unit classes run in parallel, and each `[WpfFact]` test runs on its own STA thread.
+
+- **An [assembly fixture](https://xunit.net/docs/shared-context#assembly-fixture) of the desktop test project runs the warm-up.** xUnit.net creates it once, before any test in the assembly runs, so every desktop run gets it: unit-only runs, runs of every kind, and runs narrowed to one method. Its constructor starts one STA thread and waits for it to finish.
+- **A rule chooses what it warms up, not a list of types.** It takes every non-generic type in:
+  - WPF's four assemblies, each found from one of its types: `WindowsBase`, `PresentationCore`, `PresentationFramework`, and `System.Xaml`;
+  - every assembly the desktop test project references, directly or through the app's projects, that carries WPF's `ThemeInfo` attribute. Today that's AvalonEdit's.
+
+  A themed library added later joins by itself. The app's own controls stay out: the app has no XAML, so WPF never needs their classes while it reads a theme. The walk doesn't follow .NET's or Windows desktop's own assemblies, which it recognizes by their signing keys. Some of their references are optional and not installed, such as `System.ServiceProcess.ServiceController`, and their only themes are WPF's own. A themed library signed with one of those keys would be missed. Decision to confirm.
+- **It opens and loads no window**, so the [check that keeps other tests off the screen](#wpf-screens-get-ux-tests-on-the-pc-and-android-screens-on-an-emulator) never fires. Running a window type's class constructor shows nothing.
+- **A class constructor that throws fails the run at once.** Every desktop test fails with the type's name and the exception, and nothing is swallowed. A type whose class constructor can't run outside an app would go on a short list of exclusions beside the warm-up, each with its reason. None is needed today: on 2026-11-25, every class constructor in WPF and AvalonEdit ran without failing.
+- **The wait has a bound of 30 seconds**, as [every wait in a test](#every-wait-in-a-test-has-a-bound) has. A warm-up that runs out fails the run and names the type in progress. Decision to confirm.
+- **The code sits in `tests/Desktop/Tests/`**: the fixture, and the warm-up it calls. No other test project uses WPF, so none changes.
+- **The warm-up's tests are unit tests.** They give it types of their own, whose class constructors record that they ran and on which thread. They check that:
+  - it runs each one on a single STA thread, and skips a generic type without stopping;
+  - it names a type whose class constructor throws, or runs past the bound;
+  - its rule finds WPF's four assemblies and AvalonEdit's, and leaves out assemblies without the `ThemeInfo` attribute.
+
+  No test can show the deadlock is gone: each class constructor runs only once per process, and the WPF issue took thousands of starts to reproduce. You decided not to measure the hang rate with repeated runs, and to rely on the issue's explanation and the usual final validation.
+- **It adds about 1.5 seconds to the desktop test application's start**, measured once on 2026-11-25, with finding the assemblies included. You accepted that cost. The four test projects run side by side, and Desktop isn't the slowest of them: in the push workflow's unit run before this change, Shared took 16.0 seconds and Desktop 13.6. So the [timed unit run](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue) shouldn't grow. The real addition is likely smaller, since the tests would run many of these class constructors anyway.
+
 ### Screen tests fail at once when Windows can't give them the desktop
 
 Desktop screen tests need a Windows desktop that's unlocked, connected, and taking input: their windows must get activation, keyboard focus, and the pointer, and some send real key presses. Without one, each test waits out its own bounds, up to a minute each, one test after another, so the run looks hung.
@@ -361,6 +390,15 @@ The user decided that unit runs get the hang dump too, with the same 2 minutes, 
 - **A passing test never comes near 2 minutes**, since each of its waits has a much shorter [bound](#every-wait-in-a-test-has-a-bound). The value has one home, beside the property in `Directory.Build.props`.
 - **The hang log names the hung test.** Beside the dump, the extension writes `<test project>_<process ID>_hang.log` into a `TestResults` folder, the repository's in that run, with each test still running and how long it ran. Confirmed by a run on 2026-11-19 with the pinned xUnit.net v3 and .NET 11 SDK: a run's hang log named the one Sync test still running.
 - **An agent never waits on a run past its bound.** It waits for a run no longer than the run's usual length plus the 2 minutes. A run still going then is a hang its own change or break caused: the agent stops the run, names the hung test from the hang log, and reports it. It never waits longer, reruns the same code hoping it finishes, or raises the bound. [Run timing](../../AGENTS.md#run-timing) points here.
+
+### A crash dump saves a test application that crashes
+
+Every test run saves a memory dump of a test application that crashes, so the crash can be explained and reported. You decided this on 2026-11-25, after a final validation run's desktop test application crashed and left no dump. The crash came after every test that ran had passed. It was an access violation, 0xC0000005, inside the .NET runtime's `coreclr.dll`. The dump uses Microsoft's crash dump extension, the package `Microsoft.Testing.Extensions.CrashDump`, which you approved. It comes from the same family as the hang dump ([crash and hang dumps](https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-crash-hang-dumps)).
+
+- **Its `--crashdump` option sits beside the hang dump's** in the default arguments that `Directory.Build.props` gives every test project. So every run of every test project gets it, as [the hang dump's section](#a-hang-dump-stops-a-test-application-that-hangs-despite-its-bounds) says. It pins the same version as the hang dump's package, since both come from one release of Microsoft's test platform.
+- **It saves a full dump**, the extension's default type, into a `TestResults` folder, which git ignores. Beside the dump it writes a sequence file that lists the tests that started and ended, so the tests running at the crash show without opening the dump.
+- **It watches the tests from the child process the hang dump already starts.** Not confirmed by a run: that it adds no second process.
+- **Not confirmed by a run: that it saves a dump when the runtime itself crashes**, as on 2026-11-25, and not only after an unhandled exception.
 
 ### Tests that start the real browser leave no window on screen
 
@@ -577,6 +615,8 @@ None. No module uses the build tools.
 - **The Remote Desktop window is minimized during a run with screen tests**: they wait out their bounds, then fail with lost focus or missing input, since the check [can't detect it](#screen-tests-fail-at-once-when-windows-cant-give-them-the-desktop). The session asks you to keep the window open, or to set the registry value that section names, then runs the same commands again.
 - **A real pointer move fails in Run All tests**: the job's log and the run's `full-test-reports` artifact show the move's [trace](#a-failed-real-pointer-move-reports-what-each-step-saw). It describes what each step saw, not the cause; nothing retries or skips the test.
 - **A test waits on something that never finishes, despite [its bounds](#every-wait-in-a-test-has-a-bound)**: after 2 minutes in which no test in its test application finishes, the [hang dump](#a-hang-dump-stops-a-test-application-that-hangs-despite-its-bounds) saves a memory dump and ends the test application, so its unfinished tests fail and the run fails, and its hang log names the hung test. It's a code defect: find the wait the bounds missed, and fix it test first.
+- **Two desktop tests build their first control of a type at the same time, and the type is outside the warm-up's rule**: the run hangs. The hang dump shows many tests stuck in class constructors and in WPF's theme reading, such as `SystemResources` and `Baml2006Reader`. Widen the [warm-up's](#wpfs-first-uses-run-on-one-thread-before-any-desktop-test) rule, test first.
+- **A test application crashes**, as the .NET runtime did on 2026-11-25: the run fails. The [crash dump](#a-crash-dump-saves-a-test-application-that-crashes) and its sequence file show where it crashed and which tests were running. A crash inside the runtime doesn't prove the runtime is at fault: our code or a library can corrupt memory, for example through native calls, and the runtime trips over it later. The session reports the crash with the dump's path and what the dump shows, and calls the cause unknown until the dump explains it. You decide whether to file an issue with dotnet/runtime.
 - **A timed unit run takes longer than the limit**: the push stays green, and the workflow opens [one issue](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue), or adds a note to it when it's already open.
 - **The timing program rejects its input**, such as a missing report: the timing job fails and names the problem, and the issue stays as it was, as [its command line](#the-timing-program-reads-the-runs-files-and-prints-one-word) proposes.
 - **A Run All tests run's tests or build fail, including the Android tests in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) or its emulator**: the run on GitHub shows the failure, and a release of that commit runs every test again in its Tests job.
@@ -663,6 +703,16 @@ The options below were considered and rejected, grouped by the decision they bel
   - **The hang dump on UX and integration runs only**: a unit run had no bound, and one hung for over 5 minutes on 2026-11-19.
   - **A shorter bound for unit runs, such as 1 minute**: a second value to keep, to stop a rare hang one minute sooner.
   - **`--timeout` on unit runs only, with the hang dump kept for the other kinds**: it adds no process to the timed unit run, but it doesn't name the hung test, and a slow machine can fail on time alone.
+- How parallel desktop tests avoid WPF's first-use deadlock:
+  - **A hand list of types to warm up**, such as `ContentPresenter` and the types in the hang dump: cheapest, but each new control can bring the hang back, and it would show only as a rare 2-minute hang.
+  - **Applying each control's template on one thread, without a window**: slower, since it reads every theme style, and it needs a list of controls or code that builds them. Running the class constructors already removes what the deadlock needs: a class constructor still running.
+  - **Running the WPF unit classes one at a time, in one collection**: screen tests still run beside them, so the race stays. About 50 classes would lose their parallelism, against the timed unit run, and a class left out would need its own guard.
+  - **A cap on parallel threads in `xunit.runner.json`**: it only lowers the chance, and the file is shared, so every test project would slow down.
+  - **A module initializer instead of an assembly fixture**: it also runs when tests are only listed, and a failure there is a confusing `TypeInitializationException` for the whole assembly.
+  - **Waiting for WPF's fix**: the issue has been open since 2022, with no release planned.
+- How a test application that crashes is caught:
+  - **Windows Error Reporting's local dumps on one PC**: a registry setting outside the repository, so other PCs and the workflow's runner would keep no dump.
+  - **Only recording the crash as left open**: without a dump, nobody can find its cause or report it.
 - When the in-test desktop check runs, and what it checks:
   - **Once, before the first screen test, from a fixture of the screen collection**: simplest, but a desktop that locks during the run goes back to slow failures.
   - **A fixture of the whole test assembly**: it would fail unit tests on a PC without a desktop.

@@ -88,6 +88,86 @@ public class StyledSpansMentionTests
         Assert.All(spans.Over("Ana"), s => Assert.Equal(style | SpanStyle.Mention, s.Styles));
     }
 
+    // The mention's text is Markdown, so its inline styles show inside the mention.
+
+    [Theory]
+    [InlineData(MarkdownField.Description)]
+    [InlineData(MarkdownField.Title)]
+    public void Shows_italic_inside_a_mention_for_an_emphasized_part_of_its_text(MarkdownField field)
+    {
+        var markdown = "[Ana Pop (_anap_)](contact:a1 \"{fullName} (_{alias}_)\")";
+        var spans = Analyzed.Of(markdown, field);
+
+        Assert.All(spans.Over("anap"), s => Assert.Equal(SpanStyle.Italic | SpanStyle.Mention, s.Styles));
+        Assert.All(spans.Over("Ana Pop ("), s => Assert.Equal(SpanStyle.Mention, s.Styles));
+        Analyzed.AssertMarkers(spans.Over("_"));
+        Analyzed.AssertMarkers(spans.Over("_", startAt: markdown.IndexOf("anap", StringComparison.Ordinal)));
+        Assert.All(spans.Over("_"), s => Assert.True(s.Styles.HasFlag(SpanStyle.Mention)));
+    }
+
+    [Theory]
+    [InlineData("**Ana**", "Ana", SpanStyle.Bold)]
+    [InlineData("~~Ana~~", "Ana", SpanStyle.Strikethrough)]
+    [InlineData("`Ana`", "Ana", SpanStyle.Code)]
+    [InlineData("Ana ***Pop***", "Pop", SpanStyle.Bold | SpanStyle.Italic)]
+    public void Shows_each_inline_style_of_a_mentions_text_beside_the_Mention_style(string text, string styled, SpanStyle style)
+    {
+        foreach (var field in new[] { MarkdownField.Description, MarkdownField.Title })
+        {
+            var spans = Analyzed.Of($"[{text}](contact:a1 \"{{fullName}}\")", field);
+
+            Assert.All(spans.Over(styled), s => Assert.Equal(style | SpanStyle.Mention, s.Styles));
+            Assert.All(spans.Over(styled), s => Assert.Equal("contact:a1", s.LinkAddress));
+        }
+    }
+
+    [Theory]
+    [InlineData("**Ana**", "**")]
+    [InlineData("~~Ana~~", "~~")]
+    [InlineData("`Ana`", "`")]
+    public void Marks_the_markdown_characters_inside_a_mentions_text_as_markers_that_are_still_part_of_the_mention(string text, string marker)
+    {
+        var markdown = $"[{text}](contact:a1 \"{{fullName}}\")";
+        var spans = Analyzed.OfDescription(markdown);
+        var closing = markdown.IndexOf(marker, 1 + marker.Length, StringComparison.Ordinal);
+
+        Analyzed.AssertMarkers(spans.Over(marker, startAt: 1));
+        Analyzed.AssertMarkers(spans.Over(marker, startAt: closing));
+        Assert.All(spans.Over(marker, startAt: 1), s => Assert.True(s.Styles.HasFlag(SpanStyle.Mention)));
+        Assert.All(spans.Over(marker, startAt: closing), s => Assert.True(s.Styles.HasFlag(SpanStyle.Mention)));
+    }
+
+    [Theory]
+    [InlineData(MarkdownField.Description)]
+    [InlineData(MarkdownField.Title)]
+    public void Shows_a_palette_color_inside_a_mentions_text_and_marks_its_directive_as_markers(MarkdownField field)
+    {
+        var spans = Analyzed.Of("[Ana :red[Pop]](contact:a1 \"{fullName}\")", field);
+
+        Assert.All(spans.Over("Pop"), s =>
+        {
+            Assert.Equal("red", s.Color);
+            Assert.Equal(SpanStyle.Mention, s.Styles);
+        });
+        Assert.All(spans.Over("Ana"), s => Assert.Null(s.Color));
+        Analyzed.AssertMarkers(spans.Over(":red["));
+        Assert.All(spans.Over(":red["), s => Assert.True(s.Styles.HasFlag(SpanStyle.Mention)));
+    }
+
+    [Theory]
+    [InlineData(MarkdownField.Description)]
+    [InlineData(MarkdownField.Title)]
+    public void Shows_escaped_punctuation_inside_a_mentions_text_as_written_with_no_style(MarkdownField field)
+    {
+        var spans = Analyzed.Of("[Ana \\*QA\\* (_ana\\.pop_)](contact:a1 \"{fullName}\")", field);
+
+        Assert.All(spans.Over("QA"), s => Assert.Equal(SpanStyle.Mention, s.Styles));
+        Analyzed.AssertMarkers(spans.Over("\\"));
+        Analyzed.AssertNotMarkers(spans.Over("*"));
+        Assert.All(spans.Over("ana"), s => Assert.Equal(SpanStyle.Italic | SpanStyle.Mention, s.Styles));
+        Assert.All(spans.Over("pop"), s => Assert.Equal(SpanStyle.Italic | SpanStyle.Mention, s.Styles));
+    }
+
     // A contact link that holds an image is not a mention.
 
     [Theory]

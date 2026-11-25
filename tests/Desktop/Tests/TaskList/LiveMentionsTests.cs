@@ -68,6 +68,17 @@ public class LiveMentionsTests
     }
 
     [Fact]
+    public void Shows_the_contacts_text_as_Markdown_with_nothing_added_to_it()
+    {
+        var services = new ListTasks();
+        services.UseContacts(["{fullName} (_{firstName}_)"], ContactFiles.Person("ana", "Ana *QA*", ("firstName", "Ana")));
+
+        var shown = LiveMentions.Of(services.Contacts, "[Old](contact:ana \"{fullName} (_{firstName}_)\")", title: false);
+
+        Assert.Equal("[Ana \\*QA\\* (_Ana_)](contact:ana \"{fullName} (_{firstName}_)\")", shown);
+    }
+
+    [Fact]
     public void Search_matches_a_mentions_stored_text_and_not_its_live_text()
     {
         _services.Add($"Call {AnaOld} today");

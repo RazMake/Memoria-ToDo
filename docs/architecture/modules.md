@@ -85,6 +85,7 @@ Tasks and [Contacts](contacts.md#contacts-is-a-shared-module-of-its-own) both ke
 - **Making what a part read current never fails**, the user's choice, so a selection can't change one part and not another. Everything that can fail runs in the read.
 - **Every reloaded part raises its notices, even when another part's notices throw.** The failures are kept, after the selection's or update's own.
 - **Sync's update keeps today's rules**: it checks the folder is still the selected one before running, runs the update under the lock, reloads every part even when the update fails, raises no local-save notice, and raises the parts' notices after releasing the lock. A failed update and a failed reload are kept together.
+- **The desktop reloads a hand edit through the same update**, with a change that does nothing, when a [file in the clone changes](desktop/README.md#the-composition-root-reloads-the-clone-when-a-file-in-it-changes). So the platform gains no reload of its own.
 - **The skipped files are every part's**, in the order the parts were added, so Sync's status lists Tasks' and Contacts' problems alike.
 - **The composition root creates one repository**, gives it to each store and to Sync, and selects the folder through it.
 
@@ -336,7 +337,7 @@ The desktop app has nine modules of its own:
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
 | Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, the Local API, and the MCP server, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs, Local API, MCP server |
-| Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips, and the "@" list for a plain text box that Task View's search box uses | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates, Contact list |
+| Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips, and the "@" list for a plain text box that Task View's search box uses | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates, Contact list, Formatted view |
 | Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates, Contact list |
 | Contact list | The Contacts window: contacts grouped by file, in groups the user orders by dragging, beside the selected contact's details, with search, editing, adding, and deleting; and the contact card a mention shows | [Contact list](desktop/contact-list.md) | Contacts, Rendering |
 | Configure | The four global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; AI assistant access; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates, MCP server |
@@ -358,6 +359,8 @@ The user decided that the [Logs window](desktop/logs.md) is a desktop module of 
 The user decided that the [MCP server](desktop/mcp-server.md) is a desktop module of its own, which Shell starts and stops, and which uses the modules whose operations it offers. The user also decided that Configure may use it, for the AI assistant access switch; and Start with Windows moves from Configure to the [desktop platform](desktop/README.md#start-with-windows-is-a-port-the-platform-publishes), so the MCP server uses it without using Configure. The MCP server uses no window module, so no loop forms.
 
 The user decided that the Task editor and the Task list may use the Contact list, for the [contact card](desktop/contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) a mention shows while the pointer rests on it. The Contact list uses no desktop module, so no loop forms. The other homes considered are in the [Contact list's Ruled out](desktop/contact-list.md#ruled-out).
+
+The user decided that the Task editor may use the Formatted view, only for its [mention chip](desktop/formatted-view.md#public-interface), so the "@" list and the editor show a mention's Markdown as a title does. The Formatted view uses only Rendering, so no loop forms. The other homes considered are in the [Task editor's Ruled out](desktop/task-editor.md#ruled-out).
 
 The user decided that the contact card's heading shows in Rendering's heading color. Proposed, a decision to confirm: so the Contact list may use Rendering, for its text look. Rendering uses no module, so no loop forms.
 

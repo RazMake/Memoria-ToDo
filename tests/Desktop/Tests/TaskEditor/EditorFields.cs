@@ -74,12 +74,12 @@ internal static class EditorFields
     /// <summary>
     /// The element that lists the contacts the typed "@" matches, shown in a popup, as the items of an items control, while the mention list is open.
     /// An item is the row's plain text "Full Name (alias)", the alias being the ID when the contact has none. Each row is a button named by that text,
-    /// with the full name in bold and the alias in italics. Above the rows, the child with id <see cref="MentionHeader"/> is a button whose content is the highlighted
+    /// with the full name in bold and the alias in italics. Above the rows, the element with id <see cref="MentionHeader"/> is the header, the Formatted view's mention chip of the highlighted
     /// contact in the current template; under it, the text block with id <see cref="MentionHint"/> reads "Tab or click: next template", shown while there are two or more templates.
     /// </summary>
     public const string MentionList = "MentionList";
 
-    /// <summary>The header button of the mention list.</summary>
+    /// <summary>The header of the mention list, a mention chip.</summary>
     public const string MentionHeader = "MentionHeader";
 
     /// <summary>The help text block under the mention list's header.</summary>

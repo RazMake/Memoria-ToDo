@@ -58,12 +58,16 @@ public class MentionsTests
         Assert.Equal("say \"{firstName}\" \\ ok", mention.Template);
     }
 
-    [Fact]
-    public void Unescapes_a_stored_texts_brackets_and_backslashes()
+    [Theory]
+    [InlineData("Ana \\*QA\\*")]
+    [InlineData("Ana Pop (_anap_)")]
+    [InlineData("a\\[b\\]c\\\\d")]
+    [InlineData("**Ana** ~~Pop~~ `x` :red[y] ana\\_pop")]
+    public void Lists_a_stored_text_exactly_as_written_with_its_markdown_and_backslashes(string text)
     {
-        var mention = Only("[a\\[b\\]c\\\\d](contact:a1 \"{firstName}\")");
+        var mention = Only($"[{text}](contact:a1 \"{{firstName}}\")");
 
-        Assert.Equal("a[b]c\\d", mention.StoredText);
+        Assert.Equal(text, mention.StoredText);
     }
 
     [Fact]
@@ -211,36 +215,34 @@ public class MentionsTests
         Assert.Equal(swapped, result);
     }
 
-    // WithTexts: the swapped text shows as written
+    // WithTexts: the swapped text is Markdown and goes in unchanged
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Escapes_every_markdown_character_in_the_new_text_so_it_shows_as_written(bool title)
+    public void Puts_the_callbacks_text_into_the_link_unchanged_so_its_markdown_styles(bool title)
     {
-        const string text = "*a* _b_ `c` [d](u) \\e ~~f~~ <g> # h :red[i]";
+        var result = Mentions.WithTexts($"hi {Ana} bye", title, _ => "Ana Pop (_anap_)");
 
-        var result = Mentions.WithTexts($"hi {Ana} bye", title, _ => text);
+        Assert.Equal("hi [Ana Pop (_anap_)](contact:a1 \"{firstName}\") bye", result);
+    }
 
-        var mention = Only(result, title);
-        Assert.Equal("contact:a1", mention.Address);
-        Assert.Equal("{firstName}", mention.Template);
-        var spans = Analyzed.Of(result, title ? MarkdownField.Title : MarkdownField.Description).All
-            .Where(s => s.Styles.HasFlag(SpanStyle.Mention))
-            .ToList();
-        Assert.All(spans, s => Assert.Equal(SpanStyle.None, s.Styles & ~SpanStyle.Marker & ~SpanStyle.Mention));
-        Assert.Equal(text, string.Concat(spans.Where(s => !s.Styles.HasFlag(SpanStyle.Marker)).Select(s => result.Substring(s.Start, s.Length))));
+    [Theory]
+    [InlineData("Ana \\*QA\\* (_ana\\.pop_)")]
+    [InlineData("**Ana** ~~Pop~~ `x` :red[y]")]
+    public void Keeps_every_character_of_the_callbacks_text_including_its_backslashes(string text)
+    {
+        var result = Mentions.WithTexts($"hi {Ana} bye", title: false, _ => text);
+
+        Assert.Equal($"hi [{text}](contact:a1 \"{{firstName}}\") bye", result);
     }
 
     [Fact]
-    public void Escapes_a_closing_bracket_so_the_new_text_cannot_end_the_link_early()
+    public void Lists_the_swapped_text_as_the_mentions_stored_text()
     {
-        var result = Mentions.WithTexts($"{Ana} tail", title: false, _ => "a](https://evil.example) b");
+        var result = Mentions.WithTexts(Ana, title: false, _ => "Ana Pop (_anap_)");
 
-        var mention = Only(result);
-        Assert.Equal("contact:a1", mention.Address);
-        Assert.EndsWith(" tail", result);
-        Assert.DoesNotContain(Analyzed.OfDescription(result).All, s => s.LinkAddress == "https://evil.example");
+        Assert.Equal("Ana Pop (_anap_)", Only(result).StoredText);
     }
 
     // WithTexts: a contact link that holds an image is not swapped

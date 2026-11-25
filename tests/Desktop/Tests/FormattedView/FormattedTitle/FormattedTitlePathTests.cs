@@ -102,8 +102,8 @@ public class FormattedTitlePathTests
 
         // Each mention is its own chip, shown as its text with the markers hidden; the text around them is outside any chip.
         var chips = screen.Title.Chips();
-        Assert.Equal(["Ana Pop (SDE)", "Bo Li"], chips.Select(TitleChips.TextOf));
-        Assert.DoesNotContain(chips, chip => TitleChips.TextOf(chip).Contains("Ask") || TitleChips.TextOf(chip).Contains("about"));
+        Assert.Equal(["Ana Pop (SDE)", "Bo Li"], chips.Select(ChipRuns.ShownBy));
+        Assert.DoesNotContain(chips, chip => ChipRuns.ShownBy(chip).Contains("Ask") || ChipRuns.ShownBy(chip).Contains("about"));
         Assert.Equal("Ask Ana Pop (SDE) and Bo Li about the docs", screen.Text);
         Assert.Equal("Ask Ana Pop (SDE) and Bo Li about the docs", AutomationProperties.GetName(screen.Title));
 

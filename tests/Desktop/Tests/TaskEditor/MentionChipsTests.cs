@@ -1,3 +1,6 @@
+using System.Windows;
+using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.FormattedView.Tests;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Editing;
 using Memoria.ToDo.Shared.Fakes;
@@ -60,11 +63,127 @@ public class MentionChipsTests
         }
 
         [Fact]
+        public void It_is_Markdown_with_each_value_escaped_when_live_and_the_stored_text_as_written_when_not()
+        {
+            _services.UseContacts(["{fullName}"], ContactFiles.Person("ana", "Ana *QA*", ("alias", "anap")));
+
+            var live = MentionChips.TextOf(_services.Contacts, Chip(0, template: "{fullName} (_{alias}_)", stored: "Old"));
+            var stored = MentionChips.TextOf(_services.Contacts, Chip(0, address: "contact:zed", stored: "Zed \\*QA\\* (_zz_)"));
+
+            Assert.Equal("Ana \\*QA\\* (_anap_)", live);
+            Assert.Equal("Zed \\*QA\\* (_zz_)", stored);
+        }
+
+        [Fact]
         public void It_shows_the_stored_text_with_no_repository()
         {
             var text = MentionChips.TextOf(_services.Contacts, Chip(0, stored: "Ana Old"));
 
             Assert.Equal("Ana Old", text);
+        }
+    }
+
+    [Unit]
+    public class What_an_editor_shows_for_a_mention
+    {
+        private const string Template = "{fullName} (_{alias}_)";
+
+        private readonly EditorServices _services = new();
+
+        public What_an_editor_shows_for_a_mention()
+        {
+            _services.UseRepository();
+            _services.UseContacts(["{fullName}"], ContactFiles.Person("ana", "Ana Pop", ("alias", "anap")));
+        }
+
+        // An editor over the services, holding the text and laid out, never shown; its chips are the mention chips in its text view.
+        private FrameworkElement Editor(string field, string text)
+        {
+            FrameworkElement editor;
+            if (field == EditorFields.Title)
+            {
+                var title = _services.CreateTitleEditor();
+                title.Value = text;
+                editor = title;
+            }
+            else
+            {
+                var description = _services.CreateDescriptionEditor();
+                description.TaskId = _services.Tasks.StartDraft().TaskId;
+                description.Value = text;
+                editor = description;
+            }
+
+            return editor;
+        }
+
+        private static IReadOnlyList<MentionChip> ChipsIn(FrameworkElement editor, string field)
+        {
+            editor.Measure(new Size(480, 300));
+            editor.Arrange(new Rect(0, 0, 480, 300));
+            editor.UpdateLayout();
+            var view = ((StyledTextEditor)EditorFields.Field(editor, field)).TextArea.TextView;
+            view.EnsureVisualLines();
+            Assert.NotEmpty(view.VisualLines);
+            return [.. VisualTree.Visuals(view).OfType<MentionChip>()];
+        }
+
+        [WpfTheory]
+        [InlineData(EditorFields.Title)]
+        [InlineData(EditorFields.Description)]
+        public void A_mention_shows_as_a_chip_of_the_live_text_with_the_alias_in_italic_and_no_underscore(string field)
+        {
+            var editor = Editor(field, $"Call [Old](contact:ana \"{Template}\") today");
+
+            var chip = Assert.Single(ChipsIn(editor, field));
+
+            Assert.Equal("Ana Pop (anap)", ChipRuns.ShownBy(chip));
+            Assert.True(RunStyles.IsItalic(ChipRuns.Run(chip, "anap")), "'anap' isn't italic.");
+            Assert.False(RunStyles.IsItalic(ChipRuns.Run(chip, "Ana Pop")), "'Ana Pop' is italic too.");
+        }
+
+        [WpfTheory]
+        [InlineData(EditorFields.Title)]
+        [InlineData(EditorFields.Description)]
+        public void A_mention_with_no_live_text_shows_its_stored_text_formatted_the_same_way(string field)
+        {
+            var editor = Editor(field, "Call [Ana \\*QA\\*](contact:zed \"{fullName}\") today");
+
+            var chip = Assert.Single(ChipsIn(editor, field));
+
+            Assert.Equal("Ana *QA*", ChipRuns.ShownBy(chip));
+            Assert.False(RunStyles.IsItalic(ChipRuns.Run(chip, "QA")), "'QA' is italic.");
+        }
+
+        [WpfTheory]
+        [InlineData(EditorFields.Title)]
+        [InlineData(EditorFields.Description)]
+        public void The_chip_shows_a_contacts_escaped_value_as_written_and_the_Markdown_stays_in_the_text(string field)
+        {
+            _services.UseContacts(["{fullName}"], ContactFiles.Person("ana", "Ana *QA*", ("alias", "anap")));
+            var markdown = $"[Old](contact:ana \"{Template}\")";
+            var editor = Editor(field, markdown);
+
+            var chip = Assert.Single(ChipsIn(editor, field));
+
+            Assert.Equal("Ana *QA* (anap)", ChipRuns.ShownBy(chip));
+            Assert.Equal(markdown, EditorFields.TextOf(editor, field));
+        }
+
+        [WpfTheory]
+        [InlineData(EditorFields.Title)]
+        [InlineData(EditorFields.Description)]
+        public void The_chip_shows_the_new_text_after_contacts_change_while_the_editor_is_loaded(string field)
+        {
+            var editor = Editor(field, $"[Old](contact:ana \"{Template}\")");
+            Assert.Equal("Ana Pop (anap)", ChipRuns.ShownBy(Assert.Single(ChipsIn(editor, field))));
+            EditorFields.Field(editor, field).RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            _services.ChangeContacts(ContactFiles.Person("ana", "Ana Maria Pop", ("alias", "anap")));
+            editor.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+
+            Assert.Equal("Ana Maria Pop (anap)", ChipRuns.ShownBy(Assert.Single(ChipsIn(editor, field))));
+            Assert.Equal($"[Old](contact:ana \"{Template}\")", EditorFields.TextOf(editor, field));
         }
     }
 

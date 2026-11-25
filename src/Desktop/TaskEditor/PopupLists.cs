@@ -30,6 +30,9 @@ internal sealed class PopupLists
         return () => otherWasOpen;
     }
 
+    /// <summary>Whether a list is open.</summary>
+    public bool IsOpen => Open() is not null;
+
     /// <summary>Closes the open list. Returns false, doing nothing, when none was open.</summary>
     public bool CloseOpen()
     {

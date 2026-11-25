@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.FormattedView.Tests;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
@@ -24,7 +25,7 @@ public class AddWindowMentionTests
     {
         using var screen = new AddScreen();
         screen.Services.UseContacts(
-            ["{fullName} ({title})", "{firstName}"],
+            ["{fullName} ({title})", "{firstName}", "{fullName} (_{alias}_)"],
             ContactFiles.Person("ana", "Ana Pop", ("firstName", "Ana"), ("title", "Engineer"), ("alias", "anap")),
             ContactFiles.Person("bob", "Bob Stan", ("firstName", "Bob")));
         var task = screen.Services.AddTaskTitled($"Call {AnaOld} today");
@@ -61,7 +62,22 @@ public class AddWindowMentionTests
         Assert.True(screen.IsShowing);
         Assert.Equal("@an", screen.TextOf(EditorFields.Description));
 
-        // Tab and a click on the header show the highlighted contact in the next template.
+        // Erasing back into the partial mention opens the list again, in the Description and in the Title.
+        screen.Press(Key.Back);
+
+        Assert.Equal("@a", screen.TextOf(EditorFields.Description));
+        Assert.Contains("Ana Pop (anap)", screen.ShownMentions);
+        screen.Press(Key.Escape);
+        screen.Edit(EditorFields.Title, "Call @an", 8);
+        Assert.Empty(screen.ShownMentions);
+        screen.Press(Key.Back);
+
+        Assert.Equal("Call @a", screen.TextOf(EditorFields.Title));
+        Assert.Contains("Ana Pop (anap)", screen.ShownMentions);
+        screen.Press(Key.Escape);
+        Assert.Empty(screen.ShownMentions);
+
+        // Tab and a click on the header show the highlighted contact in the next template, as a chip: the alias in italic, no underscore.
         screen.Edit(EditorFields.Description, "", 0);
         screen.Type("@");
         Assert.Equal("Ana Pop (Engineer)", screen.MentionHeaderText);
@@ -71,6 +87,28 @@ public class AddWindowMentionTests
         Assert.Equal(["Ana Pop (anap)", "Bob Stan (bob)"], screen.ShownMentions);
         Assert.Equal(EditorFields.Description, screen.FocusedField);
         screen.ClickMentionHeader();
+        Assert.Equal("Ana Pop (anap)", screen.MentionHeaderText);
+        Assert.DoesNotContain('_', screen.MentionHeaderText);
+        Assert.True(RunStyles.IsItalic(ChipRuns.Run(screen.MentionHeader, "anap")), "'anap' isn't italic.");
+        Assert.False(RunStyles.IsItalic(ChipRuns.Run(screen.MentionHeader, "Ana Pop")), "'Ana Pop' is italic too.");
+        Assert.Equal(EditorFields.Description, screen.FocusedField);
+        screen.Press(Key.Tab);
+        Assert.Equal("Ana Pop (Engineer)", screen.MentionHeaderText);
+        screen.Press(Key.Tab);
+        screen.Press(Key.Tab);
+        screen.Press(Key.Down);
+        screen.Press(Key.Enter);
+
+        // The editor shows the chosen mention as a chip with the alias in italic and no underscore.
+        var chosen = Assert.Single(screen.ChipsIn(EditorFields.Description));
+        Assert.Equal("Ana Pop (anap)", ChipRuns.ShownBy(chosen));
+        Assert.True(RunStyles.IsItalic(ChipRuns.Run(chosen, "anap")), "The chip's 'anap' isn't italic.");
+
+        // The next opening starts on the template used last, and Tab goes through the others in the file's new order.
+        screen.Edit(EditorFields.Description, "", 0);
+        screen.Type("@");
+        Assert.Equal("Ana Pop (anap)", screen.MentionHeaderText);
+        screen.Press(Key.Tab);
         Assert.Equal("Ana Pop (Engineer)", screen.MentionHeaderText);
         screen.Press(Key.Escape);
 

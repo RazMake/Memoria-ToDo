@@ -19,7 +19,7 @@ public static class ContactStore
 
         var service = new ContactService(files, repository, logger);
         repository.Add(service);
-        return new Store(service, ContactFileRules.Create());
+        return new Store(service, ContactFileRules.Create(logger));
     }
 
     private sealed record Store(IContacts Contacts, IContactFileRules Files) : IContactStore;

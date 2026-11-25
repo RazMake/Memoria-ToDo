@@ -6,6 +6,14 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- A file you change by hand in your synced folder, such as your list of mention formats, now shows in the app about half a second after you save it, in every window and for AI assistants and your own programs. Before, it showed only after the next sync.
+
+- Mentions now show their format's Markdown as styling: with the format `{fullName} (_{alias}_)`, the alias shows in italic with no underscores, in the line at the top of the "@" list, in the editor, and in Task View, the window that lists your tasks. A contact's name or alias shows exactly as written, so a name like `Ana *QA*` keeps its stars. A mention format with unpaired brackets, a link or image, a trailing backslash, a backslash right before a `{field}`, or a line break is now reported as not valid. The "Tab or click: next template" hint is now fainter and indented.
+
+- The "@" list now starts on the mention format you used last, on every device you sync: picking a contact moves its format to the top of your list of mention formats, and Tab goes through the others in their order. The first time, the app rewrites the list in its own layout, keeping every format. If you edit the list on one device while another moves a format to the top, your edit is kept. Until every device you sync is updated, an older version can still drop such an edit.
+
+- Erasing back into a partly typed mention now reopens the "@" list, as if you had typed it: erasing the "e" of `@ale` lists the contacts for `@al`. This works in the Add window, in Task View, and in Task View's search box.
+
 - A task can now have up to 15 tags. In Add and Task View, each tag shows as a pill; drag a pill to reorder the tags, or move the selected pill with Alt+Left and Alt+Right. The first tag groups the task in Task View, so it shows a little larger than the others. Searching finds a task by any of its tags. Tags are now always lowercase, with a hyphen in place of spaces: "My Work" becomes "my-work", and tags that differed only in case become one. Your existing tasks keep their tags, written this way the next time you change them. AI assistants and your own programs can now set several tags on a task and find the tasks that have all the tags they name. Until every device you sync is updated, older versions show a task with several tags under each of its tags.
 
 ## 1.2.0

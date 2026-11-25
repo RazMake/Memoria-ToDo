@@ -6,7 +6,7 @@ using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Rendering;
 
-/// <summary>A mention: where it sits in the Markdown, "[" through ")", the contact address, the template, and the stored text.</summary>
+/// <summary>A mention: where it sits in the Markdown, "[" through ")", the contact address, the template, and the stored text: the link's text exactly as written, Markdown and backslashes included.</summary>
 public sealed record Mention(int Start, int Length, string Address, string Template, string StoredText);
 
 public static class Mentions
@@ -20,7 +20,7 @@ public static class Mentions
         return Scan(markdown, title).ConvertAll(f => f.Mention);
     }
 
-    /// <summary>The Markdown with each mention's text swapped for the callback's, escaped; null keeps the stored text.</summary>
+    /// <summary>The Markdown with each mention's text swapped for the callback's, put in unchanged: the callback's text must already fit a link's text, so its Markdown styles the mention. Null keeps the stored text.</summary>
     public static string WithTexts(string markdown, bool title, Func<Mention, string?> textOf)
     {
         ArgumentNullException.ThrowIfNull(markdown);
@@ -38,7 +38,7 @@ public static class Mentions
             var labelStart = found.Mention.Start + 1;
             result ??= new StringBuilder(markdown.Length + text.Length);
             result.Append(markdown, copied, labelStart - copied);
-            AppendShownAsWritten(result, text);
+            result.Append(text);
             copied = found.LabelEnd;
         }
 
@@ -75,49 +75,11 @@ public static class Mentions
             var start = link.Span.Start;
             var label = markdown.AsSpan(start + 1, labelEnd - start - 1);
             found.Add(new Found(
-                new Mention(start, link.Span.End + 1 - start, link.Url!, link.Title!, Unescape(label)),
+                new Mention(start, link.Span.End + 1 - start, link.Url!, link.Title!, label.ToString()),
                 labelEnd));
         }
 
         return found;
     }
 
-    private static bool IsAsciiPunctuation(char c) => char.IsAscii(c) && (char.IsPunctuation(c) || char.IsSymbol(c));
-
-    // A backslash before an ASCII punctuation character is dropped, as Markdown does.
-    private static string Unescape(ReadOnlySpan<char> label)
-    {
-        if (!label.Contains('\\'))
-        {
-            return label.ToString();
-        }
-
-        var text = new StringBuilder(label.Length);
-        for (var i = 0; i < label.Length; i++)
-        {
-            if (label[i] == '\\' && i + 1 < label.Length && IsAsciiPunctuation(label[i + 1]))
-            {
-                i++;
-            }
-
-            text.Append(label[i]);
-        }
-
-        return text.ToString();
-    }
-
-    // A backslash before an ASCII punctuation character always makes it plain text, so no Markdown character in the text,
-    // such as "*", "]", ":red[", or the "." and "/" of an automatic link, does anything but show.
-    private static void AppendShownAsWritten(StringBuilder to, string text)
-    {
-        foreach (var c in text)
-        {
-            if (IsAsciiPunctuation(c))
-            {
-                to.Append('\\');
-            }
-
-            to.Append(c);
-        }
-    }
 }

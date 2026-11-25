@@ -167,11 +167,11 @@ The user decided that a mention shows on one soft accent background in each them
 - **A contact link whose text holds an image isn't a mention**, such as a hand-typed `[![face](images/a.png)](contact:… "…")`. Contacts never writes one. It keeps a link's look, and the browser check makes a click do nothing. So swapping mention text never drops an image, and the images keep their positions, which the [edit's Preview](desktop/task-list.md#an-image-resizes-by-dragging-its-corner-in-the-edits-preview) counts to resize the right one.
 - **A contact link with no template in its title isn't a mention either**, such as a hand-typed `[Ana](contact:…)`, since a mention [always names its template](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template). It keeps a link's look, as above.
 - **A reference-style contact link isn't a mention**, such as a hand-typed `[Ana][p]` with `[p]: contact:… "…"` elsewhere. Contacts only writes a mention with its address in place, and a mention's text can only be swapped where its address follows it. It keeps a link's look, as above. This is a decision to confirm.
-- **A mention shows in the normal text color, on the text look's mention background**, one soft color per theme, like code's background: the user chose a purple that suits each theme, a pale lavender in light and a deep purple in dark. Its text keeps any bold or italic it has. The background has rounded corners of `TextLooks.MentionCornerRadius`, 4 pixels, and leaves room around the text: `TextLooks.MentionPaddingSides`, 4 pixels, left and right, `MentionPaddingTop`, 1 pixel, above, and `MentionPaddingBottom`, 3 pixels, below. The room above and below doesn't make the line taller. This holds in the description page, a title, and an editor chip alike; the user asked for this look. The color itself belongs in code, checked by a unit test to keep normal text at least 4.5:1 on it, as [WCAG 2.2](https://www.w3.org/TR/WCAG22/#contrast-minimum) asks.
+- **A mention shows in the normal text color, on the text look's mention background**, one soft color per theme, like code's background: the user chose a purple that suits each theme, a pale lavender in light and a deep purple in dark. Its text keeps any inline style it has: bold, italic, strikethrough, code, or a color. The background has rounded corners of `TextLooks.MentionCornerRadius`, 4 pixels, and leaves room around the text: `TextLooks.MentionPaddingSides`, 4 pixels, left and right, `MentionPaddingTop`, 1 pixel, above, and `MentionPaddingBottom`, 3 pixels, below. The room above and below doesn't make the line taller. This holds in the description page, a title, and an editor chip alike; the user asked for this look. The color itself belongs in code, checked by a unit test to keep normal text at least 4.5:1 on it, as [WCAG 2.2](https://www.w3.org/TR/WCAG22/#contrast-minimum) asks.
 - **The description page shows a mention as `<span class="mention">` with no link**, styled by the page's one style block, so there's nothing to click and the [browser check](#only-web-links-open-in-the-browser) never sees its address.
 - **Each mention's span carries its number in a `data-mention` attribute**, counted from 0 in the order Rendering's mention list finds the mentions in the same Markdown, as images carry `data-image`. So an app can tell which mention the pointer is over, to show the contact's [card](desktop/formatted-view.md#a-mention-shows-a-card-its-user-makes), without a script on the page and without the address in it. Proposed, a decision to confirm; the page's look, its scripts rule, and its content security policy don't change.
-- **Rendering lists each mention's whole extent, address, template, and stored text**, so the editors can draw each one as a single chip.
-- **Rendering swaps each mention's text for a live one** that its caller supplies, escaping every Markdown character in it so it shows as written. A mention the caller has no text for keeps its stored text. The screens that show tasks pass the result to the page or the title, so the page and the spans need no contacts.
+- **Rendering lists each mention's whole extent, address, template, and stored text**, so the editors can draw each one as a single chip. The stored text is the link's text as written, its Markdown included, so a chip can format it. Proposed, a decision to confirm.
+- **Rendering swaps each mention's text for a live one** that its caller supplies, as the Markdown it is, so a template's styling shows: [Contacts](contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) gives text that fits a link's text, with every Markdown character in its values escaped. The user asked that a template's Markdown show as styling wherever a mention shows, so `{fullName} (_{alias}_)` shows the alias in italic. A mention the caller has no text for keeps its stored text. The screens that show tasks pass the result to the page or the title, so the page and the spans need no contacts. Proposed, a decision to confirm.
 
 ## Public interface
 
@@ -355,7 +355,8 @@ public sealed class TextLook
     public string MentionBackground { get; }
 }
 
-/// One mention: its whole extent in the Markdown, from "[" to ")", and what the link holds.
+/// One mention: its whole extent in the Markdown, from "[" to ")", and what the link holds. StoredText is the
+/// link's text as written, Markdown and backslashes included.
 public sealed record Mention(int Start, int Length, string Address, string Template, string StoredText);
 
 public static class Mentions
@@ -363,8 +364,8 @@ public static class Mentions
     /// Every mention, in order. A title is read as inline Markdown only, as its spans are.
     public static IReadOnlyList<Mention> In(string markdown, bool title);
 
-    /// The Markdown with each mention's text replaced by textOf's answer, escaped to show as written;
-    /// a null answer keeps the stored text. Everything else is unchanged.
+    /// The Markdown with each mention's text replaced by textOf's answer, which must fit a link's text, put in
+    /// as it is; a null answer keeps the stored text. Everything else is unchanged.
     public static string WithTexts(string markdown, bool title, Func<Mention, string?> textOf);
 }
 ```
@@ -418,6 +419,8 @@ The options below were considered and rejected, grouped by decision.
   - **A mention, but the swap keeps its text**: the mention would show text that isn't the contact's current details.
 - A contact link with no template:
   - **A mention with an empty template**: Contacts would be asked for text from an empty template, which no stored mention has.
+- How a mention's live text goes into the Markdown:
+  - **Escaping every Markdown character, so it shows as written**: the first design; the user asked that a template's Markdown show as styling.
 
 ## Open questions
 

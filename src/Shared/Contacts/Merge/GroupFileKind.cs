@@ -10,7 +10,7 @@ internal sealed class GroupFileKind : ContactFileKind<GroupFile>
 
     protected override byte[] Write(GroupFile file) => GroupFileFormat.Write(file);
 
-    protected override GroupFile MergeSides(GroupFile? basis, GroupFile local, GroupFile remote)
+    protected override GroupFile MergeSides(IReadOnlyList<string> parts, GroupFile? basis, GroupFile local, GroupFile remote)
     {
         var top = ObjectFields.Merge(basis?.Top(), local.Top(), remote.Top());
         var members = local.IsMe
