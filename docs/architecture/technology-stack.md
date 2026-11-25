@@ -195,6 +195,8 @@ Review-only enforcement was ruled out because it would allow the same dependency
 
 The [real-input helper](../../tests/Desktop/Tests/Platform/RealPointer.cs) records a short trace of each move it sends and puts the trace into its failure message. The user approved this on 2026-11-24 to find why hosted runs fail before changing anything that could fix it. The trace only describes; it names no cause, and it changes nothing a passing move does.
 
+The [open pointer-input investigation](../investigations/pointer-input.md) keeps the latest failure trace and the approved next diagnostic change.
+
 Not confirmed: why those runs fail. In run 45488260474 the step away, and in run 45268223275 the first move, timed out with the cursor at the right point, the target window in front, and no mouse message fetched by the target's thread. Capture by another thread, input still queued when the wait's timer fired, a window that came and went, or a defect in the observer would each leave those same messages. Run 45278956480's unmarked moves are the case the [acceptance rule](#unit-and-ux-tests-cannot-send-real-input) already covers.
 
 - **Every point is checked before it's sent**, the step away as well as the target. The helper refuses, and sends nothing, when the point is off screen, when the window at the point isn't the element's own window or one of its child windows, or when the window the caller passed isn't in front. The two windows differ for an element in a popup, so the window in front is never compared with the element's own window. Until now only the target was checked, once.
