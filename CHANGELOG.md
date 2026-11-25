@@ -6,6 +6,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+## 1.3.0
+
 - A file you change by hand in your synced folder, such as your list of mention formats, now shows in the app about half a second after you save it, in every window and for AI assistants and your own programs. Before, it showed only after the next sync.
 
 - Mentions now show their format's Markdown as styling: with the format `{fullName} (_{alias}_)`, the alias shows in italic with no underscores, in the line at the top of the "@" list, in the editor, and in Task View, the window that lists your tasks. A contact's name or alias shows exactly as written, so a name like `Ana *QA*` keeps its stars. A mention format with unpaired brackets, a link or image, a trailing backslash, a backslash right before a `{field}`, or a line break is now reported as not valid. The "Tab or click: next template" hint is now fainter and indented.
