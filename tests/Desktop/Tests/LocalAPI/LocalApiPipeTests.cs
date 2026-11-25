@@ -8,6 +8,8 @@ using System.Security.Principal;
 using Grpc.Core;
 using Memoria.ToDo.Api.Client;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
+using Memoria.ToDo.Shared.Sync;
 using Memoria.ToDo.Testing;
 using Serilog.Events;
 using Xunit;
@@ -28,12 +30,39 @@ public class LocalApiPipeTests
 
     private sealed class RealApi : IAsyncDisposable
     {
-        public RealApi(string pipeName)
+        private RealApi(string pipeName)
         {
             Lifetime = LocalApiServer.Create(Store, Contacts, Sync, pipeName, Log.CreateLogger());
             Lifetime.Start();
             Client = MemoriaClient.Connect(pipeName);
             Tasks = Client.Tasks;
+        }
+
+        public static async Task<RealApi> StartAsync(string pipeName)
+        {
+            var api = new RealApi(pipeName);
+            var failures = new FailureList();
+            try
+            {
+                var entry = await api.Log.AnyEntryAsync(pipeName);
+                if (entry.Level != LogEventLevel.Information)
+                    throw new InvalidOperationException($"The Local API didn't listen on the pipe {pipeName}: {entry.RenderMessage()}", entry.Exception);
+            }
+            catch (Exception failure)
+            {
+                failures.Add(failure);
+                try
+                {
+                    await api.DisposeAsync();
+                }
+                catch (Exception cleanup)
+                {
+                    failures.Add(cleanup);
+                }
+            }
+
+            failures.ThrowIfAny();
+            return api;
         }
 
         public FakeTaskStore Store { get; } = new();
@@ -60,7 +89,7 @@ public class LocalApiPipeTests
     [Fact]
     public async Task A_client_creates_a_task_and_lists_it_over_the_pipe()
     {
-        await using var api = new RealApi(NewPipeName());
+        await using var api = await RealApi.StartAsync(NewPipeName());
 
         var created = await api.Tasks.CreateTaskAsync(new V1.CreateTaskRequest { Title = "Buy milk", Tag = "home" }, deadline: Deadline);
         var listed = await api.Tasks.ListTasksAsync(new V1.ListTasksRequest(), deadline: Deadline);
@@ -73,7 +102,7 @@ public class LocalApiPipeTests
     public async Task The_Node_client_creates_and_lists_a_task_over_the_pipe_and_names_the_same_pipe_as_the_NET_client()
     {
         var name = NewPipeName();
-        await using var api = new RealApi(name);
+        await using var api = await RealApi.StartAsync(name);
         var dist = Path.Combine(NodeClientFolder(), "dist");
 
         // The script runs the built package the way a program does: through connect's module, with the test's own pipe name.
@@ -144,7 +173,7 @@ public class LocalApiPipeTests
     [Fact]
     public async Task A_client_watching_tasks_over_the_pipe_gets_a_notice_at_once_and_another_after_a_change()
     {
-        await using var api = new RealApi(NewPipeName());
+        await using var api = await RealApi.StartAsync(NewPipeName());
         using var stream = api.Tasks.WatchTasks(new V1.WatchTasksRequest(), deadline: Deadline);
         using var bound = new CancellationTokenSource(Bound);
 
@@ -158,7 +187,7 @@ public class LocalApiPipeTests
     public async Task The_pipe_denies_network_logons_and_lets_only_the_current_user_in()
     {
         var name = NewPipeName();
-        await using var api = new RealApi(name);
+        await using var api = await RealApi.StartAsync(name);
         await api.Tasks.ListTasksAsync(new V1.ListTasksRequest(), deadline: Deadline);
 
         // Connect once more by hand and read the pipe's access list.
@@ -177,7 +206,7 @@ public class LocalApiPipeTests
     public async Task After_Stop_a_call_gets_UNAVAILABLE_and_the_pipe_name_is_free_again()
     {
         var name = NewPipeName();
-        await using var api = new RealApi(name);
+        await using var api = await RealApi.StartAsync(name);
         await api.Tasks.ListTasksAsync(new V1.ListTasksRequest(), deadline: Deadline);
 
         await api.Lifetime.StopAsync().WaitAsync(Bound);
@@ -204,25 +233,64 @@ public class LocalApiPipeTests
     }
 
     [Fact]
+    public async Task Starting_the_API_on_a_pipe_name_another_process_holds_fails_with_the_logged_error()
+    {
+        var name = NewPipeName();
+        await using var holder = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance);
+
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await using var api = await RealApi.StartAsync(name);
+        });
+
+        Assert.Contains(name, failure.Message);
+    }
+
+    [Fact]
     public async Task Stop_gives_up_on_a_call_that_never_ends_after_about_5_seconds()
     {
-        await using var api = new RealApi(NewPipeName());
-        using var entered = new SemaphoreSlim(0);
-        using var release = new ManualResetEventSlim();
-        api.Store.OnCall = () =>
+        await using var api = await RealApi.StartAsync(NewPipeName());
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<ISyncStatus> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        api.Sync.SyncOperation = _ =>
         {
-            entered.Release();
-            release.Wait(TimeSpan.FromSeconds(30));
+            entered.TrySetResult();
+            return release.Task;
         };
-        var running = api.Tasks.ListTasksAsync(new V1.ListTasksRequest(), deadline: Deadline);
-        await entered.WaitAsync(Bound);
+        using var call = api.Client.Sync.SyncNowAsync(new V1.SyncNowRequest(), deadline: Deadline);
+        Task running = call.ResponseAsync;
+        var failures = new FailureList();
+        try
+        {
+            var first = await Task.WhenAny(entered.Task, running).WaitAsync(Bound);
+            await first;
+            Assert.True(entered.Task.IsCompleted);
+            Assert.False(running.IsCompleted);
 
-        var started = System.Diagnostics.Stopwatch.StartNew();
-        await api.Lifetime.StopAsync().WaitAsync(TimeSpan.FromSeconds(20));
-        started.Stop();
-        release.Set();
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            await api.Lifetime.StopAsync().WaitAsync(TimeSpan.FromSeconds(20));
+            started.Stop();
 
-        Assert.InRange(started.Elapsed, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(12));
-        GC.KeepAlive(running);
+            Assert.InRange(started.Elapsed, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(12));
+        }
+        catch (Exception failure)
+        {
+            failures.Add(failure);
+        }
+        finally
+        {
+            release.TrySetResult(api.Sync.Status);
+        }
+
+        try
+        {
+            await CallOutcome.FailsAsync(running);
+        }
+        catch (Exception cleanup)
+        {
+            failures.Add(cleanup);
+        }
+
+        failures.ThrowIfAny();
     }
 }

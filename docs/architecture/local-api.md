@@ -89,6 +89,8 @@ A fourth part, `Api`, sits beside the shared library and the two apps, in `src/A
 
 Each integration test uses its own pipe name and its own temporary clone. The .NET ones call the shipped client's own connect path with only the pipe name injected, never a copy of it. The [technology stack](technology-stack.md#the-local-api-adds-a-part-its-packages-nodejs-and-two-release-files) gives the Node.js tests' commands. [Test selection](test-selection.md#each-changed-path-selects-tests-by-one-rule) has rules for the new folders.
 
+The shutdown integration test checks [the shutdown bound](#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread) and that the outstanding call fails. It does not check the gRPC status when Kestrel forcibly closes the connection. The separate test for a call made after shutdown still requires `UNAVAILABLE`.
+
 ## Public interface
 
 Programs use the [contract and the two clients](local-api-contract.md#public-interface). Tasks' [direct task changes](tasks.md#direct-task-changes-are-a-capability-of-their-own) and Shell's [lifetime argument](desktop/shell.md#public-interface) are declared on their own pages. The desktop module, which only Shell and the composition root use:
