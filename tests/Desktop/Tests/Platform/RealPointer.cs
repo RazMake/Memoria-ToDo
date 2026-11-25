@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
+using Xunit;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
 
@@ -12,13 +13,20 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 [RealInput]
 internal static class RealPointer
 {
+    private static readonly PointerTraceHolder Traces = new();
+    private static readonly IPointerReadings Readings = new NativePointerReadings();
     private static int _lastMarker;
 
     public static void MoveOver(Window window, FrameworkElement element, Point inElement)
     {
+        var testId = TestContext.Current.Test?.UniqueID
+            ?? throw new InvalidOperationException("A real pointer move needs a running test to keep its trace under.");
+        var trace = Traces.For(testId);
+        var call = trace.BeginCall();
         AfterFirstDraw.Wait(element.Dispatcher);
         // A window a background process shows can be active yet behind another program's, which would then get the moves.
-        KeyboardInput.BringToFront(new WindowInteropHelper(window).Handle);
+        var owner = new WindowInteropHelper(window).Handle;
+        KeyboardInput.BringToFront(owner);
         if (!window.IsActive)
         {
             throw new InvalidOperationException("The window is not active; hover cards require an active window.");
@@ -26,19 +34,13 @@ internal static class RealPointer
 
         var onScreen = element.PointToScreen(inElement);
         var target = new Win32.Point { X = (int)Math.Round(onScreen.X), Y = (int)Math.Round(onScreen.Y) };
-        if (!Win32.IsOnScreen(target))
-        {
-            throw new InvalidOperationException($"The requested pointer position ({target.X}, {target.Y}) is off screen.");
-        }
-
         var expected = (PresentationSource.FromVisual(element) as HwndSource)?.Handle
             ?? throw new InvalidOperationException("The pointer target is not in a window.");
-        var hit = Win32.WindowAt(target);
-        if (hit != expected && !Win32.IsChildOf(hit, expected))
-        {
-            throw new InvalidOperationException(
-                $"Another window covers the requested pointer position ({target.X}, {target.Y}), so it would get the moves: {Describe(expected, hit)}.");
-        }
+        PointerMoveRecorder Recorder(string step, Action stopWait) =>
+            new(trace, PointerTrace.Label(call, step), expected, owner, Readings, stopWait);
+
+        // Check the final target before even the preparatory move can send input.
+        Recorder("target", () => { }).Verify(target);
 
         // WPF must observe the step away before the pointer returns, or Windows can coalesce both moves.
         // The step is far enough that it starts, as the move back does, more than one pixel from its own target.
@@ -55,13 +57,13 @@ internal static class RealPointer
                 throw new InvalidOperationException("The pointer target has no input root.");
             }
 
-            MoveAndObserve(root, away, expected);
+            MoveAndObserve(stop => Recorder("away", stop), root, away);
         }
 
-        MoveAndObserve(element, target, expected);
+        MoveAndObserve(stop => Recorder("target", stop), element, target);
     }
 
-    private static void MoveAndObserve(UIElement element, Win32.Point target, nint expectedWindow)
+    private static void MoveAndObserve(Func<Action, PointerMoveRecorder> newRecorder, UIElement element, Win32.Point target)
     {
         // Positive, unique markers cannot be confused with earlier moves or WPF's reserved pen/touch markers.
         var marker = Interlocked.Increment(ref _lastMarker);
@@ -71,103 +73,157 @@ internal static class RealPointer
         }
 
         var start = Win32.CursorPosition();
-        var move = NativeInput.Move(target, marker);
         var receipt = new InjectedMoveReceipt(marker, start, target);
         var frame = new DispatcherFrame();
+        Action stopWait = () => frame.Continue = false;
+        var recorder = newRecorder(stopWait);
+        recorder.Note($"marker {marker}, cursor start ({start.X}, {start.Y}), target ({target.X}, {target.Y})");
+        var expectedWindow = recorder.TargetWindow;
         var observed = false;
         Win32.Point? last = null;
         ObservedMessage? lastPacket = null;
         var mouseMessages = 0;
-        Win32.MouseMessageHook fetched = (code, message, data) =>
+        Win32.MessageHook fetched = (code, message, data) =>
         {
-            if (code == 0) // HC_ACTION, not HC_NOREMOVE.
+            recorder.Guard(() =>
             {
-                var packet = Marshal.PtrToStructure<Win32.MouseHook>(data);
-                var observedPacket = new ObservedMessage(
-                    (uint)message, packet.ExtraInfo, packet.Point,
-                    packet.Window == expectedWindow || Win32.IsChildOf(packet.Window, expectedWindow));
-                mouseMessages++;
-                lastPacket = observedPacket;
-
-                receipt.Observe(observedPacket);
-                if (receipt.MisplacedAt is not null)
+                if (code == 0) // HC_ACTION, not HC_NOREMOVE.
                 {
-                    frame.Continue = false;
+                    var packet = Marshal.PtrToStructure<Win32.MouseHook>(data);
+                    var observedPacket = new ObservedMessage(
+                        (uint)message, packet.ExtraInfo, packet.Point,
+                        packet.Window == expectedWindow || Win32.IsChildOf(packet.Window, expectedWindow));
+                    mouseMessages++;
+                    lastPacket = observedPacket;
+                    recorder.Mouse(observedPacket);
+                    receipt.Observe(observedPacket);
+                    if (receipt.MisplacedAt is not null)
+                    {
+                        stopWait();
+                    }
                 }
-            }
+            });
 
-            return Win32.NextMouseMessage(code, message, data);
+            return Win32.NextMessage(code, message, data);
+        };
+        Win32.MessageHook sent = (code, message, data) =>
+        {
+            recorder.Guard(() =>
+            {
+                if (code == 0)
+                {
+                    recorder.SentMessage(Marshal.PtrToStructure<Win32.SentMessage>(data));
+                }
+            });
+
+            return Win32.NextMessage(code, message, data);
         };
         void FilterMessage(ref MSG message, ref bool handled)
         {
-            if (message.message != 0x0200)
+            var id = (uint)message.message;
+            recorder.Guard(() =>
             {
-                receipt.Observe(new ObservedMessage((uint)message.message, 0, default, false));
-            }
+                recorder.Fetched(id);
+                if (id != 0x0200)
+                {
+                    receipt.Observe(new ObservedMessage(id, 0, default, false));
+                }
+            });
         }
 
-        MouseEventHandler moved = (_, e) =>
+        MouseEventHandler moved = (_, e) => recorder.Guard(() =>
         {
             var screen = element.PointToScreen(e.GetPosition(element));
-            last = new Win32.Point { X = (int)Math.Round(screen.X), Y = (int)Math.Round(screen.Y) };
-            if (receipt.TakeAcknowledgement())
+            var routed = new Win32.Point { X = (int)Math.Round(screen.X), Y = (int)Math.Round(screen.Y) };
+            last = routed;
+            var accepted = receipt.TakeAcknowledgement();
+            recorder.Moved(routed, accepted);
+            if (accepted)
             {
                 observed = true;
-                frame.Continue = false;
+                stopWait();
             }
-        };
-        var hook = Win32.HookMouseMessages(fetched);
-        var timeout = new DispatcherTimer(TestWait.ForSignal, DispatcherPriority.Normal,
-            (_, _) => frame.Continue = false, element.Dispatcher);
-        element.AddHandler(Mouse.PreviewMouseMoveEvent, moved, handledEventsToo: true);
-        ComponentDispatcher.ThreadFilterMessage += FilterMessage;
-        try
+        });
+        var timeout = new DispatcherTimer(DispatcherPriority.Normal, element.Dispatcher) { Interval = TestWait.ForSignal };
+        timeout.Tick += (_, _) => recorder.Guard(() =>
         {
-            NativeInput.Send(move);
-            Dispatcher.PushFrame(frame);
-        }
-        finally
-        {
-            timeout.Stop();
-            ComponentDispatcher.ThreadFilterMessage -= FilterMessage;
-            element.RemoveHandler(Mouse.PreviewMouseMoveEvent, moved);
-            Win32.UnhookMouseMessages(hook);
-            GC.KeepAlive(fetched);
-        }
+            recorder.TimerFired();
+            stopWait();
+        });
 
-        if (receipt.MisplacedAt is { } misplaced)
-        {
-            throw new InvalidOperationException(
-                $"The pointer packet for {element.GetType().Name} landed at screen ({misplaced.X}, {misplaced.Y}), not at ({target.X}, {target.Y}); "
-                + $"{Describe(expectedWindow, Win32.WindowAt(target))}.");
-        }
+        nint mouseHook = 0;
+        nint sentHook = 0;
+        recorder.Run(target, new PointerMoveSteps(
+            Acquire: () =>
+            {
+                mouseHook = Win32.HookMouseMessages(fetched);
+                sentHook = Win32.HookSentMessages(sent);
+                element.AddHandler(Mouse.PreviewMouseMoveEvent, moved, handledEventsToo: true);
+                ComponentDispatcher.ThreadFilterMessage += FilterMessage;
+            },
+            Send: () =>
+            {
+                var move = NativeInput.Move(target, marker);
+                recorder.Note("calling SendInput");
+                timeout.Start();
+                uint inserted;
+                try
+                {
+                    inserted = NativeInput.Send(move);
+                }
+                catch (Exception rejected)
+                {
+                    recorder.Note($"SendInput failed: {rejected.Message}");
+                    throw;
+                }
 
-        if (!observed)
-        {
-            var current = Win32.CursorPosition();
-            throw new TimeoutException(
-                $"WPF did not observe the pointer on {element.GetType().Name}: "
-                + "SendInput accepted the packet; "
-                + $"{(receipt.Received ? "its marked WM_MOUSEMOVE was fetched but no routed move followed it" : "its marked WM_MOUSEMOVE was never fetched")} "
-                + $"({mouseMessages} mouse messages fetched while waiting), "
-                + $"requested screen ({target.X}, {target.Y}), "
-                + $"cursor ({current.X}, {current.Y}), last observed event {(last is { } seen ? $"({seen.X}, {seen.Y})" : "none")}, "
-                + $"expected marker {marker}, last fetched mouse message "
-                + $"{(lastPacket is { } packet ? $"0x{packet.Id:X} marker {packet.ExtraInfo} at ({packet.Screen.X}, {packet.Screen.Y}), expected window {packet.InExpectedWindow}" : "none")}, "
-                + $"directly over {Mouse.DirectlyOver}, captured by {Mouse.Captured}; "
-                + $"{Describe(expectedWindow, Win32.WindowAt(target))}.");
-        }
-    }
+                recorder.Note($"SendInput inserted {inserted} of 1");
+            },
+            Wait: () => Dispatcher.PushFrame(frame),
+            Decide: () =>
+            {
+                if (receipt.MisplacedAt is { } misplaced)
+                {
+                    var landed = $"The pointer packet for {element.GetType().Name} landed at screen ({misplaced.X}, {misplaced.Y}), not at ({target.X}, {target.Y}); "
+                        + $"{PointerSnapshot.Windows(target, expectedWindow)}.";
+                    return new PointerOutcome(PointerResult.Misplaced, landed, $"landed at ({misplaced.X}, {misplaced.Y})");
+                }
 
-    private static string Describe(nint expected, nint hit)
-    {
-        var hitText = "no window";
-        if (hit != 0)
-        {
-            var rect = Win32.WindowRect(hit);
-            hitText = $"{hit:X} (process {Win32.ProcessIdOf(hit)}, rect {rect.Left}, {rect.Top}, {rect.Right}, {rect.Bottom})";
-        }
+                if (observed)
+                {
+                    return new PointerOutcome(PointerResult.Observed);
+                }
 
-        return $"expected window {expected:X}, hit window {hitText}, foreground window {Win32.ForegroundWindow():X}";
+                var timedOut =
+                    $"WPF did not observe the pointer on {element.GetType().Name}: "
+                    + "SendInput accepted the packet; "
+                    + $"{(receipt.Received ? "its marked WM_MOUSEMOVE was fetched but no routed move followed it" : "its marked WM_MOUSEMOVE was never fetched")} "
+                    + $"({mouseMessages} mouse messages fetched while waiting), "
+                    + $"requested screen ({target.X}, {target.Y}), "
+                    + $"{PointerSnapshot.Cursor()}, last observed event {(last is { } seen ? $"({seen.X}, {seen.Y})" : "none")}, "
+                    + $"expected marker {marker}, last fetched mouse message "
+                    + $"{(lastPacket is { } packet ? $"0x{packet.Id:X} marker {packet.ExtraInfo} at ({packet.Screen.X}, {packet.Screen.Y}), expected window {packet.InExpectedWindow}" : "none")}, "
+                    + $"directly over {PointerSnapshot.TypeName(Mouse.DirectlyOver)}, captured by {PointerSnapshot.TypeName(Mouse.Captured)}; "
+                    + $"{PointerSnapshot.Windows(target, expectedWindow)}.";
+                return new PointerOutcome(PointerResult.TimedOut, timedOut, "no routed move was accepted before the wait ended");
+            },
+            Release: failures =>
+            {
+                failures.Attempt(timeout.Stop);
+                failures.Attempt(() => ComponentDispatcher.ThreadFilterMessage -= FilterMessage);
+                failures.Attempt(() => element.RemoveHandler(Mouse.PreviewMouseMoveEvent, moved));
+                if (sentHook != 0)
+                {
+                    failures.Attempt(() => Win32.UnhookMessages(sentHook));
+                }
+
+                if (mouseHook != 0)
+                {
+                    failures.Attempt(() => Win32.UnhookMessages(mouseHook));
+                }
+
+                GC.KeepAlive(fetched);
+                GC.KeepAlive(sent);
+            }));
     }
 }

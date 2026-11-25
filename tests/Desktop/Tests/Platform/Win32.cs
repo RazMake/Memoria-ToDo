@@ -33,10 +33,20 @@ internal static class Win32
 
     public delegate void WinEventProc(nint hook, uint eventType, nint window, int objectId, int childId, uint thread, uint time);
 
-    public delegate nint MouseMessageHook(int code, nint message, nint data);
+    public delegate nint MessageHook(int code, nint message, nint data);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct MouseHook { public Point Point; public nint Window; public uint HitTest; public nint ExtraInfo; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SentMessage { public nint Result; public nint LParam; public nint WParam; public uint Id; public nint Window; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GuiThreadInfo
+    {
+        public int Size; public uint Flags; public nint Active; public nint Focus; public nint Capture;
+        public nint MenuOwner; public nint MoveSize; public nint Caret; public Rect CaretRect;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct Message { public nint Window; public uint Id; public nint WParam; public nint LParam; public uint Time; public Point Point; }
@@ -53,21 +63,24 @@ internal static class Win32
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint window);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
-    [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point point);
-    [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern nint SetWindowsHookEx(int kind, MouseMessageHook callback, nint module, uint threadId);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool GetCursorPos(out Point point);
+    [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern nint SetWindowsHookEx(int kind, MessageHook callback, nint module, uint threadId);
     [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern bool UnhookWindowsHookEx(nint hook);
     [RealInput, DllImport("user32.dll")] private static extern nint CallNextHookEx(nint hook, int code, nint message, nint data);
     [RealInput, DllImport("user32.dll", SetLastError = true)] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] private static extern bool IsChild(nint parent, nint window);
     [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern nint GetCapture();
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool GetGUIThreadInfo(uint thread, ref GuiThreadInfo info);
+    [DllImport("user32.dll")] private static extern uint GetQueueStatus(uint flags);
     [DllImport("user32.dll")] private static extern nint MonitorFromPoint(Point point, int flags);
     [DllImport("user32.dll")] private static extern nint WindowFromPoint(Point point);
     [DllImport("user32.dll")] private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
     [DllImport("user32.dll")] private static extern bool EnumDisplayMonitors(nint dc, nint clip, EnumMonitorsProc callback, nint lParam);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(nint window, out Rect rect);
     [DllImport("user32.dll")] private static extern bool EnumChildWindows(nint parent, EnumWindowsProc callback, nint lParam);
-    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint window, out int processId);
+    [DllImport("user32.dll", SetLastError = true)] private static extern uint GetWindowThreadProcessId(nint window, out int processId);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(nint window, StringBuilder text, int max);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(nint window, StringBuilder text, int max);
     [DllImport("user32.dll")] private static extern bool PostMessage(nint window, uint message, nint wParam, nint lParam);
@@ -90,15 +103,26 @@ internal static class Win32
     public static Point CursorPosition() => GetCursorPos(out var point) ? point : throw new InvalidOperationException("No pointer position.");
 
     [RealInput]
-    public static nint HookMouseMessages(MouseMessageHook callback)
+    public static nint HookMouseMessages(MessageHook callback) => HookThread(WhMouse, callback);
+
+    private const int WhMouse = 7;
+    private const int WhCallWndProcRet = 12;
+    private const int ErrorInvalidWindowHandle = 1400;
+    // Include the touch and pointer queue bits on modern Windows.
+    private const uint QsAllInput = 0x1CFF;
+
+    [RealInput]
+    public static nint HookSentMessages(MessageHook callback) => HookThread(WhCallWndProcRet, callback);
+
+    [RealInput]
+    private static nint HookThread(int kind, MessageHook callback)
     {
-        const int whMouse = 7;
-        var hook = SetWindowsHookEx(whMouse, callback, 0, GetCurrentThreadId());
+        var hook = SetWindowsHookEx(kind, callback, 0, GetCurrentThreadId());
         return hook != 0 ? hook : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
     }
 
     [RealInput]
-    public static void UnhookMouseMessages(nint hook)
+    public static void UnhookMessages(nint hook)
     {
         if (!UnhookWindowsHookEx(hook))
         {
@@ -107,7 +131,7 @@ internal static class Win32
     }
 
     [RealInput]
-    public static nint NextMouseMessage(int code, nint message, nint data) => CallNextHookEx(0, code, message, data);
+    public static nint NextMessage(int code, nint message, nint data) => CallNextHookEx(0, code, message, data);
 
     /// <summary>
     /// Puts the pointer at the point. Throws when Windows refuses, or puts the pointer more than a pixel away, as it does past a
@@ -145,6 +169,34 @@ internal static class Win32
     }
 
     public static nint ForegroundWindow() => GetForegroundWindow();
+
+    public static nint NativeCapture() => GetCapture();
+
+    public static Point ReadCursorPosition() =>
+        GetCursorPos(out var point) ? point : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+
+    public static (uint Thread, int Process) ReadOwnerOf(nint window)
+    {
+        var thread = GetWindowThreadProcessId(window, out var process);
+        if (thread != 0)
+        {
+            return (thread, process);
+        }
+
+        var error = Marshal.GetLastWin32Error();
+        throw new System.ComponentModel.Win32Exception(error != 0 ? error : ErrorInvalidWindowHandle);
+    }
+
+    public static GuiThreadInfo GuiThread(uint thread)
+    {
+        var info = new GuiThreadInfo { Size = Marshal.SizeOf<GuiThreadInfo>() };
+        return GetGUIThreadInfo(thread, ref info) ? info : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+
+    /// <summary>
+    /// The current queue status (the high word). Reading it changes the thread's new-message bookkeeping.
+    /// </summary>
+    public static uint PendingInput() => GetQueueStatus(QsAllInput) >> 16;
 
     public static bool IsChildOf(nint window, nint parent) => IsChild(parent, window);
 

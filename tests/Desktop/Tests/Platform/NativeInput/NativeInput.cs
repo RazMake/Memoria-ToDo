@@ -47,7 +47,7 @@ internal static class NativeInput
         };
     }
 
-    public static void Send(params Input[] inputs)
+    public static uint Send(params Input[] inputs)
     {
         ArgumentNullException.ThrowIfNull(inputs);
         if (inputs.Length == 0)
@@ -57,6 +57,7 @@ internal static class NativeInput
 
         var inserted = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
         InsertedInput.Require(inserted, inputs.Length, Marshal.GetLastWin32Error());
+        return inserted;
     }
 
     // INPUT's union must retain native alignment; its mouse member is larger than its keyboard member.

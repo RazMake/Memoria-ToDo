@@ -36,5 +36,13 @@ jobs:
         run: |
           node .agents/desktop-check.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test "-p:MemoriaAllTestKinds=true"
+          dotnet test "-p:MemoriaAllTestKinds=true" --report-xunit-junit --results-directory all-test-results --results-directory-layout per-module
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save failed test reports, including pointer diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-test-reports-${{ github.run_attempt }}
+          path: all-test-results/**/*.junit.xml
+          retention-days: 7
+          if-no-files-found: warn
