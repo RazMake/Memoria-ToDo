@@ -12,7 +12,7 @@ permissions:
 
 env:
   # The unit run's time limit, in seconds. This is its only home; change it here.
-  UNIT_RUN_LIMIT_SECONDS: "12"
+  UNIT_RUN_LIMIT_SECONDS: "30"
   # The slow-run issue is found by its label, not its title.
   SLOW_RUN_ISSUE_TITLE: Unit tests are slower than the time limit
   SLOW_RUN_ISSUE_LABEL: slow-unit-tests

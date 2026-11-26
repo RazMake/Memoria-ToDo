@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Windows;
 using Xunit;
 
@@ -10,8 +9,9 @@ namespace Memoria.ToDo.Desktop;
 /// </summary>
 internal static class ScreenCollectionGuard
 {
-    [ModuleInitializer]
-    internal static void Register() =>
+    // Registered by the class constructor, so the WPF warm-up (WarmUpWpfFirstUses) can run it last on its own STA thread, and
+    // nothing registers in a process that only loads this assembly, such as the hang-dump watcher.
+    static ScreenCollectionGuard() =>
         EventManager.RegisterClassHandler(
             typeof(Window),
             FrameworkElement.LoadedEvent,

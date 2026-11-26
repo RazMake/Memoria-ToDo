@@ -14,5 +14,5 @@ public sealed class WarmUpWpfFirstUses
     private static readonly TimeSpan Bound = TimeSpan.FromSeconds(30);
 
     public WarmUpWpfFirstUses() =>
-        ClassConstructorWarmUp.Run(WpfWarmUpScope.Assemblies(typeof(WarmUpWpfFirstUses).Assembly).SelectMany(a => a.GetTypes()).ToList(), Bound, TimeProvider.System);
+        ClassConstructorWarmUp.Run(WpfWarmUpScope.Assemblies(typeof(WarmUpWpfFirstUses).Assembly).SelectMany(a => a.GetTypes()).Append(typeof(ScreenCollectionGuard)).ToList(), Bound, TimeProvider.System);
 }

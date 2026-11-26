@@ -166,4 +166,51 @@ public class McpStopTests
 
         Assert.Empty(app.Log.Events.At(LogEventLevel.Error));
     }
+
+    [WpfFact]
+    public async Task Two_servers_answering_the_same_tool_each_use_their_own_tasks_and_log()
+    {
+        await using var first = new McpHarness();
+        await using var second = new McpHarness();
+        first.StartOff();
+        second.StartOff();
+
+        var onFirst = await first.OkAsync("add_task", new { title = "Only on the first" });
+        var onSecond = await second.OkAsync("add_task", new { title = "Only on the second" });
+        var firstTasks = await first.OkAsync("list_tasks");
+        var secondTasks = await second.OkAsync("list_tasks");
+
+        Assert.Equal([onFirst.Str("id")], firstTasks.Items("tasks").Select(task => task.Str("id")));
+        Assert.Equal([onSecond.Str("id")], secondTasks.Items("tasks").Select(task => task.Str("id")));
+        Assert.Equal(["Only on the first"], first.Tasks.All.Select(task => task.Title));
+        Assert.Equal(["Only on the second"], second.Tasks.All.Select(task => task.Title));
+        first.Log.Events.SingleAt(LogEventLevel.Information, "add_task", onFirst.Str("id")!);
+        second.Log.Events.SingleAt(LogEventLevel.Information, "add_task", onSecond.Str("id")!);
+        Assert.DoesNotContain(first.Log.Events.Where(entry => entry.Level >= LogEventLevel.Information),
+            entry => entry.EverythingIn().Contains(onSecond.Str("id")!, StringComparison.Ordinal));
+        Assert.DoesNotContain(second.Log.Events.Where(entry => entry.Level >= LogEventLevel.Information),
+            entry => entry.EverythingIn().Contains(onFirst.Str("id")!, StringComparison.Ordinal));
+    }
+
+    [WpfFact]
+    public async Task A_second_server_keeps_using_its_own_tasks_and_log_after_the_first_server_stopped()
+    {
+        await using var first = new McpHarness();
+        await using var second = new McpHarness();
+        first.StartOff();
+        second.StartOff();
+        var onFirst = await first.OkAsync("add_task", new { title = "Before stopping" });
+        await first.Server.StopAsync().WaitAsync(McpHarness.Bound);
+        var firstEntries = first.Log.Events.Count(entry => entry.Level >= LogEventLevel.Information);
+
+        var onSecond = await second.OkAsync("add_task", new { title = "After the other stopped" });
+        var secondTasks = await second.OkAsync("list_tasks");
+
+        Assert.Equal([onSecond.Str("id")], secondTasks.Items("tasks").Select(task => task.Str("id")));
+        Assert.Equal([onFirst.Str("id")], first.Tasks.All.Select(task => task.Id));
+        Assert.Equal(firstEntries, first.Log.Events.Count(entry => entry.Level >= LogEventLevel.Information));
+        second.Log.Events.SingleAt(LogEventLevel.Information, "add_task", onSecond.Str("id")!);
+        Assert.Empty(second.Log.Events.At(LogEventLevel.Error));
+        Assert.Empty(second.Log.Events.At(LogEventLevel.Warning));
+    }
 }

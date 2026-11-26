@@ -9,7 +9,7 @@ namespace Memoria.ToDo.Desktop.MCPServer;
 /// Serves assistants over streams, each connection with its own protocol session over the same tools. A connection ends when
 /// the assistant closes its input, when the switch turns off, or when the server stops.
 /// </summary>
-internal sealed class ConnectionServer(IReadOnlyList<McpServerTool> tools, ILogger logger) : IMcpConnections
+internal sealed class ConnectionServer(ToolCatalog tools, ILogger logger) : IMcpConnections
 {
     private readonly ActiveWork _connections = new();
     private readonly CancellationTokenSource _closing = new();
@@ -41,10 +41,11 @@ internal sealed class ConnectionServer(IReadOnlyList<McpServerTool> tools, ILogg
             try
             {
                 var pending = new PendingRequests();
-                var options = new McpServerOptions { ToolCollection = [.. tools] };
+                var options = new McpServerOptions { ToolCollection = [.. tools.Tools] };
                 pending.Watch(options);
                 new ToolCallGate(ending.Token, logger).Watch(options);
-                await using var session = ModelContextProtocol.Server.McpServer.Create(new StreamServerTransport(input, output), options);
+                await using var session = ModelContextProtocol.Server.McpServer.Create(
+                    new StreamServerTransport(input, output), options, serviceProvider: tools);
 
                 // Ending the session at once would lose the answers of calls still running or being cancelled.
                 // Never disposed: it holds no timer, and a late Cancel after the session ended must stay harmless.

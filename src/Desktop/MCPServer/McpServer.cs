@@ -70,7 +70,7 @@ public static class McpServer
             new LogTools(runner, logs, time, logger),
         };
         return new McpServerService(
-            new OnOffSettingFile(files, Path.Combine(deviceFolder, "mcp-server.txt"), whenMissing: true, "The MCP server's switch file", logger), runner, new ConnectionServer(ToolCatalog.Of(groups), logger), ui,
+            new OnOffSettingFile(files, Path.Combine(deviceFolder, "mcp-server.txt"), whenMissing: true, "The MCP server's switch file", logger), runner, new ConnectionServer(new ToolCatalog(groups), logger), ui,
             pipeName, ConnectionLines.For(bridgePath), logger);
     }
 }
