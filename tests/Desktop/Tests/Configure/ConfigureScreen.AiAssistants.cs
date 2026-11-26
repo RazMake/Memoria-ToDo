@@ -4,12 +4,16 @@ using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.MCPServer;
+using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Shared.Fakes;
+using Xunit;
 
 namespace Memoria.ToDo.Desktop.Configure.Tests;
 
 /// <summary>
-/// How a test reads the AI assistants card in Configure's Application section: its box, its texts, check box,
-/// and Copy buttons. The server's state is the shared fake of the MCP server's status.
+/// How a test reads the rows of Configure's Behavior section: the AI assistants row's check box, texts, and Examples…
+/// button, the Prevent screen saver check box, and the Examples dialog the button opens. The server's state is the
+/// shared fake of the MCP server's status, and Keep awake's the shared fake of its status.
 /// </summary>
 internal sealed partial class ConfigureScreen
 {
@@ -18,45 +22,73 @@ internal sealed partial class ConfigureScreen
     /// <summary>The shared fake of the MCP server's status the window shows; set it before <see cref="Open"/>, or publish while open.</summary>
     public FakeMcpServerStatus McpServer => services.McpServer;
 
-    /// <summary>The box that holds the AI assistants card: the nearest border around its "AI assistants" title.</summary>
-    public Border AiCard
+    /// <summary>The check box that lets assistants in; its section may be closed.</summary>
+    public CheckBox AiBox =>
+        OpenWindows.Descendants(Window).OfType<CheckBox>().Single(box => box.Content as string == AiSwitchText);
+
+    /// <summary>The row's root: the nearest logical ancestor of its check box that also holds the row's help line.</summary>
+    public DependencyObject AiRow
     {
         get
         {
             Settle();
-            DependencyObject element = CardBlocks(Window).First(block => OpenWindows.TextOf(block) == "AI assistants");
-            while (element is not Border)
+            DependencyObject element = AiBox;
+            while (!CardBlocks(element).Any(block => OpenWindows.TextOf(block).StartsWith("Assistants such as", StringComparison.Ordinal)))
             {
-                element = LogicalTreeHelper.GetParent(element) ?? throw new InvalidOperationException("The card's lines sit in no box.");
+                element = LogicalTreeHelper.GetParent(element) ?? throw new InvalidOperationException("The check box and its help line share no parent.");
             }
 
-            return (Border)element;
+            return element;
         }
     }
 
-    /// <summary>The texts the card shows under its title, in text blocks, top to bottom.</summary>
+    /// <summary>The texts the row shows, in text blocks, top to bottom.</summary>
     public IReadOnlyList<string> AiTexts =>
-        [.. CardBlocks(AiCard).Where(block => block.IsVisible).Select(OpenWindows.TextOf).Where(text => text.Length > 0).Skip(1)];
+        [.. CardBlocks(AiRow).Where(block => block.IsVisible).Select(OpenWindows.TextOf).Where(text => text.Length > 0)];
 
-    /// <summary>The check box that lets assistants in.</summary>
-    public CheckBox AiBox =>
-        OpenWindows.Descendants(AiCard).OfType<CheckBox>().Single(box => box.Content as string == AiSwitchText);
+    /// <summary>The Examples… button of the row.</summary>
+    public Button ExamplesButton =>
+        OpenWindows.Descendants(AiRow).OfType<Button>().Single(button => button.Content as string == "Examples…");
 
-    /// <summary>The Copy buttons of the card, top to bottom: one for each assistant, in the server's order.</summary>
-    public IReadOnlyList<Button> AiCopyButtons =>
-        [.. OpenWindows.Descendants(AiCard).OfType<Button>().Where(button => button.Content as string == "Copy")];
-
-    /// <summary>Switches the card's check box as a click does.</summary>
+    /// <summary>Switches the row's check box as a click does.</summary>
     public void SwitchAi()
     {
+        Reveal(AiBox);
         ((IToggleProvider)new CheckBoxAutomationPeer(AiBox).GetPattern(PatternInterface.Toggle)).Toggle();
         Settle();
     }
 
-    /// <summary>Clicks an assistant's Copy button, as the mouse does.</summary>
-    public void CopyAi(int index)
+    /// <summary>The Close window keys the window was given; set them to try the shortcut that closes a dialog.</summary>
+    public CloseWindowKeys CloseKeys => services.CloseWindowKeys;
+
+    /// <summary>The theme-aware set of the windows this screen's window opened, for driving a dialog it opens.</summary>
+    public OpenWindows OpenedWindows => windows;
+
+    /// <summary>The Prevent screen saver check box.</summary>
+    public CheckBox KeepAwakeBox =>
+        OpenWindows.Descendants(Window).OfType<CheckBox>().Single(box => box.Content as string == "Prevent screen saver");
+
+    /// <summary>The shared fake of Keep awake's status the window shows; set its state before <see cref="Open"/>, or publish while open.</summary>
+    public FakeKeepAwakeStatus KeepAwake => services.KeepAwake;
+
+    /// <summary>Switches the Prevent screen saver check box as a click does.</summary>
+    public void SwitchKeepAwake()
     {
-        OpenWindows.Click(AiCopyButtons[index]);
+        Reveal(KeepAwakeBox);
+        ((IToggleProvider)new CheckBoxAutomationPeer(KeepAwakeBox).GetPattern(PatternInterface.Toggle)).Toggle();
         Settle();
+    }
+
+    /// <summary>
+    /// Clicks Examples… as the mouse does and drives the dialog it opens, as <see cref="ModalDialogDriver.Run"/> says.
+    /// The click is a call that returns only when the dialog closes. Fails the test when the click opens no dialog.
+    /// </summary>
+    public ModalDialogDriver OpenExamples(Action<Window> act)
+    {
+        var driver = new ModalDialogDriver(Window, windows);
+        Reveal(AiBox);
+        driver.Run("Connect an AI assistant", () => OpenWindows.Click(ExamplesButton), act);
+        Assert.True(driver.Dialog is not null, "Examples… opened no dialog.");
+        return driver;
     }
 }

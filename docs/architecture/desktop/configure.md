@@ -2,7 +2,7 @@
 
 Status: Decided
 
-Configure is the desktop app's settings window. It changes the four global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, AI assistant access, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
+Configure is the desktop app's settings window. It changes the four global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, preventing the screen saver, AI assistant access, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
 
 ## Behavior
 
@@ -19,7 +19,8 @@ The table lists every setting in Configure, the module that owns it, where it's 
 | Days before a resolved task is deleted | Tasks | In the repository, shared by every device | One week, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides |
 | The repository's SSH address, the device name, the device's SSH key, and the accepted host keys | Sync | On this device | The device name starts as the machine's name; the rest is set up as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says |
 | Auto update, on the [Update card](#the-update-card-leads-the-application-section) | Updates | In a file on this device, as [Updates](updates.md#auto-update-updates-each-night-once-no-window-is-open) proposes | Off, proposed |
-| AI assistant access, on the [AI assistants card](#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them) | MCP server | In a file on this device, as the [MCP server](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) says | On |
+| AI assistant access, on the [AI assistants row](#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them) | MCP server | In a file on this device, as the [MCP server](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) says | On |
+| Prevent screen saver, in the [Behavior section](#the-behavior-section-holds-the-apps-switches) | [Keep awake](keep-awake.md) | In a file on this device, as [Keep awake](keep-awake.md#prevent-screen-saver-keeps-the-screen-on-while-the-app-runs) says | Off |
 
 **Every device uses the same shortcuts.** Configure saves them through Tasks in [`settings.json`](../tasks.md#the-repository-holds-task-files-image-folders-settings-and-tag-colors) and reads them there when the app starts. Another app may hold a shortcut on one PC only, yet picking a new one there changes it on every PC. This is an accepted risk, for the same shortcuts everywhere.
 
@@ -37,10 +38,10 @@ The user asked for a fourth global shortcut, [Contacts](contact-list.md#a-global
 
 The window shows each shortcut with the name of what it does, Add new task, Task View, Configure, Close window, and Save, and it's wide enough to read at a glance.
 
-The user decided the rules on sections below: only a click on another section's title closes the open one, sections have rounded corners and no expand or collapse arrow, an open section's content starts at its top rather than centered in the window's height, titles look like heading 1, and titles show the hand pointer. The user also decided that the section once called Shortcuts is named Application and holds two cards, Update and then Shortcuts. The rest are proposed, each a decision to confirm:
+The user decided the rules on sections below: only a click on another section's title closes the open one, sections have rounded corners and no expand or collapse arrow, an open section's content starts at its top rather than centered in the window's height, titles look like heading 1, and titles show the hand pointer. The user also decided that the section once called Shortcuts is named Application and holds two cards, Update and then Shortcuts, and that the section once called Startup is named Behavior and holds the AI assistants switch. The rest are proposed, each a decision to confirm:
 
-- **Three sections, in order: Application, Startup, and Sync settings, and exactly one is always open.** The window opens with Application open. Clicking a closed section's title opens it and closes the open one; clicking the open section's title does nothing. No section can be closed on its own, so titles show no expand or collapse arrow.
-- **Application shows three cards, in order: Update, Shortcuts, and AI assistants.** Update is the [Update card](#the-update-card-leads-the-application-section). Shortcuts holds the line on how to change a shortcut and every shortcut row, below. AI assistants is the [AI assistants card](#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them).
+- **Three sections, in order: Application, Behavior, and Sync settings, and exactly one is always open.** The window opens with Application open. Clicking a closed section's title opens it and closes the open one; clicking the open section's title does nothing. No section can be closed on its own, so titles show no expand or collapse arrow.
+- **Application shows two cards, in order: Update and Shortcuts.** Update is the [Update card](#the-update-card-leads-the-application-section). Shortcuts holds the line on how to change a shortcut and every shortcut row, below. The AI assistants card has moved to [Behavior](#the-behavior-section-holds-the-apps-switches), as a row.
 - **A title works from the keyboard too**: Tab reaches it, and Enter or Space opens its section.
 - **Each section is a box with rounded corners**, and so is each card inside Application and [Sync settings](#the-sync-settings-section-sets-the-devices-clone). Their colors and corners come from the theme, and a card stands out from the section around it. One Configure part makes every card, so the Update card and the Sync settings cards look alike.
 - **Everything in a section starts at its top.** The open section's content starts right under its title, and space the content doesn't need stays at the section's bottom. Inside a section or a card, each label lines up with the top of the control beside it, not with its middle, and nothing is centered in the height around it.
@@ -49,7 +50,7 @@ The user decided the rules on sections below: only a click on another section's 
 - **Section titles are buttons, so they show the hand pointer**, as [every button in the app](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does.
 - **The Shortcuts card starts with a line saying how to change one**, in the window's normal text size and color and ending with a colon: "Click a box, then press the new shortcut. Esc keeps the current one:". Then each shortcut has a row, Add new task first, then Task View, Configure, Close window, and Save: its name on the left and its field on the right. Under the field, a short description says what the shortcut does, in the help style and in italics, then the row's message. The names share one column, so the fields line up. The user decided the Configure row's name and place.
 - **The descriptions are**: Add new task, "Opens the Add window from any app."; Task View, "Opens Task View from any app."; Configure, "Opens Configure from any app."; Close window, "Closes the app's window you're in, whatever has the focus."; Save, "Saves the task you're editing, in Add and Task View."
-- **Startup holds the Start with Windows check box**, a line of help under it, and its message.
+- **Behavior holds the app's switches**: Start with Windows, Prevent screen saver, and AI assistants, as [below](#the-behavior-section-holds-the-apps-switches) says.
 - **Sync settings shows its settings on three cards**: Git Access, Repository, and Auto, as [below](#the-sync-settings-section-sets-the-devices-clone) says.
 - **Text styles and colors come from the app's [theme](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it)**, so the window follows light and dark mode: messages in its error color, and help lines small, in its secondary text color, at 70% opacity.
 - **The window keeps its size.** It's 800 pixels wide and 850 tall, or as tall as the screen allows on a shorter screen, and neither the user, the open section, nor its messages change that. The titles of the sections below the open one stay at the window's bottom, and the open section fills the space between; it scrolls when its content is taller. Messages take no room while empty.
@@ -61,29 +62,64 @@ The user decided the rules on sections below: only a click on another section's 
 The Update card shows the app's version and whether a newer one is available, and holds the update controls. The user decided it's the first card in the [Application section](#the-window-shows-its-settings-in-labeled-sections), above Shortcuts, and no longer sits above the sections. [Updates](updates.md#updates-tells-you-about-a-new-version-and-installs-it-only-when-you-agree) owns the state the card shows and what each control does; Configure only shows them. Proposed, each a decision to confirm:
 
 - **Its title is "Update", in [heading 2's look](#the-window-shows-its-settings-in-labeled-sections)**, like every card's.
-- **It shows while Application is open**, which it is each time the window opens. Opening Startup or Sync settings hides it, as it hides Shortcuts; the status bar in Add and Task View still shows an available version.
+- **It shows while Application is open**, which it is each time the window opens. Opening Behavior or Sync settings hides it, as it hides Shortcuts; the status bar in Add and Task View still shows an available version.
 - **It looks like the other cards**: the same box, background, and edge as the Sync settings cards.
 - **While a version is available, the card has a highlighted background** instead, the theme's caution background, which goes with the status bar's [caution color](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar). So it draws the eye only when there's something to do.
 - **It shows, in order**:
   - "Current version: 2.1.0".
   - While a version is available, "Available new version: **2.2.0**"; while updating, "Updating to: **2.2.0**" instead. With no update, there's no second line.
-  - While a version is available or updating, What is new, which opens [the notes](updates.md#what-is-new-shows-each-newer-releases-notes), and Update Now, which starts the [update](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it). Update Now is hidden while Auto update is on, and turned off while updating.
+  - While a version is available or updating, What is new, which opens [the notes](updates.md#what-is-new-shows-each-newer-releases-notes), and Update Now, which starts the [update](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it). The user decided that Update Now shows whenever a version is available, Auto update on or off, as [Updates](updates.md#auto-update-updates-each-night-once-no-window-is-open) says. It's turned off while updating.
+  - The Check for updates button, as [below](#check-for-updates-checks-now-and-says-what-it-found).
   - The Auto update check box, with the help line "Checks for a new version each night around 3 AM, and installs it." It's turned off while updating.
-  - A message in the error color, when an update or Auto update failed, as [Updates](updates.md#failure-modes) words it.
-- **A copy run from a build folder** shows its version, the help line "Updates work only in an installed copy.", and Auto update off and turned off, as [Updates](updates.md#a-copy-run-from-a-build-folder-shows-its-version-and-doesnt-update) proposes.
+  - A message in the error color, when a check you started, an update, or Auto update failed, as [Updates](updates.md#failure-modes) words it.
+- **A copy run from a build folder** shows its version, the help line "Updates work only in an installed copy.", Auto update off and turned off, and no Check for updates button, as [Updates](updates.md#a-copy-run-from-a-build-folder-shows-its-version-and-doesnt-update) proposes.
 - **The card follows the state as it changes**, while the window is open.
 
-### The AI assistants card lets assistants in and shows how to connect them
+### Check for updates checks now and says what it found
 
-The AI assistants card is the third card in the Application section, after Shortcuts. It holds the switch that lets AI assistants on this PC use the app through the [MCP server](mcp-server.md), and the lines each assistant needs to connect. The user decided that the switch is on by default and kept on this device only, and that Configure shows copy-ready lines. The [MCP server](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) owns the switch's value, its file, its state, and the lines; Configure only shows them and passes the user's switch on. The user also decided these:
+The user asked for a Check for updates button on the Update card, and for a failed check's error to show in the card in the error color. Updates [runs the check](updates.md#check-for-updates-runs-a-check-when-you-ask); the card only starts it and shows its outcome. The user decided that the button sits on its own line and that a check that finds nothing says so. The rest are proposed, each a decision to confirm:
 
-- **Its title is "AI assistants", in [heading 2's look](#the-window-shows-its-settings-in-labeled-sections)**, like every card's.
+- **The button sits on its own line, after What is new and Update Now**, or after the version lines when those buttons are hidden, in the card's normal button look with the hand pointer. Its text is "Check for updates".
+- **While the check runs, the button is turned off and a line beside it says "Checking for updates…"**, in the help style. When a check is already running, such as the one at start, the click waits for that check, so it never starts a second one.
+- **When the check finds a newer version**, the card turns to its Available look, as for any check, and the line goes away.
+- **When it finds none**, the line says "You have the latest version." in the help style, until the window closes or the next check.
+- **When it fails**, the card's message says "The check for updates failed:" followed by the reason Updates gives, in the error color, and the line goes away. The next check that succeeds clears it. Updates logs the failure, so the card logs nothing.
+- **The button is turned off while updating**, and absent in a copy run from a build folder.
+- **Closing the window during a check lets the check finish.** Its outcome then shows nowhere, but the status bar and the card follow a version it finds.
+
+### The Behavior section holds the app's switches
+
+The user asked to rename the Startup section Behavior, to move the AI assistants switch into it, and to add Prevent screen saver as a setting. The user decided the rows, their order, and that they sit in no cards. The rest are proposed, each a decision to confirm:
+
+- **Behavior holds three rows, with no cards, in order: Start with Windows, Prevent screen saver, and AI assistants.** Each row is a check box, a help line under it in the help style, and its message in the error color, as the Start with Windows row is today. The two plain switches come first, and the AI assistants row, which has the most lines, last.
+- **Start with Windows** is unchanged: the check box "Start with Windows", the help line "Starts the app in the notification area when you sign in to Windows.", and its message, as [below](#start-with-windows-is-the-run-key-itself) says.
+- **Prevent screen saver** is the check box "Prevent screen saver", with the help line "Keeps the screen on while the app runs. Locking the PC pauses it until you unlock." [Keep awake](keep-awake.md) owns its value, its file, and its state; Configure shows them and passes the user's switch on, as it does for the MCP server's.
+  - A switch applies at once. When it can't be saved, the check box goes back, and the row's message says why.
+  - While Keep awake reports a failure, such as Windows refusing the request or a setting file it can't read, the row's message shows it in the error color.
+  - The row follows Keep awake's state as it changes, while the window is open.
+- **AI assistants** is the [row below](#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them).
+
+### The AI assistants row lets assistants in, and Examples shows how to connect them
+
+The AI assistants row is the last row in the [Behavior section](#the-behavior-section-holds-the-apps-switches). It holds the switch that lets AI assistants on this PC use the app through the [MCP server](mcp-server.md), and an Examples button that opens the lines each assistant needs to connect. The user decided that the switch is on by default and kept on this device only, and that Configure shows copy-ready lines. The [MCP server](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) owns the switch's value, its file, its state, and the lines; Configure only shows them and passes the user's switch on. The user also asked for the Examples button on the switch's line, and for a GitHub Copilot example. The user decided the check box's text, the help and status lines, and how a switch applies, below; the row's layout is proposed with the [section's](#the-behavior-section-holds-the-apps-switches):
+
 - **It shows, in order**:
-  - The check box "Let AI assistants on this PC use Memoria-ToDo", with the help line "Assistants such as GitHub Copilot, Claude, and Codex can read and change your tasks, contacts, and settings. Each asks you before it uses a tool, as its own settings say."
+  - On one line, the check box "Let AI assistants on this PC use Memoria-ToDo", and right after it the Examples button, as the user asked.
+  - The help line "Assistants such as GitHub Copilot, Claude, and Codex can read and change your tasks, contacts, and settings. Each asks you before it uses a tool, as its own settings say."
   - A status line: "Running. AI assistants on this PC can use Memoria-ToDo." while the server listens; "Starting…" while it's on and not listening yet; "Off. AI assistants can't reach Memoria-ToDo." while it's off; and the server's failure, in the error color, when it has one.
-  - For each assistant the server lists, in its order: the assistant's name, its lines in a read-only box in a fixed-width font, and a Copy button that copies them. A copy failure shows in the card's message, in the error color.
-- **A switch applies at once.** Configure calls the server's switch, and the status line follows the server's state. When the switch can't be saved, the check box goes back, and the card's message shows why.
-- **The card follows the server's state as it changes**, while the window is open.
+  - The row's message, in the error color, when the switch can't be saved.
+- **A switch applies at once.** Configure calls the server's switch, and the status line follows the server's state. When the switch can't be saved, the check box goes back, and the row's message shows why.
+- **The row follows the server's state as it changes**, while the window is open.
+
+The user decided what the dialog shows: a line on where the text goes, then each assistant's name, its text, and a Copy button. The rest of the Examples button and its dialog is proposed, each a decision to confirm:
+
+- **The button says "Examples…"**, shows the hand pointer, and works whether the switch is on or off, so the user can set up an assistant before turning access on.
+- **It opens the Examples dialog**: modal, owned by Configure and centered on it, following the theme, and titled "Connect an AI assistant". It opens through the platform's [Modal dialog](README.md#windows-open-on-the-screen-with-the-mouse-pointer), so it never shows a white frame first. A Close button, Esc, and the [Close window shortcut](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) close it.
+- **It shows, for each assistant the server lists, in its order**, the assistant's name, its lines in a read-only box in a fixed-width font, and a Copy button that copies them. The server lists VS Code, GitHub Copilot CLI, Claude Desktop, Claude Code, and Codex, as the [MCP server](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) says. The dialog scrolls when the lines are taller than it.
+- **A line at the top says where the text goes**: "Paste an assistant's text into its MCP settings file, or run it in a terminal. Connect an AI assistant, in the app's user guide, says where each file is."
+- **A copy failure shows at the dialog's bottom, in the error color**, and Configure logs it at Error, as it logs every failure it shows. The dialog stays open.
+- **The lines are read when the dialog opens**, so they hold the program's path at that moment.
+- **The dialog is a screen of its own**, as [Test selection](../test-selection.md#each-screen-has-at-most-10-ux-tests) defines one, so its UX tests sit in its own screen folder in Configure and don't count against Configure's 10.
 
 ### Esc and the Close window shortcut close the window
 
@@ -277,7 +313,16 @@ The composition root and Shell use these parts:
 
   The user decided that Configure may use [Updates](updates.md), for the [Update card](#the-update-card-leads-the-application-section). Proposed: `Create` takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, after `theme`, and the Save keys come last, after it. This is a decision to confirm.
 
-  The user decided that `Create` takes the [MCP server's](mcp-server.md#public-interface) status, `IMcpServerStatus mcpServer`, after `updates`, for the [AI assistants card](#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them), and `IStartWithWindows` comes from the [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes) instead of Configure. The logger stays last, as [Logging](../logging.md#public-interface) says.
+  The user decided that `Create` takes the [MCP server's](mcp-server.md#public-interface) status, `IMcpServerStatus mcpServer`, after `updates`, for the [AI assistants row](#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them), and `IStartWithWindows` comes from the [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes) instead of Configure. The logger stays last, as [Logging](../logging.md#public-interface) says.
+
+  Proposed, a decision to confirm: `Create` takes [Keep awake's](keep-awake.md#public-interface) status, `IKeepAwakeStatus keepAwake`, after `saveKeys` and before the logger, for the [Prevent screen saver row](#the-behavior-section-holds-the-apps-switches). Configure may then use Keep awake, as the [module map](../modules.md#module-map) proposes:
+
+  ```csharp
+  public static IConfigureWindow Create(
+      IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync,
+      ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates,
+      IMcpServerStatus mcpServer, SaveKeys saveKeys, IKeepAwakeStatus keepAwake, ILogger logger);
+  ```
 - **Show Configure**: opens the window, or brings it forward. Configure also says whether its window is open, so Shell can [ignore shortcuts](shell.md#four-global-shortcuts-and-the-tray-menu-open-the-apps-four-functions) meanwhile.
 - **Close Configure**: closes the window when it's open, and does nothing otherwise, so Shell can close it when the [Logs window](logs.md#the-tray-menus-logs-item-opens-one-window) opens, as the user decided. It closes as Esc does.
 - **Setup and status** come directly from Sync; Configure publishes no parallel clone, Git identity, or repository-settings port. The desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show) still governs opening and closing.
@@ -300,7 +345,7 @@ The composition root and Shell use these parts:
 
 Configure publishes one port, and uses the platform's [Start with Windows](README.md#start-with-windows-is-a-port-the-platform-publishes), which keeps its `Run`-key contract:
 
-- **[Setup actions](../../../src/Desktop/Configure/ISetupActions.cs)** copies the public key and opens the add-key page Sync gives. Generate key and Copy public key only copy; Set key copies, then opens the page, as [above](#git-access-makes-copies-and-forgets-the-devices-key) says. App adapts its existing clipboard and browser components; Configure never reaches another window module's port. Failures are shown under setup. The user decided that it also copies any text, for the [AI assistants card's](#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them) Copy buttons, through the same clipboard code:
+- **[Setup actions](../../../src/Desktop/Configure/ISetupActions.cs)** copies the public key and opens the add-key page Sync gives. Generate key and Copy public key only copy; Set key copies, then opens the page, as [above](#git-access-makes-copies-and-forgets-the-devices-key) says. App adapts its existing clipboard and browser components; Configure never reaches another window module's port. Failures are shown under setup. The user decided that it also copies any text, for the [Examples dialog's](#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them) Copy buttons, through the same clipboard code:
 
   ```csharp
   /// Puts text on the clipboard. Throws when the clipboard can't be written.
@@ -323,7 +368,9 @@ the shared fakes.
 - **A key button can't copy, or Set key can't open the host's page**: the message in the button's card shows the error. A failed copy opens no page, and a failed page leaves the key copied. When Generate key made the key but couldn't copy it, the key stays.
 - **Forget key can't delete the key**: the message under Git Access shows the error, and the key stays.
 - **Accept host key can't save the trust**: the message under Git Access shows the error, and the saved trust doesn't change.
-- **The MCP server can't start, or its switch can't be read**: the AI assistants card's status line shows the server's reason in the error color, and the rest of Configure works. **The switch can't be saved, or a Copy button can't copy**: the card's message shows why, and the check box keeps its previous value.
+- **The MCP server can't start, or its switch can't be read**: the AI assistants row's status line shows the server's reason in the error color, and the rest of Configure works. **The switch can't be saved**: the row's message shows why, and the check box keeps its previous value. **A Copy button in the Examples dialog can't copy**: the dialog's message shows why in the error color, the dialog stays open, and Configure logs it at Error.
+- **A check for updates you started fails**, such as with no network or a feed that can't be read: the Update card's message shows "The check for updates failed:" and the reason in the error color, and the button can be clicked again. The card keeps the state it had before the check.
+- **Prevent screen saver can't be saved, or Windows refuses to keep the screen on**: the row's message shows why in the error color. When saving fails, the check box goes back. When Windows refuses, the setting stays on, and [Keep awake](keep-awake.md#failure-modes) retries at the next change of lock or switch.
 
 ## Ruled out
 
@@ -356,6 +403,15 @@ The options below were considered and rejected, grouped by decision.
   - **Sections the user expands and collapses with an arrow**: the user wanted titles that only open, with no arrow.
   - **The sync status in a group, or a card, of its own**: the user wanted the Sync button beside the last sync time, on three cards.
   - **The update card above the sections, outside any section**: the user asked to move it into Application, as its first card.
+- Laying out the Behavior section:
+  - **Each switch in its own card with a heading 2 title**, as the Application section does: three cards of one check box each look heavy.
+  - **AI assistants first, then Start with Windows and Prevent screen saver**: its changing status line would push the other switches down.
+- What the Examples dialog shows:
+  - **Each entry also says where its text goes**, such as "Add to `~/.copilot/mcp-config.json`": the MCP server's public connection type would gain a field, and the user's guide's file list would move into it.
+  - **Only GitHub Copilot's examples, and a link to the guide for the rest**: the user would lose the copy-ready lines for the other assistants.
+- Where Check for updates sits, and what it says when nothing is new:
+  - **On the same line as What is new and Update Now**: the button would move as those buttons appear and disappear.
+  - **Saying nothing when nothing is new**: the user couldn't tell a finished check from one that did nothing.
 - Adding the device's key at the host:
   - **Copy public key also opens the host's page**: the user chose a Copy public key that only copies, and a Set key beside Clone that opens the page.
   - **Opening the add-key page of the selected clone's host**: the user wants the page of the address being typed, which works before any clone exists.

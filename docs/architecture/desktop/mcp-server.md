@@ -155,13 +155,16 @@ The user decided on the default level, Information; the limit, 100 by default an
 
 ### A switch in Configure turns it off on this device
 
-The user decided that the server is on by default, and that a switch in [Configure](configure.md#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them) turns it off on this device only.
+The user decided that the server is on by default, and that a switch in [Configure](configure.md#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them) turns it off on this device only.
 
 - **The switch is kept in the device folder**, `%LocalAppData%\Memoria-ToDo\`, beside Updates' [Auto update](updates.md#auto-update-updates-each-night-once-no-window-is-open) and the [repository folder's path](configure.md#the-sync-settings-section-sets-the-devices-clone), in a file the MCP server owns. It never travels to other devices. The user decided that the file is `mcp-server.txt`, and no file means on. Its messages call it "The MCP server's switch file".
 - **The platform's [on-or-off setting file](README.md#an-on-or-off-setting-file-keeps-one-switch-on-this-device) reads and writes it**, so a damaged file never lets assistants in that the user shut out. Configure shows why beside the switch when it can't be read. The user decided this.
 - **Turning it off stops listening at once**, ends every connection, and lets the calls in progress end. A call that arrives on an ending connection is refused, as while the app closes, so no change gets in after the user shut assistants out. Turning it on starts listening at once, even while the old connections still finish their calls, and never ends the new connections.
 - **The server reports its state**: on and listening, on and starting, on but failed with the reason, or off. Configure shows it.
-- **The server makes the lines each assistant needs to connect**, from the path of the program the bridge runs, so the lines have one home. Configure shows them, ready to copy, for VS Code, Claude Desktop, Claude Code, and Codex. Each text is only what goes in the assistant's file, or the command to run, so pasting all of it gives a valid file; the [user's guide](#the-users-guide-says-how-to-connect-an-assistant) says where it goes.
+- **The server makes the lines each assistant needs to connect**, from the path of the program the bridge runs, so the lines have one home. Configure shows them, ready to copy, in its [Examples dialog](configure.md#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them). Each text is only what goes in the assistant's file, or the command to run, so pasting all of it gives a valid file; the [user's guide](#the-users-guide-says-how-to-connect-an-assistant) says where it goes. The user asked for a GitHub Copilot example, and decided to keep VS Code's entry as it is and add one for GitHub Copilot CLI. The server lists, in order:
+  - **VS Code**, as today, for the workspace's `.vscode/mcp.json` or the user's MCP settings;
+  - **GitHub Copilot CLI**: the command `copilot mcp add memoria-todo -- <path> --mcp`, which adds the server to the user's `~/.copilot/mcp-config.json` ([Adding MCP servers for GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)), as Claude Code's entry is a command. A command needs no file merged by hand;
+  - **Claude Desktop**, **Claude Code**, and **Codex**, as today.
 - **The bridge's argument, `--mcp`, has one home**: `McpServer.BridgeArgument`, which the lines use and the composition root checks for.
 
 ### Every call is logged
@@ -175,7 +178,7 @@ The server logs what [Logging's table](../logging.md#every-operation-failure-and
 
 ### The user's guide says how to connect an assistant
 
-The user decided on a user page and the copy-ready lines in Configure. The page is `docs/user/connect-an-ai-assistant.md`, written with this module, and the [README](../../../README.md) links to it then. It says, for VS Code, Claude Desktop, Claude Code, and Codex, where the lines go, and to copy them from Configure. The user decided that the page doesn't repeat the lines, so their format has one home, in the code that makes them.
+The user decided on a user page and the copy-ready lines in Configure. The page is `docs/user/connect-an-ai-assistant.md`, written with this module, and the [README](../../../README.md) links to it then. It says, for each assistant the server lists, where the lines go, and to copy them from Configure's Examples dialog. The user decided that the page doesn't repeat the lines, so their format has one home, in the code that makes them.
 
 ### It uses the official C# SDK, which a proof checked
 
@@ -202,7 +205,7 @@ The user decided the tests, following the [test kinds](../technology-stack.md#at
 
 - **Unit tests** call each tool through the SDK's client and server joined by in-process streams, over the [shared fakes](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test) for Tasks, Contacts, Sync, Updates, Start with Windows, the log source, and the file system, and the shared fake of the time. They cover each tool's result and errors, that the excluded operations have no tool, the switch and its file, and the Information, Warning, and Error entries the server writes.
 - **Integration tests** start the real pipe: a program of this user connects, and the access list denies network logons. They also run the bridge: it copies a call through, and when no pipe exists it starts the app and connects once the app listens.
-- **No UX tests**, since the server has no screen. Configure's card gets Configure's own tests.
+- **No UX tests**, since the server has no screen. Configure's AI assistants row and Examples dialog get Configure's own tests.
 
 ## Public interface
 
@@ -271,7 +274,7 @@ The [module map](../modules.md#module-map) has the module's row. The user's deci
 
 - **[Tasks](../tasks.md#direct-task-changes-are-a-capability-of-their-own)** names the MCP server as the second caller of its direct task changes, beside the local API.
 - **[Shell](shell.md#public-interface)** starts and stops the server, and takes its lifetime.
-- **[Configure](configure.md#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them)** shows the switch, the state, and the lines to copy, and takes the server's status.
+- **[Configure](configure.md#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them)** shows the switch and the state in its Behavior section, and the lines to copy in its Examples dialog, and takes the server's status.
 - **The [desktop platform](README.md#start-with-windows-is-a-port-the-platform-publishes)** publishes Start with Windows, which Configure and the server both use.
 
 The composition root makes the pipe's name, the server, and the bridge mode, and passes the server to Shell and Configure.
@@ -349,6 +352,10 @@ The options below were considered and rejected, grouped by decision.
   - **One text input with the tags separated by commas**: a tag can hold a comma, and the input's meaning would be hidden in its text.
 - Whether the task tools keep their one-tag input:
   - **Keeping `tag` beside `tags`, failing when both are given**, as the [local API](../local-api-contract.md#a-tasks-tags-travel-as-a-list-beside-the-older-one-tag-field) does: two ways to say the same thing, and the model may pick the wrong one. The local API keeps both only because compiled programs depend on it.
+- Which GitHub Copilot examples the server lists:
+  - **Renaming "VS Code" to "GitHub Copilot in VS Code"**: the user chose to keep the name as it is.
+  - **The CLI's entry as JSON for `~/.copilot/mcp-config.json`**: the user would have to merge it into a file that may already list other servers.
+
 ## Open questions
 
 None.

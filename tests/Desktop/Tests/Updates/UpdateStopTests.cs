@@ -23,6 +23,29 @@ public class UpdateStopTests
     }
 
     [WpfFact]
+    public async Task Stop_ends_the_wait_of_a_check_that_was_asked_for_and_logs_no_problem()
+    {
+        var app = new UpdatesHarness();
+        await app.StartAndFirstCheckDoneAsync();
+        app.Install.HoldChecks();
+        var pending = app.Updates.CheckNowAsync();
+        await app.Install.WaitForChecksAsync(2);
+
+        await app.Updates.StopAsync().WaitAsync(TestWait.ForSignal);
+        try
+        {
+            await pending.WaitAsync(TestWait.ForSignal);
+        }
+        catch (OperationCanceledException)
+        {
+            // Ending the wait by cancelling it is allowed; hanging is not.
+        }
+
+        Assert.True(pending.IsCompleted);
+        app.Log.Events.AssertNoProblems();
+    }
+
+    [WpfFact]
     public async Task Stop_cancels_a_download_under_way_and_starts_no_updater()
     {
         var app = new UpdatesHarness();

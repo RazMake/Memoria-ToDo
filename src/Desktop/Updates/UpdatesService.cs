@@ -19,12 +19,14 @@ internal sealed class UpdatesService(UpdateModel model, UpdateRunner runner, Wha
 
     public void UpdateNow() => runner.UpdateNow();
 
+    public Task<string?> CheckNowAsync() => runner.CheckNowAsync();
+
     public void ShowWhatIsNew(Window owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
         if (model.Newer is { } newer)
         {
-            dialog.Show(owner, newer);
+            dialog.Show(owner, newer, this);
         }
     }
 

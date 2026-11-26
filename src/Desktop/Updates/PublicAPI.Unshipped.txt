@@ -17,6 +17,7 @@ Memoria.ToDo.Desktop.Updates.IUpdateLifetime.StopAsync() -> System.Threading.Tas
 Memoria.ToDo.Desktop.Updates.IUpdateStatus
 Memoria.ToDo.Desktop.Updates.IUpdateStatus.AutoUpdate.get -> bool
 Memoria.ToDo.Desktop.Updates.IUpdateStatus.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.Updates.IUpdateStatus.CheckNowAsync() -> System.Threading.Tasks.Task<string?>!
 Memoria.ToDo.Desktop.Updates.IUpdateStatus.SetAutoUpdate(bool on) -> void
 Memoria.ToDo.Desktop.Updates.IUpdateStatus.ShowWhatIsNew(System.Windows.Window! owner) -> void
 Memoria.ToDo.Desktop.Updates.IUpdateStatus.State.get -> Memoria.ToDo.Desktop.Updates.UpdateState!

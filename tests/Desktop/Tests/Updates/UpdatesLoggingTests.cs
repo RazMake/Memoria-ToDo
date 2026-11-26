@@ -70,6 +70,112 @@ public class UpdatesLoggingTests
     }
 
     [WpfFact]
+    public async Task A_check_that_was_asked_for_and_finds_a_version_logs_at_Information_naming_it()
+    {
+        var app = new UpdatesHarness();
+        await app.StartAndFirstCheckDoneAsync();
+        app.Install.Found = UpdatesHarness.Newer("2.2.0");
+        var before = app.Log.Events.Count;
+
+        await app.Updates.CheckNowAsync().WaitAsync(TestWait.ForSignal);
+
+        app.Log.After(before).SingleAt(LogEventLevel.Information, "2.2.0");
+        app.Log.After(before).AssertNoProblems();
+    }
+
+    [WpfFact]
+    public async Task A_failed_check_that_was_asked_for_logs_one_Warning_with_the_exception()
+    {
+        var app = new UpdatesHarness();
+        await app.StartAndFirstCheckDoneAsync();
+        var failure = new HttpRequestException("No network.");
+        app.Install.FailChecks(failure);
+
+        await app.Updates.CheckNowAsync().WaitAsync(TestWait.ForSignal);
+
+        var entry = Assert.Single(Problems(app));
+        Assert.Equal(LogEventLevel.Warning, entry.Level);
+        Assert.True(entry.HasException(failure));
+    }
+
+    [WpfFact]
+    public async Task A_failed_check_that_two_calls_share_logs_one_Warning()
+    {
+        var app = new UpdatesHarness();
+        await app.StartAndFirstCheckDoneAsync();
+        app.Install.HoldChecks();
+        var first = app.Updates.CheckNowAsync();
+        await app.Install.WaitForChecksAsync(2);
+        var second = app.Updates.CheckNowAsync();
+        await UpdatesHarness.Pump();
+
+        app.Install.ReleaseChecksWithFailure(new HttpRequestException("No network."));
+        await first.WaitAsync(TestWait.ForSignal);
+        await second.WaitAsync(TestWait.ForSignal);
+
+        Assert.Single(Problems(app));
+    }
+
+    [WpfFact]
+    public async Task The_result_of_a_check_started_with_Check_for_updates_says_so_at_Information()
+    {
+        var app = new UpdatesHarness();
+        await app.StartAndFirstCheckDoneAsync();
+        app.Install.Found = UpdatesHarness.Newer("2.2.0");
+        var before = app.Log.Events.Count;
+
+        await app.Updates.CheckNowAsync().WaitAsync(TestWait.ForSignal);
+
+        var entry = app.Log.After(before).SingleAt(LogEventLevel.Information, "2.2.0");
+        Assert.Equal("Check for updates", entry.Property("Origin"));
+    }
+
+    [WpfFact]
+    public async Task The_result_of_a_scheduled_check_says_the_schedule_started_it_at_Information()
+    {
+        var app = new UpdatesHarness();
+        app.Install.Found = UpdatesHarness.Newer("2.2.0");
+
+        await app.StartAndFirstCheckDoneAsync();
+
+        var entry = app.Log.Events.SingleAt(LogEventLevel.Information, "2.2.0");
+        Assert.Equal("the schedule", entry.Property("Origin"));
+    }
+
+    [WpfFact]
+    public async Task A_Check_for_updates_that_joins_a_scheduled_check_under_way_logs_at_Information_that_it_joined()
+    {
+        var app = new UpdatesHarness();
+        app.Install.HoldChecks();
+        app.Start();
+        await app.Install.WaitForChecksAsync(1);
+
+        var pending = app.Updates.CheckNowAsync();
+        await UpdatesHarness.Pump();
+
+        Assert.False(pending.IsCompleted);
+        Assert.Single(app.Log.Events.At(LogEventLevel.Information), entry => Equals(entry.Property("Origin"), "Check for updates"));
+        app.Install.ReleaseChecks();
+        await pending.WaitAsync(TestWait.ForSignal);
+    }
+
+    [WpfFact]
+    public async Task A_failed_scheduled_check_that_Check_for_updates_joined_logs_one_Warning()
+    {
+        var app = new UpdatesHarness();
+        app.Install.HoldChecks();
+        app.Start();
+        await app.Install.WaitForChecksAsync(1);
+        var pending = app.Updates.CheckNowAsync();
+        await UpdatesHarness.Pump();
+
+        app.Install.ReleaseChecksWithFailure(new HttpRequestException("No network."));
+        await pending.WaitAsync(TestWait.ForSignal);
+
+        Assert.Single(Problems(app));
+    }
+
+    [WpfFact]
     public async Task A_check_cancelled_by_the_stop_logs_no_problem()
     {
         var app = new UpdatesHarness();

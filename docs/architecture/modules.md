@@ -332,20 +332,21 @@ The shared library has five modules:
 | Editing | Formatting, snippet, and list commands on plain text and a selection, and the snippet picker's and mention list's rules | [Editing](editing.md) | None |
 | Rendering | Markdown to an HTML page for the web view and to styled text for titles and the editor, the color palette, the 30 tag colors and each tag's default color, the text look of headings, links, mentions, code, and italic text, and which links may open in the browser | [Rendering](rendering.md) | None |
 
-The desktop app has nine modules of its own:
+The desktop app has ten modules of its own:
 
 | Module | What it does | Design file | May use |
 | --- | --- | --- | --- |
-| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, the Local API, and the MCP server, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs, Local API, MCP server |
+| Shell | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, starting and stopping Updates, the Local API, the MCP server, and Keep awake, and sync status | [Shell](desktop/shell.md) | Task editor, Task list, Contact list, Configure, Sync, Updates, Logs, Local API, MCP server, Keep awake |
 | Task editor | The Add window, and the title editor, description editor, tag control, and tag badges Task View uses, with the "@" list and mention chips, and the "@" list for a plain text box that Task View's search box uses | [Task editor](desktop/task-editor.md) | Tasks, Contacts, Editing, Rendering, Updates, Contact list, Formatted view |
-| Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, and the Sync button and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates, Contact list |
+| Task list | Task View: open tasks grouped by tag, in groups the user orders by dragging and that collapse, with a line showing where a drag lands, beside the selected task's description, edited there, with colored tags that change without Edit, titles edited in place, mentions with their contacts' current details, search, resolving, deleting, resolved tasks, its saved size and place, and the Sync button, the Prevent screen saver icon, and the version in the status bar | [Task list](desktop/task-list.md) | Tasks, Contacts, Rendering, Task editor, Formatted view, Sync, Updates, Contact list, Keep awake |
 | Contact list | The Contacts window: contacts grouped by file, in groups the user orders by dragging, beside the selected contact's details, with search, editing, adding, and deleting; and the contact card a mention shows | [Contact list](desktop/contact-list.md) | Contacts, Rendering |
-| Configure | The four global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; AI assistant access; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates, MCP server |
+| Configure | The four global shortcuts and the deletion delay, which every device shares; the Close window and Save shortcuts; starting with Windows; Prevent screen saver; AI assistant access and its connection examples; and Sync's settings and status | [Configure](desktop/configure.md) | Tasks, Rendering, Sync, Updates, MCP server, Keep awake |
 | Formatted view | A task's title and description as a reader sees them, with no Markdown characters, and opening their web links in the default browser | [Formatted view](desktop/formatted-view.md) | Rendering |
-| Updates | Checking for a new version, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
+| Updates | Checking for a new version, on its schedule and when the user asks, the status bar Add and Task View share, the update card's state, What is new, Auto update, and restarting the app into the new version | [Updates](desktop/updates.md) | Formatted view |
 | Logs | The Logs window: the app's log entries, newest first, with filters by time, severity, and component, and a quick search; and the one log filter the window and the MCP server share | [Logs](desktop/logs.md) | None |
 | MCP server | Lets an AI assistant on this PC do the user's task, contact, sync, and settings operations through the Model Context Protocol while the app runs, over a named pipe only this user can reach | [MCP server](desktop/mcp-server.md) | Tasks, Contacts, Sync, Updates, Logs |
 | Local API | The gRPC server on a named pipe that lets your own programs on this PC reach tasks, contacts, sync, and shared settings | [Local API](local-api.md) | Tasks, Contacts, Sync, Rendering, Contract |
+| Keep awake | Prevent screen saver: keeping the screen on while the app runs and the setting is on, pausing while the PC is locked, and the state the status bar shows | [Keep awake](desktop/keep-awake.md) | None |
 
 Proposed, each a decision to confirm:
 
@@ -365,6 +366,8 @@ The user decided that the Task editor may use the Formatted view, only for its [
 The user decided that the contact card's heading shows in Rendering's heading color. Proposed, a decision to confirm: so the Contact list may use Rendering, for its text look. Rendering uses no module, so no loop forms.
 
 The user decided the [Local API](local-api.md#the-contract-and-clients-form-a-part-of-their-own) module: Shell may use it, only to start and stop it, and it may use Rendering for the tag color names. Its project, `Memoria.ToDo.Desktop.LocalAPI`, is named from its row by the naming rules.
+
+The user decided that [Keep awake](desktop/keep-awake.md) is a desktop module of its own, which uses no module. Shell may use it, only to start and stop it; Configure may use it, for the Prevent screen saver setting; and the Task list may use it, for the status bar's icon. Its project, `Memoria.ToDo.Desktop.KeepAwake`, is named from its row by the naming rules. It uses no window module, so no loop forms. Until the project exists, the architecture test finds no project for the row, which it allows.
 
 The user also decided a fourth part, **Api**, beside the shared library and the two apps. Its contract, `Memoria.ToDo.Api.Contract`, uses no module; its .NET client, `Memoria.ToDo.Api.Client`, may use only the contract; and the Local API may use the contract too. No other app module may use either. The Node.js client sits in the part too, outside the .NET build and the map.
 

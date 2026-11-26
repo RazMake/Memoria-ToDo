@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
     <ProjectReference Include="..\MCPServer\Memoria.ToDo.Desktop.MCPServer.csproj" />
+    <ProjectReference Include="..\KeepAwake\Memoria.ToDo.Desktop.KeepAwake.csproj" />
     <ProjectReference Include="..\Logs\Memoria.ToDo.Desktop.Logs.csproj" />
     <ProjectReference Include="..\LocalAPI\Memoria.ToDo.Desktop.LocalAPI.csproj" />
     <ProjectReference Include="..\..\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />

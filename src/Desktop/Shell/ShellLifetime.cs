@@ -1,6 +1,7 @@
 using System.Runtime.ExceptionServices;
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
+using Memoria.ToDo.Desktop.KeepAwake;
 using Memoria.ToDo.Desktop.LocalAPI;
 using Memoria.ToDo.Desktop.MCPServer;
 using Memoria.ToDo.Desktop.Platform;
@@ -11,8 +12,8 @@ using Serilog;
 namespace Memoria.ToDo.Desktop.Shell;
 
 /// <summary>
-/// The tray app's lifetime: the one-instance claim, the tray icon with its menu, the shortcuts, Updates, the MCP
-/// server, and the shared sync service. Only the instance that wins the claim starts and stops sync and the server.
+/// The tray app's lifetime: the one-instance claim, the tray icon with its menu, the shortcuts, Updates, Keep awake,
+/// the MCP server, and the shared sync service. Only the instance that wins the claim starts and stops sync and the server.
 /// </summary>
 internal sealed class ShellLifetime(
     ITrayIcon trayIcon,
@@ -31,6 +32,7 @@ internal sealed class ShellLifetime(
     ILocalApiLifetime localApi,
     McpServerStart mcpStart,
     IMcpServerLifetime mcpServer,
+    IKeepAwakeLifetime keepAwake,
     Func<Action, IAppExit> createExit,
     ISyncService sync,
     Action showLogs,
@@ -80,6 +82,7 @@ internal sealed class ShellLifetime(
         bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut, configureShortcut, contactsShortcut);
 
         updates.Start(createExit(endApp));
+        keepAwake.Start();
         startup.Begin(!shortcutsReady);
         mcpStart.Begin();
         followAvailability = (_, _) =>
@@ -141,6 +144,7 @@ internal sealed class ShellLifetime(
         Attempt("Cancel the MCP server start", mcpStart.Cancel, failures);
         Attempt("Detach the sync tray", syncTray.Detach, failures);
         Attempt("Dispose Configure", configure.Dispose, failures);
+        Attempt("Stop Keep awake", keepAwake.Stop, failures);
         Attempt("Stop following contacts availability", StopFollowingAvailability, failures);
         Attempt("Unregister the Add shortcut", addShortcut.Unregister, failures);
         Attempt("Unregister the Task View shortcut", manageShortcut.Unregister, failures);

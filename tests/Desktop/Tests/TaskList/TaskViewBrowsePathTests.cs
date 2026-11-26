@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.KeepAwake;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -7,7 +8,8 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 /// <summary>
 /// Path 1, opening Task View and moving around it: the window is active and titled, the search box has the focus, the groups are
 /// alphabetical with No tag last, a click selects a task and shows its description, the arrow keys go between the search box and
-/// the rows, a group collapses and expands, and closing and showing the window again starts it fresh.
+/// the rows, a group collapses and expands, and closing and showing the window again starts it fresh. The status bar's sun shows the Prevent screen saver state and follows it, and the window reopens where
+/// the user left it.
 /// </summary>
 [UX("TaskList")]
 [Collection(ScreenTests.Collection)]
@@ -17,6 +19,7 @@ public class TaskViewBrowsePathTests
     public void Opening_the_window_browsing_the_groups_and_rows_and_showing_it_again_starts_it_fresh()
     {
         var services = new ListServices();
+        services.KeepAwake.State = new KeepAwakeState(true, false, null);
         services.Add("Plain");
         services.Add("Both", "", "work", "errand");
         services.Add("Buy milk", "Remember the oat milk", "errand");
@@ -54,10 +57,20 @@ public class TaskViewBrowsePathTests
         Assert.Equal(["Buy milk"], screen.SelectedTitles);
 
         screen.ToggleGroup("work");
+        var icon = KeepAwakeIcon.In(screen.Window)!;
+        Assert.Equal("Prevent screen saver is on: the screen stays on.", KeepAwakeIcon.ToolTipOf(icon));
+        services.KeepAwake.Publish(new KeepAwakeState(true, false, "Access is denied."));
+        Assert.StartsWith("Prevent screen saver isn't working:", KeepAwakeIcon.ToolTipOf(icon));
+
+        screen.Window.Left -= 40;
+        var movedLeft = screen.Window.Left;
         screen.Window.Close();
+        Assert.True(services.Files.FileExists(services.PlacementFile));
         screen.View.Show();
 
         Assert.True(screen.View.IsOpen);
+        Assert.InRange(screen.Window.Left, movedLeft - 2, movedLeft + 2);
+        Assert.StartsWith("Prevent screen saver isn't working:", KeepAwakeIcon.ToolTipOf(KeepAwakeIcon.In(screen.Window)!));
         Assert.Equal(["errand", "work", "No tag"], screen.GroupNames);
         Assert.Equal(["Both"], screen.RowTitlesIn("work"));
         Assert.Empty(screen.SelectedTitles);

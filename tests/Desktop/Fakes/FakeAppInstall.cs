@@ -67,6 +67,9 @@ public sealed class FakeAppInstall : IAppInstall
     /// <summary>Completes every held check successfully, with <see cref="Found"/>.</summary>
     public void ReleaseChecks() => checks.Release();
 
+    /// <summary>Completes every held check with the failure.</summary>
+    public void ReleaseChecksWithFailure(Exception exception) => checks.ReleaseWithFailure(exception);
+
     /// <summary>From now on, downloads succeed at once. This is the starting behavior.</summary>
     public void SucceedDownloads() => downloads.Succeed();
 

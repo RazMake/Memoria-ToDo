@@ -1,3 +1,4 @@
+using System.IO;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
@@ -22,6 +23,15 @@ internal sealed class ListServices : ListTasks
     public FakeSyncService Sync { get; } = new();
 
     public FakeUpdateStatus Updates { get; } = new();
+
+    /// <summary>The Prevent screen saver state the status bar's sun follows; starts off, as the fake does.</summary>
+    public FakeKeepAwakeStatus KeepAwake { get; } = new();
+
+    /// <summary>The full path of the device folder Task View keeps its saved place in; outside <see cref="ListTasks.AllFiles"/>' folder.</summary>
+    public string DeviceFolder { get; } = Path.Combine(Path.GetTempPath(), "task-list-tests-device");
+
+    /// <summary>Where the platform keeps Task View's saved place: <c>task-view-placement.json</c> in <see cref="DeviceFolder"/>, in <see cref="ListTasks.Files"/>.</summary>
+    public string PlacementFile => Path.Combine(DeviceFolder, "task-view-placement.json");
 
     /// <summary>The Close window keys Task View is attached to; a test sets them as Configure does.</summary>
     public CloseWindowKeys CloseWindowKeys { get; } = new();
@@ -51,7 +61,7 @@ internal sealed class ListServices : ListTasks
             webViews.Add(view);
             return view;
         },
-        Browser, Sync, CloseWindowKeys, Updates, SaveKeys, Pointer, Log.CreateLogger());
+        Browser, Sync, CloseWindowKeys, Updates, SaveKeys, Pointer, KeepAwake, DeviceFolder, Log.CreateLogger());
 
     /// <summary>The entries the window made by <see cref="CreateWindow"/> logged, through the logger it was given.</summary>
     public InMemoryLogSink Log { get; } = new();

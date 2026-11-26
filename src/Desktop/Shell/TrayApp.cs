@@ -1,5 +1,6 @@
 using Memoria.ToDo.Desktop.Configure;
 using Memoria.ToDo.Desktop.ContactList;
+using Memoria.ToDo.Desktop.KeepAwake;
 using Memoria.ToDo.Desktop.LocalAPI;
 using Memoria.ToDo.Desktop.Logs;
 using Memoria.ToDo.Desktop.MCPServer;
@@ -21,12 +22,12 @@ public static class TrayApp
     /// contacts are available, Configure, Logs, Exit; a left click shows Task View; Logs, and a click on a sync error
     /// notification, close every other window and show the Logs window at once, whatever the setup), connects Configure's four shortcuts (a press
     /// shows Add, Task View, Contacts, or Configure, and does nothing while Configure is open), begins Updates with the
-    ///     app's exit, starts the MCP server once local initialization has loaded, and starts the shared sync
+        ///     app's exit, starts Keep awake, starts the MCP server once local initialization has loaded, and starts the shared sync
     /// service. Startup and later actions open Configure until setup is complete;
     /// otherwise startup shows Task View when <paramref name="startedAtSignIn"/> is false.
     /// Configure also opens when an initial shortcut could not be registered, after Task View on a configured
     /// start by hand. These startup windows wait for local initialization.
-    /// StopAsync stops the MCP server, joins sync, then Updates' stop, without blocking the UI, unregisters the four shortcuts,
+    /// StopAsync stops Keep awake on the UI thread, then the MCP server, joins sync, then Updates' stop, without blocking the UI, unregisters the four shortcuts,
     /// removes the icon, and releases the claim. Cleanup still completes when one step fails.
     /// </summary>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
@@ -40,12 +41,13 @@ public static class TrayApp
         IUpdateLifetime updates,
         ILocalApiLifetime localApi,
         IMcpServerLifetime mcpServer,
+        IKeepAwakeLifetime keepAwake,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
         ISyncService sync,
         ILogger logger) =>
-        Create(trayIcon, add, viewTasks, contacts, configure, logs, updates, localApi, mcpServer, shortcut, oneInstance, startedAtSignIn, sync, logger, () => new WpfUiThread());
+        Create(trayIcon, add, viewTasks, contacts, configure, logs, updates, localApi, mcpServer, keepAwake, shortcut, oneInstance, startedAtSignIn, sync, logger, () => new WpfUiThread());
 
     internal static IAppLifetime Create(
         ITrayIcon trayIcon,
@@ -57,6 +59,7 @@ public static class TrayApp
         IUpdateLifetime updates,
         ILocalApiLifetime localApi,
         IMcpServerLifetime mcpServer,
+        IKeepAwakeLifetime keepAwake,
         IGlobalShortcut shortcut,
         IOneInstance oneInstance,
         bool startedAtSignIn,
@@ -73,6 +76,7 @@ public static class TrayApp
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(localApi);
         ArgumentNullException.ThrowIfNull(mcpServer);
+        ArgumentNullException.ThrowIfNull(keepAwake);
         ArgumentNullException.ThrowIfNull(shortcut);
         ArgumentNullException.ThrowIfNull(oneInstance);
         ArgumentNullException.ThrowIfNull(sync);
@@ -125,6 +129,7 @@ public static class TrayApp
             localApi,
             new McpServerStart(sync.Setup, mcpServer, uiThread, logger),
             mcpServer,
+            keepAwake,
             endApp => new ShellExit(add, viewTasks, contacts, configure, endApp),
             sync,
             ShowLogs,

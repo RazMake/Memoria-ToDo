@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Memoria.ToDo.Desktop.Configure.Tests;
 
-/// <summary>The Start with Windows row of Configure's Startup section, built in memory with no window.</summary>
+/// <summary>The Start with Windows row of Configure's Behavior section, built in memory with no window.</summary>
 [Unit]
 public class StartWithWindowsRowTests
 {

@@ -1,3 +1,5 @@
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Shared.Fakes;
@@ -25,9 +27,14 @@ public class WhatIsNewPathTests
         new ReleaseNotes("2.1.1", "Sync no longer stops early."),
     ]);
 
-    private static async Task<UpdatesHarness> AppFoundAsync(NewerVersion found, UpdateStage stage = UpdateStage.Available)
+    private static async Task<UpdatesHarness> AppFoundAsync(NewerVersion found, UpdateStage stage = UpdateStage.Available, bool autoUpdate = false)
     {
         var app = new UpdatesHarness();
+        if (autoUpdate)
+        {
+            app.WriteAutoUpdateFile("on");
+        }
+
         app.Install.Found = found;
         app.Start();
         await app.WaitForStateAsync(state => state.Stage == UpdateStage.Available);
@@ -41,6 +48,29 @@ public class WhatIsNewPathTests
         return app;
     }
 
+    private static Button ButtonOf(Window dialog, string text) =>
+        OpenWindows.Descendants(dialog).OfType<Button>().Single(b => b.Content as string == text);
+
+    // The element's box in the dialog's own coordinates.
+    private static Rect BoundsIn(Window dialog, FrameworkElement element) =>
+        element.TransformToAncestor(dialog).TransformBounds(new Rect(element.RenderSize));
+
+    // Update Now, then Close, at the dialog's bottom right, and neither the default for Enter.
+    private static void AssertButtonsAtBottomRight(Window dialog)
+    {
+        var updateNow = ButtonOf(dialog, "Update Now");
+        var close = ButtonOf(dialog, "Close");
+        var content = (FrameworkElement)dialog.Content;
+        var updateNowBox = BoundsIn(dialog, updateNow);
+        var closeBox = BoundsIn(dialog, close);
+        Assert.False(updateNow.IsDefault, "Update Now is Enter's default, so Enter could start an update by accident.");
+        Assert.False(close.IsDefault, "Close is Enter's default; it's Esc's default only.");
+        Assert.True(updateNowBox.Right <= closeBox.Left, "Update Now isn't to the left of Close.");
+        Assert.InRange(content.ActualWidth - closeBox.Right, 0, 24);
+        Assert.InRange(content.ActualHeight - closeBox.Bottom, 0, 24);
+        Assert.InRange(content.ActualHeight - updateNowBox.Bottom, 0, 24);
+    }
+
     [WpfFact]
     public async Task Reading_the_notes_and_closing_with_the_Close_button_then_opening_again_in_the_dark_theme()
     {
@@ -48,7 +78,14 @@ public class WhatIsNewPathTests
         using var screen = new WhatIsNewScreen(app);
         app.Theme.IsDark = false;
 
-        screen.ShowWhatIsNew(dialog => OpenWindows.Click(dialog, "Close"));
+        screen.ShowWhatIsNew(dialog =>
+        {
+            var updateNow = ButtonOf(dialog, "Update Now");
+            Assert.True(updateNow.IsVisible);
+            Assert.True(updateNow.IsEnabled);
+            AssertButtonsAtBottomRight(dialog);
+            OpenWindows.Click(dialog, "Close");
+        });
 
         Assert.NotNull(screen.Dialog);
         Assert.False(screen.ReturnedWhileShowing, "What is new returned while its dialog showed, so it isn't modal.");
@@ -81,7 +118,13 @@ public class WhatIsNewPathTests
         app.CloseWindowKeys.Set(ModifierKeys.Shift, Key.F9);
         using var screen = new WhatIsNewScreen(app);
 
-        screen.ShowWhatIsNew(OpenWindows.PressEscape);
+        screen.ShowWhatIsNew(dialog =>
+        {
+            var updateNow = ButtonOf(dialog, "Update Now");
+            Assert.True(updateNow.IsVisible);
+            Assert.False(updateNow.IsEnabled);
+            OpenWindows.PressEscape(dialog);
+        });
         Assert.NotNull(screen.Dialog);
         Assert.False(screen.Dialog.IsVisible);
         Assert.True(screen.Owner.IsVisible);
@@ -89,6 +132,76 @@ public class WhatIsNewPathTests
         screen.ShowWhatIsNew(dialog => SimulatedKey.Chord(dialog, Key.LeftShift, Key.F9));
         Assert.False(screen.Dialog.IsVisible);
         Assert.True(screen.Owner.IsVisible);
+    }
+
+    [WpfFact]
+    public async Task Long_notes_scroll_inside_the_dialog_with_a_scrollbar_only_when_needed_and_Update_Now_shows_with_Auto_update_on()
+    {
+        var app = await AppFoundAsync(ThreeReleases, autoUpdate: true);
+        using var screen = new WhatIsNewScreen(app);
+
+        screen.ShowWhatIsNew(dialog =>
+        {
+            var scroll = OpenWindows.Descendants(dialog).OfType<ScrollViewer>().First();
+            Assert.Equal(ScrollBarVisibility.Auto, scroll.VerticalScrollBarVisibility);
+            Assert.Equal(Visibility.Collapsed, scroll.ComputedVerticalScrollBarVisibility);
+
+            app.WebViews[0].Element.Height = 3000; // The page's full height, which the real web view reports.
+            dialog.UpdateLayout();
+
+            Assert.Equal(Visibility.Visible, scroll.ComputedVerticalScrollBarVisibility);
+            Assert.True(scroll.ScrollableHeight > 0);
+            var updateNow = ButtonOf(dialog, "Update Now");
+            Assert.True(updateNow.IsVisible);
+            Assert.True(updateNow.IsEnabled);
+            Assert.True(BoundsIn(dialog, updateNow).Top >= BoundsIn(dialog, scroll).Bottom - 0.5, "The buttons overlap the scrolling notes.");
+            AssertButtonsAtBottomRight(dialog);
+        });
+    }
+
+    [WpfFact]
+    public async Task The_dialog_follows_the_state_while_it_is_open_and_turns_Update_Now_off_when_another_part_starts_the_update()
+    {
+        var app = await AppFoundAsync(ThreeReleases);
+        app.Install.HoldDownloads();
+        using var screen = new WhatIsNewScreen(app);
+
+        screen.ShowWhatIsNew(dialog =>
+        {
+            var updateNow = ButtonOf(dialog, "Update Now");
+            Assert.True(updateNow.IsEnabled);
+
+            app.Updates.UpdateNow(); // As Configure's card or the night run would.
+
+            Assert.True(updateNow.IsVisible);
+            Assert.False(updateNow.IsEnabled);
+        });
+    }
+
+    [WpfFact]
+    public async Task Update_Now_closes_the_dialog_and_then_starts_the_update()
+    {
+        var app = await AppFoundAsync(ThreeReleases);
+        app.Install.HoldDownloads();
+        using var screen = new WhatIsNewScreen(app);
+        bool? dialogShowingWhenUpdateBegan = null;
+
+        screen.ShowWhatIsNew(dialog =>
+        {
+            app.Updates.Changed += (_, _) =>
+            {
+                if (app.Updates.State.Stage == UpdateStage.Updating)
+                {
+                    dialogShowingWhenUpdateBegan ??= dialog.IsVisible;
+                }
+            };
+            OpenWindows.Click(dialog, "Update Now");
+        });
+        await app.WaitForStateAsync(state => state.Stage == UpdateStage.Updating);
+        await app.Install.WaitForDownloadsAsync(1);
+
+        Assert.False(screen.Dialog!.IsVisible);
+        Assert.False(dialogShowingWhenUpdateBegan, "The update began while the dialog was still showing.");
     }
 
     [WpfFact]

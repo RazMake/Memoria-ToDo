@@ -12,13 +12,14 @@ internal static class ConnectionLines
 
     private static readonly JsonSerializerOptions Quoting = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    /// <summary>The lines for VS Code, Claude Desktop, Claude Code, and Codex, in that order.</summary>
+    /// <summary>The lines for VS Code, GitHub Copilot CLI, Claude Desktop, Claude Code, and Codex, in that order.</summary>
     public static IReadOnlyList<McpConnection> For(string bridgePath)
     {
         var path = JsonSerializer.Serialize(bridgePath, Quoting); // a quoted string; JSON and TOML spell a path the same way
         return
         [
             new("VS Code", $$"""{ "servers": { "{{ServerName}}": { "type": "stdio", "command": {{path}}, "args": ["{{McpServer.BridgeArgument}}"] } } }"""),
+            new("GitHub Copilot CLI", $"copilot mcp add {ServerName} -- {path} {McpServer.BridgeArgument}"),
             new("Claude Desktop", $$"""{ "mcpServers": { "{{ServerName}}": { "command": {{path}}, "args": ["{{McpServer.BridgeArgument}}"] } } }"""),
             new("Claude Code", $"claude mcp add {ServerName} -- {path} {McpServer.BridgeArgument}"),
             new("Codex", $$"""

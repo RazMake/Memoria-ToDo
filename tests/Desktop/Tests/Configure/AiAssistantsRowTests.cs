@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.MCPServer;
@@ -12,52 +13,48 @@ using Xunit;
 namespace Memoria.ToDo.Desktop.Configure.Tests;
 
 /// <summary>
-/// The AI assistants card of Configure's Application section, built in memory with no window: its help line, its check box,
-/// the status line, each assistant's lines and Copy button, and what a failed switch or copy shows. What each state says
-/// and the failures are the <see cref="AiAssistantsSettingTests"/>'; these tests check that the card shows them and
-/// calls the MCP server and the clipboard.
+/// The AI assistants row of Configure's Behavior section, built in memory with no window: its check box, the Examples…
+/// button on the check box's line, the help line, the status line, and what a failed switch shows. What each state says
+/// and the failures are the <see cref="AiAssistantsSettingTests"/>'; these tests check that the row shows them, calls the
+/// MCP server, and asks for the Examples dialog. The dialog's own content is checked in Configure's UX paths.
 /// </summary>
 [Unit]
-public class AiAssistantsCardTests
+public class AiAssistantsRowTests
 {
     private const string Running = "Running. AI assistants on this PC can use Memoria-ToDo.";
     private const string ErrorKey = "SystemFillColorCriticalBrush";
 
-    private static readonly McpConnection[] Connections =
-        [new("VS Code", "vs code line 1\nvs code line 2"), new("Claude Desktop", "claude desktop lines"), new("Codex", "codex lines")];
-
-    private readonly FakeMcpServerStatus _server = new() { Connections = Connections };
+    private readonly FakeMcpServerStatus _server = new();
     private readonly FakeSetupActions _actions = new();
     private readonly InMemoryLogSink _log = new();
     private readonly SolidColorBrush _errorBrush = new(Colors.Red);
+    private int _examplesRequests;
 
-    private AiAssistantsCard Card()
+    private AiAssistantsRow Card()
     {
-        var card = new AiAssistantsCard(new AiAssistantsSetting(_server, _actions, _log.CreateLogger()), _server);
+        var card = new AiAssistantsRow(new AiAssistantsSetting(_server, _actions, _log.CreateLogger()), _server, _ => _examplesRequests++);
         card.Resources[ErrorKey] = _errorBrush;
         return card;
     }
 
-    private static IReadOnlyList<string> Texts(AiAssistantsCard card) =>
+    private static IReadOnlyList<string> Texts(AiAssistantsRow card) =>
         [.. OpenWindows.Descendants(card).OfType<TextBlock>()
             .Where(block => block.Visibility == Visibility.Visible)
             .Select(OpenWindows.TextOf).Where(text => text.Length > 0)];
 
-    private static TextBlock Block(AiAssistantsCard card, string start) =>
+    private static TextBlock Block(AiAssistantsRow card, string start) =>
         OpenWindows.Descendants(card).OfType<TextBlock>()
             .Single(block => block.Visibility == Visibility.Visible && OpenWindows.TextOf(block).StartsWith(start, StringComparison.Ordinal));
 
-    private static CheckBox Box(AiAssistantsCard card) =>
+    private static CheckBox Box(AiAssistantsRow card) =>
         OpenWindows.Descendants(card).OfType<CheckBox>().Single(box => box.Content as string == "Let AI assistants on this PC use Memoria-ToDo");
 
-    private static IReadOnlyList<TextBox> LineBoxes(AiAssistantsCard card) => [.. OpenWindows.Descendants(card).OfType<TextBox>()];
-
-    private static IReadOnlyList<Button> CopyButtons(AiAssistantsCard card) =>
-        [.. OpenWindows.Descendants(card).OfType<Button>().Where(button => button.Content as string == "Copy")];
+    private static Button Examples(AiAssistantsRow card) =>
+        OpenWindows.Descendants(card).OfType<Button>().Single(button => button.Content as string == "Examples…");
 
     private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, button));
 
-    private static void Load(AiAssistantsCard card) => card.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+    private static void Load(AiAssistantsRow card) => card.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
 
     [WpfFact]
     public void Shows_the_help_line_first_and_then_the_status_line()
@@ -69,6 +66,45 @@ public class AiAssistantsCardTests
             + "Each asks you before it uses a tool, as its own settings say.",
             Texts(card)[0]);
         Assert.Equal(Running, Texts(card)[1]);
+    }
+
+    [WpfFact]
+    public void Has_no_card_title_assistant_lines_or_Copy_buttons()
+    {
+        var card = Card();
+
+        Assert.DoesNotContain("AI assistants", Texts(card));
+        Assert.Empty(OpenWindows.Descendants(card).OfType<TextBox>());
+        Assert.DoesNotContain(OpenWindows.Descendants(card).OfType<Button>(), button => button.Content as string == "Copy");
+    }
+
+    [WpfFact]
+    public void The_Examples_button_sits_on_the_check_boxs_line_after_it_with_the_hand_pointer()
+    {
+        var card = Card();
+        card.Measure(new Size(700, double.PositiveInfinity));
+        card.Arrange(new Rect(card.DesiredSize));
+
+        var box = Box(card);
+        var examples = Examples(card);
+
+        Assert.Equal(Cursors.Hand, examples.Cursor);
+        Assert.True(examples.TranslatePoint(new Point(0, 0), card).X >= box.TranslatePoint(new Point(box.ActualWidth, 0), card).X);
+        Assert.True(examples.TranslatePoint(new Point(0, 0), card).Y < box.TranslatePoint(new Point(0, box.ActualHeight), card).Y);
+    }
+
+    [WpfTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Examples_asks_for_the_dialog_whether_the_switch_is_on_or_off_and_leaves_the_server_alone(bool on)
+    {
+        _server.State = new McpServerState(on, on, null);
+        var card = Card();
+
+        Click(Examples(card));
+
+        Assert.Equal(1, _examplesRequests);
+        Assert.Empty(_server.SetOnCalls);
     }
 
     [WpfTheory]
@@ -123,39 +159,6 @@ public class AiAssistantsCardTests
     }
 
     [WpfFact]
-    public void Shows_each_assistants_name_and_lines_in_the_servers_order_with_a_Copy_button()
-    {
-        var card = Card();
-
-        Assert.Equal(["VS Code", "Claude Desktop", "Codex"], Texts(card).Where(text => Connections.Any(c => c.Assistant == text)));
-        Assert.Equal(Connections.Select(c => c.Text), LineBoxes(card).Select(box => box.Text));
-        Assert.All(LineBoxes(card), box => Assert.True(box.IsReadOnly));
-        Assert.Equal(3, CopyButtons(card).Count);
-    }
-
-    [WpfFact]
-    public void Copy_copies_that_assistants_lines()
-    {
-        var card = Card();
-
-        Click(CopyButtons(card)[1]);
-
-        Assert.Equal(["claude desktop lines"], _actions.CopiedTexts);
-    }
-
-    [WpfFact]
-    public void A_failed_copy_shows_why_in_the_error_color_and_keeps_the_switch()
-    {
-        var card = Card();
-        _actions.CopyFailure = new InvalidOperationException("Clipboard is busy.");
-
-        Click(CopyButtons(card)[0]);
-
-        Assert.Same(_errorBrush, Block(card, "Clipboard is busy.").Foreground);
-        Assert.True(Box(card).IsChecked);
-    }
-
-    [WpfFact]
     public void The_status_line_follows_the_server_while_the_card_is_loaded()
     {
         _server.State = new McpServerState(true, false, null);
@@ -197,12 +200,12 @@ public class AiAssistantsCardTests
     }
 
     [WpfFact]
-    public void Working_switches_and_copies_log_no_problem()
+    public void Working_switches_and_examples_log_no_problem()
     {
         var card = Card();
 
         Box(card).IsChecked = false;
-        Click(CopyButtons(card)[0]);
+        Click(Examples(card));
 
         _log.Events.AssertNoProblems();
     }

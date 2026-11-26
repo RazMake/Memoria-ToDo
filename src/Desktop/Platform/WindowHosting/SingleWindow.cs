@@ -10,6 +10,7 @@ public sealed class SingleWindow
     private readonly Func<Window> _createWindow;
     private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
     private readonly Serilog.ILogger _logger;
+    private readonly SavedWindowPlacement? _placement;
     private Window? _window;
 
     /// <summary>
@@ -24,6 +25,18 @@ public sealed class SingleWindow
         ArgumentNullException.ThrowIfNull(logger);
         _createWindow = createWindow;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// As the constructor above, and each window it makes opens at the saved place when that place is on a screen, otherwise
+    /// as <see cref="WindowPlacement.ShowOnPointerScreen"/> places it. The window's place is saved each time it closes.
+    /// </summary>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    public SingleWindow(Func<Window> createWindow, SavedWindowPlacement placement, Serilog.ILogger logger)
+        : this(createWindow, logger)
+    {
+        ArgumentNullException.ThrowIfNull(placement);
+        _placement = placement;
     }
 
     /// <summary>
@@ -43,14 +56,22 @@ public sealed class SingleWindow
     {
         _dispatcher.VerifyAccess();
 
-        if (_window is null)
+        var isNew = _window is null;
+        if (isNew)
         {
             var window = _createWindow() ?? throw new InvalidOperationException("The function made no window.");
             window.Closed += (_, _) => _window = null;
             _window = window;
         }
 
-        WindowPlacement.ShowOnPointerScreen(_window, _logger);
+        if (isNew && _placement is not null)
+        {
+            SavedPlaceShow.Show(_window!, _placement, _logger);
+        }
+        else
+        {
+            WindowPlacement.ShowOnPointerScreen(_window!, _logger);
+        }
     }
 
     /// <summary>Whether a window this object made is showing now.</summary>

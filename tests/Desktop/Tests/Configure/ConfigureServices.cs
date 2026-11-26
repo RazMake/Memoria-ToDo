@@ -26,6 +26,7 @@ internal sealed class ConfigureServices
     public FakeTheme Theme { get; } = new();
     public FakeUpdateStatus Updates { get; } = new();
     public FakeMcpServerStatus McpServer { get; } = new();
+    public FakeKeepAwakeStatus KeepAwake { get; } = new();
     public ITaskStore Store { get; }
     public ISharedTaskSettings Settings { get; }
 
@@ -33,5 +34,5 @@ internal sealed class ConfigureServices
     public InMemoryLogSink Log { get; } = new();
 
     public IConfigureWindow Create() =>
-        ConfigureWindow.Create(StartWithWindows, Settings, Sync, SetupActions, CloseWindowKeys, Theme, Updates, McpServer, SaveKeys, Log.CreateLogger());
+        ConfigureWindow.Create(StartWithWindows, Settings, Sync, SetupActions, CloseWindowKeys, Theme, Updates, McpServer, SaveKeys, KeepAwake, Log.CreateLogger());
 }

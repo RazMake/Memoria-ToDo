@@ -207,19 +207,20 @@ public class AiAssistantsSettingTests
         setting.Copy(connections[1]);
 
         Assert.Equal(["codex lines"], actions.CopiedTexts);
-        Assert.Null(setting.Problem);
+        Assert.Null(setting.CopyProblem);
         Assert.Empty(server.SetOnCalls);
     }
 
     [Fact]
-    public void A_failed_copy_shows_the_errors_message_and_keeps_the_switch()
+    public void A_failed_copy_shows_the_errors_message_apart_from_the_switchs_problem_and_keeps_the_switch()
     {
         actions.CopyFailure = new InvalidOperationException("Clipboard is busy.");
         var setting = Create();
 
         setting.Copy(new McpConnection("Codex", "codex lines"));
 
-        Assert.Equal("Clipboard is busy.", setting.Problem);
+        Assert.Equal("Clipboard is busy.", setting.CopyProblem);
+        Assert.Null(setting.Problem);
         Assert.True(setting.IsOn);
         Assert.Empty(actions.CopiedTexts);
     }
@@ -237,7 +238,7 @@ public class AiAssistantsSettingTests
     }
 
     [Fact]
-    public void A_later_successful_copy_clears_the_problem()
+    public void A_later_successful_copy_clears_the_copy_problem()
     {
         actions.CopyFailure = new InvalidOperationException("Clipboard is busy.");
         var setting = Create();
@@ -247,7 +248,7 @@ public class AiAssistantsSettingTests
 
         setting.Copy(connection);
 
-        Assert.Null(setting.Problem);
+        Assert.Null(setting.CopyProblem);
         Assert.Equal(["codex lines"], actions.CopiedTexts);
     }
 

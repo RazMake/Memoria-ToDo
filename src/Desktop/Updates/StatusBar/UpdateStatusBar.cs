@@ -8,12 +8,12 @@ namespace Memoria.ToDo.Desktop.Updates;
 /// <summary>
 /// The status bar Add and Task View show along their bottom edge. <c>start</c>, when given, takes all the width the update
 /// text leaves, and the bar always shows; without it, the bar shows only while a version is available or updating.
-/// The update text sits at the bar's right end, with a 5 pixel gap on its left. While an update is available the text is a
+/// The update text sits at the bar's right end, with a 13 pixel gap on its left. While an update is available the text is a
 /// button that opens What is new over the window holding the bar.
 /// </summary>
 public sealed class UpdateStatusBar : Border
 {
-    private const double UpdateTextGap = 5;
+    private const double UpdateTextGap = 13;
 
     private readonly IUpdateStatus _updates;
     private readonly UIElement? _start;

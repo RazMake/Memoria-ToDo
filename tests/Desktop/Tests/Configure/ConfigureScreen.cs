@@ -62,7 +62,7 @@ internal sealed partial class ConfigureScreen : IDisposable
     public ITaskStore Store => services.Store;
 
     /// <summary>The headings of Configure's three sections, in order.</summary>
-    public static readonly string[] SectionHeadings = ["Application", "Startup", "Sync settings"];
+    public static readonly string[] SectionHeadings = ["Application", "Behavior", "Sync settings"];
 
     /// <summary>
     /// The section titles, in order. A title is a content control (such as a button) whose content is the heading's
@@ -104,7 +104,8 @@ internal sealed partial class ConfigureScreen : IDisposable
     /// <summary>The Contacts action. Its calls are those since the connection, which registered the default.</summary>
     public FakeShortcutAction ContactsAction { get; }
 
-    public Window Window => Assert.Single(windows.Visible());
+    /// <summary>The Configure window: the one showing window with no owner, so a dialog it opened doesn't count.</summary>
+    public Window Window => Assert.Single(windows.Visible(), window => window.Owner is null);
 
     /// <summary>Whether the window is showing.</summary>
     public bool IsShowing => windows.Visible().Count > 0;
@@ -280,7 +281,7 @@ internal sealed partial class ConfigureScreen : IDisposable
     private UIElement ContentMarker(string heading) => heading switch
     {
         "Application" => AddField,
-        "Startup" => StartWithWindowsBox,
+        "Behavior" => StartWithWindowsBox,
         _ => Box("Device name"),
     };
 

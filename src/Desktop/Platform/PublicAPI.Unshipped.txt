@@ -137,3 +137,6 @@ Memoria.ToDo.Desktop.Platform.OnOffSettingFile
 Memoria.ToDo.Desktop.Platform.OnOffSettingFile.OnOffSettingFile(Memoria.ToDo.Shared.Platform.IFileSystem! files, string! path, bool whenMissing, string! name, Serilog.ILogger! logger) -> void
 Memoria.ToDo.Desktop.Platform.OnOffSettingFile.Read() -> (bool On, string? Failure)
 Memoria.ToDo.Desktop.Platform.OnOffSettingFile.Write(bool on) -> void
+Memoria.ToDo.Desktop.Platform.SavedWindowPlacement
+Memoria.ToDo.Desktop.Platform.SavedWindowPlacement.SavedWindowPlacement(Memoria.ToDo.Shared.Platform.IFileSystem! files, string! path, string! name, Serilog.ILogger! logger) -> void
+Memoria.ToDo.Desktop.Platform.SingleWindow.SingleWindow(System.Func<System.Windows.Window!>! createWindow, Memoria.ToDo.Desktop.Platform.SavedWindowPlacement! placement, Serilog.ILogger! logger) -> void

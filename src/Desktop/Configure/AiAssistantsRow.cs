@@ -5,73 +5,48 @@ using Memoria.ToDo.Desktop.MCPServer;
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// The content of Application's AI assistants card: the check box that lets assistants in, the status line, and each
-/// assistant's name, read-only lines, and Copy button. It shows what <see cref="AiAssistantsSetting"/> says and follows the
-/// server's changes while the window is open.
+/// The AI assistants row of the Behavior section: the check box that lets assistants in with the Examples… button on its line,
+/// the help line, the status line, and the message of a failed switch. It shows what <see cref="AiAssistantsSetting"/> says and
+/// follows the server's changes while the window is open. The assistants' lines are the Examples dialog's, which the button asks for.
 /// </summary>
-internal sealed class AiAssistantsCard : StackPanel
+internal sealed class AiAssistantsRow : StackPanel
 {
     private readonly AiAssistantsSetting _setting;
     private readonly IMcpServerStatus _server;
-    private readonly CheckBox _box = new() { Content = "Let AI assistants on this PC use Memoria-ToDo", Margin = new Thickness(0, 4, 0, 0) };
-    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
+    private readonly CheckBox _box = new() { Content = "Let AI assistants on this PC use Memoria-ToDo" };
+    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(28, 4, 0, 0) };
     private readonly TextBlock _problem = ThemedText.Message();
     private bool _refreshing;
 
-    public AiAssistantsCard(AiAssistantsSetting setting, IMcpServerStatus server)
+    /// <param name="showExamples">Shows the Examples dialog over the given window, the one this row is in.</param>
+    public AiAssistantsRow(AiAssistantsSetting setting, IMcpServerStatus server, Action<Window> showExamples)
     {
         _setting = setting;
         _server = server;
         _box.Checked += (_, _) => Switch(true);
         _box.Unchecked += (_, _) => Switch(false);
+        var examples = ConfigureButton.Make("Examples…", new Thickness(12, 0, 0, 0));
+        examples.Click += (_, _) => showExamples(Window.GetWindow(this)!);
 
-        Children.Add(_box);
+        var line = new StackPanel { Orientation = Orientation.Horizontal };
+        line.Children.Add(_box);
+        line.Children.Add(examples);
+        Children.Add(line);
         Children.Add(ThemedText.Help(
             "Assistants such as GitHub Copilot, Claude, and Codex can read and change your tasks, contacts, and settings. "
             + "Each asks you before it uses a tool, as its own settings say.",
             new Thickness(28, 2, 0, 0)));
         Children.Add(_status);
-        foreach (var connection in setting.Connections)
-        {
-            AddAssistant(connection);
-        }
-
         Children.Add(_problem);
 
         Refresh();
         Loaded += (_, _) =>
         {
-            _server.Changed -= OnChanged; // So that a card loaded again isn't told twice.
+            _server.Changed -= OnChanged; // So that a row loaded again isn't told twice.
             _server.Changed += OnChanged;
             Refresh();
         };
         Unloaded += (_, _) => _server.Changed -= OnChanged;
-    }
-
-    private void AddAssistant(McpConnection connection)
-    {
-        var lines = new TextBox
-        {
-            Text = connection.Text,
-            IsReadOnly = true,
-            FontFamily = new System.Windows.Media.FontFamily("Consolas"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 4, 0, 0),
-        };
-        var copy = ConfigureButton.Make("Copy", new Thickness(0, 6, 0, 0));
-        copy.Click += (_, _) =>
-        {
-            _setting.Copy(connection);
-            ThemedText.ShowMessage(_problem, _setting.Problem);
-        };
-        Children.Add(new TextBlock
-        {
-            Text = connection.Assistant,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 12, 0, 0),
-        });
-        Children.Add(lines);
-        Children.Add(copy);
     }
 
     private void OnChanged(object? sender, EventArgs e) => Refresh();

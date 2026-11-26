@@ -16,7 +16,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            null!, new FakeTheme(), new FakeUpdateStatus(), new FakeMcpServerStatus(), new SaveKeys(), Logger.None));
+            null!, new FakeTheme(), new FakeUpdateStatus(), new FakeMcpServerStatus(), new SaveKeys(), new FakeKeepAwakeStatus(), Logger.None));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
     }
@@ -26,7 +26,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), null!, new FakeUpdateStatus(), new FakeMcpServerStatus(), new SaveKeys(), Logger.None));
+            new CloseWindowKeys(), null!, new FakeUpdateStatus(), new FakeMcpServerStatus(), new SaveKeys(), new FakeKeepAwakeStatus(), Logger.None));
 
         Assert.Equal("theme", failure.ParamName);
     }
@@ -36,7 +36,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), new FakeTheme(), null!, new FakeMcpServerStatus(), new SaveKeys(), Logger.None));
+            new CloseWindowKeys(), new FakeTheme(), null!, new FakeMcpServerStatus(), new SaveKeys(), new FakeKeepAwakeStatus(), Logger.None));
 
         Assert.Equal("updates", failure.ParamName);
     }
@@ -46,7 +46,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), null!, new SaveKeys(), Logger.None));
+            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), null!, new SaveKeys(), new FakeKeepAwakeStatus(), Logger.None));
 
         Assert.Equal("mcpServer", failure.ParamName);
     }
@@ -56,9 +56,19 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), new FakeTheme(),             new FakeUpdateStatus(), new FakeMcpServerStatus(), null!, Logger.None));
+            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), new FakeMcpServerStatus(), null!, new FakeKeepAwakeStatus(), Logger.None));
 
         Assert.Equal("saveKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_a_missing_Keep_awake_status()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
+            new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
+            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), new FakeMcpServerStatus(), new SaveKeys(), null!, Logger.None));
+
+        Assert.Equal("keepAwake", failure.ParamName);
     }
 
     [Fact]
@@ -66,7 +76,7 @@ public class ConfigureWindowCreateTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => ConfigureWindow.Create(
             new FakeStartWithWindows(), new FakeSharedTaskSettings(), new FakeSyncService(), new FakeSetupActions(),
-            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), new FakeMcpServerStatus(), new SaveKeys(), null!));
+            new CloseWindowKeys(), new FakeTheme(), new FakeUpdateStatus(), new FakeMcpServerStatus(), new SaveKeys(), new FakeKeepAwakeStatus(), null!));
 
         Assert.Equal("logger", failure.ParamName);
     }

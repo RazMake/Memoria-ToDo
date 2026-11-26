@@ -15,17 +15,29 @@ public partial class McpConnectionsTests
         text.Contains(McpHarness.BridgePath, StringComparison.Ordinal) || text.Contains(Escaped(McpHarness.BridgePath), StringComparison.Ordinal);
 
     [Fact]
-    public void Offers_one_line_each_for_VS_Code_Claude_Desktop_Claude_Code_and_Codex_in_that_order()
+    public void Offers_one_line_each_for_VS_Code_GitHub_Copilot_CLI_Claude_Desktop_Claude_Code_and_Codex_in_that_order()
     {
         var app = new McpHarness();
 
         var assistants = app.Server.Connections.Select(connection => connection.Assistant).ToList();
 
-        Assert.Equal(4, assistants.Count);
+        Assert.Equal(5, assistants.Count);
         Assert.Contains("VS Code", assistants[0]);
-        Assert.Contains("Claude Desktop", assistants[1]);
-        Assert.Contains("Claude Code", assistants[2]);
-        Assert.Contains("Codex", assistants[3]);
+        Assert.Contains("GitHub Copilot CLI", assistants[1]);
+        Assert.Contains("Claude Desktop", assistants[2]);
+        Assert.Contains("Claude Code", assistants[3]);
+        Assert.Contains("Codex", assistants[4]);
+    }
+
+    [Fact]
+    public void The_GitHub_Copilot_CLI_text_is_the_command_that_adds_the_bridge_with_a_quoted_path()
+    {
+        var app = new McpHarness();
+        var other = app.Create(bridgePath: @"D:\Other place\Memoria.ToDo.Desktop.App.exe");
+
+        var text = other.Connections.Single(connection => connection.Assistant == "GitHub Copilot CLI").Text;
+
+        Assert.Equal(@"copilot mcp add memoria-todo -- ""D:\\Other place\\Memoria.ToDo.Desktop.App.exe"" --mcp", text);
     }
 
     [Fact]

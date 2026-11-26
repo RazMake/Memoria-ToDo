@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.KeepAwake;
 using Memoria.ToDo.Desktop.MCPServer;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
@@ -18,14 +19,15 @@ public static class ConfigureWindow
     /// <param name="closeWindowKeys">The platform's Close window keys; Configure sets them and attaches its window.</param>
     /// <param name="theme">The app's theme; the section titles show in heading 1's color for it and follow its switches.</param>
     /// <param name="updates">The update status; the Update card in Application shows it and calls it for each control.</param>
-    /// <param name="mcpServer">The MCP server's status; the AI assistants card in Application shows it and calls it for its switch.</param>
+    /// <param name="mcpServer">The MCP server's status; the AI assistants row in Behavior and its Examples dialog show it and call it for the switch.</param>
     /// <param name="saveKeys">The platform's Save keys; Configure sets them from the stored or default Save shortcut.</param>
+    /// <param name="keepAwake">Keep awake's status; the Prevent screen saver row in Behavior shows it and calls it for its switch.</param>
     /// <param name="logger">Where Configure logs each failure it catches and shows, at Error.</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static IConfigureWindow Create(IStartWithWindows startWithWindows, ISharedTaskSettings settings,
         ISyncService sync, ISetupActions setupActions, CloseWindowKeys closeWindowKeys, ITheme theme,
-        IUpdateStatus updates, IMcpServerStatus mcpServer, SaveKeys saveKeys, ILogger logger) =>
-        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys, theme, updates, mcpServer, saveKeys, logger);
+        IUpdateStatus updates, IMcpServerStatus mcpServer, SaveKeys saveKeys, IKeepAwakeStatus keepAwake, ILogger logger) =>
+        new ConfigureShow(startWithWindows, settings, sync, setupActions, closeWindowKeys, theme, updates, mcpServer, saveKeys, keepAwake, logger);
 }
 
 /// <summary>The Configure window, as Shell uses it.</summary>

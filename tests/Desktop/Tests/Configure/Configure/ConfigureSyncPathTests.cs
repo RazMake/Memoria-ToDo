@@ -10,10 +10,10 @@ using Memoria.ToDo.Testing;
 using Serilog.Events;
 using Xunit;
 
-namespace Memoria.ToDo.Desktop.Configure.Tests;
+namespace Memoria.ToDo.Desktop.Configure.Tests.Configure;
 
 /// <summary>
-/// The Configure screen's Startup and Sync settings paths: the Start with Windows box, the repository, device and status
+/// The Configure screen's Behavior and Sync settings paths: the Start with Windows box, the repository, device and status
 /// controls, and the Git Access keys. Each test follows one whole flow. What each action does and how it fails are
 /// unit-tested on StartWithWindowsRow, DeviceActions, RepositoryChange, SyncUi and DeletionDelaySetting.
 /// The Forget key dialog is modal, so <see cref="ClosePrompt"/> answers it while the click waits.
@@ -37,12 +37,19 @@ public class ConfigureSyncPathTests
     private readonly ClosePrompt _prompt = new("Forget key");
 
     [WpfFact]
-    public void Start_with_Windows_switches_on_at_once_and_a_failed_switch_shows_its_error_puts_the_box_back_and_keeps_the_window_size()
+    public void The_Behavior_section_lists_Start_with_Windows_Prevent_screen_saver_and_AI_assistants_where_a_failed_Start_with_Windows_switch_shows_its_error_and_puts_the_box_back_and_Examples_opens_with_AI_assistants_off()
     {
         var port = new FakeStartWithWindows { On = false, SetFailure = new InvalidOperationException(TwoLineError) };
         using var screen = new ConfigureScreen(port);
+        screen.McpServer.Connections = [new("VS Code", "vs code lines")];
         screen.Open();
-        screen.ClickTitle("Startup");
+        screen.ClickTitle("Behavior");
+        Assert.Equal(["Behavior"], screen.OpenSections);
+        Assert.True(screen.KeepAwakeBox.IsVisible, "Prevent screen saver isn't in the Behavior section.");
+        Assert.True(screen.AiBox.IsVisible, "The AI assistants row isn't in the Behavior section.");
+        double Top(FrameworkElement element) => element.TranslatePoint(new Point(0, 0), screen.Window).Y;
+        Assert.True(Top(screen.StartWithWindowsBox) < Top(screen.KeepAwakeBox));
+        Assert.True(Top(screen.KeepAwakeBox) < Top(screen.AiBox));
         Assert.False(screen.StartWithWindowsBox.IsChecked);
         var size = screen.WindowSize;
 
@@ -59,6 +66,23 @@ public class ConfigureSyncPathTests
 
         Assert.Equal([true, true], port.SetCalls);
         Assert.True(screen.StartWithWindowsBox.IsChecked);
+
+        screen.SwitchKeepAwake();
+        Assert.Equal([true], screen.KeepAwake.SetOnCalls);
+        Assert.True(screen.KeepAwakeBox.IsChecked);
+
+        Assert.True(screen.AiBox.IsChecked);
+        screen.SwitchAi();
+        Assert.Equal([false], screen.McpServer.SetOnCalls);
+        Assert.False(screen.AiBox.IsChecked);
+        var opened = false;
+        screen.OpenExamples(dialog =>
+        {
+            opened = true;
+            Assert.Same(screen.Window, dialog.Owner);
+            OpenWindows.Click(dialog, "Close");
+        });
+        Assert.True(opened);
     }
 
     [WpfFact]

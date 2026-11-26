@@ -19,6 +19,7 @@
     <ProjectReference Include="..\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
     <ProjectReference Include="..\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
     <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
+    <ProjectReference Include="..\KeepAwake\Memoria.ToDo.Desktop.KeepAwake.csproj" />
     <PackageReference Include="Serilog" />
   </ItemGroup>
 

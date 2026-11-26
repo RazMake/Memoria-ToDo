@@ -25,7 +25,7 @@ internal sealed class ListSync : StackPanel, IDisposable
     private readonly Button _button = new()
     {
         Content = "\uE895",
-        FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+        FontFamily = StatusBarText.IconFont,
         Padding = new Thickness(8, 3, 8, 3),
         Margin = new Thickness(0, 0, 8, 0),
     };

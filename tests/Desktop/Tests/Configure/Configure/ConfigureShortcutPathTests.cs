@@ -5,7 +5,7 @@ using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
-namespace Memoria.ToDo.Desktop.Configure.Tests;
+namespace Memoria.ToDo.Desktop.Configure.Tests.Configure;
 
 /// <summary>
 /// The Configure screen's shortcut paths: picking a shortcut, closing with the Close window keys and opening again, Esc, and

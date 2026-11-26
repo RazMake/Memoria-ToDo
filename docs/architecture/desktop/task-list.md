@@ -37,7 +37,14 @@ Proposed, each a decision to confirm:
 - **A link in a title opens as a link**, and doesn't select the task.
 - **The checkbox's middle sits at the middle of the title's first line**, at any text size.
 - **Nothing is selected when Task View opens**, and the right side says "Select a task to see its description." It says that again when the selected task is deleted, hidden by search, or gone after a sync. A selected task with no description shows "No description." above its tags.
-- **Task View opens wide enough for both sides**, and can't be made so narrow that either side becomes unreadable: it opens at 1100 by 720 pixels with the left side taking 68% of the width and the right side 32%, as the user decided, and is at least 680 pixels wide, with the left side at least 300 and the right side at least 340. A bar between the sides moves the split, by mouse only: the user decided it's never a keyboard stop, so it never shows a focus rectangle. Task View opens where [Single window](README.md#a-closed-window-is-made-again-on-the-next-show) places it and remembers neither its size, its split, nor its place, since remembering needs a saved setting that no design has yet.
+- **Task View opens wide enough for both sides**, and can't be made so narrow that either side becomes unreadable: it opens at 1100 by 720 pixels with the left side taking 68% of the width and the right side 32%, as the user decided, and is at least 680 pixels wide, with the left side at least 300 and the right side at least 340. A bar between the sides moves the split, by mouse only: the user decided it's never a keyboard stop, so it never shows a focus rectangle. The split isn't remembered; each open starts at 68% and 32%.
+- **Task View remembers its size and place on this device**, across closing it and restarting the app, as the user asked. It reopens where it last closed, through the platform's [saved place](README.md#a-saved-place-reopens-a-window-where-it-was), which owns the file, the checks, and what happens when the place is no longer on a screen. The user decided:
+  - It's kept for this Windows user on this PC, in `task-view-placement.json` in the device folder, `%LocalAppData%\Memoria-ToDo`, and never synced, since each PC has its own screens. Another PC, or another Windows user on this PC, keeps its own.
+  - It's saved each time Task View closes, for any reason, including Exit and an update's restart.
+  - A maximized Task View reopens maximized, and keeps the size it had before it was maximized for when it's restored. One closed while minimized reopens as it was before it was minimized.
+  - The first open on a device, or after the saved place can't be read or is no longer on a screen, opens at 1100 by 720 on the pointer's screen, as before.
+  - The split between the sides isn't kept, as above.
+  - A copy run from a build folder uses the same device folder as the installed copy, so the two share Task View's place, as they share Auto update.
 - **Each side scrolls on its own.** The description shows at its full height inside the right side, so the right side scrolls, not the web view.
 - The web view starts in the background when Task View opens, and is released when it closes, so the tray app holds no browser while Task View is closed. Microsoft recommends creating WebView2 only for real web content, and no more instances than needed ([WebView2 performance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/performance)).
 - A link to a deleted task shows "This task no longer exists." in the message line. A link to a resolved task shows the resolved tasks and selects it. A link to a hidden task clears the search if the search hides it, and [reveals its row](#a-click-on-a-groups-tag-collapses-or-expands-it) if its group is collapsed, then selects it. The left side scrolls to the task's row.
@@ -384,6 +391,10 @@ The user decided that Task View has a status bar along its bottom edge. It's [Up
 - **On its left, the Sync button is an icon button**: a sync symbol in blue, with no text, and a tooltip. The blue is the [palette's](../rendering.md#six-colors-read-well-in-light-and-dark-themes) blue for the theme, so it reads on both backgrounds and follows the theme.
 - **A failed sync's error shows in the status bar, right of the button**, in the theme's error color, as [Configure](configure.md#the-window-shows-its-settings-in-labeled-sections) shows its messages, the user decided. A sync that succeeds clears it. While a sync runs, the button's tooltip says "Syncing…".
 - **On its right, the app's version**, such as "Version 1.4.2". The user decided that it comes from the platform's [app version](README.md#the-apps-version-has-one-home), so `Create` takes no new argument for it.
+- **Just left of the version, an icon that shows whether Prevent screen saver is on**, with a tooltip, as the user asked. [Keep awake](keep-awake.md#the-status-bar-shows-whether-its-on) publishes the state, and its design says what each state's tooltip says; the Task list draws the icon and its tooltip from the state. The user decided that only Task View's bar shows it, that it's a sun, and that it's not a button:
+  - It's a sun, U+E706 from the icon font the Sync button uses, just left of the version: in the normal text color while on, muted while off or paused, and in the error color while it failed. The tooltip says which.
+  - It's not a button and never a keyboard stop; Configure changes the setting. Screen readers read its tooltip as its name.
+  - It follows the state as it changes, while Task View is open.
 - **At its end, after the version, Updates' update text**, such as "Update available: 2.2.0", only while a new version is available or updating, as [Updates](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) decides. Otherwise the version ends the bar.
 
 Proposed, each a decision to confirm:
@@ -487,6 +498,20 @@ Proposed, each a decision to confirm:
 - **It gives the Formatted view's title and description a card function** that calls the Contact list's `ContactCard.For` with Contacts, the theme, and the mention's address.
 - **`Create` takes nothing new**: it already takes Contacts and the theme.
 
+For the [Prevent screen saver icon](#a-status-bar-holds-the-sync-button-and-the-version) and the [saved size and place](#tasks-show-grouped-by-tag-beside-the-selected-tasks-description), proposed, each a decision to confirm:
+
+- **The Task list may use [Keep awake](keep-awake.md#public-interface)**, as the [module map](../modules.md#module-map) proposes, and `Create` takes its status, `IKeepAwakeStatus keepAwake`, after `pointer`.
+- **`Create` takes the device folder, `string deviceFolder`, after `keepAwake`**, and makes its [single window](README.md#a-closed-window-is-made-again-on-the-next-show) with the platform's [saved place](README.md#a-saved-place-reopens-a-window-where-it-was) for `task-view-placement.json` in it. Task View's file name lives in the Task list, which owns the window. `Create` fails when the folder isn't a full path, as Updates' does.
+- **The logger stays last**, as [Logging](../logging.md#public-interface) says:
+
+```csharp
+public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts,
+    IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
+    IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser,
+    ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer,
+    IKeepAwakeStatus keepAwake, string deviceFolder, ILogger logger);
+```
+
 ## Failure modes
 
 - **The web view fails**, for example when the WebView2 Runtime is missing: the description shows as Markdown source, with a message saying why, as the [Formatted view](formatted-view.md#failure-modes) does. So does an edit's Preview, where no image can then resize. The rest of the list works.
@@ -501,6 +526,9 @@ Proposed, each a decision to confirm:
 - **A new title can't be saved**: the title edit stays open with its text, and the Title editor says why.
 - **Save in the close prompt doesn't save**: Task View stays open with the editor's message, and Add doesn't open.
 - **A Tasks call from the list throws a failure the call doesn't document**: the list doesn't report it, since [each module reports only its expected failures](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), so the platform shows it and the app ends. That includes an `AggregateException`, which only adding a task and a sync's update throw, and no call from the list makes either.
+- **Task View's saved place is missing, can't be read, has a newer version, or isn't on any screen now**, such as after a monitor was unplugged: Task View opens at its first size on the pointer's screen, as the [saved place](README.md#a-saved-place-reopens-a-window-where-it-was) decides, and nothing shows to the user. The next close saves over it.
+- **Task View's place can't be saved when it closes**: Task View still closes, nothing shows, and its next open uses the previous saved place, or the first size. A Warning in the log says why.
+- **Prevent screen saver failed**: the icon shows the error color, and its tooltip says why, as [Keep awake](keep-awake.md#failure-modes) gives it.
 
 ## Ruled out
 
@@ -630,6 +658,14 @@ The options below were considered and rejected, grouped by decision.
 - Where the matching of "@" words lives:
   - **In Tasks' search, with a function for "@" words that the caller passes**: a Tasks interface change for one caller.
   - **In Rendering, as a function that says whether Markdown mentions an ID**: a search rule in the module that draws text, with no second caller yet.
+- How Task View remembers its size and place:
+  - **Saved also at the end of each move or resize**: a crash would keep the last place, but each drag would write a file while the user works.
+  - **Keeping the split between the sides too**: the file and Task View's code would grow for a part the user didn't ask for.
+- How the status bar shows Prevent screen saver:
+  - **An icon that turns the setting on or off when clicked**: a click by mistake would change a setting that stays, where Configure shows it with its help line.
+  - **The icon in Add's status bar too**: Add is a quick entry window, and the setting doesn't change while it's open.
+  - **A moon, U+E708**: it reads as sleep, the opposite of what the feature does.
+  - **Text, such as "Screen stays on"**: it takes room the update text and a sync error need.
 
 Who shows formatted Markdown, and who opens links, is decided in the [Formatted view](formatted-view.md#ruled-out).
 

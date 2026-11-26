@@ -1,4 +1,5 @@
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.KeepAwake;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.TaskList;
@@ -21,13 +22,13 @@ internal static class TaskWindows
     public static (IAddWindow Add, IViewTasksWindow ViewTasks) Create(ITaskStore tasks, IContacts contacts, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView,
         IDefaultBrowser browser, ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer,
-        ILogger addLogger, ILogger viewLogger)
+        IKeepAwakeStatus keepAwake, string deviceFolder, ILogger addLogger, ILogger viewLogger)
     {
         ArgumentNullException.ThrowIfNull(addLogger);
         ArgumentNullException.ThrowIfNull(viewLogger);
         return (AddWindow.Create(tasks, tasks.TagColors, contacts, Palette.Colors, theme, time, clipboard, imageFiles, files, closeWindowKeys, updates, saveKeys,
                      pointer, addLogger),
          ViewTasksWindow.Create(tasks, tasks.TagColors, tasks.TagOrder, contacts, Palette.Colors, theme, time, clipboard, imageFiles, files,
-                     createWebView, browser, sync, closeWindowKeys, updates, saveKeys, pointer, viewLogger));
+                     createWebView, browser, sync, closeWindowKeys, updates, saveKeys, pointer, keepAwake, deviceFolder, viewLogger));
     }
 }

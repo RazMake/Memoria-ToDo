@@ -18,6 +18,6 @@
     <ProjectReference Include="..\..\..\src\Desktop\Logs\Memoria.ToDo.Desktop.Logs.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\LocalAPI\Memoria.ToDo.Desktop.LocalAPI.csproj" />
     <ProjectReference Include="..\..\..\src\Desktop\MCPServer\Memoria.ToDo.Desktop.MCPServer.csproj" />
-  </ItemGroup>
+        <ProjectReference Include="..\..\..\src\Desktop\KeepAwake\Memoria.ToDo.Desktop.KeepAwake.csproj" />  </ItemGroup>
 
 </Project>

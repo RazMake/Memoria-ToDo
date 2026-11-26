@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -60,6 +61,19 @@ public class NotInstalledTests
 
         Assert.False(app.Updates.AutoUpdate);
         Assert.False(app.Files.FileExists(UpdatesHarness.AutoUpdateFile));
+    }
+
+    [WpfFact]
+    public async Task Check_now_checks_nothing_and_returns_null()
+    {
+        var app = NotInstalled();
+        app.Start();
+
+        var reason = await app.Updates.CheckNowAsync().WaitAsync(TestWait.ForSignal);
+
+        Assert.Null(reason);
+        Assert.Equal(0, app.Install.CheckCount);
+        Assert.Equal(UpdateStage.NotInstalled, app.Updates.State.Stage);
     }
 
     [WpfFact]

@@ -39,14 +39,16 @@ internal sealed class RealViewTasks : IDisposable
         var clone = Path.Combine(_root, "clone");
         Directory.CreateDirectory(clone);
         var files = new FakeFileSystem();
-        var store = TestTaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), Path.Combine(_root, "device"));
+        var device = Path.Combine(_root, "device");
+        var store = TestTaskStore.Create(files, new FakeImageEncoder(), new FakeTimeProvider(), device);
         Tasks = store;
         _rules = store.Synchronization.Files;
         Tasks.UseRepositoryFolder(clone);
         View = ViewTasksWindow.Create(
             Tasks, new FakeTagColors(), store.TagOrder, TestContactStore.Create(files).Contacts, Palette.Colors, new FakeTheme(), new FakeTimeProvider(), new FakeClipboard(), new FakeImageFileChooser(),
             files, () => MakeWebView(clone), new FakeDefaultBrowser(), new FakeSyncService(), new Platform.CloseWindowKeys(),
-            new FakeUpdateStatus(), new Platform.SaveKeys(), new Platform.MousePointer(), Serilog.Core.Logger.None);
+            new FakeUpdateStatus(), new Platform.SaveKeys(), new Platform.MousePointer(),
+            new FakeKeepAwakeStatus(), device, Serilog.Core.Logger.None);
     }
 
     public ITasks Tasks { get; }

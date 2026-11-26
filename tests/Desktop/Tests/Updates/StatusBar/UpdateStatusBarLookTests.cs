@@ -82,7 +82,7 @@ public class UpdateStatusBarLookTests
     [WpfTheory]
     [InlineData(UpdateStage.Available)]
     [InlineData(UpdateStage.Updating)]
-    public void Leaves_5_pixels_between_its_start_element_and_the_update_text(UpdateStage stage)
+    public void Leaves_13_pixels_between_its_start_element_and_the_update_text(UpdateStage stage)
     {
         var start = new Border { Height = 10 };
 
@@ -90,7 +90,7 @@ public class UpdateStatusBarLookTests
 
         var (_, startRight) = Edges(bar, start);
         var (textLeft, _) = Edges(bar, UpdateTextOf(bar));
-        Assert.Equal(5, textLeft - startRight, 0.01);
+        Assert.Equal(13, textLeft - startRight, 0.01);
     }
 
     [WpfTheory]

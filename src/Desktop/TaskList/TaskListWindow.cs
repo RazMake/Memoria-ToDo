@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.ContactList;
 using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.KeepAwake;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Desktop.Updates;
@@ -67,14 +68,14 @@ internal sealed class TaskListWindow : Window
 
     public TaskListWindow(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
         IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files, IDescriptionWebView webView,
-        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer, string? message, Action<string> carry, ILogger logger)
+        IDefaultBrowser browser, ListSync sync, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer, IKeepAwakeStatus keepAwake, string? message, Action<string> carry, ILogger logger)
     {
         _sync = sync;
         _contacts = contacts;
         _filter = new ListFilter(contacts);
         _pointer = pointer;
         _tagOrder = tagOrder;
-        _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync));
+        _statusBar = new UpdateStatusBar(updates, new ListStatusStart(sync, keepAwake));
         _saveKeys = saveKeys;
         _tagColors = tagColors;
         _decision = new LeaveDecision(new CloseDialog(this, logger));

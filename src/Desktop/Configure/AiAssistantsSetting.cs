@@ -4,8 +4,8 @@ using Serilog;
 namespace Memoria.ToDo.Desktop.Configure;
 
 /// <summary>
-/// The AI assistants decision behind the card: whether the switch is on, the status line, the lines to copy, and why a switch or
-/// a copy failed. It shows what the MCP server's status says and passes the user's switch and copies on.
+/// The AI assistants decision behind the row and the Examples dialog: whether the switch is on, the status line, the lines to
+/// copy, and why a switch or a copy failed. It shows what the MCP server's status says and passes the user's switch and copies on.
 /// </summary>
 internal sealed class AiAssistantsSetting
 {
@@ -39,8 +39,11 @@ internal sealed class AiAssistantsSetting
     /// <summary>Whether <see cref="Status"/> is the server's failure, which shows in the error color.</summary>
     public bool StatusIsFailure => _server.State.Failure is not null;
 
-    /// <summary>Why the last switch or copy failed, or null when it succeeded.</summary>
+    /// <summary>Why the last switch failed, or null when it succeeded; the row shows it.</summary>
     public string? Problem { get; private set; }
+
+    /// <summary>Why the last copy failed, or null when it succeeded; the Examples dialog shows it.</summary>
+    public string? CopyProblem { get; private set; }
 
     /// <summary>What each assistant needs to connect, in the server's order.</summary>
     public IReadOnlyList<McpConnection> Connections => _server.Connections;
@@ -60,18 +63,18 @@ internal sealed class AiAssistantsSetting
         }
     }
 
-    /// <summary>Copies the assistant's lines. A failure sets <see cref="Problem"/>.</summary>
+    /// <summary>Copies the assistant's lines. A failure sets <see cref="CopyProblem"/>, not <see cref="Problem"/>.</summary>
     public void Copy(McpConnection connection)
     {
         try
         {
             _actions.CopyText(connection.Text);
-            Problem = null;
+            CopyProblem = null;
         }
         catch (Exception error)
         {
             _logger.Error(error, "Copying the lines for {Assistant} failed", connection.Assistant);
-            Problem = error.Message;
+            CopyProblem = error.Message;
         }
     }
 }

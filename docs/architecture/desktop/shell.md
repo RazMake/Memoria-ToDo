@@ -2,7 +2,7 @@
 
 Status: Decided
 
-Shell is the desktop app's tray icon and everything around it: the four global shortcuts, one running instance, what each start shows, starting and stopping [Updates](updates.md) and the [MCP server](mcp-server.md), and sync status. It opens the [Task editor](task-editor.md), the [Task list](task-list.md), the [Contact list](contact-list.md), and [Configure](configure.md); the [desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists what it needs from later designs.
+Shell is the desktop app's tray icon and everything around it: the four global shortcuts, one running instance, what each start shows, starting and stopping [Updates](updates.md), the [MCP server](mcp-server.md), and [Keep awake](keep-awake.md), and sync status. It opens the [Task editor](task-editor.md), the [Task list](task-list.md), the [Contact list](contact-list.md), and [Configure](configure.md); the [desktop app page](README.md#later-designs-answer-what-these-files-leave-open) lists what it needs from later designs.
 
 ## Behavior
 
@@ -155,7 +155,7 @@ Shell starts the [MCP server](mcp-server.md#it-runs-while-the-app-runs-through-t
 ### Shutdown joins owned work without blocking the dispatcher
 
 [`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) replaces synchronous Stop.
-The first call detaches sync notices, cancels and observes Shell's pending waits and startup navigation, disposes Configure, and releases
+The first call detaches sync notices, cancels and observes Shell's pending waits and startup navigation, disposes Configure, stops [Keep awake](keep-awake.md#public-interface), and releases
 every shortcut and the tray on the UI thread. It then awaits the Local API's stop, then the MCP server's stop, then the shared Sync service's disposal, then Updates' stop, and only then releases the one-instance claim. The user decided that the MCP server stops before Sync, so no assistant's call changes the clone while Sync stops. Proposed by [Updates](updates.md#an-update-downloads-the-version-then-restarts-the-app-into-it): Updates stops after Sync, since Updates' stop starts Velopack's updater when an update ended the app, and the updater waits only 60 seconds for the app to end. This is a decision to confirm. Cleanup attempts every step and retains
 all failures. Repeated calls join the same cleanup; cancelling a caller's wait does not abandon it. The user decided, with the [Local API](../local-api.md#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread): the Local API's stop comes before Sync's disposal.
 
@@ -221,6 +221,14 @@ No module uses Shell. Only the composition root does, through one part:
         ILocalApiLifetime localApi, IMcpServerLifetime mcpServer, IGlobalShortcut shortcut, IOneInstance oneInstance, bool startedAtSignIn,
         ISyncService sync, ILogger logger);
     ```
+    - Proposed, a decision to confirm, now that the user decided [Keep awake](keep-awake.md) is a module of its own: **Create the tray app takes [Keep awake's](keep-awake.md#public-interface) lifetime, `IKeepAwakeLifetime keepAwake`, after `IMcpServerLifetime mcpServer`.** Starting calls its Start on the UI thread right after it starts Updates, once the claim is won, so a second instance that hands over never touches the screen's power request. Keep awake needs nothing from the clone, so it doesn't wait for Sync. Stopping calls its Stop in the UI-thread part of the [cleanup](#shutdown-joins-owned-work-without-blocking-the-dispatcher), before any await, so an update's restart or a slow sync never holds the screen on. Keep awake's Start shows a refused request or an unreadable setting in its state rather than failing, so it never stops the app from starting; a failed Stop is kept with the cleanup's other failures. The internal overload that takes the UI thread gets the same argument in the same place:
+
+      ```csharp
+      public static IAppLifetime Create(ITrayIcon trayIcon, IAddWindow add, IViewTasksWindow viewTasks,
+          IContactsWindow contacts, IConfigureWindow configure, ILogsWindow logs, IUpdateLifetime updates,
+          ILocalApiLifetime localApi, IMcpServerLifetime mcpServer, IKeepAwakeLifetime keepAwake, IGlobalShortcut shortcut,
+          IOneInstance oneInstance, bool startedAtSignIn, ISyncService sync, ILogger logger);
+      ```
 
 Shell publishes three ports. The composition root implements each one, and Shell's unit tests use each one's [shared fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test); the real adapters have integration tests. Shell's former updates port, its one part that downloaded a newer version for the next start, moves to Updates as its [install port](updates.md#velopack-checks-downloads-and-applies-behind-one-port), and its update schedule and the time source it needed move with it, as the user decided.
 

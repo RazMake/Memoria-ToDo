@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using Memoria.ToDo.Desktop.KeepAwake;
 using Memoria.ToDo.Desktop.MCPServer;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Desktop.Updates;
@@ -27,6 +28,7 @@ internal sealed class ConfigureShow : IConfigureWindow
     private readonly IUpdateStatus _updates;
     private readonly AiAssistantsSetting _aiAssistants;
     private readonly IMcpServerStatus _mcpServer;
+    private readonly IKeepAwakeStatus _keepAwake;
     private readonly ILogger _logger;
     private Window? _open;
     private Action? _refreshOpen;
@@ -34,7 +36,8 @@ internal sealed class ConfigureShow : IConfigureWindow
 
     public ConfigureShow(
         IStartWithWindows startWithWindows, ISharedTaskSettings settings, ISyncService sync, ISetupActions setupActions,
-        CloseWindowKeys closeWindowKeys,         ITheme theme, IUpdateStatus updates, IMcpServerStatus mcpServer, SaveKeys saveKeys, ILogger logger)
+        CloseWindowKeys closeWindowKeys, ITheme theme, IUpdateStatus updates, IMcpServerStatus mcpServer, SaveKeys saveKeys,
+        IKeepAwakeStatus keepAwake, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(startWithWindows);
         ArgumentNullException.ThrowIfNull(settings);
@@ -45,10 +48,12 @@ internal sealed class ConfigureShow : IConfigureWindow
         ArgumentNullException.ThrowIfNull(updates);
         ArgumentNullException.ThrowIfNull(mcpServer);
         ArgumentNullException.ThrowIfNull(saveKeys);
+        ArgumentNullException.ThrowIfNull(keepAwake);
         ArgumentNullException.ThrowIfNull(logger);
         _updates = updates;
         _aiAssistants = new AiAssistantsSetting(mcpServer, setupActions, logger);
         _mcpServer = mcpServer;
+        _keepAwake = keepAwake;
         _logger = logger;
         _theme = theme;
         _settings = settings;
@@ -129,15 +134,19 @@ internal sealed class ConfigureShow : IConfigureWindow
     private Window NewWindow(IStartWithWindows startWithWindows, ISyncService sync, ISetupActions setupActions)
     {
         var shortcuts = new ShortcutSection(_addNewTask, _manageTasks, _contacts, _configure, _closeWindow, _save);
-        var application = new ApplicationSection(new UpdateCard(_updates, _logger), shortcuts,
-            new AiAssistantsCard(_aiAssistants, _mcpServer), _theme);
+        var application = new ApplicationSection(new UpdateCard(_updates, _logger), shortcuts, _theme);
+        var behavior = new BehaviorSection(
+            new StartWithWindowsRow(startWithWindows, _logger),
+            new KeepAwakeRow(_keepAwake, _logger),
+            new AiAssistantsRow(_aiAssistants, _mcpServer,
+                owner => ExamplesDialog.Show(owner, _aiAssistants, _closeWindowKeys, _logger)));
         var delay = new DeletionDelayRow(_settings, _logger);
         var ui = new SyncUi(sync, setupActions, _notices.Post, _logger);
         var syncSettings = new SyncSettingsSection(ui, delay, _theme);
         var sections = new Accordion(
             _theme,
             ("Application", application),
-            ("Startup", new StartWithWindowsRow(startWithWindows, _logger)),
+            ("Behavior", behavior),
             ("Sync settings", syncSettings))
         { Margin = new Thickness(24, 24, 24, 24) };
         var window = new Window

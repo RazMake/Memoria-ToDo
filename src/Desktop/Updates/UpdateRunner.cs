@@ -16,6 +16,8 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
     private Task _nightInstall = Task.CompletedTask;
     private (NewerVersion Version, bool Quiet)? _applyOnStop;
     private Task? _stopping;
+    private readonly object _checkLock = new();
+    private Task<string?>? _check;
 
     /// <summary>Reads Auto update and begins the checks without waiting for the first one. Does nothing when the app isn't installed.</summary>
     public void Start(IAppExit exit)
@@ -66,11 +68,11 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
     {
         try
         {
-            await CheckAsync(cancellationToken);
+            await CheckAsync(cancellationToken, BySchedule);
             while (true)
             {
                 await night.WaitForNextNightAsync(cancellationToken);
-                await CheckAsync(cancellationToken);
+                await CheckAsync(cancellationToken, BySchedule);
 
                 // The install waits for windows apart from the checks, so they go on each night; one that waits already installs the latest found.
                 if (_nightInstall.IsCompleted && model.AutoUpdate && model.Stage == UpdateStage.Available)
@@ -135,12 +137,44 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
         }
     }
 
+    /// <summary>
+    /// Checks now, as a scheduled check does, joining one under way. Returns null when it succeeded or when nothing could check,
+    /// and the failure's message when it failed. A stop ends the wait with an <see cref="OperationCanceledException"/>.
+    /// </summary>
+    public Task<string?> CheckNowAsync()
+    {
+        if (_exit is null || model.Stage is not (UpdateStage.NoUpdate or UpdateStage.Available))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        return CheckAsync(_stop.Token, ByCheckForUpdates);
+    }
+
+    private const string ByCheckForUpdates = "Check for updates";
+    private const string BySchedule = "the schedule";
+
+    // One check runs at a time, and a caller that comes meanwhile gets its outcome rather than a second request.
+    private Task<string?> CheckAsync(CancellationToken cancellationToken, string origin)
+    {
+        lock (_checkLock)
+        {
+            if (_check is { IsCompleted: false } running)
+            {
+                logger.Information("A check is under way already, so this call from {Origin} waits for it", origin);
+                return running;
+            }
+
+            return _check = CheckCoreAsync(cancellationToken, origin);
+        }
+    }
+
     // A failed check changes nothing and shows nothing, but is logged. Velopack's check can't be cancelled, so a stop stops waiting for it.
-    private async Task CheckAsync(CancellationToken cancellationToken)
+    private async Task<string?> CheckCoreAsync(CancellationToken cancellationToken, string origin)
     {
         if (model.Stage == UpdateStage.Updating)
         {
-            return;
+            return null;
         }
 
         NewerVersion? found;
@@ -150,20 +184,21 @@ internal sealed class UpdateRunner(IAppInstall install, UpdateModel model, Night
         }
         catch (Exception e) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.Warning(e, "The check for a newer version failed");
-            return;
+            logger.Warning(e, "The check for a newer version, started by {Origin}, failed", origin);
+            return e.Message;
         }
 
         if (found is null)
         {
-            logger.Information("The check found no newer version");
+            logger.Information("The check, started by {Origin}, found no newer version", origin);
         }
         else
         {
-            logger.Information("The check found version {Version}", found.Version);
+            logger.Information("The check, started by {Origin}, found version {Version}", origin, found.Version);
         }
 
         model.CheckFound(found);
+        return null;
     }
 
     /// <returns>Whether the app was ended, so the updater starts at the stop.</returns>

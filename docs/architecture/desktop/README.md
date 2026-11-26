@@ -1,8 +1,8 @@
 # How the desktop app is built
 
-The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, Configure, and Logs. This page lists its nine modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
+The desktop app is a Windows Presentation Foundation (WPF) app that lives in the notification area (the tray) and opens Add new Task, Task View, Contacts, Configure, and Logs. This page lists its ten modules, each with one design file in this folder, and the other designs they rely on. It also says how the app starts and the steps it's built in.
 
-## Nine modules make up the desktop app
+## Ten modules make up the desktop app
 
 Each module is a project of its own, and the [module map](../modules.md#module-map) says which modules each may use. The table lists them in the order a user meets them:
 
@@ -10,13 +10,14 @@ Each module is a project of its own, and the [module map](../modules.md#module-m
 | --- | --- |
 | [Shell](shell.md) | The tray icon and its menu, the four global shortcuts, one running instance, what each start shows, the installer, and how sync status shows |
 | [Task editor](task-editor.md) | The Add window: its fields, keys, draft, and tags. Task View edits a task's title or description with the same fields. |
-| [Task list](task-list.md) | Task View: tasks grouped by tag, in groups that collapse, beside the selected task's description, editing a description or title in place, search, resolving, deleting, and the Sync button and the version in the status bar |
+| [Task list](task-list.md) | Task View: tasks grouped by tag, in groups that collapse, beside the selected task's description, editing a description or title in place, search, resolving, deleting, its saved size and place, and the Sync button, the Prevent screen saver icon, and the version in the status bar |
 | [Contact list](contact-list.md) | The Contacts window: contacts grouped by file beside the selected contact's details, with search, editing in place, adding, deleting, and reordering groups |
 | [Formatted view](formatted-view.md) | A task's title and description as a reader sees them, with no Markdown characters, the web view the description shows in, and which links open in the default browser |
-| [Configure](configure.md) | The settings window: the four global shortcuts, the Close window and Save shortcuts, starting with Windows, AI assistant access, the shared deletion delay, and sync status details |
-| [Updates](updates.md) | When the app checks for a new version, the status bar Add and Task View share, What is new, Auto update, and how an update restarts the app |
+| [Configure](configure.md) | The settings window: the four global shortcuts, the Close window and Save shortcuts, starting with Windows, Prevent screen saver, AI assistant access and its connection examples, the shared deletion delay, and sync status details |
+| [Updates](updates.md) | When the app checks for a new version, Check for updates, the status bar Add and Task View share, What is new, Auto update, and how an update restarts the app |
 | [Logs](logs.md) | The window the tray menu opens to read the app's [log](../logging.md): entries newest first, with filters by time, severity, and component, and a quick search; and the one filter the window and the MCP server's log tool share |
 | [MCP server](mcp-server.md) | What an AI assistant on this PC may do through the Model Context Protocol while the app runs, how it connects through a named pipe and a bridge, and who may connect |
+| [Keep awake](keep-awake.md) | Prevent screen saver: keeping the screen on while the app runs, pausing while the PC is locked, and the state the status bar shows. Proposed, a decision to confirm. |
 | [Local API](../local-api.md) | The gRPC server, with no window, that lets your own programs on this PC reach tasks, contacts, sync, and shared settings over a named pipe only your account opens. Its design file sits beside the shared modules' pages, with the [contract](../local-api-contract.md) its clients share. |
 
 The composition root creates the Local API with the task store, Contacts, Sync, its pipe name, and its logger, and passes its lifetime to Shell, which [starts and stops it](shell.md#public-interface) as it does Updates.
@@ -357,6 +358,52 @@ Task View and Configure close when the user closes them, and WPF can't show a cl
 - **The Task editor doesn't use it.** Add is made when the app starts, so it opens at once, and closing it only hides it, as the [Task editor](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) proposes.
 - **The modules use the class itself, not an interface**, as they use Show on the pointer's screen. It has one implementation, and no test needs a fake of it, so a port would add an interface for nothing ([patterns](../overview.md#each-pattern-serves-one-requirement)).
 - **Its tests are the platform's UX tests**, each with a plain test window. The Task list's and Configure's own UX tests stay as they are, since what their Show does doesn't change.
+
+### A saved place reopens a window where it was
+
+The user asked that Task View remember its size and position between sessions, on this device only. Remembering a window's place is window code any module could need, beside [Single window](#a-closed-window-is-made-again-on-the-next-show), so it has one home in the platform, and the [Task list](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) only names its file. Proposed, each a decision to confirm:
+
+- **A fifth part of the platform's public interface, Saved window placement, keeps one window's size and place in one file**, and Single window gains a way to use it. Without it, Single window works as before:
+
+  ```csharp
+  namespace Memoria.ToDo.Desktop.Platform;
+
+  /// One window's size, place, and maximized state, kept in one file on this device between runs.
+  public sealed class SavedWindowPlacement
+  {
+      /// Reads nothing yet. path is the file's full path. name is how the log calls it, such as
+      /// "Task View's place". logger is the caller's own.
+      /// Throws ArgumentNullException for a null argument, and ArgumentException when path isn't
+      /// fully qualified or name is empty.
+      public SavedWindowPlacement(IFileSystem files, string path, string name, Serilog.ILogger logger);
+  }
+
+  public sealed class SingleWindow
+  {
+      /// As the constructor above, and each window it makes opens at the saved place when that place
+      /// is on a screen, otherwise as ShowOnPointerScreen places it. The window's place is saved each
+      /// time it closes. Throws ArgumentNullException when an argument is null.
+      public SingleWindow(System.Func<System.Windows.Window> createWindow, SavedWindowPlacement placement,
+          Serilog.ILogger logger);
+  }
+  ```
+
+- **The place is read each time Single window makes a window**, and only then. A window brought forward keeps where it is, as before.
+- **A saved place is used only when it's on a screen now**, so a window never opens on a monitor that was unplugged, or out of reach. The user decided that a place counts as on a screen when at least half of the window, at the size it opens at, lies in one screen's work area. Otherwise the window opens as Show on the pointer's screen places it, at the size its module gives it.
+- **The window opens at the saved size, but never smaller than its module's minimum, and never larger than its screen's work area.**
+- **A window saved maximized reopens maximized, on the screen it was on**, and keeps its size before it was maximized, so restoring it brings that size back. A window closed while minimized saves the state it had before it was minimized.
+- **It places the window before it's shown, while the window is still cloaked**, so it never shows at one place and jumps to another, and never shows a white frame, as [above](#windows-open-on-the-screen-with-the-mouse-pointer) says. It uses Windows' own saved-place functions, [GetWindowPlacement](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowplacement) and [SetWindowPlacement](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowplacement), which keep the size before maximizing.
+- **The file is a small versioned JSON file in the caller's folder**, the user decided, such as `{"version":1,"left":120,"top":80,"width":1100,"height":720,"maximized":false}`. It's written through the platform's [shared file rules](../modules.md#stores-share-one-json-style-and-one-set-of-file-rules), so a file from a newer version counts as unreadable, and a later version can add a field. It holds the window's left, top, width, height, and whether it's maximized, in the screen pixels Windows gives.
+- **A missing file means the window has no saved place yet.** A file that can't be read, has a newer version, or holds a place too small or out of range counts as missing, and the next close writes it again. Proposed, a decision to confirm: too small is a width or height of zero or less, since opening raises a smaller size to the window's minimum anyway, and out of range is a value that doesn't fit Windows' 32-bit pixel numbers.
+- **Saving never stops a window from closing.** When the file can't be written, the window still closes, and its next open uses what the file held before.
+- **It logs under its caller's logger**, as [Logging's table](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) lists for the platform: at Debug, the place it chose and why, and each place it saved; at Warning, a file it can't read or write, naming the file and the reason.
+- **Its tests are the platform's unit tests for reading and choosing a place**, with the shared file system fake and screens given as plain rectangles, **and UX tests for placing a real window**, each with a plain test window.
+- **Ruled out.** Counting a place as on a screen when only its title bar touches a screen's work area: a title bar showing a few pixels is hard to grab. Always using the saved place and letting Windows move it: Windows leaves a window that's mostly off the screens where it is. Storing Windows' own saved-place record whole as text: its layout is Windows', and it can't be checked field by field. One line of plain numbers, like the on-or-off setting file: no version, so a later field can't be added safely.
+
+Not confirmed by a run:
+
+- A place saved on a screen at one scale, such as 150%, reopening on a screen whose scale changed meanwhile.
+- A window open when the user signs out of Windows saving its place, since Windows may end the app before the window closes.
 
 ### Window modules read keys through the platform
 
@@ -936,8 +983,9 @@ The table lists each step, what it builds, and its status:
 | 17 | Application logs | [Serilog's logger](../logging.md#every-module-logs-through-serilogs-logger) in every module's create method, with every module logging its [operations and failures](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens), including each skipped file by path; the composition root's [log files](../logging.md#the-desktop-app-keeps-two-weeks-of-logs-at-most-30-mb) and [background writer](../logging.md#a-slow-disk-never-holds-up-the-app), with [secrets kept out](../logging.md#passwords-and-keys-never-reach-the-log); the platform's [logging of errors no module handles](../logging.md#errors-no-module-handles-are-logged-before-theyre-shown), after which the app [keeps running](#the-platform-runs-the-app-and-the-composition-root-builds-it) on a UI-thread error; and the [Logs window](logs.md) with Shell's Logs tray item. | Implemented |
 | 18 | Contact cards and the "@" list at the cursor | The Task editor's ["@" list in a popup at the "@"](task-editor.md#typing-an-at-sign-mentions-a-contact), with its template header and "**Full Name** (_alias_)" rows, and its [alias list for a plain text box](task-editor.md#a-plain-text-box-can-offer-contacts-by-alias); Task View's [search by "@" alias](task-list.md#search-narrows-the-list); the Contact list's [contact card](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details), with Contacts' `ContactOf`; the platform's [hover card](#a-hover-card-shows-while-the-pointer-rests-on-a-part) and search band box; Rendering's [mention numbers](../rendering.md#a-mention-shows-on-a-colored-background); and the cards on [chips](task-editor.md#resting-the-pointer-on-a-chip-shows-the-contacts-card), [titles and descriptions](task-list.md#resting-the-pointer-on-a-mention-shows-the-contacts-card), through the [Formatted view](formatted-view.md#a-mention-shows-a-card-its-user-makes). | Not scheduled |
 | 19 | Local API | The [Local API](../local-api.md) module, the [contract](../local-api-contract.md) and both clients, Tasks' [direct task changes](../tasks.md#direct-task-changes-are-a-capability-of-their-own), Shell [starting and stopping it](shell.md#public-interface), the Api part's table in the [module map](../modules.md#module-map) with the architecture test's fourth part, and the release files. Its cost is measured first, against the [limits](../local-api.md#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread) it sets. | Not scheduled |
-| 20 | MCP server | After the [SDK proof](mcp-server.md#it-uses-the-official-c-sdk-which-a-proof-checked): the Logs module's [shared log filter](logs.md#one-filter-decides-which-entries-match), with the Logs window moved onto it, built first; the [MCP server](mcp-server.md) module, with its tools, pipe, switch, and logging, adding tasks and images through Tasks' [direct task changes](../tasks.md#direct-task-changes-are-a-capability-of-their-own), which row 19 builds first; the platform's [Start with Windows](#start-with-windows-is-a-port-the-platform-publishes), moved from Configure; Shell's [start and stop](shell.md#the-mcp-server-starts-once-the-clone-has-loaded) of the server; Configure's [AI assistants card](configure.md#the-ai-assistants-card-lets-assistants-in-and-shows-how-to-connect-them) and its copy action; the composition root's [pipe name, bridge, and wiring](#the-composition-root-names-the-mcp-servers-pipe-and-runs-its-bridge); and the user page, `docs/user/connect-an-ai-assistant.md`, with the README's link to it | Not scheduled |
+| 20 | MCP server | After the [SDK proof](mcp-server.md#it-uses-the-official-c-sdk-which-a-proof-checked): the Logs module's [shared log filter](logs.md#one-filter-decides-which-entries-match), with the Logs window moved onto it, built first; the [MCP server](mcp-server.md) module, with its tools, pipe, switch, and logging, adding tasks and images through Tasks' [direct task changes](../tasks.md#direct-task-changes-are-a-capability-of-their-own), which row 19 builds first; the platform's [Start with Windows](#start-with-windows-is-a-port-the-platform-publishes), moved from Configure; Shell's [start and stop](shell.md#the-mcp-server-starts-once-the-clone-has-loaded) of the server; Configure's [AI assistants card](configure.md#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them) and its copy action; the composition root's [pipe name, bridge, and wiring](#the-composition-root-names-the-mcp-servers-pipe-and-runs-its-bridge); and the user page, `docs/user/connect-an-ai-assistant.md`, with the README's link to it | Not scheduled |
 | 21 | Several ordered tags per task | Tasks' [ordered tag list](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), with its group tag, its [normalized tags](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) and `TagName.Normalize`, its limit of 15 tags in `Add`, saving an edit, and direct task changes, `tags.json` read by normalized tags, and the all-of tag filter in `Search`; the API contract's [tags fields](../local-api-contract.md#a-tasks-tags-travel-as-a-list-beside-the-older-one-tag-field), with the Node.js client regenerated; the Task editor's [ordered pills, their sizes, the drag that reorders them, Alt+Left and Alt+Right, the add pill turned off at 15, and the tag box rewritten by Tasks' rule](task-editor.md#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them); the Task list's [grouping by the first tag and its Undo words](task-list.md#tags-show-as-colored-badges-and-change-without-edit); the Local API's tags; and the MCP server's [tags input](mcp-server.md#adding-and-editing-never-touch-the-users-open-work). | Not scheduled |
+| 22 | Settings, status bar, and Prevent screen saver | Updates' [Check for updates](updates.md#check-for-updates-runs-a-check-when-you-ask), the wider [gap before the update text](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar), and What is new's [scrolling notes and Update Now](updates.md#what-is-new-shows-each-newer-releases-notes); the [Keep awake](keep-awake.md) module with the composition root's power request and lock adapters, and Shell [starting and stopping it](shell.md#public-interface); Configure's [Check for updates button](configure.md#check-for-updates-checks-now-and-says-what-it-found), [Behavior section](configure.md#the-behavior-section-holds-the-apps-switches) with Prevent screen saver, and the [AI assistants row and Examples dialog](configure.md#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them); the MCP server's [GitHub Copilot connection lines](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device); the platform's [saved place](#a-saved-place-reopens-a-window-where-it-was), and Task View's [saved size and place](task-list.md#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) and [Prevent screen saver icon](task-list.md#a-status-bar-holds-the-sync-button-and-the-version); and the user page, `docs/user/connect-an-ai-assistant.md` | Next |
 
 The remaining work follows this order:
 

@@ -29,18 +29,29 @@ Updates checks once when the app starts, then each night at 3:00 by the PC's loc
 
 - **One schedule replaces the check every 24 hours.** At 3:00 a PC that runs all night checks, and a PC that's off at night checks when the app starts at sign-in. Time zones and daylight saving time move the run with the local clock, so it stays at 3:00. Changing the PC's time zone while the app runs moves the next run to 3:00 in the new zone, within an hour.
 - **A night run missed while the PC slept runs soon after it wakes.** Updates looks at the clock at least once an hour while the PC is awake, as the old schedule did, since on Windows 8 and later a timed wait doesn't count time asleep ([WaitForSingleObject](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject)). Changing the PC's clock moves the next run as much.
-- **A failed check changes nothing and shows nothing.** The state stays as it was, and the next check tries again.
+- **A failed check that runs on its schedule changes nothing and shows nothing.** The state stays as it was, and the next check tries again. A check you start with [Check for updates](#check-for-updates-runs-a-check-when-you-ask) says why it failed.
 - **A check doesn't run while an update is under way**, and a check that was already running when the update started doesn't change the version it installs.
 - **A check that finds no newer version after one was found returns to No update.** That happens when a release is deleted.
 - **The first check does no slow work before its first wait**, since Shell starts Updates on the UI thread while the app starts.
 - **Stopping the app also stops a check or a download under way.** Velopack's check can't be cancelled, so Updates stops waiting for it and lets its request end in the background; a download is cancelled.
+
+### Check for updates runs a check when you ask
+
+The user asked for a Check for updates button on Configure's [Update card](configure.md#check-for-updates-checks-now-and-says-what-it-found), which shows a failed check's error in the error color. Updates runs the check; the card shows what it found. The user decided that the check returns its outcome only to the card that started it, through `CheckNowAsync`, as the [public interface](#public-interface) says. The rest are proposed, each a decision to confirm:
+
+- **It's the same check as the scheduled one**: it looks and never downloads, and a newer version turns the state to Available, which every status bar and card shows.
+- **It doesn't move the schedule.** The night check still runs at 3:00.
+- **A click while a check is already running waits for that check**, rather than starting a second request to GitHub, and reports its outcome.
+- **It does nothing while updating, or in a copy run from a build folder**, and reports no failure, since the card doesn't offer it then.
+- **When it fails, Updates gives the card the reason** in words a user can read, such as Velopack's message for no network, and logs the failure at Warning, as for a scheduled check. The state doesn't change. The card shows the reason and logs nothing, so the failure is logged once, where its journey ends, as [Logging](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) says.
+- **Stopping the app ends the wait for a check you started** as it does for any check; the card is gone by then.
 
 ### Add and Task View show an update in a shared status bar
 
 Add and Task View show the same status bar along their bottom edge. Updates owns it, so the two windows share one component. Task View puts its [Sync button](task-list.md#task-view-syncs-when-it-opens-and-on-its-sync-button) at the bar's start; Add has no Sync button. The bar's start takes the width the update text leaves, so Task View's [version](task-list.md#a-status-bar-holds-the-sync-button-and-the-version) can sit at its right, just before the update text.
 
 - **While a version is available, the bar's end says "Update available: 2.2.0"**, with "Update available" in bold and the whole text in the theme's caution color, a yellow in the dark theme ([Fluent theme colors](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/Resources/Theme/Dark.xaml)). The text is a button: a click, or Enter or Space after Tab reaches it, opens [What is new](#what-is-new-shows-each-newer-releases-notes) over the bar's window, the user decided. It doesn't start the update; Update Now and the night run do, as [below](#an-update-downloads-the-version-then-restarts-the-app-into-it) says. It shows the hand pointer, as [every button in the app](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) does.
-- **A small gap separates the update text from what comes before it**, so it never touches Task View's version. The user decided the gap is 5 device-independent pixels. Proposed: the bar puts the gap on the update text's own left side, so Add and Task View get it from the one component, and Task View's version keeps its margins. This is a decision to confirm.
+- **A gap separates the update text from what comes before it**, so it never touches Task View's version. The user first decided the gap is 5 device-independent pixels, then asked for 8 more, so it's 13. The user decided the bar puts the gap on the update text's own left side, so Add and Task View get it from the one component, and Task View's version keeps its margins.
 - **While updating, it says "Updating to 2.2.0"**, with the version in bold, in the theme's secondary text color, so it reads as muted, and it's no longer a button.
 - **Otherwise the update text is gone.** Proposed: Add's bar then hides, so Add looks as it does today; Task View's bar stays for its Sync button. This is a decision to confirm.
 - **The bar follows the state as it changes**, while the window is open.
@@ -55,7 +66,7 @@ Proposed: the bar runs along the windows' bottom edge, as a status bar does, so 
 
 ### An update downloads the version, then restarts the app into it
 
-Update Now on the [Update card](configure.md#the-update-card-leads-the-application-section) and the [night run](#auto-update-updates-each-night-once-no-window-is-open) start the same update. It does nothing unless a version is available. In order, it:
+Update Now on the [Update card](configure.md#the-update-card-leads-the-application-section), Update Now in [What is new](#what-is-new-shows-each-newer-releases-notes), and the [night run](#auto-update-updates-each-night-once-no-window-is-open) start the same update. It does nothing unless a version is available. In order, it:
 
 1. turns the state to Updating, so the status bar and the card show it;
 2. downloads the version, in the background, while the app keeps working;
@@ -73,7 +84,7 @@ Proposed, each a decision to confirm:
 
 ### Auto update updates each night, once no window is open
 
-Auto update is a check box on the [Update card](configure.md#the-update-card-leads-the-application-section). While it's on, each night run that finds a newer version starts the update by itself, and the card hides Update Now.
+Auto update is a check box on the [Update card](configure.md#the-update-card-leads-the-application-section). While it's on, each night run that finds a newer version starts the update by itself. Update Now still shows, so you can update sooner.
 
 Proposed, each a decision to confirm:
 
@@ -83,7 +94,7 @@ Proposed, each a decision to confirm:
   - **A window opened during the night run's download holds the restart** until every window is closed again; the state stays Updating meanwhile.
   - **Turning Auto update off cancels a night run that's still waiting** for windows to close; one already downloading goes on, as an update you started would.
   - **A night run that's waiting doesn't stop the nightly checks**, so a newer version found meanwhile replaces the one it waits to install.
-- **Turning Auto update on doesn't start an update.** A version already available waits for the night run. While Auto update is on, the card hides Update Now, so turn it off to update sooner.
+- **Turning Auto update on doesn't start an update.** A version already available waits for the night run, unless you click Update Now. The user decided that Update Now shows whenever a version is available, Auto update on or off, on the card and in What is new.
 - **A failed night update tries again the next night.**
 
 ### What is new shows each newer release's notes
@@ -99,6 +110,14 @@ Proposed, each a decision to confirm:
 - **A release without notes, such as one published by hand, says "No notes for this version."** under its heading, rather than leaving a gap.
 - **The dialog is modal, owned by the window it opens from**, Configure, Add, or Task View, the user decided, and centered on it, following the theme, and titled "What is new". It opens through the platform's [Modal dialog](README.md#windows-open-on-the-screen-with-the-mouse-pointer), so it never shows a white frame first. A Close button, Esc, and the [Close window shortcut](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) close it.
 - **The card's button shows while a version is available or updating.** Otherwise there's nothing new to show. The status bar opens it only while a version is available, since "Updating to" isn't a button.
+
+The user asked for a scrollbar on the notes, and for an Update Now button to the left of Close. The user decided that Update Now shows whenever a version is available and that a click closes the dialog before the update starts. The rest are proposed, each a decision to confirm:
+
+- **The notes scroll inside the dialog, with a vertical scrollbar that shows only when they're taller than it.** The Formatted view sizes itself to its page's full height, as [Formatted view](formatted-view.md#public-interface) says, so the dialog puts it in a scrolling area; today long notes are cut off at the dialog's bottom. The buttons stay in view below the scrolling area. The mouse wheel scrolls the notes, and so do the arrow and page keys once the notes have the focus.
+- **The buttons sit at the dialog's bottom right: Update Now, then Close.** Close stays the default for Esc. Neither is the default for Enter, so Enter never starts an update by accident.
+- **Update Now shows while a version is available**, as on the card, Auto update on or off. While updating, it shows turned off, as on the card. The dialog follows the state while it's open, so a night run or the card that starts an update meanwhile turns it off.
+- **A click on Update Now closes the dialog, then starts the [update](#an-update-downloads-the-version-then-restarts-the-app-into-it)**, so the update's request to close Task View never meets an open dialog Task View owns.
+- **In a copy run from a build folder the dialog never opens**, since nothing is ever available there.
 
 ### A copy run from a build folder shows its version and doesn't update
 
@@ -174,6 +193,12 @@ public interface IUpdateStatus
     /// Starts an update to the available version. Does nothing unless State.Stage is Available.
     void UpdateNow();
 
+    /// Checks for a newer version now, as a scheduled check does, and returns when it ends: null when it
+    /// succeeded, whatever it found, or the reason it failed, in words a user can read. Joins a check already
+    /// under way. Returns null at once, checking nothing, unless State.Stage is NoUpdate or Available.
+    /// Logs a failure at Warning and never throws for one.
+    Task<string?> CheckNowAsync();
+
     /// Opens What is new, modal and owned by the window. Does nothing unless a version is available or updating.
     void ShowWhatIsNew(Window owner);
 }
@@ -228,7 +253,8 @@ The time source is .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotne
 
 ## Failure modes
 
-- **A check fails**, such as when the PC is offline: nothing changes and nothing shows, and the next check tries again.
+- **A check fails**, such as when the PC is offline: nothing changes, and the next check tries again. A scheduled check shows nothing. A check you started with Check for updates gives Configure's Update card the reason, which it shows in the error color. Both log a Warning.
+- **Update Now in What is new is clicked as a night run starts the same update**: the second start does nothing, since an update starts only while a version is available, and the dialog has already closed.
 - **A download fails**: the state returns to Available, the update card says "The update to 2.2.0 failed:" followed by the reason, and the status bar shows "Update available" again. The night run tries again the next night.
 - **You cancel Task View's prompt, or Save doesn't save**: the state returns to Available with no message, since you chose it.
 - **Velopack's updater can't start**: the app still ends, as Exit does, and the error shows as any failed stop does, through the [platform](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it). You start the app again, and its next check finds the version again.
@@ -246,7 +272,7 @@ The time source is .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotne
   - **Download it in the background and apply it at the next start, as before**: the app would update with Auto update off.
   - **Download it in the background, and only apply it when you agree**: Update Now would be faster, but every PC would download versions it may never install.
 - What the status bar's "Update available" text does:
-  - **A click starts the update**: you chose What is new, so you read what changed first and update from Configure.
+  - **A click starts the update**: you chose What is new, so you read what changed first and update from its Update Now or Configure.
 - How an update ends the app:
   - **Velopack's ApplyUpdatesAndRestart**: it ends the process at once, so sync would stop without its cleanup.
   - **Apply at the next exit or start, without a restart**: "Updating to" would show until then.
@@ -264,3 +290,15 @@ The time source is .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotne
 - Where the release notes come from:
   - **Notes written from the commit subjects since the previous tag**: subjects such as "Removed temporary code" aren't written for users, and include merge commits. You chose a changelog.
   - **GitHub's generated release notes, read from each release**: they list pull requests, which this repository doesn't use, and the app would make one more request to GitHub for each release, against its limit of 60 an hour without a token ([rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)).
+- How a check you start reports its outcome:
+  - **"Checking" and "check failure" fields in the shared state, with a plain `void CheckNow()`**: every viewer would see a scheduled check's failure too, against "a scheduled check shows nothing".
+  - **`Task CheckNowAsync()` that throws when the check fails**: Updates and Configure would both see the failure, so logging it once is easier to break.
+- Whether Update Now in What is new closes the dialog:
+  - **The dialog stays open and shows "Updating to" until the app restarts**: it must close itself when the update reaches Task View, which owns it.
+  - **The dialog stays open only for the download, then closes**: two ways to close, and more to test.
+- Whether Update Now shows while Auto update is on:
+  - **Hide it on the card and in the dialog**: the user couldn't update sooner without turning Auto update off, and the rule would need a new field in the shared state.
+  - **Hide it on the card only**: the card and the dialog would disagree.
+- Which gap grows by 8 pixels:
+  - **The gap before Task View's version, from 8 to 16**: it moves the version away from the Sync button's failure line, not from the update text.
+  - **Both gaps**: moves the version away from what comes before it, which the user didn't ask for.

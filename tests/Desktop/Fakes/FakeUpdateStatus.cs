@@ -60,6 +60,25 @@ public sealed class FakeUpdateStatus : IUpdateStatus
     /// <inheritdoc />
     public void UpdateNow() => UpdateNowCount++;
 
+    /// <summary>How many times <see cref="CheckNowAsync"/> was called.</summary>
+    public int CheckNowCount { get; private set; }
+
+    /// <summary>What <see cref="CheckNowAsync"/> returns: null, as for a check that succeeded, or the reason a check failed.</summary>
+    public string? CheckNowResult { get; set; }
+
+    /// <summary>
+    /// When set, <see cref="CheckNowAsync"/> returns this source's task instead of finishing at once, so a test sees the card while
+    /// a check runs, then finishes the check with its outcome.
+    /// </summary>
+    public TaskCompletionSource<string?>? CheckNowHold { get; set; }
+
+    /// <inheritdoc />
+    public Task<string?> CheckNowAsync()
+    {
+        CheckNowCount++;
+        return CheckNowHold?.Task ?? Task.FromResult(CheckNowResult);
+    }
+
     /// <inheritdoc />
     public void ShowWhatIsNew(Window owner) => whatIsNewOwners.Add(owner);
 }

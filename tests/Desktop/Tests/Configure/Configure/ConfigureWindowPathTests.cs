@@ -9,7 +9,7 @@ using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
 using Xunit;
 
-namespace Memoria.ToDo.Desktop.Configure.Tests;
+namespace Memoria.ToDo.Desktop.Configure.Tests.Configure;
 
 /// <summary>
 /// The Configure screen's first paths: opening the window and reading its Application section, moving between sections,
@@ -21,10 +21,9 @@ namespace Memoria.ToDo.Desktop.Configure.Tests;
 public class ConfigureWindowPathTests
 {
     [WpfFact]
-    public void Opening_Configure_shows_one_fixed_size_window_with_the_Application_section_its_six_shortcut_rows_and_the_AI_assistants_card()
+    public void Opening_Configure_shows_one_fixed_size_window_with_the_Application_section_leading_with_the_Update_card_and_its_six_shortcut_rows()
     {
         using var screen = new ConfigureScreen();
-        screen.McpServer.Connections = [new("VS Code", "vs code lines"), new("Codex", "codex lines")];
         Assert.False(screen.IsShowing);
 
         screen.Open();
@@ -34,7 +33,7 @@ public class ConfigureWindowPathTests
         Assert.Same(window, screen.Window);
         Assert.True(window.IsActive);
         Assert.Equal(ResizeMode.NoResize, window.ResizeMode);
-        Assert.Equal(["Application", "Startup", "Sync settings"], screen.Titles.Select(title => title.Content as string ?? OpenWindows.TextOf((TextBlock)title.Content)));
+        Assert.Equal(["Application", "Behavior", "Sync settings"], screen.Titles.Select(title => title.Content as string ?? OpenWindows.TextOf((TextBlock)title.Content)));
         Assert.Equal(["Application"], screen.OpenSections);
         Assert.True(screen.TextTop("Update") < screen.TextTop("Shortcuts"));
         Assert.Contains("Click a box, then press the new shortcut. Esc keeps the current one:", screen.Texts);
@@ -50,17 +49,6 @@ public class ConfigureWindowPathTests
             new[] { screen.AddMessage, screen.ManageMessage, screen.ContactsMessage, screen.ConfigureMessage, screen.CloseMessage, screen.SaveMessage });
         Assert.Equal("Opens Contacts from any app.", OpenWindows.TextOf(ConfigureScreen.DescriptionUnder(screen.ContactsField)));
 
-        // The AI assistants card is the third card, below Shortcuts and above the Startup title.
-        Assert.True(screen.TextTop("Shortcuts") < screen.TextTop("AI assistants"));
-        Assert.True(screen.TextTop("AI assistants") < screen.Title("Startup").TranslatePoint(new Point(0, 0), window).Y);
-        Assert.Contains("Running. AI assistants on this PC can use Memoria-ToDo.", screen.AiTexts);
-        Assert.True(screen.AiBox.IsChecked);
-        Assert.Equal(2, screen.AiCopyButtons.Count);
-        screen.CopyAi(1);
-        Assert.Equal(["codex lines"], screen.SetupActions.CopiedTexts);
-        screen.SwitchAi();
-        Assert.Equal([false], screen.McpServer.SetOnCalls);
-        Assert.Contains("Off. AI assistants can't reach Memoria-ToDo.", screen.AiTexts);
         screen.Log.Events.AssertNoProblems();
     }
 
@@ -71,15 +59,15 @@ public class ConfigureWindowPathTests
         screen.Open();
         var size = screen.WindowSize;
 
-        screen.ClickTitle("Startup");
-        Assert.Equal(["Startup"], screen.OpenSections);
-        screen.ClickTitle("Startup");
-        Assert.Equal(["Startup"], screen.OpenSections);
+        screen.ClickTitle("Behavior");
+        Assert.Equal(["Behavior"], screen.OpenSections);
+        screen.ClickTitle("Behavior");
+        Assert.Equal(["Behavior"], screen.OpenSections);
         screen.ClickTitle("Sync settings");
         Assert.Equal(["Sync settings"], screen.OpenSections);
         Assert.Equal(size, screen.WindowSize);
 
-        var startup = screen.Title("Startup");
+        var startup = screen.Title("Behavior");
         ConfigureScreen.Focus(screen.Title("Application"));
         for (var steps = 0; steps < 10 && !startup.IsKeyboardFocused; steps++)
         {
@@ -88,7 +76,7 @@ public class ConfigureWindowPathTests
 
         Assert.True(startup.IsKeyboardFocused);
         SimulatedKey.Chord(startup, Key.Enter);
-        Assert.Equal(["Startup"], screen.OpenSections);
+        Assert.Equal(["Behavior"], screen.OpenSections);
 
         screen.Theme.Switch(isDark: true);
         Assert.All(ConfigureScreen.SectionHeadings, heading => Assert.Equal(HeadingColor(true), TitleColor(screen, heading)));
@@ -102,7 +90,7 @@ public class ConfigureWindowPathTests
     }
 
     [WpfFact]
-    public void The_Update_card_follows_an_update_from_available_to_updating_to_failed_and_Auto_update_hides_Update_Now()
+    public void The_Update_card_follows_an_update_from_available_to_updating_to_failed_and_Check_for_updates_reports_what_it_found()
     {
         using var screen = new ConfigureScreen();
         screen.Open();
@@ -111,12 +99,22 @@ public class ConfigureWindowPathTests
         Assert.Equal(new[] { "Current version: 2.1.0" }, screen.CardTexts.Take(1));
         Assert.False(screen.CardShowsButton("What is new"));
         Assert.False(screen.CardShowsButton("Update Now"));
+        Assert.True(screen.CardShowsButton("Check for updates"));
+
+        OpenWindows.Click(screen.CardButton("Check for updates")!);
+        Assert.Equal(1, screen.Updates.CheckNowCount);
+        Assert.Contains("You have the latest version.", screen.CardTexts);
+        screen.Updates.CheckNowResult = "No network.";
+        OpenWindows.Click(screen.CardButton("Check for updates")!);
+        Assert.Contains("The check for updates failed: No network.", screen.CardTexts);
+        Assert.DoesNotContain("You have the latest version.", screen.CardTexts);
 
         screen.PublishUpdate(UpdateStage.Available, "2.2.0");
 
         Assert.Equal("2.2.0", ConfigureScreen.BoldPart(screen.CardBlock("Available new version")));
         Assert.True(screen.CardShowsButton("What is new"));
         Assert.True(screen.CardShowsButton("Update Now"));
+        Assert.True(screen.CardShowsButton("Check for updates"));
         Assert.Equal(((SolidColorBrush)screen.Window.FindResource("SystemFillColorCautionBackgroundBrush")).Color, screen.CardBackground);
 
         OpenWindows.Click(screen.CardButton("What is new")!);
@@ -126,6 +124,7 @@ public class ConfigureWindowPathTests
 
         screen.PublishUpdate(UpdateStage.Updating, "2.2.0");
         Assert.False(screen.CardButton("Update Now")!.IsEnabled);
+        Assert.False(screen.CardButton("Check for updates")!.IsEnabled);
         Assert.False(screen.AutoUpdateBox.IsEnabled);
         Assert.Contains("Updating to: 2.2.0", screen.CardTexts);
 
@@ -138,7 +137,7 @@ public class ConfigureWindowPathTests
 
         Assert.Equal([true], screen.Updates.SetAutoUpdateCalls);
         Assert.True(screen.CardShowsButton("What is new"));
-        Assert.False(screen.CardShowsButton("Update Now"));
+        Assert.True(screen.CardShowsButton("Update Now"));
         Assert.Equal(size, screen.WindowSize);
         screen.Log.Events.AssertNoProblems();
     }

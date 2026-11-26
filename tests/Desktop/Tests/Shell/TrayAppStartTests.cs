@@ -64,7 +64,7 @@ public class TrayAppStartTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
             new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), null!, new FakeConfigureWindow(),
-            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeLocalApiLifetime(), new FakeMcpServerLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeLocalApiLifetime(), new FakeMcpServerLifetime(), new FakeKeepAwakeLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
             new FakeSyncService(), Logger.None));
 
         Assert.Equal("contacts", failure.ParamName);
@@ -75,7 +75,7 @@ public class TrayAppStartTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
             new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), new FakeContactsWindow(), new FakeConfigureWindow(),
-            new FakeLogsWindow(), new FakeUpdateLifetime(), null!, new FakeMcpServerLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            new FakeLogsWindow(), new FakeUpdateLifetime(), null!, new FakeMcpServerLifetime(), new FakeKeepAwakeLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
             new FakeSyncService(), Logger.None));
 
         Assert.Equal("localApi", failure.ParamName);
@@ -86,10 +86,21 @@ public class TrayAppStartTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
             new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), new FakeContactsWindow(), new FakeConfigureWindow(),
-            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeLocalApiLifetime(), null!, new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeLocalApiLifetime(), null!, new FakeKeepAwakeLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
             new FakeSyncService(), Logger.None));
 
         Assert.Equal("mcpServer", failure.ParamName);
+    }
+
+    [Fact]
+    public void Create_rejects_a_missing_Keep_awake()
+    {
+        var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
+            new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), new FakeContactsWindow(), new FakeConfigureWindow(),
+            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeLocalApiLifetime(), new FakeMcpServerLifetime(), null!, new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            new FakeSyncService(), Logger.None));
+
+        Assert.Equal("keepAwake", failure.ParamName);
     }
 
     [Fact]
@@ -97,7 +108,7 @@ public class TrayAppStartTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
             new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), new FakeContactsWindow(), new FakeConfigureWindow(),
-            null!, new FakeUpdateLifetime(), new FakeLocalApiLifetime(), new FakeMcpServerLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            null!, new FakeUpdateLifetime(), new FakeLocalApiLifetime(), new FakeMcpServerLifetime(), new FakeKeepAwakeLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
             new FakeSyncService(), Logger.None));
 
         Assert.Equal("logs", failure.ParamName);
@@ -108,7 +119,7 @@ public class TrayAppStartTests
     {
         var failure = Assert.Throws<ArgumentNullException>(() => TrayApp.Create(
             new FakeTrayIcon(), new FakeAddWindow(), new FakeViewTasksWindow(), new FakeContactsWindow(), new FakeConfigureWindow(),
-            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeLocalApiLifetime(), new FakeMcpServerLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
+            new FakeLogsWindow(), new FakeUpdateLifetime(), new FakeLocalApiLifetime(), new FakeMcpServerLifetime(), new FakeKeepAwakeLifetime(), new FakeGlobalShortcut(), new FakeOneInstance(), true,
             new FakeSyncService(), null!));
 
         Assert.Equal("logger", failure.ParamName);

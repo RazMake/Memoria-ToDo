@@ -90,6 +90,8 @@ internal static class Program
                 Environment.MachineName,
                 TimeSpan.FromMinutes(30),
                 log.ForModule("Sync"));
+            // Created here, on the UI thread, because the session lock reports to this thread's dispatcher.
+            var keepAwake = KeepAwake.KeepAwake.Create(new PowerDisplayRequest(), new WtsSessionLock(), files, deviceFolder, log.ForModule("Keep awake"));
             var (add, viewTasks) = TaskWindows.Create(
                 tasks,
                 contacts.Contacts,
@@ -105,6 +107,8 @@ internal static class Program
                 updates,
                 saveKeys,
                 pointer,
+                keepAwake,
+                deviceFolder,
                 log.ForModule("Task editor"),
                 log.ForModule("Task list"));
             var logSource = new LogFileSource(AppLog.Folder, () => log.WriteProblem, appLog);
@@ -128,11 +132,13 @@ internal static class Program
                     updates,
                     mcpServer,
                     saveKeys,
+                    keepAwake,
                     log.ForModule("Configure")),
                 logs,
                 updates,
                 LocalApiServer.Create(tasks, contacts.Contacts, sync, LocalApiPipe.ForCurrentUser(), log.ForModule("Local API")),
                 mcpServer,
+                keepAwake,
                 new HotKeyShortcut(),
                 new NamedSignalOneInstance(NamedSignalOneInstance.AppSignalName),
                 StartArguments.IsStartAtSignIn(args),

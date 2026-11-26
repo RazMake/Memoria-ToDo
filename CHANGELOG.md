@@ -6,6 +6,16 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- Prevent screen saver, a new setting in Configure, keeps the screen on and the PC awake while the app runs: no screen saver, no screen turning off, and no lock for lack of input. It's off at first, and each PC keeps its own choice. When you lock the PC, it pauses until you unlock it, without changing the setting. In Task View, the window that lists your tasks, a sun just left of the version shows whether it's on: in the normal text color while it's on, faded while it's off or paused, and in red when it isn't working. Rest the pointer on the sun to read which.
+
+- Task View, the window that lists your tasks, now reopens at the size and place where you last closed it, even after you restart the app or your PC, and reopens maximized if you closed it maximized. Each PC keeps its own place. If that place is no longer on any screen, Task View opens on the screen with the mouse pointer, as before.
+
+- Configure's Update card has a Check for updates button that checks for a new version right away. It says "You have the latest version." when there's nothing new, and shows why in red when the check fails. Update Now now shows whenever a new version is available, even with Auto update on.
+
+- In Configure, the Startup section is now called Behavior. It holds Start with Windows, Prevent screen saver, and the switch that lets AI assistants on this PC use Memoria-ToDo, which moved there from the Application section. An Examples… button next to that switch opens a window with the lines each AI assistant needs to connect, each with a Copy button. It now includes GitHub Copilot CLI.
+
+- In the status bar at the bottom of Add and Task View, "Update available" now sits a little further from the version. What is new, the window that shows a new version's notes, now scrolls when the notes are long, and has an Update Now button next to Close.
+
 - Closing the app no longer leaves it running without a tray icon or keyboard shortcuts when cleanup gets stuck. After 40 seconds it requests exit, then forces itself to end 3 seconds later if needed; unfinished writes or sync may be interrupted. Shutdown errors go to the log instead of waiting for a dialog, and launches during shutdown no longer reopen Task View.
 
 ## 1.3.0
