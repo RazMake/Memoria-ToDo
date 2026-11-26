@@ -12,9 +12,6 @@ internal static class SaveFailures
     private const string NoRepositoryMessage =
         "There is no repository folder yet. Open Configure, choose a repository folder, then save again.";
 
-    private const string IncompleteMessage =
-        "The add was incomplete: the task was only partly added and couldn't be undone. Your text is kept; check the repository folder, then save again.";
-
     private const string TaskGoneMessage = "This task no longer exists. Copy your changes before leaving the editor.";
 
     /// <summary>The message for a known failure, or null when <paramref name="failure"/> isn't one the editor knows.</summary>
@@ -22,7 +19,7 @@ internal static class SaveFailures
     {
         NoRepositoryFolderException => NoRepositoryMessage,
         TaskNotFoundException => TaskGoneMessage,
-        AggregateException => IncompleteMessage,
+        AggregateException aggregate => SaveFailureText.Incomplete(aggregate),
         IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or ImageTooLargeException =>
             $"The task wasn't saved: {failure.Message}",
         _ => null,

@@ -54,6 +54,17 @@ public class GroupActionsTests
     }
 
     [Fact]
+    public void A_group_move_that_may_be_only_partly_saved_reports_that_instead_of_throwing()
+    {
+        _tagOrder.Failure = new AggregateException(new IOException("tags.json is locked."), new IOException("Undo failed."));
+
+        var done = _actions.Move(new GroupMove("work", null, "home"));
+
+        Assert.False(done);
+        Assert.Equal(["The change may be only partly saved: tags.json is locked."], _reports);
+    }
+
+    [Fact]
     public void A_failure_the_list_does_not_know_is_not_swallowed()
     {
         _tagOrder.Failure = new InvalidOperationException("Unexpected.");

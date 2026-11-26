@@ -384,7 +384,7 @@ public static IAddWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyLis
     CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IPointerPosition pointer);
 ```
 
-With the [mention list and chips](#typing-an-at-sign-mentions-a-contact), the user decided that the Task editor uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own). Proposed, a decision to confirm: Contacts' [`IContacts contacts`](../contacts.md#public-interface) joins `AddWindow.Create` right after `tagColors`, and the Title and Description editors' constructors right after `tasks`, so the "@" list searches them and the chips show live text. No other member changes. This is not implemented.
+With the [mention list and chips](#typing-an-at-sign-mentions-a-contact), the user decided that the Task editor uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own). Proposed, a decision to confirm: Contacts' [`IContacts contacts`](../contacts.md#public-interface) joins `AddWindow.Create` right after `tagColors`, and the Title and Description editors' constructors right after `tasks`, so the "@" list searches them and the chips show live text. No other member changes.
 
 For the [chips' cards](#resting-the-pointer-on-a-chip-shows-the-contacts-card), the user decided that the Task editor may use the [Contact list](contact-list.md#public-interface), for its contact card, as the [module map](../modules.md#module-map) says. The editors already take Contacts and the theme, which the card needs. The user also decided that `AddWindow.Create`, `TitleEditor`, and `DescriptionEditor` take the platform's [pointer position](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part), immediately before their logger, and pass it to each hover card. They reject a null pointer before wiring events.
 
@@ -406,6 +406,20 @@ public static class ContactAliasList
 ```
 
 The user decided that `ContactAliasList.Attach` takes a required `ILogger logger` last, so the alias list logs why it opened after an erase, as the editors do; Task View passes its own logger.
+
+The user decided that the editor and the Task list show one message when Tasks throws several failures at once, built once, as [Failure modes](#failure-modes) says. The Task list already uses the Task editor, as the [module map](../modules.md#module-map) says, so the Task editor publishes it. Proposed, each a decision to confirm: the home and its name below, and the wording, "The change may be only partly saved: " followed by the first failure's own message, or by the exception's own message when it holds no failure, so the message never fails while a failure is being reported:
+
+```csharp
+namespace Memoria.ToDo.Desktop.TaskEditor;
+
+/// The words a window shows when Tasks throws several failures at once.
+public static class SaveFailureText
+{
+    /// "The change may be only partly saved: " followed by the message of the first failure inside failure, or by
+    /// failure's own message when it holds none. Throws ArgumentNullException for a null failure.
+    public static string Incomplete(AggregateException failure);
+}
+```
 
 The user decided that `TitleEditor`, `DescriptionEditor`, and `TagEditor` each take a required `ILogger logger` as their last constructor argument, as every module's create method does, and null is refused with an `ArgumentNullException`. The editor that catches a failure it shows logs it, so a host such as the Task list doesn't log the same failure again.
 
@@ -546,14 +560,11 @@ Row 21 brings [several ordered tags](#a-tasks-tags-are-pills-in-order-and-a-drag
 - **`TaskTags` and `TagsChanged` replace `TaskTag` and `TagChanged`**, holding and reporting the whole list, so every change, a reorder included, still makes one save and one Undo bar. The names keep row 14's reason for `TaskTag`.
 - **The constructor takes `IPointerPosition`**, before the logger, as the Title and Description editors do, so UX tests drive a drag with the [fake pointer](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them). Add's `Create` and the Task list already hold one, so no other declaration and no wiring in the composition root changes.
 - **`NoTagText`, `CloseEdit`, and `TagBadges` keep their declarations.** The user decided that `ChooseTypedText` returns whether it took the typed text, so Task View's save stops, keeping the edit and the typed tag, when the task already holds 15 tags.
-
-Until row 21 is built, the code still has row 14's members.
-
 ## Failure modes
 
 - **No clone folder is set**: Add stays open with the text, says to set the repository folder in Configure, and keeps the draft.
 - **Saving fails**, for example because the task file can't be written: Add stays open with the text, shows the error, and keeps the draft.
-- **Saving fails and Tasks can't undo it** (it throws an `AggregateException`): Add stays open with the text and the draft, and the editor says the save was incomplete, so the user checks the repository folder before saving again. The Task list's edit gets the same message. (Decision to confirm: the wording.)
+- **Saving fails, and Tasks throws several failures at once** (an `AggregateException`), such as when undoing a failed save fails too, or two notices fail after the save: Add stays open with the text and the draft, and the editor shows the [one message](#public-interface) the Task list shows too, which says the change may be only partly saved and names the first failure. Task View's edits get the same message.
 - **The edited task was deleted**, on this device or another (Tasks throws `TaskNotFoundException`): the edit stays open with the text, and the editor says "This task no longer exists. Copy your changes before leaving the editor." (Decision to confirm: the wording.)
 - **An image can't be read or saved**: nothing is inserted, and Add says why.
 - **A clicked color can't be kept**, because there's no clone folder, `tags.json` can't be read or is newer, or the file can't be written: the tag isn't chosen, and Custom keeps the text and says why, as [above](#custom-adds-a-new-tag-in-the-color-clicked).

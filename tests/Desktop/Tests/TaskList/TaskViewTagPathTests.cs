@@ -70,6 +70,21 @@ public class TaskViewTagPathTests
         Assert.True(screen.ShowsText("Writing is not allowed here"));
         services.Files.StopFailing();
 
+        services.NoticesFail = true;
+        screen.ClearTag("Buy milk", "errand");
+        services.NoticesFail = false;
+        Assert.True(screen.ShowsText("The change may be only partly saved: Changed failed."));
+        Assert.Equal(["a-home"], services.Stored("Buy milk").Tags);
+        Assert.Equal(["a-home"], screen.PillTags("Buy milk"));
+        Assert.True(screen.ShowsText("Tag removed"));
+
+        services.NoticesFail = true;
+        screen.Click("Undo");
+        services.NoticesFail = false;
+        Assert.Equal(["a-home", "errand"], services.Stored("Buy milk").Tags);
+        Assert.Equal(["a-home", "errand"], screen.PillTags("Buy milk"));
+        Assert.False(screen.HasButton("Undo"));
+
         screen.PressOn("Buy milk", Key.F2);
         screen.TypeDescription("Oat milk, two cartons");
         screen.OpenAddTagMenu("Buy milk");

@@ -92,6 +92,15 @@ public class EditorSaveTests
     }
 
     [Fact]
+    public void A_save_that_may_be_only_partly_saved_shows_that_message_and_returns_false()
+    {
+        var result = _save.Run(_ => throw new AggregateException(new IOException("disk full"), new IOException("undo failed")));
+
+        Assert.False(result);
+        Assert.Equal(["tags", "message:The change may be only partly saved: disk full"], _events);
+    }
+
+    [Fact]
     public void A_failure_nobody_knows_propagates()
     {
         Assert.Throws<InvalidOperationException>(() => _save.Run(_ => throw new InvalidOperationException()));

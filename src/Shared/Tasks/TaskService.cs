@@ -166,8 +166,8 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     /// </summary>
     private void Publish(string root, TaskItem task)
     {
-        var undo = new Stack<Action>();
-        try
+        var undo = new UndoSteps("Adding failed, and so did undoing it.", logger);
+        undo.Run(() =>
         {
             folder.Write(root, task);
             undo.Push(() => folder.Delete(root, task.Id));
@@ -178,26 +178,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
             }
 
             drafts.Discard();
-        }
-        catch (Exception failure)
-        {
-            var undoFailures = new List<Exception>();
-            foreach (var step in undo)
-            {
-                try
-                {
-                    step();
-                }
-                catch (Exception e)
-                {
-                    undoFailures.Add(e);
-                }
-            }
-
-            if (undoFailures.Count == 0)
-                throw;
-            throw new AggregateException("Adding failed, and so did undoing it.", [failure, .. undoFailures]);
-        }
+        });
     }
 
     public IReadOnlyList<TagUse> TagsInUse() => repository.Locked(_ => set.Tags.InUse);
@@ -247,9 +228,17 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
                 return current;
 
             var saved = changed with { Updated = NextUpdated(current) };
-            foreach (var (from, to) in editImages.ImageMoves(saved.Id, root))
-                files.MoveFile(from, to);
-            folder.Write(root, saved);
+            var undo = new UndoSteps("Saving the edit failed, and so did undoing its image moves.", logger);
+            undo.Run(() =>
+            {
+                foreach (var (from, to) in editImages.ImageMoves(saved.Id, root))
+                {
+                    files.MoveFile(from, to);
+                    undo.Push(() => files.MoveFile(to, from));
+                }
+
+                folder.Write(root, saved);
+            });
             set = set.ReplacingTask(saved);
             written = true;
             return saved;

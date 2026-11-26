@@ -6,7 +6,8 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// <summary>
 /// Changing the tags of a task from the list, with no Edit. Each change saves at once through Tasks' save of an edit, with the
 /// task as shown and the tag control's whole new list, then waits on the Undo bar, which says what kind of change it was and
-/// saves the whole list the task had, in its order. A failure the list knows is reported with its reason and nothing is saved.
+/// saves the whole list the task had, in its order. A failure the list knows is reported with its reason and nothing is saved,
+/// except after several failures at once, when the change may be saved, as <see cref="UndoableSave"/> says.
 /// Only for a task with no open edit, since during an edit the tags join the edit's one save. A change first finishes the Undo bar
 /// images of a discarded edit, so its save finds none waiting. Starting an edit of the task finishes the task's own bar, keeping
 /// its change, since its Undo would save the old tags over the edit.

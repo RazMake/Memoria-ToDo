@@ -145,6 +145,22 @@ public class TaskDeletionTests
     }
 
     [Fact]
+    public void A_delete_that_may_be_only_partly_saved_reports_that_refreshes_the_list_instead_of_throwing()
+    {
+        var task = _tasks.Add("Buy milk");
+        _deletion.Start(task.Id);
+        _tasks.NoticesFail = true;
+        var afterStart = _changed;
+
+        _tasks.Time.Advance(BarEnds);
+
+        Assert.Empty(_tasks.Tasks.All);
+        Assert.Null(_content.HiddenId);
+        Assert.True(_changed > afterStart);
+        Assert.Contains("The change may be only partly saved: Changed failed.", Assert.Single(_reports));
+    }
+
+    [Fact]
     public void A_task_deleted_elsewhere_meanwhile_is_not_an_error()
     {
         var task = _tasks.Add("Buy milk");

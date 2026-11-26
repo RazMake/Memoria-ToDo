@@ -34,7 +34,8 @@ internal sealed class TaskDeletion(ITasks tasks, ListContent content, PendingUnd
         {
             _logger.Error(failure, "A task couldn't be deleted: {Reason}", why);
             var removed = tasks.All.All(task => task.Id != id);
-            report(removed ? "The task was deleted, but some of its images couldn't be removed: " + why : why);
+            // Several failures at once say what may be unsaved; the images prefix would claim a delete they can't promise.
+            report(removed && failure is not AggregateException ? "The task was deleted, but some of its images couldn't be removed: " + why : why);
         }
         finally
         {

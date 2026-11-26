@@ -6,7 +6,7 @@ namespace Memoria.ToDo.Shared.Fakes;
 public sealed class FakeFileSystem : IFileSystem
 {
     private readonly Dictionary<string, byte[]> files = new(StringComparer.Ordinal);
-    private readonly List<string> failingFolders = [];
+    private readonly List<(string Folder, Exception? Failure)> failingFolders = [];
     private readonly List<(string Folder, Exception? Failure)> failingReadFolders = [];
     private readonly List<string> failingDeleteFolders = [];
     private readonly Dictionary<string, string> aliases = new(StringComparer.Ordinal);
@@ -14,8 +14,12 @@ public sealed class FakeFileSystem : IFileSystem
     private bool physicalChecksFail;
     private Exception? physicalFailure;
 
-    /// <summary>From now on, writes and moves into <paramref name="folder"/> or below it fail with an <see cref="IOException"/>, and leave what's there whole.</summary>
-    public void FailWritesUnder(string folder) => failingFolders.Add(System.IO.Path.GetFullPath(folder));
+    /// <summary>
+    /// From now on, writes and moves into <paramref name="folder"/> or below it, or to the file at that path, fail with an <see cref="IOException"/>,
+    /// or with <paramref name="failure"/> when given, and leave what's there whole.
+    /// </summary>
+    public void FailWritesUnder(string folder, Exception? failure = null) =>
+        failingFolders.Add((System.IO.Path.GetFullPath(folder), failure));
 
     /// <summary>From now on, reading a file in <paramref name="folder"/> or below it fails with an <see cref="IOException"/>, or with <paramref name="failure"/> when given, though the file still exists.</summary>
     public void FailReadsUnder(string folder, Exception? failure = null) =>
@@ -165,8 +169,8 @@ public sealed class FakeFileSystem : IFileSystem
     /// <summary>Fails, before changing anything, when the file can't be written: a failing folder, or a file where a folder is needed.</summary>
     private void CheckCanWrite(string fullPath)
     {
-        if (failingFolders.Any(folder => IsUnder(fullPath, folder)))
-            throw new IOException($"Writing is not allowed here: {fullPath}");
+        if (failingFolders.FirstOrDefault(failing => fullPath == failing.Folder || IsUnder(fullPath, failing.Folder)) is { Folder: not null } hit)
+            throw hit.Failure ?? new IOException($"Writing is not allowed here: {fullPath}");
         for (var parent = System.IO.Path.GetDirectoryName(fullPath); parent is not null; parent = System.IO.Path.GetDirectoryName(parent))
             if (files.ContainsKey(parent))
                 throw new IOException($"A file is in the way: {parent}");

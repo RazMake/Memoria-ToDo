@@ -197,10 +197,23 @@ public class AddWindowSaveTests
         screen.Save();
         Assert.True(screen.ShowsText("repository folder"));
         screen.Services.UseRepository();
+
         screen.Save();
 
         Assert.Equal("Buy milk", Assert.Single(screen.Saved).Title);
         Assert.False(screen.IsShowing);
+
+        // Tasks adds the task but its notices fail, so the add may be only partly done: Add stays open with the text.
+        screen.Show();
+        screen.Fill("Buy bread", "One loaf");
+        screen.Services.NoticesFail = true;
+        screen.Save();
+
+        Assert.True(screen.ShowsText("The change may be only partly saved: Changed failed."));
+        Assert.True(screen.IsShowing);
+        Assert.Equal("Buy bread", screen.Editor.Value.Title);
+        Assert.Equal("One loaf", screen.Editor.Value.Description);
+        Assert.Equal("Buy bread", screen.Saved[0].Title);
     }
 
     private static void AssertTabOrder(AddScreen screen)

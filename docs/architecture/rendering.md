@@ -339,7 +339,7 @@ public static class DescriptionPage
 }
 ```
 
-Proposed, with the [mention look](#a-mention-shows-on-a-colored-background), a decision to confirm. The span style gains a flag, the text look a color, and a new part finds mentions and swaps their text; nothing else changes. This is not implemented:
+Proposed, with the [mention look](#a-mention-shows-on-a-colored-background), a decision to confirm. The span style gains a flag, the text look a color, and a new part finds mentions and swaps their text; nothing else changes:
 
 ```csharp
 namespace Memoria.ToDo.Shared.Rendering;

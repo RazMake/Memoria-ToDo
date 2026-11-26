@@ -17,7 +17,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// The Task View window: the open tasks grouped by tag on the left, the selected task's description and tags on the right,
-/// above them the search, the tag filter, and the resolved tasks, and below them the status bar. It works on the tasks through <see cref="ITasks"/> and
+/// above them the search and the resolved tasks, and below them the status bar. It works on the tasks through <see cref="ITasks"/> and
 /// shows what they say.
 /// </summary>
 internal sealed class TaskListWindow : Window
@@ -126,7 +126,12 @@ internal sealed class TaskListWindow : Window
         _groupActions = new GroupActions(tagOrder, Report, logger);
         _header.ShowMessage(message);
         _filter.Changed += OnChanged;
-        _header.UndoClicked += (_, _) => _pending.Undo();
+        _header.UndoClicked += (_, _) =>
+        {
+            _pending.Undo();
+            // An Undo that failed with several failures at once may still have saved; the list shows what Tasks holds.
+            Refresh();
+        };
         _header.EdgeRowRequested += (_, last) => SelectEdgeRow(last);
         Loaded += (_, _) => _header.FocusSearch();
         _rows.ResolvedClicked += (_, _) =>
@@ -330,14 +335,14 @@ internal sealed class TaskListWindow : Window
     private TagEditor NewTagControl(TaskItem task)
     {
         var control = new TagEditor(_tasks, _tagColors, _theme, _pointer, _logger) { TaskTags = PillTagsOf(task) };
-        control.TagsChanged += (_, tags) => ChangeTags(control, tags);
+        control.TagsChanged += (_, tags) => ChangeTags(tags);
         return control;
     }
 
     // During an edit the change only changes the pills and the edit keeps the list, for the edit's one save. Otherwise the control
     // already shows the change, and when it can't be saved the pills go back to the task as shown. A change of the first tag moves
     // the task to its new group, where it stays selected and the list scrolls to its row.
-    private void ChangeTags(TagEditor control, IReadOnlyList<string> tags)
+    private void ChangeTags(IReadOnlyList<string> tags)
     {
         _header.ShowMessage(null);
         if (_editing.Current is { } edit)
@@ -353,7 +358,8 @@ internal sealed class TaskListWindow : Window
 
         if (_tagChanges.Change(shown, tags) is not { } saved)
         {
-            control.TaskTags = shown.Tags;
+            // The pills go back to the task as Tasks holds it, which several failures at once may have changed.
+            Refresh();
             return;
         }
 
@@ -696,18 +702,20 @@ internal sealed class TaskListWindow : Window
         if (!_actions.Resolve(id, resolved))
         {
             row?.Revert();
+            Refresh();
         }
     }
 
     // ---- Order ----
 
     // Order is a row's place in its group, so a task no row shows doesn't move.
+    // A move that fails shows the list again as Tasks holds it, since several failures at once may have saved it.
     private void Nudge(TaskRow? row, int step)
     {
         _header.ShowMessage(null);
         if (row is not null && ListOrder.Nudge(row.Group, row.Task.Id, step) is { } move)
         {
-            _actions.Move(move);
+            MoveTask(move);
         }
     }
 
@@ -716,16 +724,27 @@ internal sealed class TaskListWindow : Window
         _header.ShowMessage(null);
         if (ListOrder.DropIn(drop.Dropped.Source, drop.Target, drop.TargetRows, _snapshot.Shown, drop.Dropped.Task.Id, drop.Index) is { } move)
         {
-            _actions.Move(move);
+            MoveTask(move);
+        }
+    }
+
+    private void MoveTask(Move move)
+    {
+        if (!_actions.Move(move))
+        {
+            Refresh();
         }
     }
 
     // The group moves at once, in Tasks' tag order. The list regroups when the order says it changed, so a move that can't be
-    // saved leaves the group where it was.
+    // saved leaves the group where it was, unless several failures at once saved it.
     private void MoveGroup(GroupMove move)
     {
         _header.ShowMessage(null);
-        _groupActions.Move(move);
+        if (!_groupActions.Move(move))
+        {
+            Refresh();
+        }
     }
 
     // ---- Links ----

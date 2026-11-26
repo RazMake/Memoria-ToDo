@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows.Input;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -40,5 +41,21 @@ public class TaskViewReorderPathTests
         Assert.Equal(["work", "home"], screen.GroupNames);
         Assert.Equal([("work", (string?)null, (string?)"home")], services.TagOrder.Moves);
         Assert.False(screen.HasButton("Undo"));
+
+        // The move is saved, then its notices fail before the window hears of the change: only a reload shows the saved order.
+        services.TagOrder.SavesBeforeFailing = true;
+        services.TagOrder.Failure = new AggregateException(new IOException("tags.json notice failed."), new IOException("Second notice failed."));
+        screen.DropGroup("home", "work");
+        services.TagOrder.Failure = null;
+        services.TagOrder.SavesBeforeFailing = false;
+        Assert.True(screen.ShowsText("The change may be only partly saved: tags.json notice failed."));
+        Assert.Equal(["home", "work"], screen.GroupNames);
+
+        services.NoticesFail = true;
+        screen.PressOn("B", Key.LeftAlt, Key.Down);
+        services.NoticesFail = false;
+        Assert.True(screen.ShowsText("The change may be only partly saved: Changed failed."));
+        Assert.Equal(["C", "B", "A"], screen.RowTitlesIn("work"));
+        Assert.Equal(["C", "B", "A", "Home one"], services.OpenTitlesInRankOrder());
     }
 }

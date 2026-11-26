@@ -27,11 +27,11 @@ public class SaveFailuresTests
     }
 
     [Fact]
-    public void A_partly_added_task_says_the_add_was_incomplete_and_the_text_is_kept()
+    public void A_change_that_may_be_only_partly_saved_says_so_and_names_the_first_failure()
     {
         Assert.Equal(
-            "The add was incomplete: the task was only partly added and couldn't be undone. Your text is kept; check the repository folder, then save again.",
-            SaveFailures.MessageOf(new AggregateException(new IOException("x"))));
+            "The change may be only partly saved: x",
+            SaveFailures.MessageOf(new AggregateException(new IOException("x"), new IOException("y"))));
     }
 
     [Fact]

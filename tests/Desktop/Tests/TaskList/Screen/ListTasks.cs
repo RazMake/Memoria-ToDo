@@ -37,11 +37,24 @@ internal class ListTasks
     /// <summary>The folder Tasks writes task files to; failing writes under it makes every save fail.</summary>
     public string TaskFolder => Path.Combine(Clone, "tasks");
 
+    private readonly TestTaskStore.NoticeFailures _notices;
+
+    /// <summary>
+    /// While true, every change Tasks saves ends with two failed notices, so Tasks throws an <see cref="AggregateException"/> after the
+    /// change is saved. Its first failure's message is "Changed failed."
+    /// </summary>
+    public bool NoticesFail
+    {
+        get => _notices.Active;
+        set => _notices.Active = value;
+    }
+
     public ListTasks()
     {
         Tasks = TestTaskStore.Create(Files, new FakeImageEncoder(), Time, Path.Combine(Root, "device"));
         Contacts = TestContactStore.Create(Files).Contacts;
         Tasks.UseRepositoryFolder(Clone);
+        _notices = Tasks.FailNotices();
     }
 
     /// <summary>The tag colors the window shows tags in.</summary>

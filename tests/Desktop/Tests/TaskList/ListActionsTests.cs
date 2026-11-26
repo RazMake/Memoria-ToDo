@@ -111,6 +111,46 @@ public class ListActionsTests
     }
 
     [Fact]
+    public void A_resolve_that_may_be_only_partly_saved_reports_that_instead_of_throwing()
+    {
+        var task = _tasks.Add("Buy milk");
+        _tasks.NoticesFail = true;
+
+        var done = _actions.Resolve(task.Id, resolved: true);
+
+        Assert.False(done);
+        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+        Assert.NotNull(_tasks.Tasks.All.Single().Resolved);
+    }
+
+    [Fact]
+    public void A_reopen_that_may_be_only_partly_saved_reports_that_instead_of_throwing()
+    {
+        var task = _tasks.AddResolved("Done one");
+        _tasks.NoticesFail = true;
+
+        var done = _actions.Resolve(task.Id, resolved: false);
+
+        Assert.False(done);
+        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+        Assert.Null(_tasks.Tasks.All.Single().Resolved);
+    }
+
+    [Fact]
+    public void A_move_that_may_be_only_partly_saved_reports_that_instead_of_throwing()
+    {
+        _tasks.Add("B");
+        var a = _tasks.Add("A");
+        _tasks.NoticesFail = true;
+
+        var done = _actions.Move(new Move(a.Id, Id("B"), null));
+
+        Assert.False(done);
+        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+        Assert.Equal(["B", "A"], _tasks.OpenTitlesInRankOrder());
+    }
+
+    [Fact]
     public void Moving_a_task_deleted_meanwhile_reports_that_it_no_longer_exists()
     {
         var b = _tasks.Add("B");
@@ -159,9 +199,11 @@ public class ListFailuresTests
     }
 
     [Fact]
-    public void Knows_no_message_for_an_incomplete_change_so_that_it_is_not_swallowed()
+    public void Says_an_incomplete_change_may_be_only_partly_saved_and_names_its_first_failure()
     {
-        Assert.Null(ListFailures.MessageOf(new AggregateException()));
+        var failure = new AggregateException(new IOException("The disk is full."), new IOException("Undo failed."));
+
+        Assert.Equal("The change may be only partly saved: The disk is full.", ListFailures.MessageOf(failure));
     }
 
     [Fact]

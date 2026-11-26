@@ -11,6 +11,8 @@ Memoria.ToDo.Desktop.TaskEditor.IClipboard.ImagePng() -> byte[]?
 Memoria.ToDo.Desktop.TaskEditor.IClipboard.Text() -> string?
 Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser
 Memoria.ToDo.Desktop.TaskEditor.IImageFileChooser.Choose() -> string?
+Memoria.ToDo.Desktop.TaskEditor.SaveFailureText
+static Memoria.ToDo.Desktop.TaskEditor.SaveFailureText.Incomplete(System.AggregateException! failure) -> string!
 Memoria.ToDo.Desktop.TaskEditor.TagEditor
 Memoria.ToDo.Desktop.TaskEditor.TagEditor.TagEditor(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Desktop.Platform.ITheme! theme, Memoria.ToDo.Desktop.Platform.IPointerPosition! pointer, Serilog.ILogger! logger) -> void
 const Memoria.ToDo.Desktop.TaskEditor.TagEditor.NoTagText = "No tag" -> string!

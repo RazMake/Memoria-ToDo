@@ -564,32 +564,185 @@ public sealed class SaveEditTests
         Assert.All(draftFiles, file => Assert.True(f.Files.FileExists(file)));
     }
 
+    // A failed save undoes its image moves, so the clone is as it was.
+
+    private const string OldImage = "old.png";
+
+    /// <summary>Pastes <paramref name="count"/> images, and returns their paths in the edit's folder, in the order Tasks moves them, with their bytes.</summary>
+    private (string Path, byte[] Bytes)[] PasteImages(int count)
+    {
+        for (var i = 0; i < count; i++)
+            f.Tasks.SaveImage(id, TasksFixture.TinyPng(300 + i), "pic");
+        var waiting = f.Files.AllFilesUnder(f.Store.EditImagesFolder);
+        Assert.Equal(count, waiting.Count);
+        return [.. waiting.Select(path => (path, f.Files.ReadFile(path)))];
+    }
+
+    private string CloneImage(string waitingPath) => Path.Combine(f.CloneImages(id), Path.GetFileName(waitingPath));
+
+    private void AssertWaiting((string Path, byte[] Bytes)[] images)
+    {
+        Assert.Equal(images.Select(i => i.Path).Order(), f.Files.AllFilesUnder(f.Store.EditImagesFolder).Order());
+        foreach (var (path, bytes) in images)
+            Assert.Equal(bytes, f.Files.ReadFile(path));
+    }
+
+    private string SeedOldTaskImage()
+    {
+        var old = Path.Combine(f.CloneImages(id), OldImage);
+        f.Files.WriteFile(old, [1, 2, 3]);
+        return old;
+    }
+
     [Fact]
-    public void Moves_images_before_writing_the_task_and_keeps_them_for_a_retry_when_the_write_fails()
+    public void Moves_every_moved_image_back_and_rethrows_the_write_error_as_it_is_when_the_write_fails()
     {
         var started = Seeded();
-        var (markdown, bytes) = PasteImage();
-        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
+        var old = SeedOldTaskImage();
+        var images = PasteImages(2);
+        var before = f.ReadText(f.TaskFile(id));
+        var failure = new IOException("The disk refused the write.");
+        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"), failure);
 
-        Assert.ThrowsAny<Exception>(() => f.Tasks.SaveEdit(started, Edit(started, description: markdown)));
+        var thrown = Assert.Throws<IOException>(() => f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)")));
 
-        Assert.Equal(bytes, f.Files.ReadFile(Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)))));
+        Assert.Same(failure, thrown);
+        AssertWaiting(images);
+        Assert.Equal([old], f.Files.AllFilesUnder(f.CloneImages(id)));
+        Assert.Equal([1, 2, 3], f.Files.ReadFile(old));
+        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
         Assert.Equal("Old text", f.Tasks.All.Single().Description);
     }
 
     [Fact]
-    public void Succeeds_on_a_retry_after_a_failed_write()
+    public void Moves_every_moved_image_back_when_a_tag_only_save_fails_to_write()
     {
         var started = Seeded();
-        var (markdown, _) = PasteImage();
+        var images = PasteImages(1);
         f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
-        Assert.ThrowsAny<Exception>(() => f.Tasks.SaveEdit(started, Edit(started, description: markdown)));
+
+        Assert.Throws<IOException>(() => f.Tasks.SaveEdit(started, Edit(started, tags: ["work"])));
+
+        AssertWaiting(images);
+        Assert.Empty(f.Files.AllFilesUnder(f.CloneImages(id)));
+        Assert.Empty(f.Tasks.All.Single().Tags);
+    }
+
+    [Fact]
+    public void Moves_the_images_before_the_failed_one_back_and_rethrows_the_moves_error_when_the_second_of_three_cannot_move()
+    {
+        var started = Seeded();
+        var images = PasteImages(3);
+        var failure = new IOException("The disk refused the second image.");
+        f.Files.FailWritesUnder(CloneImage(images[1].Path), failure);
+        var before = f.ReadText(f.TaskFile(id));
+
+        var thrown = Assert.Throws<IOException>(() => f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)")));
+
+        Assert.Same(failure, thrown);
+        AssertWaiting(images);
+        Assert.Empty(f.Files.AllFilesUnder(f.CloneImages(id)));
+        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
+    }
+
+    [Fact]
+    public void Throws_an_aggregate_of_the_write_error_then_each_undo_error_in_order_when_moving_back_also_fails()
+    {
+        var started = Seeded();
+        var images = PasteImages(2);
+        var before = f.ReadText(f.TaskFile(id));
+        var failure = new IOException("The disk refused the write.");
+        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"), failure);
+        f.Files.FailWritesUnder(f.Device);
+
+        var thrown = Assert.Throws<AggregateException>(() => f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)")));
+
+        Assert.Equal(3, thrown.InnerExceptions.Count);
+        Assert.All(thrown.InnerExceptions, e => Assert.IsType<IOException>(e));
+        Assert.Same(failure, thrown.InnerExceptions[0]);
+        Assert.EndsWith(images[1].Path, thrown.InnerExceptions[1].Message);
+        Assert.EndsWith(images[0].Path, thrown.InnerExceptions[2].Message);
+        Assert.Equal(before, f.ReadText(f.TaskFile(id)));
+    }
+
+    [Fact]
+    public void Raises_no_change_notice_and_reports_no_local_save_when_a_save_fails()
+    {
+        var started = Seeded();
+        PasteImages(2);
+        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
+        var changes = f.CountChanges();
+        var saves = f.CountLocalSaves();
+
+        Assert.Throws<IOException>(() => f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)")));
+
+        Assert.Equal(0, changes.Count);
+        Assert.Equal(0, saves.Count);
+    }
+
+    [Fact]
+    public void Raises_no_change_notice_and_reports_no_local_save_when_the_save_and_its_undo_fail()
+    {
+        var started = Seeded();
+        PasteImages(1);
+        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
+        f.Files.FailWritesUnder(f.Device);
+        var changes = f.CountChanges();
+        var saves = f.CountLocalSaves();
+
+        Assert.Throws<AggregateException>(() => f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)")));
+
+        Assert.Equal(0, changes.Count);
+        Assert.Equal(0, saves.Count);
+    }
+
+    [Fact]
+    public void Succeeds_on_a_retry_after_a_failed_write_and_leaves_the_images_in_the_tasks_folder()
+    {
+        var started = Seeded();
+        var images = PasteImages(2);
+        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
+        Assert.Throws<IOException>(() => f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)")));
         f.Files.StopFailing();
 
-        var saved = f.Tasks.SaveEdit(started, Edit(started, description: markdown));
+        var saved = f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)"));
 
-        Assert.Equal(markdown, saved.Description);
-        Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)));
+        Assert.Equal("![pic](x)", saved.Description);
+        Assert.Equal(images.Select(i => CloneImage(i.Path)).Order(), f.Files.AllFilesUnder(f.CloneImages(id)).Order());
+        Assert.Empty(f.Files.AllFilesUnder(f.Store.EditImagesFolder));
+    }
+
+    [Fact]
+    public void Succeeds_on_a_retry_after_a_failed_image_move_and_leaves_every_image_in_the_tasks_folder()
+    {
+        var started = Seeded();
+        var images = PasteImages(3);
+        var blocker = CloneImage(images[1].Path);
+        f.Files.WriteFile(blocker, [9, 9, 9]);
+        Assert.Throws<IOException>(() => f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)")));
+        f.Files.DeleteFile(blocker);
+
+        f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)"));
+
+        Assert.Equal(images.Select(i => CloneImage(i.Path)).Order(), f.Files.AllFilesUnder(f.CloneImages(id)).Order());
+        foreach (var (path, bytes) in images)
+            Assert.Equal(bytes, f.Files.ReadFile(CloneImage(path)));
+        Assert.Empty(f.Files.AllFilesUnder(f.Store.EditImagesFolder));
+    }
+
+    [Fact]
+    public void Leaves_none_of_the_edits_images_in_the_clone_when_the_edit_is_discarded_after_a_failed_save()
+    {
+        var started = Seeded();
+        var old = SeedOldTaskImage();
+        PasteImages(2);
+        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
+        Assert.Throws<IOException>(() => f.Tasks.SaveEdit(started, Edit(started, description: "![pic](x)")));
+
+        f.Tasks.DiscardEditImages(id);
+
+        Assert.Equal([old], f.Files.AllFilesUnder(f.CloneImages(id)));
+        Assert.Empty(f.Files.AllFilesUnder(f.Store.EditImagesFolder));
     }
 
     // Any save that changes something moves the waiting images, whichever field it changed.
@@ -628,19 +781,6 @@ public sealed class SaveEditTests
 
         Assert.Equal(bytes, f.Files.ReadFile(Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)))));
         Assert.Empty(f.Files.AllFilesUnder(f.Device));
-    }
-
-    [Fact]
-    public void Moves_the_waiting_images_before_writing_the_task_for_a_tag_only_save_that_fails_and_keeps_them_for_a_retry()
-    {
-        var started = Seeded();
-        var (_, bytes) = PasteImage();
-        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
-
-        Assert.ThrowsAny<Exception>(() => f.Tasks.SaveEdit(started, Edit(started, tags: ["work"])));
-
-        Assert.Equal(bytes, f.Files.ReadFile(Assert.Single(f.Files.AllFilesUnder(f.CloneImages(id)))));
-        Assert.Empty(f.Tasks.All.Single().Tags);
     }
 
     [Fact]

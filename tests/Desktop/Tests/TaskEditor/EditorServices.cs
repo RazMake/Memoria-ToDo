@@ -45,10 +45,23 @@ internal sealed class EditorServices
     /// <summary>The real Contacts over the fake files, which the editors list and show mentions from. Empty and with no repository until <see cref="UseContacts"/>.</summary>
     public IContacts Contacts { get; }
 
+    private readonly TestTaskStore.NoticeFailures _notices;
+
+    /// <summary>
+    /// While true, every change Tasks saves ends with two failed notices, so Tasks throws an <see cref="AggregateException"/> after the
+    /// change is saved. Its first failure's message is "Changed failed."
+    /// </summary>
+    public bool NoticesFail
+    {
+        get => _notices.Active;
+        set => _notices.Active = value;
+    }
+
     public EditorServices()
     {
         Tasks = TestTaskStore.Create(Files, Encoder, Time, Device);
         Contacts = TestContactStore.Create(Files).Contacts;
+        _notices = Tasks.FailNotices();
     }
 
     /// <summary>

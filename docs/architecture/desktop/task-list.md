@@ -29,10 +29,9 @@ The user decided:
 - **Groups come in the tags' order from [Tasks](../tasks.md#each-tags-place-orders-task-views-groups-and-androids-tag-chips), which the user sets by [dragging a group](#drag-and-drop-moves-tasks-and-groups-and-a-line-shows-where-they-land), with a "No tag" group last** for tasks without a tag, so every open task shows. A tag never moved shows at the top, as a new task does, so before any move, groups come in the tags' alphabetical order. Adding, resolving, or retagging tasks never changes the order of the groups that show; a new group tag's group appears at the top. A tag that's never first in any open task has no group. Every device, and the Android app's tag chips, show the same order.
 - **Within a group, tasks keep their rank order.** Rank stays one order for all tasks, as [Tasks](../tasks.md#rank-is-a-text-key-that-sorts-between-its-neighbors) keeps it, and the task file format doesn't change.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
-- A group's heading is its tag's [colored badge](#tags-show-as-colored-badges-and-change-without-edit), and its rows sit [indented under it](#a-click-on-a-groups-tag-collapses-or-expands-it). A group with no task to show is hidden.
-- **Rows show no tag badges**, since the group already names the tag, and the selected task's tags show on the right side.
+- A group's heading shows its tag, as [Tags](#tags-show-as-colored-badges-and-change-without-edit) says, and its rows sit [indented under it](#a-click-on-a-groups-tag-collapses-or-expands-it). A group with no task to show is hidden.
 - **A click anywhere on a row except the checkbox selects the task**, and so does a right-click. Selecting a task shows its description, with its [tag control](#tags-show-as-colored-badges-and-change-without-edit) under it.
 - **A link in a title opens as a link**, and doesn't select the task.
 - **The checkbox's middle sits at the middle of the title's first line**, at any text size.
@@ -53,19 +52,18 @@ Proposed, each a decision to confirm:
 
 ### Mentions show each contact's current details
 
-The user decided that a mention's text is rebuilt from the contact's current fields each time it shows, as [Contacts](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows) says. Proposed, each a decision to confirm:
+The user decided that a mention's text is rebuilt from the contact's current fields each time it shows, as [Contacts](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows) says. The user confirmed:
 
 - **Task View swaps each mention's text before it shows a title or a description**, through [Rendering's mentions](../rendering.md#public-interface), with Contacts' live text for the mention's address and template. A mention Contacts has no text for keeps its stored text. The Formatted view then shows the result, and needs no contacts.
 - **When contacts change, such as after a sync or a save in the Contacts window, Task View shows the rows and the selected description again** with the new text. An open edit keeps its text; its chips show the new text, as the [Task editor](task-editor.md#typing-an-at-sign-mentions-a-contact) says.
 - **An edit's [Preview](#edit-description-has-an-edit-tab-and-a-preview-tab) swaps the draft's mentions too**, so it looks like the saved description will, and like the editor's chips. It shows again when contacts change, as the description does.
-- **Search matches the task as saved**, so a plain word matches a mention by its stored text, not its live text, as [Contacts](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) says. A word that names a contact with "@" matches the [mentions of that contact](#search-narrows-the-list) instead, whatever their text.
+- **[Search](#search-narrows-the-list) matches a mention by its stored text**, not its live text.
 
 ### Resting the pointer on a mention shows the contact's card
 
-The user asked that resting the mouse pointer on any mention show a card with the contact's details: the common ones by default, and every one while Ctrl is held. The [Contact list](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) makes the card and decides what it shows, the [Formatted view](formatted-view.md#a-mention-shows-a-card-its-user-makes) finds the mention under the pointer, and the platform's [hover card](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) decides when it opens and closes. The user decided that a mention whose contact Contacts can't find shows no card, as the [Contact list](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) says. Proposed, each a decision to confirm:
+The user asked that resting the mouse pointer on any mention show a card with the contact's details: the common ones by default, and every one while Ctrl is held. The [Contact list](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) makes the card and decides what it shows, the [Formatted view](formatted-view.md#a-mention-shows-a-card-its-user-makes) finds the mention under the pointer, and the platform's [hover card](README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) decides when it opens and closes. The user decided that a mention whose contact Contacts can't find shows no card, as the [Contact list](contact-list.md#a-contact-card-shows-a-mentioned-contacts-details) says. The user confirmed:
 
-- **Every mention Task View shows has a card**: in each row's title, in the selected task's description, in an edit's Preview, and on the chips of an open edit, which the [Task editor](task-editor.md#resting-the-pointer-on-a-chip-shows-the-contacts-card) shows.
-- **Task View passes the Formatted view a function that makes the card** from the mention's address, so the Formatted view still needs no contacts.
+- **Every mention Task View shows has a card**: in each row's title, in the selected task's description, in an edit's Preview, and on the chips of an open edit, which the [Task editor](task-editor.md#resting-the-pointer-on-a-chip-shows-the-contacts-card) shows. The Task list makes the card, as its [public interface](#public-interface) says, so the Formatted view still needs no contacts.
 - **A title inside a task reference shows no card**: its mentions became [plain text](task-editor.md#every-formatting-command-and-snippet-has-a-key) when the reference was inserted.
 - **The card doesn't stop a click**: the card shows only while the pointer rests, so a click on the mention still selects the row as before, and closes the card.
 
@@ -75,20 +73,19 @@ The user asked for these rules:
 
 - **A group's rows sit indented under its heading**, so the heading reads as the group's title.
 - **A click on a group's tag badge collapses the group**, hiding its rows, and another click expands it. The badge shows the hand pointer. The "No tag" heading works the same way.
-- **A collapsed heading's count is discreet**: "( 3 )", spaced as the user decided, sits centered vertically on the badge, in the theme's secondary text color, with only the number bold. So it reads as a note beside the tag, not a second title.
+- **A collapsed heading shows how many of its tasks it hides**, so a collapsed group isn't mistaken for an empty one. The count is discreet: "( 3 )", spaced as the user decided, sits centered vertically on the badge, in the theme's secondary text color, with only the number bold. So it reads as a note beside the tag, not a second title.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
-- **A collapsed heading shows how many of its tasks it hides**, such as "( 3 )", so a collapsed group isn't mistaken for an empty one.
 - **Every group starts expanded when Task View opens.** The user decided that a collapsed group stays collapsed only until Task View closes: nothing stores it, so no file, format, or other device changes.
 - **Collapsing a group keeps the selection**, and the right side still shows the selected task, even when its row is hidden.
 - **Up and Down skip a collapsed group's rows**, and Alt+Up and Alt+Down move a task only among rows that show.
 - **A link to a task in a collapsed group reveals its row**, as the link rule [above](#tasks-show-grouped-by-tag-beside-the-selected-tasks-description) says, and a search keeps each group as the user left it.
 - **Only the mouse collapses a group.** Rows stay the keyboard's only stops in the list, so headings get no key.
 
-The user decided how Task View reveals a task whose group is collapsed, such as for a link to it: it expands the task's group, so its row shows. Now that a task shows in [one group only](#tasks-show-grouped-by-tag-beside-the-selected-tasks-description), there's no other group to choose.
+The user decided how Task View reveals a task whose group is collapsed, such as for a link to it: it expands the task's group, so its row shows. A task shows in [one group only](#tasks-show-grouped-by-tag-beside-the-selected-tasks-description), so there's no other group to choose.
 
-The user decided that collapsing the group whose row holds an open [title edit](#edit-title-edits-the-title-in-its-row) keeps the edit and its text: the edit stays open, hidden with its row, and shows again, with its text, when the group expands. Proposed, each a decision to confirm:
+The user decided that collapsing the group whose row holds an open [title edit](#edit-title-edits-the-title-in-its-row) keeps the edit and its text: the edit stays open, hidden with its row, and shows again, with its text, when the group expands. The user confirmed:
 
 - **Every open title edit stays open when its group collapses**, changed or not, so one rule covers both.
 - **A hidden title edit ends only as a shown one does**: Esc, starting another edit, or selecting another task leaves it, so Esc with nothing else open leaves it, without an Undo bar, as for any title edit.
@@ -104,12 +101,12 @@ The user decided that Esc leaves the edit and abandons every change, after it cl
 
 The user decided that the cursor starts at the end of the Description, which the menu item names, through the Description editor.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
 - Selecting another task also leaves the edit, as Esc does.
-- **Checking the task being edited saves the edit first**, as the Save shortcut does, then resolves the task, which hides at once. The user decided this. Proposed: when the save fails, the task isn't resolved, its checkbox clears, and the editor stays open with its message. This is a decision to confirm.
+- **Checking the task being edited saves the edit first**, as the Save shortcut does, then resolves the task, which hides at once. When the save fails, the task isn't resolved, its checkbox clears, and the editor stays open with its message.
 
-The user asked for a Save button in the edit, at the bottom right, with the Description reaching down to it. Proposed, each a decision to confirm:
+The user asked for a Save button in the edit, at the bottom right, with the Description reaching down to it, and confirmed:
 
 - **A Save button sits at the bottom right of the right side while the Edit tab shows.** It saves as the Save shortcut does: a saved edit shows the formatted description again, and a failed save keeps the editor open with its message. The user decided it's the [Description editor's](task-editor.md#add-opens-at-once-with-the-cursor-in-the-title) own Save button, under its message line.
 - **The editor fills the right side's height.** The Description stretches down to its message line and Save, below the tabs and the tag control, and the right side doesn't scroll as a whole while an edit is open; the Description scrolls inside itself. When the window is too short for the editor's smallest height, which the editor reports as its `MinHeight`, the right side scrolls.
@@ -136,11 +133,11 @@ The user decided that during Edit Description, the right side shows two small, d
 
 The Task list builds the tabs around the Task editor's Description editor, and shows Preview in the one web view it already has: Task View's description doesn't show during an edit, so the web view is free. The Task editor needs no Formatted view and no web view of its own, and the [module map](../modules.md#module-map) doesn't change.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
 - **A click on a tab header switches to it, and so do Ctrl+Tab and Ctrl+Shift+Tab**, from anywhere in the edit, the preview's page included. The headers aren't keyboard stops, so they show no focus rectangle.
 - **Switching to Preview moves the keyboard focus to the right side**, so the arrow keys and Page Up and Page Down scroll the preview. Switching back to Edit puts the cursor where it was.
-- **Links in Preview do nothing**, as the [Formatted view](formatted-view.md#web-links-open-in-the-default-browser-and-other-links-are-reported) proposes: following a task link would leave the edit.
+- **Links in Preview do nothing**, as the [Formatted view](formatted-view.md#web-links-open-in-the-default-browser-and-other-links-are-reported) says: following a task link would leave the edit.
 - **An empty draft's Preview says "No description."**, as a task with none does.
 - **The tag control shows under both tabs**, and works in both.
 - **Everything that puts the cursor back in the edit switches to Edit first**: Undo of a discarded edit, the close prompt's Cancel, and a save that fails.
@@ -154,21 +151,21 @@ The user asked for Edit Title, a new item in a task's right-click menu, which ed
 - **Esc abandons the change**, after it closes any open list.
 - **An empty title isn't saved**: the field is marked, as Add marks it, and stays open.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
 - **Enter saves too**, since a title is one line and Enter has nothing else to do in it, as renaming a file in Windows works.
 - **Shift+F2 starts it** from the keyboard, and F2 keeps starting Edit Description.
 - **Esc leaves with no Undo bar**: a title is one line, quickly typed again.
 - **One edit at a time.** Starting Edit Title or Edit Description leaves an open edit as Esc does, and so does selecting another task or clicking another row.
-- **The checkbox and the row's drag stay off while the title is edited**, so a click inside the field moves the cursor, and the task's other rows show the old title until it's saved.
+- **The checkbox and the row's drag stay off while the title is edited**, so a click inside the field moves the cursor.
 - **A failed save keeps the field open with its text**, and the Title editor says why under the field, as the [editor's save](task-editor.md#add-and-task-view-save-the-same-way-through-the-editor) words each failure.
 - **Closing Task View with a changed title** [asks first](#closing-task-view-asks-before-it-drops-a-changed-edit), as for a changed description.
-- **Edit Title on another row of the task being edited moves the open edit to that row**, with its text, and the cursor goes there. A resolved task's title is edited in its own resolved row, which stays among the resolved tasks while it is edited.
+- **A resolved task's title is edited in its own resolved row**, which stays among the resolved tasks while it is edited.
 - **Starting Edit Title leaves a description edit's Undo bar and its images alone**: a title edit leaves no images, so it has nothing to clean first, and Undo still brings the description edit back.
 
 ### Keys and the mouse reorder, resolve, and delete
 
-The table lists each action on the selected task, by mouse and by key. Proposed: these actions and keys. This is a decision to confirm.
+The table lists each action on the selected task, by mouse and by key, as the user confirmed.
 
 | Action | Mouse | Key |
 | --- | --- | --- |
@@ -185,13 +182,15 @@ The table lists each action on the selected task, by mouse and by key. Proposed:
 | Search | Type in the search box | Ctrl+F, from anywhere in the window, even a row's open right-click menu, moves to the search box and selects its text. There, Down selects the top row and Up the bottom one. Up on the top row and Down on the bottom row go back to the search box |
 | Sync | The Sync button in the status bar | F5 |
 
-Also proposed, each a decision to confirm:
+The user also confirmed:
 
 - The right-click menu holds Edit Title, Edit Description, and Delete, each with its key beside it, so rows hold no buttons.
 - **Rows are the keyboard's stops, not their checkboxes.** Up and Down select the next row across group headings, skipping rows of collapsed groups, and Enter selects the focused row. The user decided that Up on the top row and Down on the bottom row move the cursor to the search box, with its text selected, and keep the selection.
 - **Ctrl+F always searches in Task View**, the user decided, even when the user made it the [Save shortcut](configure.md#the-save-shortcut-saves-an-edit-in-any-window): it moves to the search box and leaves an open edit open. In a row's right-click menu, it closes the menu first. When an edit ends with the focus inside the editor, the focus goes back to the selected task's row.
-- **The row keys work from the right side too**, the user decided. A click on the right side, such as on the description, gives it the focus, and then each row key in the table acts on the selected task as on its row. Proposed, each a decision to confirm: Alt+Up and Alt+Down move the task in its group; the keys act only while the right side itself has the focus and shows the selected task, so keys in the tag control and in an open description edit, its Preview included, keep their own meaning. When a collapsed group hides the selected task's row, its description still shows, and the user decided the keys still act on it: Shift+F2 expands the group to edit the title in its row, Alt+Up and Alt+Down do nothing, and the other keys act as usual.
-- **The list itself is never a keyboard stop**, the user decided, so it never shows a focus rectangle around the whole list. Tab goes straight to a row. Proposed: a focused row shows only its selection, with no dashed focus rectangle of its own. This is a decision to confirm.
+- **The row keys work from the right side too**, the user decided. A click on the right side, such as on the description, gives it the focus, and then each row key in the table acts on the selected task as on its row, Alt+Up and Alt+Down included.
+- **The row keys act only while the right side itself has the focus and shows the selected task.** Keys in the tag control and in an open description edit, its Preview included, keep their own meaning.
+- **The row keys still act when a collapsed group hides the selected task's row**, whose description still shows, as the user decided: Shift+F2 expands the group to edit the title in its row, Alt+Up and Alt+Down do nothing, and the other keys act as usual.
+- **The list itself is never a keyboard stop**, the user decided, so it never shows a focus rectangle around the whole list. Tab goes straight to a row. A focused row shows only its selection, with no dashed focus rectangle of its own.
 - Delete asks for no confirmation. The task disappears at once, and an Undo bar shows for about 10 seconds.
 - The task's file is deleted when the Undo bar goes away or Task View closes. Deleting another task or discarding an edit while the bar shows finishes the earlier action at once, so one bar shows at a time. A delete that fails as Task View closes shows its message the next time Task View opens.
 - Alt+Up and Alt+Down move the task one place among the tasks shown in the group whose row has the focus, and do nothing at the group's ends.
@@ -236,14 +235,13 @@ The user decided that Esc closes every window, one step per press, so one key pr
 
 1. **It closes an open list or menu**, such as the editor's snippet picker, the search box's ["@" list](#search-narrows-the-list), the tag control's menu, or its Custom box and colors, which drop what was typed there, as in [Add](task-editor.md#a-click-on-a-pill-opens-the-tag-menu). The tag control's `CloseEdit` closes its menu first, then Custom, one per press.
 2. **It leaves an edit**, dropping any tag change made in it, with its Undo bar when a description edit had changes, as [Edit Description](#edit-description-turns-the-right-side-into-the-editor) and [Edit Title](#edit-title-edits-the-title-in-its-row) say.
-3. **It empties the search when the search box holds text**, from anywhere in the window, so every task shows again and Task View stays open. The user asked for this.
+3. **It empties the search when the search box holds text**, from anywhere in the window, not only from the search box, since the search hides tasks wherever the focus is. Every task shows again and Task View stays open. The user asked for this. An open edit ends first, so Esc during an edit keeps the search.
 4. **It closes Task View**, as its close button does, so a pending Undo finishes, as above.
 
 Closing from an edit takes two presses, and so does closing while the search holds text. The window closes through the desktop platform's [Esc part](README.md#window-modules-read-keys-through-the-platform), so every step before it marks the key handled. Esc never closes the window while an edit is open, so it never shows the [close prompt](#closing-task-view-asks-before-it-drops-a-changed-edit).
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
-- **Esc empties the search from anywhere in the window**, not only from the search box, since the search hides tasks wherever the focus is. An open edit ends first, so Esc during an edit keeps the search.
 - **Esc doesn't clear the selection**: with no list, edit, or search text, it closes Task View, as the user's steps say.
 - **Esc works while the description has focus.** The user decided that every key reaches the window, so Esc takes the same steps there as anywhere in Task View, and so do the function keys, such as F5 for Sync, and the Save shortcut and Ctrl+Tab in an edit's [Preview](#edit-description-has-an-edit-tab-and-a-preview-tab). Keys reach the window because the description's page [never holds the keyboard focus](formatted-view.md#the-page-never-holds-the-keyboard-focus): a click on it leaves the focus on the right side's pane. Its arrow keys and Page Up and Page Down scroll the pane.
 
@@ -257,7 +255,7 @@ The user decided that when the Add new task shortcut [switches to Add](shell.md#
 
 Save is the default button, so Enter picks it. Esc and the prompt's own close button pick Cancel. Pressing the Add new task shortcut again while the prompt shows does nothing.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
 - **The close button and Alt+F4 ask too**, with the same prompt, so every way the user closes Task View treats a changed edit alike. So do the window menu's Close and the taskbar's Close window. Esc never gets that far, as [above](#esc-goes-back-one-step-then-closes-task-view).
 - **Exit in the tray menu and Windows signing out don't ask**: they discard the edit, as closing did before, so the prompt never blocks the app's exit or the end of a session. An open prompt closes as Cancel first, and Task View then closes with no error.
@@ -267,9 +265,9 @@ Proposed, each a decision to confirm:
 
 ### Tags show as colored badges, and change without Edit
 
-The user decided that Task View shows tags as colored badges wherever it shows them, in the colors the [Task editor](task-editor.md#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them) draws, and that a task's tags change without Edit. Proposed: where they show, now that rows sit in tag groups. This is a decision to confirm.
+The user decided that Task View shows tags as colored badges wherever it shows them, in the colors the [Task editor](task-editor.md#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them) draws, and that a task's tags change without Edit. The user confirmed where they show:
 
-- **Each group's heading** shows its tag as a badge, at today's size, and rows show none. The "No tag" heading stays bold text, with the words the [Task editor publishes](task-editor.md#public-interface) for its add pill, so they have one home, as the user decided.
+- **Each group's heading** shows its tag as a badge, at today's size, and rows show none, since the group already names the tag. The "No tag" heading stays bold text, with the words the [Task editor publishes](task-editor.md#public-interface) for its add pill, so they have one home, as the user decided.
 - **The selected task** shows the tag control under its description: the same pills, add pill, menu, and drag as Add, so the user adds, removes, replaces, and reorders tags without Edit. The first pill shows larger, so the user sees which tag places the task in its group. The user decided that during an [edit](#edit-description-turns-the-right-side-into-the-editor) the control still shows, a task with no tag shows the "No tag" pill, and a click opens the tag menu, but every change [joins the edit](#tags-changed-during-an-edit-save-with-the-edit) instead of saving.
 
 The Task editor publishes both parts, so a tag looks the same in both windows, and the Task list owns no colors.
@@ -283,9 +281,7 @@ The user decided that outside an edit, an Undo bar follows each change: the same
 | One tag replaced by another | "Tag changed" |
 | The same tags in another order | "Tags reordered" |
 
-The user's earlier words, "Tag changed" after a choice and "Tag cleared" after a clear, came from one tag per task: "Tag changed" keeps its meaning for a replace, and "Tag removed" takes over from "Tag cleared".
-
-Proposed, each a decision to confirm:
+The user confirmed:
 
 - **The tag control shows for any selected task**, open or resolved. One task is selected at a time, so one control shows at a time. Selecting another task closes the control's menu, cancels a drag, and drops text typed in Custom.
 - **Outside an edit, each change saves at once**, through Tasks' [save of an edit](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), with the task as the list shows it, and the same title, description, and the control's whole new list. Only the tags differ, so Tasks replaces only the tags, and a title or description another device changed meanwhile stays. A drag saves once, on the drop, never while the pill moves. Tasks needs no new part, and the save starts a sync as every local save does.
@@ -300,13 +296,13 @@ Proposed, each a decision to confirm:
 The user decided that while a [description edit](#edit-description-turns-the-right-side-into-the-editor) or a [title edit](#edit-title-edits-the-title-in-its-row) is open, the tag control joins that edit, so the text and the tags save or fail together:
 
 - **Adding, removing, replacing, or reordering a tag only changes the pills.** Nothing saves, and no tag-change bar shows.
-- **The edit's save sends the edited text and the control's tags together**, in one call to Tasks' [save of an edit](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), with the task as the edit started. Tasks replaces the tags only when the control's list differs from the one the edit started with, in order, once normalized, so tags another device set meanwhile stay when the user left the pills alone. When the save fails, nothing is saved: the edit stays open with its text and the control's tags.
+- **The edit's save sends the edited text and the control's tags together**, in one call to Tasks' [save of an edit](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), with the task as the edit started. Tasks replaces the tags only when the control's list differs from the one the edit started with, in order, once normalized, so tags another device set meanwhile stay when the user left the pills alone. When the save fails, nothing is saved: the edit stays open with its text and the control's tags. When Tasks throws several failures at once, the change may be only partly saved, as [Failure modes](#failure-modes) says.
 - **Text still in Custom when the edit saves is added as a tag first**, through the tag control's `ChooseTypedText`, as Enter in Custom does and as Add's Save does. Nothing saves for it on its own; the edit's one save carries it. This holds for every way the edit saves: the Save shortcut, the Save button, the close prompt's Save, and checking the task.
 - **Leaving the edit without saving drops the tag changes with the text**: Esc, the close prompt's Discard, selecting another task, or starting another edit. Undo of a discarded description edit puts back both its text and the control's tags.
 - **A changed tag list is a change of the edit.** An edit has changes when its editor reports one, or when the control's list differs from the list the edit started with, in order, once normalized, so a reorder alone counts. So a description edit whose only change is its tags shows the Undo bar when discarded, and closing Task View asks first. The user decided that text typed in Custom and not chosen isn't a change of the edit, unlike in [Add](task-editor.md#custom-adds-a-new-tag-in-the-color-clicked): leaving an edit with no other change drops it without asking. Ruled out: nonblank Custom text counts as a change.
 - **Esc closes the tag control's menu, then its Custom, before it leaves the edit**, through the control's `CloseEdit`, as [Esc's steps](#esc-goes-back-one-step-then-closes-task-view) say. Esc during a drag cancels the drag first, inside the control.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
 - **A title edit left with Esc still shows no Undo bar**, even when its tags changed: tags, like a title, are quickly chosen again.
 - **A sync during the edit doesn't change the pills**, as it doesn't change the edit's text. The save then keeps the synced tags unless the user changed the list, by [Tasks' tag rule](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it).
@@ -321,13 +317,13 @@ The user also decided:
 - **Task View's shortcut, while the window is open, brings it forward**, empties the search, and puts the cursor in the box, as [Shell](shell.md#a-shortcut-switches-between-add-and-task-view) says.
 - **Ctrl+F works anywhere in the window**, an open editor too, and selects the box's text.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
-- Search looks in titles, descriptions, and every tag of a task, first or not, so a word that matches only a task's second tag still finds it. Each group shows only its tasks that match, so a match shows in its first tag's group, and a group with none is hidden. An empty box shows every task.
+- Search matches each word as [Tasks' search](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) does, so a word that matches only a task's second tag still finds it, and a plain word matches a mention by its stored text, as [Contacts](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) says. Each group shows only its tasks that match, so a match shows in its first tag's group, and a group with none is hidden. An empty box shows every task.
 - Opening Task View from the tray while it is open also empties the search, since the tray and the shortcut share the window's Show.
 - The resolved count, below, counts only the resolved tasks that match the search.
 
-The user asked that typing "@" in the search box insert the chosen contact's alias, and that the search then find every task that refers to that contact in its title or description. Proposed, each a decision to confirm:
+The user asked that typing "@" in the search box insert the chosen contact's alias, and that the search then find every task that refers to that contact in its title or description. The user confirmed:
 
 - **"@" in the search box opens the Task editor's [alias list](task-editor.md#a-plain-text-box-can-offer-contacts-by-alias)**, where Editing's rule opens the "@" list: at the box's start, or after a character that isn't a letter or a digit. It looks and works like the editor's "@" list, without the template header. The search box's own Down and Up, to the top or bottom row, work only while the list is closed, and then exactly as before the list existed.
 - **Choosing a contact puts "@" and its alias in the box**, or its ID when it has no alias, in place of the "@" and what was typed after it, and the list narrows at once.
@@ -343,18 +339,16 @@ The user decided:
 
 ### The search bar spans the window in its own shade
 
-The user asked for a shorter search bar that stretches across the whole window, in a color slightly different from the window's, and decided the search bar is the whole band below. It's the platform's [search band](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), which the Contacts window shares, and the split between the sides is the platform's split panes. Proposed, each a decision to confirm:
+The user asked for a shorter search bar that stretches across the whole window, in a color slightly different from the window's, and decided the search bar is the whole band below. It's the platform's [search band](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), which the Contacts window shares with [the look it has here](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), and the split between the sides is the platform's split panes. The user decided the search box is 180 pixels wide, whatever the window's width, and confirmed the rest:
 
 - **The search bar is the band at Task View's top that holds the "Search:" label and the search box.** It runs from the window's left edge to its right edge.
 - **Its background is the same theme resource as the [status bar's](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar)**, so the two bars match and follow the theme.
-- **The user decided the search box is 180 pixels wide**, whatever the window's width.
-- **The band is one row of controls tall**, with small padding.
+- **The band is one row of controls tall**: its height is the search box's plus at most 12 pixels of padding.
 - **The message line and the Undo bar stay under the band**, outside it. The Undo bar keeps its own card look. The message line is the platform's [message line](README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them), which Contacts shares.
-- Proposed, a decision to confirm: the band's height is the search box's plus at most 12 pixels of padding.
 
 ### Resolved tasks wait behind a count at the bottom
 
-Resolved tasks are hidden by default, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides. Proposed, each a decision to confirm:
+Resolved tasks are hidden by default, as [purpose and scope](../purpose.md#resolved-tasks-stay-for-a-week-then-are-deleted) decides. The user confirmed:
 
 - "N resolved" at the bottom of the left side shows the resolved tasks, in one list in rank order, not in tag groups, and the count hides while it's 0. A resolved task's checkbox is checked, and a click on its checkbox reopens it.
 
@@ -362,23 +356,15 @@ The user decided that a checked task moves behind "N resolved" at once, with no 
 
 ### Task View syncs when it opens and on its Sync button
 
-Opening Task View starts a sync without delaying the window, and its Sync button starts one at once, as
-[Sync through git](../sync.md#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) decides.
-Both use the shared service's manual-sync operation, which joins an active pass rather than starting another.
-The opener owns and observes the opening request; window button/event handlers await their requests and handle
-errors. Closing the window cancels its waits and detaches its status subscription, not the shared pass.
-Background notices dispatch to the UI and never update a closed window. Existing search, pending undo, editor,
-and web-view lifetime behavior stays unchanged.
+Opening Task View starts a sync without making the window wait, and its Sync button starts one at once, as [Sync through git](../sync.md#on-the-desktop-sync-runs-soon-after-a-change-and-every-30-minutes) decides. Both ask the shared sync service for a sync now, which joins a sync already running rather than starting a second one.
 
-**Decided by the user:** unexpected failures from Task View's opening, button, or F5 sync requests are observed
-and reported in its existing failure line. The window remains usable; the failure never becomes an unobserved
-Task fault or a success-shaped fallback. This adds no automatic retry.
+These rules hold for every sync Task View asks for:
 
-Window-owned sync requests handle the service's
-[`SyncNowAsync` disposal contract](../../../src/Shared/Sync/ISyncService.cs) quietly during shutdown, including
-queued requests: service disposal is not a user-facing sync failure.
+- **A failure always shows, and never ends the app.** The user decided that when a sync Task View asked for fails in a way nobody expected, the error shows in the status bar, beside the Sync button, and the window stays usable. Task View never ignores the failure or reports success instead, and it doesn't retry by itself.
+- **Closing Task View stops only its own waiting.** Task View stops waiting for its syncs and stops following the sync status, but a sync already running goes on. Nothing updates a closed window.
+- **The app's exit isn't a failure.** While the app stops, the sync service refuses new syncs, as [its contract](../../../src/Shared/Sync/ISyncService.cs) says, including syncs that were queued. Task View takes that quietly and shows nothing.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
 - F5 also starts a sync.
 - When a sync started from Task View fails, Task View shows the error next to the button. Other failures show only as [Shell](shell.md#sync-stays-quiet-unless-something-is-wrong) decides.
@@ -394,18 +380,18 @@ The user decided that Task View has a status bar along its bottom edge. It's [Up
 - **Just left of the version, an icon that shows whether Prevent screen saver is on**, with a tooltip, as the user asked. [Keep awake](keep-awake.md#the-status-bar-shows-whether-its-on) publishes the state, and its design says what each state's tooltip says; the Task list draws the icon and its tooltip from the state. The user decided that only Task View's bar shows it, that it's a sun, and that it's not a button:
   - It's a sun, U+E706 from the icon font the Sync button uses, just left of the version.
   - It looks lit while on, the user decided: fully opaque, in a color that stands out from the bar's text. While off it looks unlit: muted and partly see-through. While [paused](keep-awake.md#locking-the-pc-pauses-it-until-the-pc-is-unlocked) it looks unlit too, since the app doesn't hold the screen on then, and while it failed it shows in the error color, fully opaque. The tooltip says which.
-  - Proposed: the lit color is the theme's caution color, `SystemFillColorCautionBrush`, the amber the bar's [update text](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) already uses, so the sun reads as lit and follows the light and dark themes. The unlit look is the secondary text color, partly see-through, as other dimmed parts of the app are. This is a decision to confirm.
+  - The lit color is the theme's caution color, `SystemFillColorCautionBrush`, the amber the bar's [update text](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) already uses, so the sun reads as lit and follows the light and dark themes. The unlit look is the secondary text color, partly see-through, as other dimmed parts of the app are. The user confirmed this.
   - It's not a button and never a keyboard stop; Configure changes the setting. Screen readers read its tooltip as its name.
   - It follows the state as it changes, while Task View is open.
 - **At its end, after the version, Updates' update text**, such as "Update available: 2.2.0", only while a new version is available or updating, as [Updates](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) decides. Otherwise the version ends the bar.
 
-Proposed, each a decision to confirm:
+The user confirmed:
 
 - **The Task list makes one part for the bar's start**: the Sync button and its error on the left, and the version on the right, filling the width the update text leaves. It passes that part to Updates' status bar as the bar's start, so Updates' public interface doesn't change and the update text stays at the bar's end.
 - The tooltip says "Sync (F5)" while no sync runs. The button's name for screen readers is "Sync".
 - The status bar itself is never a keyboard stop; the Sync button is, after the list, and then the update text while it's a button.
 
-The user asked how the button looks while a sync runs, and decided it combines the blue icon with a green working look. Proposed, each a decision to confirm:
+The user asked how the button looks while a sync runs, and decided it combines the blue icon with a green working look. The user confirmed:
 
 - **The Sync button is compact**, with little padding around its icon, so it fits the one-line status bar. The icon comes from the icon font Windows ships, Segoe Fluent Icons on Windows 11 and Segoe MDL2 Assets on Windows 10, which share its code point ([Segoe Fluent Icons](https://learn.microsoft.com/en-us/windows/apps/design/style/segoe-fluent-icons-font)), so it needs no new dependency. The icon is U+E895, and the button pads it by at most 8 pixels at each side and 3 above and below.
 - **While any sync runs, the button turns green and is turned off.** That includes the sync Task View starts when it opens, the button's and F5's, and one Sync starts on its own, such as after a save. The green is the theme's success color, `SystemFillColorSuccessBrush`, so it suits the light and dark themes. The button keeps that bright green while it's off, instead of the theme's greyed-out look, and still tells assistive tools it's unavailable. Pressing it, or F5, starts no second sync.
@@ -422,28 +408,31 @@ The user decided that images resize only while the description is edited, in the
 - **A finished drag changes the draft, not the task.** The Task list writes the width into the edit's text through the Description editor, which uses Rendering's [width function](../rendering.md#public-interface). Nothing is saved: the Save shortcut saves it with the rest of the edit, and Esc abandons it with every other change.
 - **The page stays script-free.** The corner is the browser's own CSS resize handle, and the Task list never reads the page.
 
-Proposed: Preview doesn't show again after a drag, since its page already shows the new width; the next switch to Preview shows the draft with it. This is a decision to confirm.
+The user confirmed that Preview doesn't show again after a drag, since its page already shows the new width; the next switch to Preview shows the draft with it.
 
 ## Public interface
 
 - **Create Task View**: the composition root calls it when the app starts, with the parts Task View needs, and gives the result to Shell. The window opens only on Show Task View. It takes the Task editor's parts, since it builds the editor and the tag parts, and the [Formatted view's](formatted-view.md#public-interface) two ports: a function that makes a new description web view each time Task View opens, and the default browser.
-- **Show Task View**: opens the window, or brings it forward. Shell calls it from the tray menu and when the app is started a second time. Proposed: it uses the desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), which says where the window opens and what happens after the user closes it. This is a decision to confirm.
+- **Show Task View**: opens the window, or brings it forward. Shell calls it from the tray menu and when the app is started a second time. It uses the desktop platform's [single window](README.md#a-closed-window-is-made-again-on-the-next-show), which says where the window opens and what happens after the user closes it.
 - **Close Task View**: closes the window as its close button does, and says whether it closed. A changed edit [asks first](#closing-task-view-asks-before-it-drops-a-changed-edit), and the window stays open when the user cancels, the save fails, or the prompt already shows. Shell calls it when the Add new task shortcut [switches to Add](shell.md#a-shortcut-switches-between-add-and-task-view), and opens Add only when it closed.
 
 The split window, the tag groups, and Edit Description change none of these parts.
 
-[`ViewTasksWindow.Create`](../../../src/Desktop/TaskList/ViewTasksWindow.cs) retains its existing arguments and
-adds the shared `ISyncService` as its last argument. Row 7 of the [desktop delivery backlog](README.md#delivery-backlog) adds `Close` to its port. Row 8 adds Tasks' [tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own) to `Create`, right after `tasks`, as the Task editor's `Create` takes them. There is no sync-less overload, test-only switch, or second service created by this module.
+[`ViewTasksWindow.Create`](../../../src/Desktop/TaskList/ViewTasksWindow.cs) makes Task View, and `IViewTasksWindow` is what Shell uses:
 
 ```csharp
 namespace Memoria.ToDo.Desktop.TaskList;
 
 public static class ViewTasksWindow
 {
-    /// Creates Task View. The window, and its description web view, are made only on IViewTasksWindow.Show.
-    public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette,
-        ITheme theme, TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-        Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync);
+    /// Creates Task View. The window, and its description web view, are made only on IViewTasksWindow.Show;
+    /// the web view is released when the window closes. deviceFolder must be a full path: Task View keeps its
+    /// size and place in it, on this device only.
+    public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts,
+        IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
+        IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser,
+        ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer,
+        IKeepAwakeStatus keepAwake, string deviceFolder, ILogger logger);
 }
 
 /// The Task View window, as Shell uses it.
@@ -452,82 +441,65 @@ public interface IViewTasksWindow
     /// Opens the window, or brings it forward.
     void Show();
 
-    /// Closes the window as its close button does, first asking Save, Discard, or Cancel when an edit
-    /// has changes, and returns once it's answered. True when the window is closed, or wasn't
-    /// open; false when the user cancels, Save doesn't save, or the prompt already shows.
-    bool Close();
-
     /// Whether the window is open now.
     bool IsOpen { get; }
+
+    /// Closes the window as its close button does, first asking Save, Discard, or Cancel when an edit in place has
+    /// changes. True when the window is closed, or was not open; false when the user cancels, Save doesn't save, or the
+    /// prompt already shows.
+    bool Close();
 }
 ```
 
-Proposed: `Close` waits for the prompt's answer and returns it, rather than returning a task. The prompt is a modal dialog, which runs its own message loop while it waits, so Shell's shortcut action stays a plain call. This is a decision to confirm.
+What each of `Create`'s arguments is for:
 
-It also takes the platform's
-[Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows) as a new last argument, after
-`ISyncService sync`, and attaches each window it makes to them.
+- `tasks`: [Tasks](../tasks.md#public-interface), for the tasks the list shows and every change it saves.
+- `tagColors`: Tasks' [tag colors](../tasks.md#tag-colors-are-a-capability-of-their-own), for the tag parts, as the [Task editor's](task-editor.md#public-interface) `Create` takes them.
+- `tagOrder`: Tasks' [tag order](../tasks.md#tag-order-is-a-capability-of-its-own), to sort the groups and save a group's move.
+- `contacts`: [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), for [live mention text](#mentions-show-each-contacts-current-details), the "@" lists, search by "@", and contact cards. Task View passes it to the Title and Description editors.
+- `palette`: the colors a tag can take, for the tag parts.
+- `theme`: the light or dark theme, for the editors and the contact cards.
+- `time`: the clock, for the Undo bar's timeout and the editors.
+- `clipboard`: the clipboard, for the editors' paste.
+- `imageFiles`: the file chooser, for adding an image to a description.
+- `files`: the file system, for an edit's images and Task View's saved place.
+- `createWebView`: the [Formatted view's](formatted-view.md#public-interface) function that makes a new description web view each time Task View opens. Resizing an image is an event of that web view, so the argument's type doesn't change for it.
+- `browser`: the Formatted view's default browser, for links.
+- `sync`: the shared sync service, for the [sync on open, the Sync button, and F5](#task-view-syncs-when-it-opens-and-on-its-sync-button). There's no overload without it, no test-only switch, and no second service made in this module.
+- `closeWindowKeys`: the platform's [Close window keys](README.md#the-close-window-shortcut-closes-any-of-the-apps-windows), attached to each window it makes.
+- `updates`: Updates' [update status](updates.md#public-interface), for the [status bar](#a-status-bar-holds-the-sync-button-and-the-version) in each window it makes.
+- `saveKeys`: the platform's [Save keys](README.md#the-save-shortcut-saves-in-any-window-that-edits), on which Edit Description and Edit Title save.
+- `pointer`: the mouse, for drags. The composition root makes one and passes it to each window module, as the [platform](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them) says.
+- `keepAwake`: [Keep awake's](keep-awake.md#public-interface) status, for the Prevent screen saver icon.
+- `deviceFolder`: the folder that holds `task-view-placement.json`, Task View's [saved place](README.md#a-saved-place-reopens-a-window-where-it-was), on this device only. The file's name lives in the Task list, which owns the window. `Create` throws `ArgumentException` when the folder isn't a full path, as Updates' does.
+- `logger`: the log, last, as [Logging](../logging.md#public-interface) says.
 
-The user decided that the Task list may use [Updates](updates.md), for its [status bar](#a-status-bar-holds-the-sync-button-and-the-version). Proposed: `Create` also takes Updates' [update status](updates.md#public-interface), `IUpdateStatus updates`, as its new last argument, after `closeWindowKeys`, and puts the status bar in each window it makes. This is a decision to confirm.
+The user also decided:
 
-Row 11 of the [delivery backlog](README.md#delivery-backlog) adds the platform's [Save keys](README.md#the-save-shortcut-saves-in-any-window-that-edits) as `Create`'s new last argument, after the update status, as the user decided; Edit Description and Edit Title save on them. The version comes from a platform part, not an argument, and resizing an image adds an event to the Formatted view's [web view port](formatted-view.md#public-interface), so `Create`'s `createWebView` argument keeps its type:
-
-```csharp
-public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, IReadOnlyList<PaletteColor> palette,
-    ITheme theme, TimeProvider time, IClipboard clipboard, IImageFileChooser imageFiles, IFileSystem files,
-    Func<IDescriptionWebView> createWebView, IDefaultBrowser browser, ISyncService sync,
-    CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys);
-```
-
-Row 13 of the [delivery backlog](README.md#delivery-backlog) adds Tasks' [tag order](../tasks.md#tag-order-is-a-capability-of-its-own), `ITagOrder tagOrder`, right after `tagColors`, as tag colors came in; Task View sorts its groups and saves a group's move through it. The drop line, a group's drag, and the scrolling during a drag change no other part. This is not implemented:
-
-```csharp
-public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder,
-    IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
-    IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser,
-    ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer);
-```
-
-The user decided that Task View uses [Contacts](../contacts.md#contacts-is-a-shared-module-of-its-own), for [live mention text](#mentions-show-each-contacts-current-details) and the editors' "@" list. Proposed, a decision to confirm: Contacts' `IContacts contacts` joins `Create` right after `tagOrder`, and Task View passes it to the Title and Description editors, as the [Task editor](task-editor.md#public-interface) takes them. The user also decided that Task View's split bar and search band come from the [desktop platform](README.md#split-panes-search-band-and-drag-parts-serve-every-window-that-needs-them), shared with the Contacts window, with no change in behavior; its drag parts moved there too, and the composition root passes the mouse as `Create`'s last argument, `IDragPointer pointer`, shown above. Contacts' argument is not implemented.
-
-For the [search box's "@" list](#search-narrows-the-list) and the [contact cards](#resting-the-pointer-on-a-mention-shows-the-contacts-card), the user decided:
-
-- **The Task list may use the [Contact list](contact-list.md#public-interface)**, for its contact card, as the [module map](../modules.md#module-map) says.
-- **It attaches the Task editor's `ContactAliasList` to the search band's box**, which the platform's [search band](README.md#the-search-band-publishes-its-box-for-the-alias-list) publishes.
-
-Proposed, each a decision to confirm:
-
-- **It gives the Formatted view's title and description a card function** that calls the Contact list's `ContactCard.For` with Contacts, the theme, and the mention's address.
-- **`Create` takes nothing new**: it already takes Contacts and the theme.
-
-For the [Prevent screen saver icon](#a-status-bar-holds-the-sync-button-and-the-version) and the [saved size and place](#tasks-show-grouped-by-tag-beside-the-selected-tasks-description), proposed, each a decision to confirm:
-
-- **The Task list may use [Keep awake](keep-awake.md#public-interface)**, as the [module map](../modules.md#module-map) proposes, and `Create` takes its status, `IKeepAwakeStatus keepAwake`, after `pointer`.
-- **`Create` takes the device folder, `string deviceFolder`, after `keepAwake`**, and makes its [single window](README.md#a-closed-window-is-made-again-on-the-next-show) with the platform's [saved place](README.md#a-saved-place-reopens-a-window-where-it-was) for `task-view-placement.json` in it. Task View's file name lives in the Task list, which owns the window. `Create` fails when the folder isn't a full path, as Updates' does.
-- **The logger stays last**, as [Logging](../logging.md#public-interface) says:
-
-```csharp
-public static IViewTasksWindow Create(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts,
-    IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
-    IImageFileChooser imageFiles, IFileSystem files, Func<IDescriptionWebView> createWebView, IDefaultBrowser browser,
-    ISyncService sync, CloseWindowKeys closeWindowKeys, IUpdateStatus updates, SaveKeys saveKeys, IDragPointer pointer,
-    IKeepAwakeStatus keepAwake, string deviceFolder, ILogger logger);
-```
+- **`Close` waits for the prompt's answer and returns it.** The prompt is a modal dialog, which runs its own message loop while it waits, so Shell's shortcut action stays a plain call.
+- **The version comes from the platform's [app version](README.md#the-apps-version-has-one-home)**, not from an argument.
+- **The Task list may use [Updates](updates.md), the [Contact list](contact-list.md#public-interface), and [Keep awake](keep-awake.md#public-interface)**, as the [module map](../modules.md#module-map) says.
+- **It attaches the Task editor's `ContactAliasList` to the search band's box**, which the platform's [search band](README.md#the-search-band-publishes-its-box-for-the-alias-list) publishes, for the [search box's "@" list](#search-narrows-the-list).
+- **It gives the Formatted view's title and description a card function** that calls the Contact list's `ContactCard.For` with Contacts, the theme, and the mention's address, for the [contact cards](#resting-the-pointer-on-a-mention-shows-the-contacts-card).
 
 ## Failure modes
 
 - **The web view fails**, for example when the WebView2 Runtime is missing: the description shows as Markdown source, with a message saying why, as the [Formatted view](formatted-view.md#failure-modes) does. So does an edit's Preview, where no image can then resize. The rest of the list works.
 - **A move, resolve, or delete can't be saved**: the task returns to how it was, and a message says why.
 - **A group's move can't be saved**, for example because no clone folder is set, or `tags.json` can't be read, has a newer version, or can't be written: the group goes back to its place, and the message line says why, as Tasks' [failure modes](../tasks.md#failure-modes) give it. While `tags.json` can't be read, groups show in the tags' alphabetical order, and the list still loads.
-- **A deleted task's images can't be removed**: the task's file is already deleted, as [Tasks](../tasks.md#public-interface) says, so the task stays gone. Proposed: the message line says "The task was deleted, but some of its images couldn't be removed: " followed by the reason. This is a decision to confirm.
-- **Saving an edit fails**: nothing is saved, neither the text nor the control's tags. The editor stays open with the text, the control keeps its tags, and the editor shows the error, as the [editor's save](task-editor.md#add-and-task-view-save-the-same-way-through-the-editor) does.
+- **A deleted task's images can't be removed**: the task's file is already deleted, as [Tasks](../tasks.md#public-interface) says, so the task stays gone. The message line says "The task was deleted, but some of its images couldn't be removed: " followed by the reason.
+- **Saving an edit fails**: nothing is saved, neither the text nor the control's tags. The editor stays open with the text, the control keeps its tags, and the editor shows the error, as the [editor's save](task-editor.md#add-and-task-view-save-the-same-way-through-the-editor) does. When Tasks throws several failures at once, the change may be only partly saved, and the editor says so, as its [failure modes](task-editor.md#failure-modes) say.
 - **An edit's images can't be deleted**: the action goes ahead and the message line says why, and a new edit of that task doesn't open until they're deleted, as the [user decided](#edit-description-turns-the-right-side-into-the-editor). A tag change outside an edit doesn't clean them up first, so its save moves them into the clone, where they sync with no link until the task is deleted. This is a known limitation, not fixed.
-- **A tag change outside an edit can't be saved**, for example because the task's file can't be written or no clone folder is set: the pills go back to the task's saved tags, in their saved order, no Undo bar shows, and the message line says why, as the editor words each of Tasks' failures. When the task was deleted meanwhile, such as by a sync, it says "This task no longer exists." (Decision to confirm: the wording.)
+- **A tag change outside an edit can't be saved**, for example because the task's file can't be written or no clone folder is set: the pills go back to the task's saved tags, in their saved order, no Undo bar shows, and the message line says why, as the editor words each of Tasks' failures. When the task was deleted meanwhile, such as by a sync, it says "This task no longer exists."
 - **Undoing a tag change fails**: the change stays, the bar goes away, and the message line says why.
 - **A tag's color can't be kept**: the tag isn't chosen and nothing is saved; Custom says why, as in [Add](task-editor.md#failure-modes).
 - **A new title can't be saved**: the title edit stays open with its text, and the Title editor says why.
 - **Save in the close prompt doesn't save**: Task View stays open with the editor's message, and Add doesn't open.
-- **A Tasks call from the list throws a failure the call doesn't document**: the list doesn't report it, since [each module reports only its expected failures](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), so the platform shows it and the app ends. That includes an `AggregateException`, which only adding a task and a sync's update throw, and no call from the list makes either.
+- **Tasks throws several failures at once**, an `AggregateException`, for a move, resolve, reopen, delete, group move, tag change outside an edit, or its Undo. The user decided that the change may be only partly done, so:
+  - The message line shows the Task editor's [message for a save that may be only partly done](task-editor.md#public-interface), the same one the editor shows.
+  - The list asks Tasks for its tasks and tag order again, so the rows, the pills, and the groups show what was really saved.
+  - A tag change's Undo bar shows only when Tasks holds the new tags after the reload.
+- **A Tasks call from the list throws any other failure the call doesn't document**: the list doesn't report it, since [each module reports only its expected failures](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), so the platform logs it and shows it in an error box, and the app keeps running.
 - **Task View's saved place is missing, can't be read, has a newer version, or isn't on any screen now**, such as after a monitor was unplugged: Task View opens at its first size on the pointer's screen, as the [saved place](README.md#a-saved-place-reopens-a-window-where-it-was) decides, and nothing shows to the user. The next close saves over it.
 - **Task View's place can't be saved when it closes**: Task View still closes, nothing shows, and its next open uses the previous saved place, or the first size. A Warning in the log says why.
 - **Prevent screen saver failed**: the icon shows the error color, and its tooltip says why, as [Keep awake](keep-awake.md#failure-modes) gives it.
@@ -634,7 +606,7 @@ The options below were considered and rejected, grouped by decision.
 - What collapsing a group does to a title edit in it:
   - **The edit ends**: the user chose to keep the draft, so a click on a tag never loses typing.
 - Which group a task with several tags shows in:
-  - **Every tag's group, as before one tag per task**: the user asked that only the first tag place the task, so a task shows once.
+  - **Every tag's group**: the user asked that only the first tag place the task, so a task shows once.
 - What shows of the tags during an edit:
   - **The tags as read-only badges, or a plain read-only "No tag" badge, with no x and no menu**: the user wants the tags changed during an edit, as part of it.
   - **The tags as badges, and nothing when there are none**: the same reason, and the row under the description would jump.
@@ -645,11 +617,12 @@ The options below were considered and rejected, grouped by decision.
   - **"Tag changed" for every change**: the bar wouldn't say whether a tag is gone, new, or only moved.
   - **"Tags changed" for every change**: one rule and no comparison, but a slip of a drag and a slip of the x would read the same.
   - **A save on every step of a drag, each with its own bar**: one drag would leave many saves and bars, where the user made one change.
+  - **"Tag cleared" after removing a tag**, the word from when a task had one tag: "Tag removed" says it for a list, and "Tag changed" keeps its meaning for a replace.
 - What happens to a task's row when its first tag changes:
   - **The task moves, and the selection clears**: the tag control would disappear right after the user changed it, so a second change would need the task found again.
 - What an edit's Preview shows of a mention:
   - **The stored text**: the Preview would show a mention's old text while the chip in the editor shows the new.
-- What "@" in the search box inserts (proposed, a decision to confirm):
+- What "@" in the search box inserts:
   - **A whole mention, as in the editor**: the box would hold Markdown the user can't read or edit.
   - **The full name**: it holds spaces, so it would split into words that match anyone sharing a first name.
 - What a search word starting with "@" does when it finds no contact:
@@ -669,6 +642,10 @@ The options below were considered and rejected, grouped by decision.
   - **A moon, U+E708**: it reads as sleep, the opposite of what the feature does.
   - **The normal text color while on, and only a muted color while off**: the user asked that on look lit and off look unlit, which two text colors don't show.
   - **Text, such as "Screen stays on"**: it takes room the update text and a sync error need.
+- What the list does when Tasks throws several failures at once:
+  - **Leave them to the platform's error box**: the box names no task, and the list keeps showing the change as the user made it, whether or not Tasks saved it, while the editor already reports the same failure in words.
+- How the public interface shows `Create`'s arguments:
+  - **Every version of `Create`, one for each delivery step that added an argument**: nearly identical blocks, each new argument adds one, and their notes went stale. The steps stay in the [delivery backlog](README.md#delivery-backlog) and in git.
 
 Who shows formatted Markdown, and who opens links, is decided in the [Formatted view](formatted-view.md#ruled-out).
 

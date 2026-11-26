@@ -1,16 +1,18 @@
 using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.TaskEditor;
 using Memoria.ToDo.Shared.Tasks;
 using Serilog;
 
 namespace Memoria.ToDo.Desktop.TaskList;
 
-/// <summary>The failures a Tasks call from the list is known to throw: its own, then the platform's for any store call.</summary>
+/// <summary>The failures a Tasks call from the list is known to throw: its own, the Task editor's words for several at once, then the platform's for any store call.</summary>
 internal static class ListFailures
 {
     /// <summary>The message for a known failure, or null when <paramref name="failure"/> isn't one the list knows.</summary>
     public static string? MessageOf(Exception failure) => failure switch
     {
         TaskNotFoundException => "This task no longer exists.",
+        AggregateException incomplete => SaveFailureText.Incomplete(incomplete),
         _ => StoreFailures.MessageOf(failure),
     };
 

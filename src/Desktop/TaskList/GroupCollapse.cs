@@ -4,7 +4,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// Which tag groups the user has collapsed. Every group starts expanded, and the state lives as long as this object, which is
-/// as long as one Task View window. A tag is matched ignoring case; the "No tag" group is the null tag.
+/// as long as one Task View window. A tag is matched exactly; the "No tag" group is the null tag.
 /// </summary>
 internal sealed class GroupCollapse
 {

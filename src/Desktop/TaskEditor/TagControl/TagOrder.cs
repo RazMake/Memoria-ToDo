@@ -10,10 +10,6 @@ internal static class TagOrder
     public static IReadOnlyList<string> Move(IReadOnlyList<string> tags, int from, int to)
     {
         ArgumentNullException.ThrowIfNull(tags);
-        ArgumentOutOfRangeException.ThrowIfNegative(from);
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(from, tags.Count);
-        ArgumentOutOfRangeException.ThrowIfNegative(to);
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(to, tags.Count);
 
         var moved = new List<string>(tags);
         moved.RemoveAt(from);

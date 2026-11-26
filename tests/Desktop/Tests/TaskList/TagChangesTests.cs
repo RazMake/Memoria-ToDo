@@ -479,6 +479,52 @@ public class TagChangesTests
     }
 
     [Fact]
+    public void A_tag_change_Tasks_saved_but_may_be_only_partly_saved_reports_that_and_still_shows_its_bar()
+    {
+        var shown = _tasks.Add("Buy milk", "", "home");
+        _tasks.NoticesFail = true;
+
+        var result = Change(shown, "home", "errand");
+
+        Assert.Equal(["home", "errand"], StoredTags(shown));
+        Assert.Equal(Stored(shown), result);
+        Assert.True(_pending.IsPending);
+        Assert.Equal("Tag added", _pending.Label);
+        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+    }
+
+    [Fact]
+    public void A_tag_change_Tasks_did_not_save_and_may_be_only_partly_undone_reports_that_and_shows_no_bar()
+    {
+        var shown = _tasks.Add("Buy milk", "", "home");
+        var images = _tasks.PasteImage(shown.Id);
+        _tasks.Files.FailWritesUnder(_tasks.TaskFolder);
+        _tasks.Files.FailWritesUnder(Path.GetDirectoryName(images[0])!);
+
+        var result = Change(shown, "home", "errand");
+
+        Assert.Equal(["home"], StoredTags(shown));
+        Assert.True(result is null || result == Stored(shown));
+        Assert.False(_pending.IsPending);
+        var report = Assert.Single(_reports);
+        Assert.StartsWith("The change may be only partly saved: Writing is not allowed here", report);
+    }
+
+    [Fact]
+    public void A_failed_Undo_that_may_be_only_partly_saved_removes_the_bar_reports_that_instead_of_throwing()
+    {
+        var shown = _tasks.Add("Buy milk", "", "home");
+        Change(shown, "home", "errand");
+        _tasks.NoticesFail = true;
+
+        _pending.Undo();
+
+        Assert.False(_pending.IsPending);
+        Assert.Equal(["home"], StoredTags(shown));
+        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+    }
+
+    [Fact]
     public void Undo_of_a_change_on_a_task_deleted_meanwhile_says_it_no_longer_exists()
     {
         var shown = _tasks.Add("Buy milk");

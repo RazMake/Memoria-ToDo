@@ -165,6 +165,48 @@ public class FieldEditorSaveTests
     }
 
     [WpfFact]
+    public void A_Title_save_that_may_be_only_partly_saved_returns_false_keeps_the_text_and_says_so_under_the_field()
+    {
+        var editor = Title("Buy milk");
+
+        var result = editor.Save(_ => throw new AggregateException(new IOException("The disk is full."), new IOException("Undo failed.")));
+
+        Assert.False(result);
+        Assert.Equal("Buy milk", editor.Value);
+        Assert.Equal("The change may be only partly saved: The disk is full.", MessageShown(editor));
+    }
+
+    [WpfFact]
+    public void A_Description_save_that_may_be_only_partly_saved_returns_false_keeps_the_text_and_says_so_under_the_field()
+    {
+        var editor = Description("Two litres");
+
+        var result = editor.Save(_ => throw new AggregateException(new IOException("The disk is full."), new IOException("Undo failed.")));
+
+        Assert.False(result);
+        Assert.Equal("Two litres", editor.Value);
+        Assert.Equal("The change may be only partly saved: The disk is full.", MessageShown(editor));
+    }
+
+    // The text of the editor's message line, found in the logical tree because the editor is never shown.
+    private static string MessageShown(System.Windows.DependencyObject editor) => LogicalDescendants(editor).OfType<MessageLine>().Single().Text;
+
+    private static IEnumerable<object> LogicalDescendants(System.Windows.DependencyObject parent)
+    {
+        foreach (var child in System.Windows.LogicalTreeHelper.GetChildren(parent))
+        {
+            yield return child;
+            if (child is System.Windows.DependencyObject inner)
+            {
+                foreach (var deeper in LogicalDescendants(inner))
+                {
+                    yield return deeper;
+                }
+            }
+        }
+    }
+
+    [WpfFact]
     public void A_Title_save_that_fails_in_an_unknown_way_throws()
     {
         var editor = Title("Buy milk");

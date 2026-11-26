@@ -32,6 +32,13 @@ public class TaskViewResolveAndDeletePathTests
         Assert.Null(services.Stored("Buy milk").Resolved);
         Assert.Contains("Buy milk", screen.RowTitles);
 
+        services.NoticesFail = true;
+        screen.ClickCheckBox("Buy milk");
+        services.NoticesFail = false;
+        Assert.True(screen.ShowsText("The change may be only partly saved: Changed failed."));
+        Assert.NotNull(services.Stored("Buy milk").Resolved);
+        Assert.Equal("2 resolved", screen.ResolvedLabel);
+
         screen.PressOn("Call Ana", Key.Delete);
         Assert.DoesNotContain("Call Ana", screen.RowTitles);
         Assert.True(screen.HasButton("Undo"));

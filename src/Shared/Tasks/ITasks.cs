@@ -76,6 +76,10 @@ public interface ITasks
     /// the current list whole. Every other field keeps its
     /// current value. Moves the edit's waiting images into the clone, on any save that changes something, then writes the file and sets Updated,
     /// unless nothing changed. Returns the task as saved.
+    /// When a move or the write fails, moves every image it moved back to the edit's folder, newest first, and rethrows the
+    /// failure as it is, so the clone is as it was: no Changed notice is raised, no local save is reported, a retry moves
+    /// them all again, and discarding the edit deletes them all. When moving one back fails too, that image stays in the
+    /// task's folder, and it throws an <see cref="AggregateException"/>: the original failure first, then each undo failure, in the order they happened.
     /// Throws, before any change: <see cref="NoRepositoryFolderException"/> when no folder is set;
     /// <see cref="TaskNotFoundException"/> when the task isn't in <see cref="All"/>; <see cref="ArgumentException"/> when
     /// <c>edited.TaskId</c> isn't <c>started.Id</c>, or for an empty or multi-line title, a tag that's empty once normalized, or a new list of more than 15 tags.

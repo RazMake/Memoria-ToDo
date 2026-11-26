@@ -43,10 +43,6 @@ The likely cause, not confirmed: Node.js on Windows treats every socket path as 
 - **Shell starts the Local API through its lifetime, as it starts [Updates](desktop/updates.md)**. It starts it after it wins the [one-instance claim](desktop/shell.md#only-one-instance-runs-and-a-start-by-hand-shows-task-view) and after Sync's [initial local publication](sync.md#one-owned-worker-keeps-synchronous-git-and-ssh-off-the-ui-thread). So a later instance never touches the pipe, and a client never sees the empty list of a store that's still loading. A failed initialization still starts the API.
 - **Starting returns at once.** Kestrel starts on a background task the UI thread never waits for.
 - **Shell stops the Local API first when the app ends**, before Sync's disposal. Stopping ends open streams and waits at most 5 seconds for running calls.
-- **The server's cost is measured before the step ships**, in a Release build on your PC, and recorded here:
-  - The tray icon appears no later than today, within the measurement's noise.
-  - The idle app's private memory grows by at most 25 MB.
-  - The installer's growth is measured and reported, since ASP.NET Core's shared framework ships inside the [self-contained app](technology-stack.md#the-desktop-app-carries-its-own-net-runtime).
 - **The API has no on/off setting.** Only your account can reach it.
 
 ### Screens update on their own thread, as they do after a sync
