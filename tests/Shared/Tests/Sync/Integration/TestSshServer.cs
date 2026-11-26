@@ -16,14 +16,21 @@ namespace Memoria.ToDo.Shared.Sync.Tests.Integration;
 /// <summary>
 /// An in-process SSH server on the loopback address that serves the bare repositories under one folder by running the
 /// installed git. It accepts one client key and only git-upload-pack and git-receive-pack. A test can run code before
-/// each command, to count it, hold it, or let another device push first.
+/// each command, to count it, hold it, or let another device push first. Disposing it starts no new git and waits for
+/// every command it is serving, so nothing it started still works in the served folder when the test deletes it.
 /// </summary>
-internal sealed class TestSshServer : IDisposable
+internal sealed class TestSshServer : IAsyncDisposable
 {
+    private readonly object gate = new();
+    private readonly List<Task> handlers = [];
+    private bool stopping;
     private readonly SshServer server;
     private readonly string root;
     private readonly byte[] clientKey;
     private readonly List<string> commands = [];
+    private readonly Stopwatch clock = Stopwatch.StartNew();
+    private readonly List<string> timeline = [];
+    private readonly List<(string Label, int ProcessId, DateTime StartTime)> started = [];
 
     public TestSshServer(string root, byte[] clientKey)
     {
@@ -110,7 +117,62 @@ internal sealed class TestSshServer : IDisposable
         Port = await bound.Task;
     }
 
-    public void Dispose() => server.Dispose();
+    /// <summary>
+    /// Stops the server: starts no new git, closes every session, then waits until every command handler has finished
+    /// and every git it started has exited.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        Task[] running;
+        lock (gate)
+        {
+            stopping = true;
+            running = [.. handlers];
+        }
+
+        Record("server disposed");
+        server.Dispose();
+        await Task.WhenAll(running);
+    }
+
+    /// <summary>
+    /// What the server did with each command so far, with milliseconds since it was made, and every git it started that is
+    /// still running. A git command works inside its bare repository, so this explains a scratch folder that can't be deleted.
+    /// </summary>
+    public string Describe()
+    {
+        List<string> lines;
+        lock (timeline) { lines = [.. timeline]; }
+        lines.Add($"+{clock.ElapsedMilliseconds} ms now; git processes this server started that are still running: {StillRunning()}");
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private string StillRunning()
+    {
+        List<(string Label, int ProcessId, DateTime StartTime)> all;
+        lock (started) { all = [.. started]; }
+        var alive = all.Where(p => IsRunning(p.ProcessId, p.StartTime)).Select(p => $"{p.Label} (process {p.ProcessId})").ToList();
+        return alive.Count == 0 ? "none" : string.Join(", ", alive);
+    }
+
+    // A process id can be reused once its process ends, so a match also needs the same start time.
+    private static bool IsRunning(int processId, DateTime startTime)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(processId);
+            return !process.HasExited && process.StartTime == startTime;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            return false;
+        }
+    }
+
+    private void Record(string line)
+    {
+        lock (timeline) { timeline.Add($"+{clock.ElapsedMilliseconds} ms {line}"); }
+    }
 
     private void OnAuthenticating(object? sender, SshAuthenticatingEventArgs e)
     {
@@ -135,22 +197,47 @@ internal sealed class TestSshServer : IDisposable
         }
 
         // Subscribe to the channel's data now, before the client can send any.
-        var stream = new SshStream(channel);
-        e.IsAuthorized = true;
-        _ = RunAsync(channel, stream, command);
+        lock (gate)
+        {
+            if (stopping)
+            {
+                Record($"refused command while the server is stopping: {command}");
+                e.IsAuthorized = false;
+                return;
+            }
+
+            var stream = new SshStream(channel);
+            e.IsAuthorized = true;
+            handlers.Add(Task.Run(() => RunAsync(channel, stream, command)));
+        }
     }
 
     private async Task RunAsync(SshChannel channel, SshStream stream, string command)
     {
         uint exitCode = 128;
+        var label = command;
+        Process? git = null;
+        var gitEnded = false;
         try
         {
             if (!TryResolve(command, out var verb, out var repository))
+            {
+                Record($"refused unknown command: {command}");
                 return;
+            }
 
-            lock (commands) { commands.Add(verb); }
+            lock (commands)
+            {
+                commands.Add(verb);
+                label = $"#{commands.Count} {verb}";
+            }
+
+            Record($"{label}: command accepted");
             if (BeforeCommand is { } before)
+            {
                 await before(verb, repository);
+                Record($"{label}: BeforeCommand returned");
+            }
 
             if (verb == "receive-pack" && !AllowPush)
             {
@@ -170,12 +257,26 @@ internal sealed class TestSshServer : IDisposable
             start.ArgumentList.Add(verb);
             start.ArgumentList.Add(repository);
 
-            using var git = Process.Start(start)!;
+            // Checking the flag, starting git, and recording the start are one step, so disposal can't begin between them
+            // and the timeline shows the true order.
+            lock (gate)
+            {
+                if (stopping)
+                {
+                    Record($"{label}: git not started: the server is stopping");
+                    return;
+                }
+
+                git = Process.Start(start)!;
+                lock (started) { started.Add((label, git.Id, git.StartTime)); }
+                Record($"{label}: git started (process {git.Id})");
+            }
+
             _ = git.StandardError.ReadToEndAsync();
             _ = CopyInputAsync(stream, git.StandardInput.BaseStream);
             await git.StandardOutput.BaseStream.CopyToAsync(stream);
-            await git.WaitForExitAsync();
-            exitCode = (uint)git.ExitCode;
+            gitEnded = true;
+            exitCode = (uint)await EndGitAsync(git, label);
             if (exitCode == 0 && ExitCodeAfterServing?.Invoke(verb) is { } overridden)
                 exitCode = overridden;
             if (BeforeExit is { } beforeExit)
@@ -184,9 +285,17 @@ internal sealed class TestSshServer : IDisposable
         catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException or SshConnectionException)
         {
             // The client went away; the test that caused it checks what the client saw.
+            Record($"{label}: client went away ({ex.GetType().Name}: {ex.Message})");
         }
         finally
         {
+            if (git is not null)
+            {
+                if (!gitEnded)
+                    await EndGitAsync(git, label);
+                git.Dispose();
+            }
+
             try
             {
                 await channel.CloseAsync(exitCode);
@@ -196,7 +305,22 @@ internal sealed class TestSshServer : IDisposable
             }
 
             stream.Dispose();
+            Record($"{label}: channel closed with exit status {exitCode}");
         }
+    }
+
+    // Closing git's input and output ends it on end of input or a broken pipe; it isn't killed, since a killed receive-pack
+    // could leave ref lock files behind. Returns once git has exited.
+    private async Task<int> EndGitAsync(Process git, string label)
+    {
+        try { git.StandardInput.Close(); }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
+        try { git.StandardOutput.Close(); }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
+
+        await git.WaitForExitAsync();
+        Record($"{label}: git exited with {git.ExitCode}");
+        return git.ExitCode;
     }
 
     // The client may write after git exits (libgit2 says goodbye with a flush packet), so a failed copy into a closed pipe is expected.

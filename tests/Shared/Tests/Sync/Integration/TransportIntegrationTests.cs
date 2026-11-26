@@ -15,53 +15,59 @@ public sealed class TransportIntegrationTests
     public async Task An_unknown_host_key_is_offered_with_the_servers_real_fingerprint_and_trusting_it_lets_the_clone_finish()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var world = await SyncWorld.StartAsync();
-        var a = world.AddDevice("a");
-        await a.Sync.Setup.GenerateKeyAsync(ct);
+        await SyncWorld.RunAsync(async world =>
+        {
+            var a = world.AddDevice("a");
+            await a.Sync.Setup.GenerateKeyAsync(ct);
 
-        Assert.False(await a.TryCloneAsync(ct));
-        var offered = a.Sync.Setup.State.HostKey!;
-        Assert.Equal(world.Server.HostKeyFingerprint, offered.Fingerprint);
-        Assert.True(offered.CanAccept);
+            Assert.False(await a.TryCloneAsync(ct));
+            var offered = a.Sync.Setup.State.HostKey!;
+            Assert.Equal(world.Server.HostKeyFingerprint, offered.Fingerprint);
+            Assert.True(offered.CanAccept);
 
-        await a.Sync.Setup.AcceptHostKeyAsync(offered.Fingerprint, ct);
-        Assert.True(await a.TryCloneAsync(ct));
+            await a.Sync.Setup.AcceptHostKeyAsync(offered.Fingerprint, ct);
+            Assert.True(await a.TryCloneAsync(ct));
+        });
     }
 
     [Fact]
     public async Task A_host_key_that_differs_from_the_trusted_one_is_refused_and_offered_for_acceptance()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var world = await SyncWorld.StartAsync();
-        var a = world.AddDevice("a");
-        await a.Sync.Setup.GenerateKeyAsync(ct);
-        Directory.CreateDirectory(a.DeviceFolder);
-        await File.WriteAllTextAsync(
-            Path.Combine(a.DeviceFolder, "known-hosts.json"),
-            $$"""{"version":1,"hosts":[{"host":"127.0.0.1","port":{{world.Server.Port}},"fingerprint":"SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}]}""",
-            ct);
+        await SyncWorld.RunAsync(async world =>
+        {
+            var a = world.AddDevice("a");
+            await a.Sync.Setup.GenerateKeyAsync(ct);
+            Directory.CreateDirectory(a.DeviceFolder);
+            await File.WriteAllTextAsync(
+                Path.Combine(a.DeviceFolder, "known-hosts.json"),
+                $$"""{"version":1,"hosts":[{"host":"127.0.0.1","port":{{world.Server.Port}},"fingerprint":"SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}]}""",
+                ct);
 
-        Assert.NotNull(await Record.ExceptionAsync(() => a.Sync.Setup.CloneAsync(world.Address, a.CloneFolder, ct)));
-        Assert.Equal(SyncFailure.ChangedHostKey, a.Sync.Status.Failure);
-        Assert.True(a.Sync.Setup.State.HostKey?.CanAccept ?? false);
-        Assert.False(a.Sync.Setup.State.IsConfigured);
+            Assert.NotNull(await Record.ExceptionAsync(() => a.Sync.Setup.CloneAsync(world.Address, a.CloneFolder, ct)));
+            Assert.Equal(SyncFailure.ChangedHostKey, a.Sync.Status.Failure);
+            Assert.True(a.Sync.Setup.State.HostKey?.CanAccept ?? false);
+            Assert.False(a.Sync.Setup.State.IsConfigured);
+        });
     }
 
     [Fact]
     public async Task A_key_the_server_does_not_know_fails_authentication_and_leaves_setup_unfinished()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var world = await SyncWorld.StartAsync(authorizedKey: SyncWorld.StrangerKey());
-        var a = world.AddDevice("a");
-        await a.Sync.Setup.GenerateKeyAsync(ct);
-        Assert.False(await a.TryCloneAsync(ct));
-        await a.Sync.Setup.AcceptHostKeyAsync(a.Sync.Setup.State.HostKey!.Fingerprint, ct);
+        await SyncWorld.RunAsync(async world =>
+        {
+            var a = world.AddDevice("a");
+            await a.Sync.Setup.GenerateKeyAsync(ct);
+            Assert.False(await a.TryCloneAsync(ct));
+            await a.Sync.Setup.AcceptHostKeyAsync(a.Sync.Setup.State.HostKey!.Fingerprint, ct);
 
-        Assert.NotNull(await Record.ExceptionAsync(() => a.Sync.Setup.CloneAsync(world.Address, a.CloneFolder, ct)));
+            Assert.NotNull(await Record.ExceptionAsync(() => a.Sync.Setup.CloneAsync(world.Address, a.CloneFolder, ct)));
 
-        Assert.Equal(SyncFailure.Authentication, a.Sync.Status.Failure);
-        Assert.False(a.Sync.Setup.State.IsConfigured);
-        Assert.Null(a.Sync.Setup.State.RepositoryFolder);
+            Assert.Equal(SyncFailure.Authentication, a.Sync.Status.Failure);
+            Assert.False(a.Sync.Setup.State.IsConfigured);
+            Assert.Null(a.Sync.Setup.State.RepositoryFolder);
+        }, authorizedKey: SyncWorld.StrangerKey());
     }
 
     [Fact]
@@ -69,82 +75,88 @@ public sealed class TransportIntegrationTests
     {
         var ct = TestContext.Current.CancellationToken;
         const string Bad = "this is not a task";
-        await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["tasks/bad.json"] = Bad }));
-        var a = world.AddDevice("a");
-        await a.ConnectAsync(ct);
-        var task = a.AddTask("Good", "Next to a bad file");
+        await SyncWorld.RunAsync(async world =>
+        {
+            var a = world.AddDevice("a");
+            await a.ConnectAsync(ct);
+            var task = a.AddTask("Good", "Next to a bad file");
 
-        var status = await a.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
+            var status = await a.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
 
-        Assert.Contains(status.SkippedFiles, f => f.RelativePath.EndsWith("bad.json", StringComparison.Ordinal));
-        Assert.Equal(Bad, await File.ReadAllTextAsync(Path.Combine(a.CloneFolder, "tasks", "bad.json"), ct));
-        Assert.Equal(Bad, world.Origin.ReadOnMain("tasks/bad.json"));
-        Assert.NotNull(world.Origin.ReadOnMain($"tasks/{task.Id}.json"));
+            Assert.Contains(status.SkippedFiles, f => f.RelativePath.EndsWith("bad.json", StringComparison.Ordinal));
+            Assert.Equal(Bad, await File.ReadAllTextAsync(Path.Combine(a.CloneFolder, "tasks", "bad.json"), ct));
+            Assert.Equal(Bad, world.Origin.ReadOnMain("tasks/bad.json"));
+            Assert.NotNull(world.Origin.ReadOnMain($"tasks/{task.Id}.json"));
+        }, path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["tasks/bad.json"] = Bad }));
     }
 
     [Fact]
     public async Task Saving_a_task_does_not_wait_for_a_stalled_network_operation()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var world = await SyncWorld.StartAsync();
-        var a = world.AddDevice("a");
-        await a.ConnectAsync(ct);
-        var arrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        world.Server.BeforeCommand = async (_, _) =>
+        await SyncWorld.RunAsync(async world =>
         {
-            arrived.TrySetResult();
-            await release.Task;
-        };
-        var pass = a.Sync.SyncNowAsync(ct);
-        try
-        {
-            await arrived.Task.WaitAsync(Bound, ct);
+            var a = world.AddDevice("a");
+            await a.ConnectAsync(ct);
+            var arrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            world.Server.BeforeCommand = async (_, _) =>
+            {
+                arrived.TrySetResult();
+                await release.Task;
+            };
+            var pass = a.Sync.SyncNowAsync(ct);
+            try
+            {
+                await arrived.Task.WaitAsync(Bound, ct);
 
-            var saved = await System.Threading.Tasks.Task.Run(() => a.AddTask("While stalled", "Saved at once"), ct).WaitAsync(Bound, ct);
+                var saved = await System.Threading.Tasks.Task.Run(() => a.AddTask("While stalled", "Saved at once"), ct).WaitAsync(Bound, ct);
 
-            Assert.Equal("While stalled", saved.Title);
-        }
-        finally
-        {
-            release.TrySetResult();
-            await pass.WaitAsync(Bound, ct);
-        }
+                Assert.Equal("While stalled", saved.Title);
+            }
+            finally
+            {
+                release.TrySetResult();
+                await pass.WaitAsync(Bound, ct);
+            }
+        });
     }
 
     [Fact]
     public async Task Cancelling_a_stalled_pass_and_stopping_leaves_the_clone_unchanged_and_completes()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var world = await SyncWorld.StartAsync();
-        var a = world.AddDevice("a");
-        await a.ConnectAsync(ct);
-        a.AddTask("Pending", "Local only");
-        var before = a.Snapshot();
-        var arrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        world.Server.BeforeCommand = async (_, _) =>
+        await SyncWorld.RunAsync(async world =>
         {
-            arrived.TrySetResult();
-            await release.Task;
-        };
-        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var pass = a.Sync.SyncNowAsync(cancel.Token);
-        try
-        {
-            await arrived.Task.WaitAsync(Bound, ct);
-            await cancel.CancelAsync();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pass.WaitAsync(Bound, ct));
+            var a = world.AddDevice("a");
+            await a.ConnectAsync(ct);
+            a.AddTask("Pending", "Local only");
+            var before = a.Snapshot();
+            var arrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            world.Server.BeforeCommand = async (_, _) =>
+            {
+                arrived.TrySetResult();
+                await release.Task;
+            };
+            using var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var pass = a.Sync.SyncNowAsync(cancel.Token);
+            try
+            {
+                await arrived.Task.WaitAsync(Bound, ct);
+                await cancel.CancelAsync();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pass.WaitAsync(Bound, ct));
 
-            await a.Sync.StopAsync(ct).WaitAsync(Bound, ct);
-        }
-        finally
-        {
-            release.TrySetResult();
-        }
+                await a.Sync.StopAsync(ct).WaitAsync(Bound, ct);
+            }
+            finally
+            {
+                release.TrySetResult();
+            }
 
-        Assert.Equal(before, a.Snapshot());
-        Assert.Null(world.Origin.MainTip);
+            Assert.Equal(before, a.Snapshot());
+            Assert.Null(world.Origin.MainTip);
+        });
     }
 
     [Fact]

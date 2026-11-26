@@ -45,20 +45,22 @@ public sealed class SafeStateIntegrationTests
     public async Task Sync_refuses_a_detached_clone_and_changes_nothing()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
-        var a = world.AddDevice("a");
-        await a.ConnectAsync(ct);
-        MakeUnsafe(a.CloneFolder, Unsafe.DetachedHead);
-        a.AddTask("Local edit", "Must not be pushed");
-        var before = a.Snapshot();
-        var originBefore = world.Origin.MainTip;
+        await SyncWorld.RunAsync(async world =>
+        {
+            var a = world.AddDevice("a");
+            await a.ConnectAsync(ct);
+            MakeUnsafe(a.CloneFolder, Unsafe.DetachedHead);
+            a.AddTask("Local edit", "Must not be pushed");
+            var before = a.Snapshot();
+            var originBefore = world.Origin.MainTip;
 
-        var status = await a.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
+            var status = await a.Sync.SyncNowAsync(ct).WaitAsync(Bound, ct);
 
-        Assert.Equal(SyncFailure.Repository, status.Failure);
-        Assert.Contains("detached", status.Details, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(before, a.Snapshot());
-        Assert.Equal(originBefore, world.Origin.MainTip);
+            Assert.Equal(SyncFailure.Repository, status.Failure);
+            Assert.Contains("detached", status.Details, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(before, a.Snapshot());
+            Assert.Equal(originBefore, world.Origin.MainTip);
+        }, path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
     }
 
     [Fact]
@@ -66,26 +68,28 @@ public sealed class SafeStateIntegrationTests
     {
         var state = Unsafe.DetachedHead;
         var ct = TestContext.Current.CancellationToken;
-        await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
-        var a = world.AddDevice("a");
-        await a.ConnectAndSyncAsync(ct);
+        await SyncWorld.RunAsync(async world =>
+        {
+            var a = world.AddDevice("a");
+            await a.ConnectAndSyncAsync(ct);
 
-        // A second clone whose origin is not the server, so accepting it would rewrite its origin.
-        var candidate = Path.Combine(world.Root, "candidate");
-        Repository.Clone(world.Origin.Path, candidate);
-        MakeUnsafe(candidate, state);
-        var gitConfigBefore = File.ReadAllText(Path.Combine(candidate, ".git", "config"));
-        var selectedBefore = a.Repository.Folder;
-        var originBefore = world.Origin.MainTip;
-        Assert.True(a.Sync.Setup.State.IsConfigured);
+            // A second clone whose origin is not the server, so accepting it would rewrite its origin.
+            var candidate = Path.Combine(world.Root, "candidate");
+            Repository.Clone(world.Origin.Path, candidate);
+            MakeUnsafe(candidate, state);
+            var gitConfigBefore = File.ReadAllText(Path.Combine(candidate, ".git", "config"));
+            var selectedBefore = a.Repository.Folder;
+            var originBefore = world.Origin.MainTip;
+            Assert.True(a.Sync.Setup.State.IsConfigured);
 
-        await Assert.ThrowsAnyAsync<IOException>(() => a.Sync.Setup.UseExistingAsync(world.Address, candidate, ct).WaitAsync(Bound, ct));
+            await Assert.ThrowsAnyAsync<IOException>(() => a.Sync.Setup.UseExistingAsync(world.Address, candidate, ct).WaitAsync(Bound, ct));
 
-        Assert.Equal(SyncFailure.Repository, a.Sync.Status.Failure);
-        Assert.Equal(gitConfigBefore, File.ReadAllText(Path.Combine(candidate, ".git", "config")));
-        Assert.Equal(selectedBefore, a.Repository.Folder);
-        Assert.True(a.Sync.Setup.State.IsConfigured);
-        Assert.Equal(originBefore, world.Origin.MainTip);
+            Assert.Equal(SyncFailure.Repository, a.Sync.Status.Failure);
+            Assert.Equal(gitConfigBefore, File.ReadAllText(Path.Combine(candidate, ".git", "config")));
+            Assert.Equal(selectedBefore, a.Repository.Folder);
+            Assert.True(a.Sync.Setup.State.IsConfigured);
+            Assert.Equal(originBefore, world.Origin.MainTip);
+        }, path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
     }
 
     [Theory]
@@ -94,23 +98,25 @@ public sealed class SafeStateIntegrationTests
     public async Task Setup_clears_the_sync_receipt_only_when_it_actually_changes_the_origin_and_touches_nothing_else(string existingOrigin, bool receiptCleared)
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
-        var a = world.AddDevice("a");
-        await a.ConnectAndSyncAsync(ct);
-        using (var repo = new Repository(a.CloneFolder))
+        await SyncWorld.RunAsync(async world =>
         {
-            repo.Network.Remotes.Update("origin", updater => updater.Url = existingOrigin);
-            Assert.NotNull(repo.Config.Get<string>("memoria.lastSuccessfulSync", ConfigurationLevel.Local));
-        }
+            var a = world.AddDevice("a");
+            await a.ConnectAndSyncAsync(ct);
+            using (var repo = new Repository(a.CloneFolder))
+            {
+                repo.Network.Remotes.Update("origin", updater => updater.Url = existingOrigin);
+                Assert.NotNull(repo.Config.Get<string>("memoria.lastSuccessfulSync", ConfigurationLevel.Local));
+            }
 
-        var unrelated = SetUnrelatedSettings(a.CloneFolder);
+            var unrelated = SetUnrelatedSettings(a.CloneFolder);
 
-        // Needs no network: re-selecting the clone only rewrites its settings.
-        await a.Sync.Setup.UseExistingAsync("g:repo.git", a.CloneFolder, ct).WaitAsync(Bound, ct);
+            // Needs no network: re-selecting the clone only rewrites its settings.
+            await a.Sync.Setup.UseExistingAsync("g:repo.git", a.CloneFolder, ct).WaitAsync(Bound, ct);
 
-        AssertOnlyOriginAddressChanged(a.CloneFolder, unrelated, "git@g:repo.git");
-        using var after = new Repository(a.CloneFolder);
-        Assert.Equal(receiptCleared, after.Config.Get<string>("memoria.lastSuccessfulSync", ConfigurationLevel.Local) is null);
+            AssertOnlyOriginAddressChanged(a.CloneFolder, unrelated, "git@g:repo.git");
+            using var after = new Repository(a.CloneFolder);
+            Assert.Equal(receiptCleared, after.Config.Get<string>("memoria.lastSuccessfulSync", ConfigurationLevel.Local) is null);
+        }, path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
     }
 
     /// <summary>Adds settings that setting the origin must not touch: another remote and a custom key.</summary>

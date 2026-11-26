@@ -12,10 +12,11 @@ namespace Memoria.ToDo.Shared.Sync.Tests.Integration;
 
 /// <summary>
 /// One test's own world: a scratch folder, an origin bare repository, and a loopback SSH server serving it, plus the
-/// devices that sync with it. Disposing stops the server, then every device's Sync (each bounded), then deletes the scratch
-/// folder; a device that won't stop fails the test. <see cref="RunAsync"/> keeps a failing scenario's own failure first.
+/// devices that sync with it. <see cref="RunAsync"/> is the only way to run one: after the scenario it stops the server (it
+/// starts no new git and waits for every command it is serving, bounded), then every device's Sync (each bounded), then
+/// deletes the scratch folder. A server or device that won't stop fails the test, but never hides the scenario's own failure.
 /// </summary>
-internal sealed class SyncWorld : IAsyncDisposable
+internal sealed class SyncWorld
 {
     private readonly List<Device> devices = [];
 
@@ -36,7 +37,7 @@ internal sealed class SyncWorld : IAsyncDisposable
 
     /// <param name="createOrigin">Makes the origin at the given path; an unborn one by default.</param>
     /// <param name="authorizedKey">The one client key the server accepts; the shared fake device key by default.</param>
-    public static async Task<SyncWorld> StartAsync(Func<string, OriginRepository>? createOrigin = null, byte[]? authorizedKey = null)
+    private static async Task<SyncWorld> StartAsync(Func<string, OriginRepository>? createOrigin = null, byte[]? authorizedKey = null)
     {
         var root = Path.Combine(AppContext.BaseDirectory, "scratch", Guid.NewGuid().ToString("N"));
         var served = Directory.CreateDirectory(Path.Combine(root, "served")).FullName;
@@ -71,8 +72,9 @@ internal sealed class SyncWorld : IAsyncDisposable
 
     /// <summary>
     /// Runs one scenario in a fresh world and always cleans it up. If the scenario fails, its failure is the one reported
-    /// and a cleanup failure is logged beside it; if the scenario passes, a cleanup failure fails the test. Scenarios that
-    /// can leave a stalled client behind use this, because <c>await using</c> cannot see the failure that is escaping.
+    /// and a cleanup failure is logged beside it; if the scenario passes, a cleanup failure fails the test. Every test uses
+    /// this rather than disposing the world itself, because <c>await using</c> would let a cleanup failure replace the
+    /// failure that is escaping.
     /// </summary>
     public static async Task RunAsync(Func<SyncWorld, Task> scenario, Func<string, OriginRepository>? createOrigin = null, byte[]? authorizedKey = null)
     {
@@ -104,41 +106,92 @@ internal sealed class SyncWorld : IAsyncDisposable
         }
     }
 
-    public async ValueTask DisposeAsync()
+    private static readonly TimeSpan StopBound = TimeSpan.FromSeconds(30);
+
+    // Runs one stop and tells the bound running out (BoundExpired) from a failure the stop threw (Failure).
+    private static async Task<(bool BoundExpired, Exception? Failure)> StopWithinBoundAsync(Func<ValueTask> stop)
     {
-        if (await CleanUpAsync() is { } failure)
+        try
         {
-            throw failure;
+            return (false, await Run().WaitAsync(StopBound));
+        }
+        catch (TimeoutException)
+        {
+            return (true, null);
+        }
+
+        // Run never faults, so only the bound can make the wait throw, even when the stop throws its own TimeoutException
+        // or throws before returning its task.
+        async Task<Exception?> Run()
+        {
+            try
+            {
+                await stop();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
         }
     }
 
     // The server goes first: closing its connections is what unblocks a client still reading from a stalled remote.
-    // Each device's cleanup is bounded so a hung client cannot hang the run; a device that does not finish leaves its
-    // scratch folder in place and is reported as the failure.
-    private async Task<TimeoutException?> CleanUpAsync()
+    // Every device is stopped, each bounded, even when an earlier one failed, so a hung or broken client cannot hang the
+    // run or hide another. Every server and device failure is reported together, the server's first, and leaves the
+    // scratch folder in place. Otherwise a scratch folder that can't be deleted is reported with the server's command
+    // timeline, since a git the server started is the likeliest holder.
+    private async Task<Exception?> CleanUpAsync()
     {
-        Server.Dispose();
-        var stuck = new List<string>();
+        var failures = new List<Exception>();
+        var (serverTimedOut, serverError) = await StopWithinBoundAsync(Server.DisposeAsync);
+        if (serverTimedOut)
+        {
+            failures.Add(new TimeoutException(
+                $"The test SSH server did not finish its commands within {StopBound.TotalSeconds} seconds.{ServerCommands()}"));
+        }
+        else if (serverError is not null)
+        {
+            failures.Add(new InvalidOperationException(
+                $"The test SSH server failed while stopping: {serverError.Message}{ServerCommands()}",
+                serverError));
+        }
+
         foreach (var device in devices)
         {
-            try
+            var (timedOut, error) = await StopWithinBoundAsync(device.DisposeAsync);
+            if (timedOut)
             {
-                await device.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
+                failures.Add(new TimeoutException(
+                    $"Sync did not finish stopping within {StopBound.TotalSeconds} seconds for the device with clone folder {device.CloneFolder}."));
             }
-            catch (TimeoutException)
+            else if (error is not null)
             {
-                stuck.Add(device.CloneFolder);
+                failures.Add(new InvalidOperationException(
+                    $"Sync failed while stopping for the device with clone folder {device.CloneFolder}: {error.Message}",
+                    error));
             }
         }
 
-        if (stuck.Count > 0)
+        if (failures.Count > 0)
         {
-            return new TimeoutException($"Sync did not finish stopping within 30 seconds for: {string.Join(", ", stuck)}. Scratch folder left in place: {Root}");
+            return new AggregateException($"The world did not stop cleanly. Scratch folder left in place: {Root}", failures);
         }
 
-        DeleteScratch(Root);
+        try
+        {
+            DeleteScratch(Root);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new IOException($"The scratch folder {Root} could not be deleted: {ex.Message}{ServerCommands()}", ex);
+        }
+
         return null;
     }
+
+    private string ServerCommands() =>
+        $"{Environment.NewLine}The test SSH server's commands:{Environment.NewLine}{Server.Describe()}";
 
     internal static void DeleteScratch(string folder)
     {

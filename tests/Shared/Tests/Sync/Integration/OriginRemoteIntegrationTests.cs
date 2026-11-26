@@ -18,34 +18,38 @@ public sealed class OriginRemoteIntegrationTests
     [InlineData(Before.AlreadyCanonical, false)]
     public async Task Ensure_makes_the_origin_the_canonical_address_and_reports_whether_it_changed_it(Before before, bool changed)
     {
-        await using var world = await SyncWorld.StartAsync(path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
-        var folder = Path.Combine(world.Root, "clone");
-        Repository.Clone(world.Origin.Path, folder);
-        using var repo = new Repository(folder);
-        Arrange(repo, before);
-        repo.Config.Set("test.keep", "unrelated", ConfigurationLevel.Local);
-        repo.Network.Remotes.Add("other", "host.example:owner/other.git");
-        var configBefore = File.ReadAllText(Path.Combine(folder, ".git", "config"));
-        var refSpecs = before == Before.Missing ? null : repo.Network.Remotes["origin"].FetchRefSpecs.Select(r => r.Specification).ToArray();
-        var pushUrl = before == Before.Missing ? null : repo.Network.Remotes["origin"].PushUrl;
-
-        var (remote, didChange) = OriginRemote.Ensure(repo, Canonical);
-
-        Assert.Equal(changed, didChange);
-        Assert.Equal(Canonical, remote.Url);
-        Assert.Equal(Canonical, repo.Network.Remotes["origin"].Url);
-        Assert.Equal("unrelated", repo.Config.Get<string>("test.keep", ConfigurationLevel.Local)?.Value);
-        Assert.Equal("host.example:owner/other.git", repo.Network.Remotes["other"].Url);
-        if (refSpecs is not null)
+        await SyncWorld.RunAsync(world =>
         {
-            Assert.Equal(refSpecs, repo.Network.Remotes["origin"].FetchRefSpecs.Select(r => r.Specification).ToArray());
-            Assert.Equal(pushUrl, repo.Network.Remotes["origin"].PushUrl);
-        }
+            var folder = Path.Combine(world.Root, "clone");
+            Repository.Clone(world.Origin.Path, folder);
+            using var repo = new Repository(folder);
+            Arrange(repo, before);
+            repo.Config.Set("test.keep", "unrelated", ConfigurationLevel.Local);
+            repo.Network.Remotes.Add("other", "host.example:owner/other.git");
+            var configBefore = File.ReadAllText(Path.Combine(folder, ".git", "config"));
+            var refSpecs = before == Before.Missing ? null : repo.Network.Remotes["origin"].FetchRefSpecs.Select(r => r.Specification).ToArray();
+            var pushUrl = before == Before.Missing ? null : repo.Network.Remotes["origin"].PushUrl;
 
-        if (!changed)
-        {
-            Assert.Equal(configBefore, File.ReadAllText(Path.Combine(folder, ".git", "config")));
-        }
+            var (remote, didChange) = OriginRemote.Ensure(repo, Canonical);
+
+            Assert.Equal(changed, didChange);
+            Assert.Equal(Canonical, remote.Url);
+            Assert.Equal(Canonical, repo.Network.Remotes["origin"].Url);
+            Assert.Equal("unrelated", repo.Config.Get<string>("test.keep", ConfigurationLevel.Local)?.Value);
+            Assert.Equal("host.example:owner/other.git", repo.Network.Remotes["other"].Url);
+            if (refSpecs is not null)
+            {
+                Assert.Equal(refSpecs, repo.Network.Remotes["origin"].FetchRefSpecs.Select(r => r.Specification).ToArray());
+                Assert.Equal(pushUrl, repo.Network.Remotes["origin"].PushUrl);
+            }
+
+            if (!changed)
+            {
+                Assert.Equal(configBefore, File.ReadAllText(Path.Combine(folder, ".git", "config")));
+            }
+
+            return Task.CompletedTask;
+        }, path => OriginRepository.CreateWith(path, new Dictionary<string, string> { ["notes.txt"] = "seed" }));
     }
 
     private static void Arrange(Repository repo, Before before)

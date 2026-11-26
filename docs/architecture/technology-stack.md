@@ -493,6 +493,17 @@ Tests that check every project, rather than one module, sit in `tests/Testing/Te
 Sync's [setup](sync.md#public-interface) takes an SSH address, and test-only switches are [not allowed](../../AGENTS.md#test-design), so Sync's integration tests need an SSH server that runs git. Each test starts its own server inside the test process, built on Microsoft's [dev tunnels SSH library](https://github.com/microsoft/dev-tunnels-ssh/blob/main/src/cs/Ssh/README.md), a .NET SSH client and server.
 
 - **The test runs git for the server.** The library runs no commands itself, so the test answers each command request by starting `git-upload-pack` or `git-receive-pack` from the installed git, on a bare repository the test owns.
+- **Stopping a test's server waits for every git it started to exit, so the test can delete its bare repository.** On Windows, a running git keeps its repository's folder from being deleted; a CI run failed this way. The user decided:
+  - Once stopping begins, the server starts no new git, even for a command a test held until then.
+  - The server never kills git, since a killed `git-receive-pack` can leave ref lock files behind. It ends git by closing git's input and output.
+  - The wait is bounded. A git that doesn't end fails the test with the server's timeline of each command, instead of hanging the run.
+  - An error the server hits while serving a command fails the test when the server stops, instead of going unnoticed.
+  - A server that fails to stop is reported before a device that fails to stop, and neither hides the scenario's own failure.
+
+  Proposed as decisions to confirm:
+  - Every device is stopped, even when the server or another device fails to stop. All their failures are reported together, the server's first, and the scratch folder is left in place for inspection.
+  - Each device's stop has the same bound as the server's.
+  - A test can't clean up its world itself. A shared runner cleans it up after the scenario, since C#'s own cleanup lets a cleanup failure replace the scenario's failure.
 - **No install, administrator rights, or network is needed, except git.** Every machine that runs these tests needs git installed.
 - **The server accepts both SSH address forms**, as the [risk table](overview.md#risks-the-later-rows-must-resolve) needs.
 - **The tests sit in Sync's folder of the [shared test project](#each-part-keeps-its-tests-in-one-test-project), marked `[Integration]`**, as [kind attributes](#attributes-mark-each-tests-kind) mark every test.
