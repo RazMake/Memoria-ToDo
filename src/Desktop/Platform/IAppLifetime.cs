@@ -9,7 +9,8 @@ public interface IAppLifetime
     /// <summary>
     /// Begins shutdown on the UI thread and asynchronously joins all owned cleanup.
     /// Repeated calls join the same shutdown. Cancellation stops only this caller's wait.
-    /// The platform keeps its dispatcher running until normal shutdown completes.
+    /// The platform keeps its dispatcher running until cleanup completes or its shutdown deadline ends the process.
+    /// Logs each cleanup failure with its exception before passing it on. The runner logs only the failed-exit summary.
     /// </summary>
     Task StopAsync(CancellationToken cancellationToken);
 }

@@ -36,6 +36,8 @@ The user asked for every operation, with sync, add, update, and remove first, an
 - **The code that ends a failure's journey logs it**: a catch that turns it into a message, a status, a skipped file, a retry, or nothing at all. It logs the exception at Warning or Error, then does what it did before. A catch that wraps a failure and throws it on doesn't log, so each failure is logged once. A catch that treats an expected outcome as normal, such as a missing file meaning "none yet", a cancel while the app stops, or a commit with nothing in it, isn't a failure and doesn't log.
 - **The code that makes a choice behind a result logs it at Debug**, naming the outcome it took and the values it chose from. So a reader can tell from the log alone why the app did what it did. The user decided this.
 
+Shutdown uses one exception to the propagation rule: each lifetime logs a cleanup failure at Error, with its exception, before passing it on. This preserves the diagnosis if the next cleanup step hangs. The user chose a separate Fatal exit summary from the runner, without repeating the exception or its details. The [lifetime contract](../../src/Desktop/Platform/IAppLifetime.cs) requires this immediate reporting.
+
 A choice is behind a result when it picks between outcomes a user could see, such as the examples under [Debug](#five-levels-say-what-an-entry-records). Proposed, a decision to confirm: a choice gets no Debug entry of its own when:
 
 - **another entry already explains it**, such as an operation's Information entry that names the same values, or a failure's entry;
@@ -120,7 +122,7 @@ No PII rule applies, since the log stays on this PC, but secrets never enter it:
 
 ### Errors no module handles are logged before they're shown
 
-The [desktop platform](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) catches errors no module handles, and decides what the app does next: after start, an error on the UI thread no longer ends the app, as the user decided. It logs each error first, with where it happened, then shows it:
+The [desktop platform](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) catches errors no module handles, and decides what the app does next: after start, an error on the UI thread no longer ends the app, as the user decided. It logs each error first, with where it happened. Before shutdown it also shows the error; once shutdown has begun, no error dialog opens:
 
 - **On the UI thread**, through [DispatcherUnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.dispatcherunhandledexception): at Error when the app keeps running, and at Fatal while it starts or stops, when the app ends. An app that kept running after an error later ends with exit code 0, as any normal exit does. The user decided this.
 - **On any other thread**, through [UnhandledException](https://learn.microsoft.com/en-us/dotnet/api/system.appdomain.unhandledexception), at Fatal. .NET ends the process after this event, whatever the app does, so the [2-second wait](#a-slow-disk-never-holds-up-the-app) gives the entry its chance to reach the disk.
@@ -158,7 +160,7 @@ No new type: modules use Serilog's `ILogger`. Each create method below takes the
 - [Tasks](tasks.md): `TaskStore.Create(..., IRepositoryAccess repository, ILogger logger)`.
 - [Contacts](contacts.md): `ContactStore.Create(..., IRepositoryAccess repository, ILogger logger)`.
 - [Sync](sync.md): `SyncService.Create(..., TimeSpan? periodicInterval, ILogger logger)`.
-- The desktop platform's [Run the app](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it): `AppRunner.Run(Func<IAppLifetime> createLifetime, ILogger logger)`.
+- The desktop platform's [Run the app](../../src/Desktop/Platform/AppRunner.cs), with the shutdown policy in the [desktop design](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it).
 - The desktop platform's [store failures](desktop/README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them): `StoreFailures.Run(Action call, Func<Exception, string?> messageOf, Action<string> report, ILogger logger)`, which logs the failure at Error when it reports a message.
 - The desktop platform's [window parts](desktop/README.md#windows-open-on-the-screen-with-the-mouse-pointer): `WindowPlacement.ShowOnPointerScreen(Window window, ILogger logger)`, `ModalDialog.Show(Window dialog, ILogger logger)`, `new SingleWindow(Func<Window> createWindow, ILogger logger)`, and `QuestionDialog.Ask<T>(..., T cancelAnswer, ILogger logger)`. The caller passes its own logger, as the user decided, so each Debug entry they write names the module whose window it is.
 - The desktop platform's [hover card](desktop/README.md#a-hover-card-shows-while-the-pointer-rests-on-a-part) and the [Formatted view's constructors](desktop/formatted-view.md#public-interface) also take the caller's logger, under the same rule as the window parts.

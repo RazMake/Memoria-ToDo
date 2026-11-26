@@ -22,6 +22,13 @@ internal static class Scenarios
         // Start asks to end the app, as Shell does for the tray's Exit.
         ["end-app"] = (Post, DoNothing),
         ["async-stop"] = (Post, StopAfterDispatch),
+        ["stop-stalls"] = (Post, ShutdownScenarios.NeverStops),
+        ["stop-blocks-ui"] = (Post, ShutdownScenarios.Blocks),
+        ["blocked-ui-end-from-thread"] = (ShutdownScenarios.EndFromThreadWithBlockedUi, DoNothing),
+        ["stop-stalls-exit-handler-hangs"] = (endApp => Post(() => ShutdownScenarios.EndWithBlockedExitHandler(endApp)), ShutdownScenarios.NeverStops),
+        ["clean-stop-exit-handler-hangs"] = (endApp => Post(() => ShutdownScenarios.EndWithBlockedExitHandler(endApp)), DoNothing),
+        ["stop-cancelled"] = (Post, () => Task.FromCanceled(new CancellationToken(true))),
+        ["starved-pool-exit-handler-hangs"] = (ShutdownScenarios.EndWithStarvedPoolAndBlockedExit, ShutdownScenarios.NeverStops),
         ["session-ending-async-stop"] = (endApp => All!["session-ending"].Start(endApp), StopAfterDispatch),
         ["end-app-twice"] = (endApp => Post(() =>
         {

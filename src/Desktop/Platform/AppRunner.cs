@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.Windows;
-using System.Windows.Threading;
 using Serilog;
 
 namespace Memoria.ToDo.Desktop.Platform;
@@ -11,41 +9,48 @@ public static class AppRunner
     /// <summary>
     /// Rejects a call from a non-STA thread, creates the WPF application (it ends only when told to) with its theme
     /// following Windows' light or dark setting, builds the lifetime and starts it on the UI thread, then stops it once
-    /// when it ends the app or Windows ends the session, keeping the dispatcher running until the asynchronous stop
-    /// finishes. Logs the start with the app's version and the end with the exit code. Logs every unhandled error and
-    /// shows it in a message box: once the app has started, an error on the UI thread leaves the app running (the box
-    /// says so, and one box shows at a time); an error while it starts or stops, or on another thread, ends it with a
-    /// non-zero code; an error in a task nobody waited for is only logged.
+    /// when it ends the app or Windows ends the session, keeping the dispatcher running through cleanup.
+    /// The first end request starts <paramref name="shutdownGrace"/> before dispatching to the UI. After it, the process
+    /// is asked to exit with code 1, then forcibly ended three seconds later if still alive, even after Run returns.
+    /// Logs startup, exit, and unhandled errors. Shutdown errors never show a dialog. Before shutdown, an error on the
+    /// UI thread shows one message box and leaves the app running; an error during startup or on another thread shows
+    /// a box and ends with a non-zero code. An unobserved task error is logged.
     /// </summary>
     /// <returns>The process's exit code.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="logger"/> is null.</exception>
-    public static int Run(Func<IAppLifetime> createLifetime, ILogger logger)
+    /// <exception cref="ArgumentNullException"><paramref name="createLifetime"/> or <paramref name="logger"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="shutdownGrace"/> is not a positive finite timer duration with room for the backstop.</exception>
+    public static int Run(Func<IAppLifetime> createLifetime, TimeSpan shutdownGrace, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(createLifetime);
         ArgumentNullException.ThrowIfNull(logger);
+        ShutdownDeadline.EnsureUsable(shutdownGrace, nameof(shutdownGrace));
         if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
         {
             throw new InvalidOperationException("The app must run on an STA thread.");
         }
 
-        return new Session(createLifetime, logger).Run();
+        return new Session(createLifetime, shutdownGrace, logger).Run();
     }
 
     /// <summary>One run of the app: the application, the lifetime, and the once-only asynchronous shutdown.</summary>
-    private sealed class Session(Func<IAppLifetime> createLifetime, ILogger logger)
+    private sealed class Session(Func<IAppLifetime> createLifetime, TimeSpan shutdownGrace, ILogger logger) : IProcessExit
     {
         private const int ErrorExitCode = 1;
-        private static readonly TimeSpan StopWait = TimeSpan.FromSeconds(5);
-
+        private readonly IProcessExit _process = new ProcessExit();
+        private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private ShutdownDeadline _deadline = null!;
         private Application? _application;
         private IAppLifetime? _started;
         private Task? _shutdown;
-        private int _exitCode;
+        private volatile int _exitCode;
+        private bool _shutdownStarted;
         private bool _running;
         private bool _boxOpen;
-        private int _ended;
+        private int _ended = -1;
 
         public int Run()
         {
+            _deadline = new ShutdownDeadline(shutdownGrace, new ShutdownTimer(), this, logger);
             logger.Information("Starting {App} {Version}", AppName.Value, AppVersion.Value);
             var application = _application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
 #pragma warning disable WPF0001 // Application.ThemeMode is experimental; allowed only on this line.
@@ -69,7 +74,7 @@ public static class AppRunner
             {
                 var lifetime = createLifetime();
                 _started = lifetime;
-                lifetime.Start(() => application.Dispatcher.InvokeAsync(BeginShutdown));
+                lifetime.Start(EndApp);
                 _running = true;
             }
             catch (Exception error)
@@ -85,9 +90,7 @@ public static class AppRunner
             {
                 // The pump is gone, so nothing can await the stop: report, and run the stop's synchronous part
                 // (icon and shortcut release) on this still-owning UI thread.
-                _exitCode = ErrorExitCode;
-                logger.Fatal(error, "Unhandled error {Where}: {Reason}", "that ended the message pump", error.Message);
-                ErrorBox.Show(error);
+                ReportFatal(error, "that ended the message pump");
                 BeginShutdown();
             }
 
@@ -98,7 +101,7 @@ public static class AppRunner
         // UI thread only. Once started, the app survives the error; otherwise the error ends it.
         private void OnUiThreadError(Exception error)
         {
-            if (!_running)
+            if (!_running || _deadline.HasBegun)
             {
                 Fail(error, "while the app starts or stops");
                 return;
@@ -125,59 +128,99 @@ public static class AppRunner
         // until the lifetime's stop has finished.
         private void Fail(Exception error, string where)
         {
-            _exitCode = ErrorExitCode;
-            logger.Fatal(error, "Unhandled error {Where}: {Reason}", where, error.Message);
-            ErrorBox.Show(error);
-            _application!.Dispatcher.InvokeAsync(BeginShutdown);
-        }
-
-        // The process is ending: start stopping the lifetime on the UI thread (a tray icon would linger otherwise), then
-        // exit here, because the runtime would otherwise end it with Windows' error report.
-        private void FailOnOtherThread(Exception error)
-        {
-            _exitCode = ErrorExitCode;
-            logger.Fatal(error, "Unhandled error {Where}: {Reason}", "on another thread", error.Message);
-            ErrorBox.Show(error);
             try
             {
-                // Wait for the asynchronous stop too, so exiting doesn't cut it off. The invoke and the wait share StopWait.
-                var started = Stopwatch.StartNew();
-                var shutdown = _application!.Dispatcher.Invoke(
-                    () =>
-                    {
-                        BeginShutdown();
-                        return _shutdown!;
-                    },
-                    DispatcherPriority.Send,
-                    CancellationToken.None,
-                    StopWait);
-                shutdown.Wait(TimeSpan.FromTicks(Math.Max(0, (StopWait - started.Elapsed).Ticks)));
+                ReportFatal(error, where);
             }
             finally
             {
-                LogEnd();
-                Environment.Exit(ErrorExitCode);
+                EndApp();
             }
         }
 
-        // The end is logged once, by whichever of the normal return and the exit after an error on another thread comes first.
+        private void EndApp()
+        {
+            _deadline.Begin();
+            _application!.Dispatcher.InvokeAsync(BeginShutdown);
+        }
+
+        private void ReportFatal(Exception error, string where)
+        {
+            _exitCode = ErrorExitCode;
+            logger.Fatal(error, "Unhandled error {Where}: {Reason}", where, error.Message);
+            if (!_deadline.HasBegun)
+            {
+                ErrorBox.Show(error);
+            }
+        }
+
+        // Keep the runtime's fatal-error thread here while the UI cleans up; the independent deadline bounds it.
+        private void FailOnOtherThread(Exception error)
+        {
+            try
+            {
+                try
+                {
+                    ReportFatal(error, "on another thread");
+                }
+                finally
+                {
+                    EndApp();
+                }
+                if (!_application!.Dispatcher.CheckAccess())
+                {
+                    _stopped.Task.Wait();
+                }
+            }
+            finally
+            {
+                ExitProcess(ErrorExitCode);
+            }
+        }
+
+        private void ExitProcess(int exitCode)
+        {
+            _exitCode = exitCode;
+            try
+            {
+                LogEnd();
+            }
+            finally
+            {
+                _process.RequestExit(exitCode);
+            }
+        }
+
+        void IProcessExit.RequestExit(int exitCode) => ExitProcess(exitCode);
+
+        void IProcessExit.Terminate(int exitCode) => _process.Terminate(exitCode);
+
+        // A forced exit after Main returned corrects an earlier successful end entry.
         private void LogEnd()
         {
-            if (Interlocked.Exchange(ref _ended, 1) == 0)
+            var code = _exitCode;
+            if (Interlocked.Exchange(ref _ended, code) != code)
             {
-                logger.Information("Ended {App} with exit code {ExitCode}", AppName.Value, _exitCode);
+                logger.Information("Ended {App} with exit code {ExitCode}", AppName.Value, code);
             }
         }
 
         // UI thread only. Every request joins the one shutdown.
         private void BeginShutdown()
         {
+            _deadline.Begin();
             _running = false;
-            _shutdown ??= ShutDownAsync();
+            if (_shutdownStarted)
+            {
+                return;
+            }
+            _shutdownStarted = true;
+            _shutdown = ShutDownAsync();
         }
 
         private async Task ShutDownAsync()
         {
+            logger.Information("Stopping {App}", AppName.Value);
             try
             {
                 if (_started is { } lifetime)
@@ -185,14 +228,24 @@ public static class AppRunner
                     await lifetime.StopAsync(CancellationToken.None);
                 }
             }
-            catch (Exception error)
+            catch (Exception)
             {
                 _exitCode = ErrorExitCode;
-                logger.Fatal(error, "Unhandled error {Where}: {Reason}", "while the app stops", error.Message);
-                ErrorBox.Show(error);
+                logger.Fatal("Shutdown cleanup failed; exiting with code {ExitCode}", ErrorExitCode);
             }
 
-            _application!.Shutdown();
+            try
+            {
+                _application!.Shutdown();
+            }
+            catch (Exception error)
+            {
+                ReportFatal(error, "while WPF shuts down");
+            }
+            finally
+            {
+                _stopped.TrySetResult();
+            }
         }
     }
 }

@@ -107,29 +107,29 @@ public class AppRunnerLoggingIntegrationTests
     }
 
     [Fact]
-    public void Run_logs_an_error_while_stopping_at_Fatal_with_its_exception_and_returns_1()
+    public void Run_logs_cleanup_exception_details_once_and_a_separate_Fatal_summary()
     {
         using var host = HostProcess.Start("stop-throws");
 
-        host.CloseMessageBox();
         var exitCode = host.WaitForExit();
 
         var entry = Assert.Single(host.LogEntries, e => e.Names("stop boom"));
-        Assert.Equal(LogEventLevel.Fatal, entry.Level);
+        Assert.Equal(LogEventLevel.Error, entry.Level);
         Assert.Contains("stop boom", entry.Exception);
+        Assert.Empty(Assert.Single(host.LogEntries, e => e.Level == LogEventLevel.Fatal).Exception);
         Assert.Equal(1, host.Count("stopped"));
         Assert.Equal(1, exitCode);
+        host.AssertNoOtherMessageBox();
     }
 
     [Fact]
-    public void Run_logs_an_error_on_the_UI_thread_while_stopping_at_Fatal_shows_it_and_returns_1()
+    public void Run_logs_an_error_on_the_UI_thread_while_stopping_at_Fatal_without_a_box_and_returns_1()
     {
         using var host = HostProcess.Start("ui-error-during-stop");
 
-        var text = host.CloseMessageBox();
         var exitCode = host.WaitForExit();
 
-        Assert.Contains("stop ui boom", text);
+        host.AssertNoOtherMessageBox();
         var entry = Assert.Single(host.LogEntries, e => e.Names("stop ui boom"));
         Assert.Equal(LogEventLevel.Fatal, entry.Level);
         Assert.Equal(1, host.Count("stopped"));

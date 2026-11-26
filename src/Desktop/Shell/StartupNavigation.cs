@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Sync;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.Shell;
 
@@ -13,11 +14,13 @@ internal sealed class StartupNavigation(
     Action showConfigure,
     Action showViewTasks,
     bool startedAtSignIn,
-    Func<IUiThread> captureUiThread)
+    Func<IUiThread> captureUiThread,
+    ILogger logger)
 {
     private readonly object gate = new();
     private IUiThread? ui;
     private bool cancelled;
+    private bool stopped;
     private bool shortcutFailed;
 
     /// <summary>
@@ -46,6 +49,12 @@ internal sealed class StartupNavigation(
     /// </summary>
     public void ShortcutFailed()
     {
+        if (IsStopped)
+        {
+            logger.Information("Configure was not opened for a failed shortcut: the app is stopping");
+            return;
+        }
+
         lock (gate)
         {
             if (!cancelled)
@@ -56,6 +65,30 @@ internal sealed class StartupNavigation(
         }
 
         showConfigure();
+    }
+
+    public void Stop()
+    {
+        lock (gate)
+        {
+            stopped = true;
+        }
+        Cancel();
+    }
+
+    public Action WhileRunning(Action action) => () =>
+    {
+        if (IsStopped)
+        {
+            logger.Information("A window action was ignored: the app is stopping");
+            return;
+        }
+        action();
+    };
+
+    private bool IsStopped
+    {
+        get { lock (gate) { return stopped; } }
     }
 
     /// <summary>Drops the pending automatic window, for good.</summary>
@@ -70,11 +103,11 @@ internal sealed class StartupNavigation(
     }
 
     /// <summary>Wraps a user's own navigation: it drops the pending automatic window, then shows the window.</summary>
-    public Action ByUser(Action show) => () =>
+    public Action ByUser(Action show) => WhileRunning(() =>
     {
         Cancel();
         show();
-    };
+    });
 
     private void OnChanged(object? sender, EventArgs e)
     {

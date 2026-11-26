@@ -171,17 +171,26 @@ public class WpfDescriptionWebViewImageResizeTests
     public async Task Reports_nothing_of_a_page_replaced_right_after_its_drag_was_released()
     {
         var pause = new FakeDragPause();
-        using var harness = new DescriptionWebViewHarness(pause);
+        var measure = new HeldImageMeasure();
+        using var harness = new DescriptionWebViewHarness(pause, measure);
         var reports = Listen(harness);
         var core = await ShowImages(harness, $"![a|{StartWidth}](images/{TaskId}/one.png)");
         await DragCorner(core, 0, Drag);
 
-        // The page is replaced while the first drag's width is measured.
+        // Hold the old measurement until the replacement page's drag has reached the adapter.
         await pause.Running;
         pause.RaiseTick();
-        await ShowNextPage(harness);
-        await DragCorner(core, 0, Drag);
-        await pause.Running;
+        try
+        {
+            await measure.Measured;
+            await ShowNextPage(harness);
+            await DragCorner(core, 0, Drag);
+            await pause.Running;
+        }
+        finally
+        {
+            measure.Release();
+        }
         pause.RaiseTick();
 
         var report = await Next(reports);

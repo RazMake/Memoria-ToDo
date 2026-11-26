@@ -41,6 +41,9 @@ public sealed class FakeGlobalShortcut : IGlobalShortcut
         pressed();
     }
 
+    /// <summary>Captures a registered press, as a native message queued before unregistering it would.</summary>
+    public Action QueuePress(Shortcut shortcut) => registered[shortcut];
+
     /// <inheritdoc />
     public bool Register(Shortcut shortcut, Action pressed)
     {

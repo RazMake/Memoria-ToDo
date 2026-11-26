@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Interop;
 using Memoria.ToDo.Desktop.Platform;
+using Serilog;
 
 namespace Memoria.ToDo.Desktop.PlatformTestHost;
 
@@ -17,12 +18,14 @@ internal sealed class ScenarioLifetime : IAppLifetime
 {
     private readonly Action<Action> _whatStartDoes;
     private readonly Func<Task> _whatStopDoes;
+    private readonly ILogger _logger;
     private HwndSource? _messageWindow;
 
-    public ScenarioLifetime(Action<Action> whatStartDoes, Func<Task> whatStopDoes)
+    public ScenarioLifetime(Action<Action> whatStartDoes, Func<Task> whatStopDoes, ILogger logger)
     {
         _whatStartDoes = whatStartDoes;
         _whatStopDoes = whatStopDoes;
+        _logger = logger;
         Say($"created application={Application.Current is not null}");
 #pragma warning disable WPF0001 // Application.ThemeMode is experimental; allowed only on this line.
         var followsWindows = Application.Current?.ThemeMode == ThemeMode.System;
@@ -49,6 +52,11 @@ internal sealed class ScenarioLifetime : IAppLifetime
         try
         {
             await _whatStopDoes();
+        }
+        catch (Exception error)
+        {
+            _logger.Error(error, "Test lifetime cleanup failed");
+            throw;
         }
         finally
         {

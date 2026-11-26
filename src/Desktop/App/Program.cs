@@ -138,7 +138,7 @@ internal static class Program
                 StartArguments.IsStartAtSignIn(args),
                 sync,
                 log.ForModule("Shell"));
-        }, log.ForModule("Platform"));
+        }, TimeSpan.FromSeconds(40), log.ForModule("Platform"));
         reloads?.Dispose();
         return exitCode;
     }

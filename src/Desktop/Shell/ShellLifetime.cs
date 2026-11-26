@@ -137,16 +137,16 @@ internal sealed class ShellLifetime(
     private async Task StopOwnedAsync()
     {
         List<Exception> failures = [];
-        Attempt(startup.Cancel, failures);
-        Attempt(mcpStart.Cancel, failures);
-        Attempt(syncTray.Detach, failures);
-        Attempt(configure.Dispose, failures);
-        Attempt(StopFollowingAvailability, failures);
-        Attempt(addShortcut.Unregister, failures);
-        Attempt(manageShortcut.Unregister, failures);
-        Attempt(configureShortcut.Unregister, failures);
-        Attempt(contactsShortcut.Unregister, failures);
-        Attempt(trayIcon.Remove, failures);
+        Attempt("Stop startup navigation", startup.Stop, failures);
+        Attempt("Cancel the MCP server start", mcpStart.Cancel, failures);
+        Attempt("Detach the sync tray", syncTray.Detach, failures);
+        Attempt("Dispose Configure", configure.Dispose, failures);
+        Attempt("Stop following contacts availability", StopFollowingAvailability, failures);
+        Attempt("Unregister the Add shortcut", addShortcut.Unregister, failures);
+        Attempt("Unregister the Task View shortcut", manageShortcut.Unregister, failures);
+        Attempt("Unregister the Configure shortcut", configureShortcut.Unregister, failures);
+        Attempt("Unregister the Contacts shortcut", contactsShortcut.Unregister, failures);
+        Attempt("Remove the tray icon", trayIcon.Remove, failures);
 
         if (claimed)
         {
@@ -154,19 +154,19 @@ internal sealed class ShellLifetime(
             if (CloseLocalApi())
             {
                 logger.Information("Stopping the Local API");
-                await Attempt(localApi.StopAsync, failures);
+                await Attempt("Stop the Local API", localApi.StopAsync, failures);
             }
 
             // Before Sync, so no assistant's call changes the clone while Sync stops.
-            await Attempt(mcpServer.StopAsync, failures);
-            await Attempt(() => sync.StopAsync(CancellationToken.None), failures);
-            await Attempt(() => sync.DisposeAsync().AsTask(), failures);
+            await Attempt("Stop the MCP server", mcpServer.StopAsync, failures);
+            await Attempt("Stop Sync", () => sync.StopAsync(CancellationToken.None), failures);
+            await Attempt("Dispose Sync", () => sync.DisposeAsync().AsTask(), failures);
         }
 
         // After Sync, since this starts Velopack's updater when an update ended the app, which waits only 60 seconds for it.
-        await Attempt(updates.StopAsync, failures);
+        await Attempt("Stop Updates", updates.StopAsync, failures);
 
-        Attempt(oneInstance.Release, failures);
+        Attempt("Release the one-instance claim", oneInstance.Release, failures);
 
         if (failures.Count == 1)
         {
@@ -191,27 +191,35 @@ internal sealed class ShellLifetime(
         }
     }
 
-    private static void Attempt(Action step, List<Exception> failures)
+    private void Attempt(string name, Action step, List<Exception> failures)
     {
+        logger.Debug("Shutdown step: {Step}", name);
         try
         {
             step();
         }
         catch (Exception failure)
         {
-            failures.Add(failure);
+            RecordFailure(name, failure, failures);
         }
     }
 
-    private static async Task Attempt(Func<Task> step, List<Exception> failures)
+    private async Task Attempt(string name, Func<Task> step, List<Exception> failures)
     {
+        logger.Debug("Shutdown step: {Step}", name);
         try
         {
             await step();
         }
         catch (Exception failure)
         {
-            failures.Add(failure);
+            RecordFailure(name, failure, failures);
         }
+    }
+
+    private void RecordFailure(string step, Exception failure, List<Exception> failures)
+    {
+        failures.Add(failure);
+        logger.Error(failure, "Shutdown step failed: {Step}", step);
     }
 }

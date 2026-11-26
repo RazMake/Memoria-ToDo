@@ -83,9 +83,10 @@ internal sealed class HostProcess : IDisposable
         Assert.Throws<XunitException>(() => _dialogs.WaitForMessageBoxOf(_process, Limit));
 
     /// <summary>Waits for the program to end, failing the test after a limit, and returns its exit code.</summary>
-    public int WaitForExit()
+    public int WaitForExit(TimeSpan? limit = null)
     {
-        Assert.True(_process.WaitForExit(Limit), $"The test program didn't end within {Limit}.");
+        var wait = limit ?? Limit;
+        Assert.True(_process.WaitForExit(wait), $"The test program didn't end within {wait}.");
         _process.WaitForExit(); // Lets the output reader read the last lines.
         return _process.ExitCode;
     }

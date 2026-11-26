@@ -164,6 +164,8 @@ outlives cancellation, as [Updates](updates.md#a-check-runs-at-start-and-each-ni
 The platform's [shutdown path](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) keeps WPF's
 dispatcher running through the awaits. No public compatibility Stop method is retained.
 
+**Once stopping begins, Shell opens no window.** The user chose to log and ignore a later start's hand-over rather than reopen a half-stopped app. The same guard covers queued tray clicks and menu items, shortcuts, shortcut-failure navigation, and sync notification clicks. Rejected actions are logged at Information. Shell logs each cleanup step at Debug before attempting it; failure reporting follows [Logging](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens), so a hung step remains identifiable even if later cleanup never runs. Exceptions and cancellation failures do not skip subsequent cleanup; a step that never returns is bounded by the platform's [shutdown deadline](README.md#the-platform-runs-the-app-and-the-composition-root-builds-it), not by continuing past work that still owns shared resources.
+
 ### Velopack installs the app and keeps it up to date
 
 The app installs with [Velopack](https://www.nuget.org/packages/Velopack/1.2.0) 1.2.0: a per-user setup.exe that installs under `%LocalAppData%` without administrator rights ([Velopack on Windows](https://docs.velopack.io/packaging/operating-systems/windows)). [Updates](updates.md) checks this repository's GitHub Releases for a newer version and installs it, as that page says. The user decided that Updates is a module of its own, which Shell starts and stops; it replaces Shell's update checks, its updates port, and its update schedule.
@@ -291,6 +293,8 @@ The options below were considered and rejected, grouped by decision.
 - How the tray menu shows and hides the Contacts item:
   - **Each item says when it shows, through `Func<bool>? IsShown` on `TrayMenuItem`, asked as the menu opens**: the adapter would run a rule only an integration test reaches.
   - **The item always shows, and does nothing without contact files**: it goes against the user's decision that the item shows only with contact files.
+- A start during shutdown:
+  - **Wait for the running app to end, then launch automatically:** this needs a different one-instance protocol. The user chose to ignore and log the hand-over; another start after shutdown launches normally.
 
 ## Open questions
 

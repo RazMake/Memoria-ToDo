@@ -19,6 +19,6 @@ internal static class Program
         }
 
         var logger = new LoggerConfiguration().MinimumLevel.Verbose().WriteTo.Sink(new ConsoleLogSink()).CreateLogger();
-        return AppRunner.Run(() => new ScenarioLifetime(scenario.Start, scenario.Stop), logger);
+        return AppRunner.Run(() => new ScenarioLifetime(scenario.Start, scenario.Stop, logger), TimeSpan.FromSeconds(2), logger);
     }
 }

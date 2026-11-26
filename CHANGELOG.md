@@ -6,6 +6,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- Closing the app no longer leaves it running without a tray icon or keyboard shortcuts when cleanup gets stuck. After 40 seconds it requests exit, then forces itself to end 3 seconds later if needed; unfinished writes or sync may be interrupted. Shutdown errors go to the log instead of waiting for a dialog, and launches during shutdown no longer reopen Task View.
+
 ## 1.3.0
 
 - A file you change by hand in your synced folder, such as your list of mention formats, now shows in the app about half a second after you save it, in every window and for AI assistants and your own programs. Before, it showed only after the next sync.

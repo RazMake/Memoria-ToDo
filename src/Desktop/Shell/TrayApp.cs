@@ -97,7 +97,7 @@ public static class TrayApp
         var showAdd = redirect.Through(add.Show);
         var showViewTasks = redirect.Through(viewTasks.Show);
         var showContacts = redirect.Through(contacts.Show);
-        var startup = new StartupNavigation(sync.Setup, configure.Show, showViewTasks, startedAtSignIn, uiThread);
+        var startup = new StartupNavigation(sync.Setup, configure.Show, showViewTasks, startedAtSignIn, uiThread, logger);
         var addByUser = startup.ByUser(showAdd);
         var viewTasksByUser = startup.ByUser(showViewTasks);
         var contactsByUser = startup.ByUser(showContacts);
@@ -130,7 +130,7 @@ public static class TrayApp
             ShowLogs,
             logger);
 
-        Action Press(string name, ShortcutSwitch switcher) => LoggedUse.Of(logger, $"Shortcut for {name} used", switcher.Press);
+        Action Press(string name, ShortcutSwitch switcher) => LoggedUse.Of(logger, $"Shortcut for {name} used", startup.WhileRunning(switcher.Press));
 
         // Logs opens alone. Task View and Contacts may first ask about a changed edit; Logs opens whatever the answer.
         void ShowLogs()

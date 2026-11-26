@@ -36,7 +36,7 @@ The desktop platform, `Memoria.ToDo.Desktop.Platform`, holds the app's startup, 
 The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; the app's [version](#the-apps-version-has-one-home), which the user decided; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows) and the theme follower, below the theme; and [Save keys](#the-save-shortcut-saves-in-any-window-that-edits), which the user decided; and [Start with Windows](#start-with-windows-is-a-port-the-platform-publishes), which the user decided; and the [on-or-off setting file](#an-on-or-off-setting-file-keeps-one-switch-on-this-device), which Updates and the MCP server share. The decided parts are:
 
 - **The app's lifetime**: an interface with two steps, start and stop. Start receives a way to end the app. [Shell](shell.md#public-interface) implements it, so the platform names no module. Proposed: the way to end the app works from any thread. The platform passes the call to the UI thread and returns without waiting, so a module that ends the app from a background task needs no thread rule of its own. This is a decision to confirm.
-- **Run the app**: takes a function that builds the lifetime, and returns the process's exit code. In order, it:
+- **Run the app**: takes a function that builds the lifetime, a positive finite shutdown grace period, and its logger, and returns the process's exit code. The composition root supplies 40 seconds; the platform does not know the modules' cleanup budgets. Invalid arguments fail before WPF or any shutdown work starts. In order, it:
   1. rejects a call from a thread that isn't a single-threaded apartment (STA) thread, which WPF needs ([threading model](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/threading-model)), before doing anything else;
   2. creates the WPF application, which ends only when told to, not when its last window closes, since a tray app has no main window ([ShutdownMode](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.shutdownmode));
   3. sets the WPF application's theme to follow Windows' light or dark setting, before any window exists, so every window and the tray menu follow it ([ThemeMode](https://learn.microsoft.com/en-us/dotnet/api/system.windows.application.thememode));
@@ -132,7 +132,7 @@ public sealed class ThemeFollower : System.IDisposable
 **Cleanup runs while the lifetime's Windows resources still work.** The platform begins
 [`IAppLifetime.StopAsync`](../../../src/Desktop/Platform/IAppLifetime.cs) on the UI thread and awaits its one owned
 shutdown before ending the dispatcher ([integration tests](../../../tests/Desktop/Tests/Platform/AppRunnerIntegrationTests.cs)).
-Repeated exit requests join that shutdown; they do not retry failed cleanup. A cleanup failure is shown and gives
+Repeated exit requests join that shutdown; they do not retry failed cleanup. A cleanup failure is logged and gives
 a non-zero exit code, after the remaining cleanup is attempted.
 
 The STA `Main` and [`AppRunner.Run`](../../../src/Desktop/Platform/AppRunner.cs) keep their synchronous signatures:
@@ -143,13 +143,31 @@ Event handlers may be async only at this event boundary, with their failures obs
 
 Windows session ending and a fatal runtime exception can force process termination before
 async cleanup finishes. They request the same once-only shutdown without cancelling Windows' logoff or promising
-an impossible join. Normal Exit always awaits it. The five-second fatal-error allowance bounds best-effort
-UI cleanup, not a blocking wait on a Task.
+an impossible join. Normal Exit awaits cleanup within the deadline below.
 
 The SessionEnding handler starts that owned cleanup and returns without setting `Cancel`. It neither blocks nor
 uses an unfinished shutdown Task as a reason to veto logoff. Cleanup observes its own failures while the process
 and dispatcher remain alive; Windows may end either before completion. Only ordinary app exit keeps the dispatcher
-alive until cleanup finishes. These paths share the once-only cleanup, not the same completion guarantee.
+alive until cleanup finishes or the deadline ends the process. These paths share the once-only cleanup, not the same completion guarantee.
+
+**Shutdown has one deadline that does not depend on the UI thread.** The user chose 40 seconds for graceful cleanup, then an exit request, with forced termination 3 seconds later if the process remains alive.
+
+- **A deadline starts at the first request to end the app**, from any thread, before the request reaches the UI thread. So a blocked UI thread can't stop it from starting. Later requests join it and never move it.
+- **Cleanup that finishes in time ends the app as today**: exit code 0, or 1 after a failed step.
+- **When the deadline passes, the platform ends its own process.** It logs a Fatal entry that names the deadline, then the end with exit code 1, then asks .NET to exit, so the composition root's [log flush](../logging.md#a-slow-disk-never-holds-up-the-app) can run. An independent backstop terminates this process with exit code 1 after the additional 3 seconds, even if reporting the failure, the exit request, or an exit handler blocks or throws. It never ends another process, such as Velopack's updater.
+- **The deadline remains armed until the process ends.** It also covers WPF shutdown, work after Run returns, and process-exit handlers. It does not keep an otherwise finished process alive. It replaces the separate allowance for fatal errors on another thread.
+- **No message box waits for the user once shutdown has begun.** Unhandled cleanup or thread failures give exit code 1. The [logging contract](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) separates immediate cleanup diagnostics from the Fatal exit summary. Unobserved task errors retain their [Error-only handling](../logging.md#errors-no-module-handles-are-logged-before-theyre-shown).
+- **A forced end abandons unfinished work.** Pending writes or sync can be interrupted, and a caller may not receive its result. File replacement follows the [store contract](../modules.md#the-file-system-interface-reads-and-writes-whole-files); recovery of interrupted native work is not guaranteed. Cleanup retains the [Shell order](shell.md#shutdown-joins-owned-work-without-blocking-the-dispatcher): no updater is started by skipping a blocked step. Existing save/discard/cancel questions still happen before an update asks the app to end.
+
+Forced termination is a last resort, not a guarantee against an operating-system or runtime failure. Entries that cannot be flushed before it may be lost.
+
+Alternatives ruled out for this deadline:
+
+- **5 or 15 seconds for cleanup:** they can interrupt a normal slow sync.
+- **Only ask .NET to exit:** an exit handler can hang indefinitely.
+- **Terminate immediately at the cleanup deadline:** it gives queued diagnostics no chance to flush.
+- **Keep shutdown error dialogs:** they require a click or disappear when the deadline expires. Shutdown failures belong in the log.
+- **Give every Shell step its own timeout and continue past it:** an unfinished MCP call could then use Sync while Sync is being disposed.
 
 **The theme is experimental in WPF, so the build allows that at its one call.** The pinned SDK marks the theme setting with the compiler's experimental-API error, WPF0001 ([what's new in WPF for .NET 9](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90)). The build allows WPF0001 only at the platform's one call, never for a whole project. Two options were ruled out:
 

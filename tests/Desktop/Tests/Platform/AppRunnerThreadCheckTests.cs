@@ -22,7 +22,7 @@ public class AppRunnerThreadCheckTests
                 {
                     lifetimeBuilt = true;
                     throw new InvalidOperationException("The lifetime must not be built.");
-                }, Logger.None);
+                }, TimeSpan.FromSeconds(2), Logger.None);
             }
             catch (Exception e)
             {
@@ -54,7 +54,7 @@ public class AppRunnerThreadCheckTests
                 {
                     lifetimeBuilt = true;
                     throw new InvalidOperationException("The lifetime must not be built.");
-                }, null!);
+                }, TimeSpan.FromSeconds(2), null!);
             }
             catch (Exception e)
             {

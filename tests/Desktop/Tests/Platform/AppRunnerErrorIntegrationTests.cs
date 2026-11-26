@@ -1,5 +1,6 @@
 using Xunit;
 using Memoria.ToDo.Testing;
+using Serilog.Events;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
 
@@ -13,10 +14,10 @@ public class AppRunnerErrorIntegrationTests
     {
         using var host = HostProcess.Start("async-stop-throws");
 
-        var text = host.CloseMessageBox();
         var exitCode = host.WaitForExit();
 
-        Assert.Contains("async stop boom", text);
+        Assert.Contains(host.LogEntries, entry => entry.Level == LogEventLevel.Error && entry.Names("async stop boom"));
+        host.AssertNoOtherMessageBox();
         Assert.NotEqual(0, exitCode);
         Assert.Equal(1, host.Count("stopped"));
         Assert.Contains("async-stop-completed ui-thread=True", host.Lines);
@@ -45,10 +46,10 @@ public class AppRunnerErrorIntegrationTests
     {
         using var host = HostProcess.Start("stop-throws");
 
-        var text = host.CloseMessageBox();
         var exitCode = host.WaitForExit();
 
-        Assert.Contains("stop boom", text);
+        Assert.Contains(host.LogEntries, entry => entry.Level == LogEventLevel.Error && entry.Names("stop boom"));
+        host.AssertNoOtherMessageBox();
         Assert.NotEqual(0, exitCode);
         Assert.Equal(1, host.Count("stopped"));
         Assert.Contains("stop-resource available=True", host.Lines);
@@ -60,11 +61,11 @@ public class AppRunnerErrorIntegrationTests
         using var host = HostProcess.Start("thread-error-stop-throws");
 
         var originalError = host.CloseMessageBox();
-        var stopError = host.CloseMessageBox();
         var exitCode = host.WaitForExit();
 
         Assert.Contains("thread boom", originalError);
-        Assert.Contains("stop boom", stopError);
+        Assert.Contains(host.LogEntries, entry => entry.Level == LogEventLevel.Error && entry.Names("stop boom"));
+        host.AssertNoOtherMessageBox();
         Assert.NotEqual(0, exitCode);
         Assert.Equal(1, host.Count("stopped"));
         Assert.Contains("stop-resource available=True", host.Lines);

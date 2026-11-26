@@ -102,6 +102,12 @@ public sealed class FakeTrayIcon : ITrayIcon
         leftClick();
     }
 
+    /// <summary>Captures the currently registered click, as a native event already queued before removal would.</summary>
+    public Action QueueLeftClick() => leftClick;
+
+    /// <summary>Captures an existing menu action so a test can deliver it after the menu is removed.</summary>
+    public Action QueueMenuItem(string text) => menu.Single(item => item.Text == text).Invoke;
+
     private void EnsureShown()
     {
         if (!IsShown)
