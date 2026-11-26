@@ -14,7 +14,6 @@ internal static class RealPointer
 {
     private static readonly PointerTraceHolder Traces = new();
     private static readonly IPointerReadings Readings = new NativePointerReadings();
-    private static int _lastMarker;
 
     public static void MoveOver(Window window, FrameworkElement element, Point inElement)
     {
@@ -35,8 +34,8 @@ internal static class RealPointer
         var target = new Win32.Point { X = (int)Math.Round(onScreen.X), Y = (int)Math.Round(onScreen.Y) };
         var expected = (PresentationSource.FromVisual(element) as HwndSource)?.Handle
             ?? throw new InvalidOperationException("The pointer target is not in a window.");
-        PointerMoveRecorder Recorder(string step, Action stopWait) =>
-            new(trace, PointerTrace.Label(call, step), expected, owner, Readings, stopWait);
+        PointerMoveRecorder Recorder(string step, Action stopWait, Func<MarkedMoveReport>? lowLevel = null) =>
+            new(trace, PointerTrace.Label(call, step), expected, owner, Readings, stopWait, lowLevel);
 
         // Check the final target before even the preparatory move can send input.
         Recorder("target", () => { }).Verify(target);
@@ -56,27 +55,24 @@ internal static class RealPointer
                 throw new InvalidOperationException("The pointer target has no input root.");
             }
 
-            MoveAndObserve(stop => Recorder("away", stop), root, away);
+            MoveAndObserve((stop, lowLevel) => Recorder("away", stop, lowLevel), root, away);
         }
 
-        MoveAndObserve(stop => Recorder("target", stop), element, target);
+        MoveAndObserve((stop, lowLevel) => Recorder("target", stop, lowLevel), element, target);
     }
 
-    private static void MoveAndObserve(Func<Action, PointerMoveRecorder> newRecorder, UIElement element, Win32.Point target)
+    private static void MoveAndObserve(Func<Action, Func<MarkedMoveReport>, PointerMoveRecorder> newRecorder, UIElement element, Win32.Point target)
     {
         // Positive, unique markers cannot be confused with earlier moves or WPF's reserved pen/touch markers.
-        var marker = Interlocked.Increment(ref _lastMarker);
-        if (marker <= 0)
-        {
-            throw new InvalidOperationException("The pointer move markers of this process ran out.");
-        }
-
+        var marker = MoveMarkers.Shared.Next();
         var start = Win32.CursorPosition();
         var receipt = new InjectedMoveReceipt(marker, start, target);
         var frame = new DispatcherFrame();
         Action stopWait = () => frame.Continue = false;
-        var recorder = newRecorder(stopWait);
+        var lowLevel = new LowLevelMouseObserver(marker);
+        var recorder = newRecorder(stopWait, lowLevel.Snapshot);
         recorder.Note($"marker {marker}, cursor start ({start.X}, {start.Y}), target ({target.X}, {target.Y})");
+        recorder.Note("low-level hook times are measured from the observer's creation, just before this entry");
         var expectedWindow = recorder.TargetWindow;
         var observed = false;
         Win32.Point? last = null;
@@ -126,6 +122,9 @@ internal static class RealPointer
             {
                 observer.Attach();
                 element.AddHandler(Mouse.PreviewMouseMoveEvent, moved, handledEventsToo: true);
+                recorder.Note("installing the low-level mouse hook");
+                lowLevel.Attach();
+                recorder.Note("low-level mouse hook installed");
             },
             Send: () =>
             {
@@ -178,6 +177,8 @@ internal static class RealPointer
                 failures.Attempt(timeout.Stop);
                 failures.Attempt(() => element.RemoveHandler(Mouse.PreviewMouseMoveEvent, moved));
                 observer.Release(failures);
+                recorder.Note("removing the low-level mouse hook");
+                lowLevel.Release(failures);
             }));
     }
 }

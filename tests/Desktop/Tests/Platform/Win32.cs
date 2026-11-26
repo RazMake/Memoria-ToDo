@@ -39,6 +39,21 @@ internal static class Win32
     public struct MouseHook { public Point Point; public nint Window; public uint HitTest; public nint ExtraInfo; }
 
     [StructLayout(LayoutKind.Sequential)]
+    public struct LowLevelMouseHook
+    {
+        public Point Point; public uint MouseData; public uint Flags; public uint Time; public nint ExtraInfo;
+    }
+
+    [RealInput]
+    public static nint HookLowLevelMouse(MessageHook callback)
+    {
+        var module = GetModuleHandle(null);
+        return module != 0
+            ? Install(WhMouseLowLevel, callback, module, 0)
+            : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     public struct SentMessage { public nint Result; public nint LParam; public nint WParam; public uint Id; public nint Window; }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -57,9 +72,12 @@ internal static class Win32
     private const uint WmQuit = 0x0012;
 
     [DllImport("user32.dll", SetLastError = true)] private static extern nint SetWinEventHook(uint min, uint max, nint module, WinEventProc callback, uint processId, uint threadId, uint flags);
-    [DllImport("user32.dll")] private static extern bool UnhookWinEvent(nint hook);
-    [DllImport("user32.dll")] private static extern int GetMessage(out Message message, nint window, uint min, uint max);
-    [DllImport("user32.dll")] private static extern bool PostThreadMessage(uint threadId, uint message, nint wParam, nint lParam);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool UnhookWinEvent(nint hook);
+    [DllImport("user32.dll", SetLastError = true)] private static extern int GetMessage(out Message message, nint window, uint min, uint max);
+    [DllImport("user32.dll")] private static extern bool PeekMessage(out Message message, nint window, uint min, uint max, uint remove);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool PostThreadMessage(uint threadId, uint message, nint wParam, nint lParam);
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern nint GetModuleHandle(string? name);
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern uint WaitForSingleObject(nint handle, uint milliseconds);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint window);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
@@ -107,6 +125,7 @@ internal static class Win32
 
     private const int WhGetMessage = 3;
     private const int WhMouse = 7;
+    private const int WhMouseLowLevel = 14;
     private const int WhCallWndProcRet = 12;
     private const int ErrorInvalidWindowHandle = 1400;
     // Include the touch and pointer queue bits on modern Windows.
@@ -121,7 +140,13 @@ internal static class Win32
     [RealInput]
     private static nint HookThread(int kind, MessageHook callback)
     {
-        var hook = SetWindowsHookEx(kind, callback, 0, GetCurrentThreadId());
+        return Install(kind, callback, 0, GetCurrentThreadId());
+    }
+
+    [RealInput]
+    private static nint Install(int kind, MessageHook callback, nint module, uint thread)
+    {
+        var hook = SetWindowsHookEx(kind, callback, module, thread);
         return hook != 0 ? hook : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
     }
 
@@ -274,19 +299,73 @@ internal static class Win32
         return hook != 0 ? hook : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
     }
 
-    public static void Unhook(nint hook) => UnhookWinEvent(hook);
-
-    public static uint CurrentThreadId() => GetCurrentThreadId();
-
-    /// <summary>Handles the messages of the calling thread, which out-of-context hooks need, until <see cref="StopMessageLoop"/>.</summary>
-    public static void RunMessageLoop()
+    public static void Unhook(nint hook)
     {
-        while (GetMessage(out _, 0, 0, 0) > 0)
+        if (!UnhookWinEvent(hook))
         {
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
         }
     }
 
-    public static void StopMessageLoop(uint threadId) => PostThreadMessage(threadId, WmQuit, 0, 0);
+    public static uint CurrentThreadId() => GetCurrentThreadId();
+
+    private const uint WmUser = 0x0400;
+    private const uint PmNoRemove = 0;
+    private const uint WaitObject0 = 0;
+    private const uint WaitTimeout = 0x102;
+
+    public static void CreateMessageQueue() => PeekMessage(out _, 0, WmUser, WmUser, PmNoRemove);
+
+    /// <summary>Handles the messages of the calling thread, which hooks need, until <see cref="StopMessageLoop"/>.</summary>
+    public static void RunMessageLoop()
+    {
+        while (true)
+        {
+            var result = GetMessage(out _, 0, 0, 0);
+            if (result == 0)
+            {
+                return;
+            }
+
+            if (result == -1)
+            {
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            }
+        }
+    }
+
+    public static void StopMessageLoop(uint threadId)
+    {
+        if (!PostThreadMessage(threadId, WmQuit, 0, 0))
+        {
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        }
+    }
+
+    /// <summary>Waits without pumping the caller's STA messages.</summary>
+    public static bool WaitWithoutPumping(WaitHandle handle, TimeSpan bound)
+    {
+        var safe = handle.SafeWaitHandle;
+        var added = false;
+        try
+        {
+            safe.DangerousAddRef(ref added);
+            var milliseconds = (uint)Math.Min(Math.Ceiling(bound.TotalMilliseconds), uint.MaxValue - 1);
+            return WaitForSingleObject(safe.DangerousGetHandle(), milliseconds) switch
+            {
+                WaitObject0 => true,
+                WaitTimeout => false,
+                _ => throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()),
+            };
+        }
+        finally
+        {
+            if (added)
+            {
+                safe.DangerousRelease();
+            }
+        }
+    }
 
     private static string TextOf(Func<nint, StringBuilder, int, int> read, nint window)
     {

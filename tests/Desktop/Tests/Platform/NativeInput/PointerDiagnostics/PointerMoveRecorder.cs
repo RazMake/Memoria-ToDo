@@ -7,6 +7,7 @@ namespace Memoria.ToDo.Desktop.Platform.Tests;
 internal sealed class PointerMoveRecorder
 {
     private const string Failed = "failed";
+    private const string LowLevelFact = "low-level mouse hook";
     private static readonly Dictionary<uint, (string Name, bool ShowsWParam)> Lifecycle = new()
     {
         [0x0002] = ("WM_DESTROY", false),
@@ -33,9 +34,12 @@ internal sealed class PointerMoveRecorder
     private readonly IPointerReadings _readings;
     private readonly Action _stopWait;
     private Exception? _stopFailure;
+    private readonly Func<MarkedMoveReport>? _lowLevel;
+    private bool _lowLevelRead;
+    private Exception? _lowLevelFailure;
 
     public PointerMoveRecorder(PointerTrace trace, string move, nint targetWindow, nint owner,
-        IPointerReadings readings, Action stopWait)
+        IPointerReadings readings, Action stopWait, Func<MarkedMoveReport>? lowLevel = null)
     {
         ArgumentNullException.ThrowIfNull(trace);
         ArgumentNullException.ThrowIfNull(readings);
@@ -46,6 +50,7 @@ internal sealed class PointerMoveRecorder
         _owner = owner;
         _readings = readings;
         _stopWait = stopWait;
+        _lowLevel = lowLevel;
     }
 
     public nint TargetWindow { get; }
@@ -64,8 +69,10 @@ internal sealed class PointerMoveRecorder
                 steps.Send();
                 steps.Wait();
                 WaitEnded();
+                ReadLowLevel();
                 ThrowCallbackFailure();
                 Conclude(failures, target, steps.Decide());
+                AddLowLevelFailure(failures);
             }
             catch (Exception failure)
             {
@@ -75,7 +82,9 @@ internal sealed class PointerMoveRecorder
                     failures.Add(_stopFailure);
                 }
 
+                failures.Attempt(ReadLowLevel);
                 failures.Attempt(() => ReportFailure(failures, target));
+                AddLowLevelFailure(failures);
             }
         }
         finally
@@ -83,7 +92,17 @@ internal sealed class PointerMoveRecorder
             failures.Attempt(() => steps.Release(failures));
         }
 
-        failures.ThrowIfAny();
+        try
+        {
+            failures.ThrowIfAny();
+        }
+        catch (Exception failure) when (!_reported)
+        {
+            var reported = new FailureList();
+            reported.Add(failure);
+            reported.Attempt(() => ReportFailure(reported, target));
+            reported.ThrowIfAny();
+        }
     }
 
     public void Note(string what) => _trace.Record(_trace.Elapsed, _move, what);
@@ -114,6 +133,40 @@ internal sealed class PointerMoveRecorder
     }
 
     private void ThrowCallbackFailure() => _callbackFailure?.Throw();
+
+    private void ReadLowLevel()
+    {
+        if (_lowLevelRead)
+        {
+            return;
+        }
+
+        _lowLevelRead = true;
+        if (_lowLevel is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var report = _lowLevel();
+            _trace.Keep(_move, LowLevelFact, report.Describe());
+            _lowLevelFailure = report.Failure;
+        }
+        catch (Exception failure)
+        {
+            _lowLevelFailure = failure;
+            _trace.Keep(_move, LowLevelFact, $"low-level mouse hook: the snapshot failed: {failure.Message}");
+        }
+    }
+
+    private void AddLowLevelFailure(FailureList failures)
+    {
+        if (_lowLevelFailure is not null)
+        {
+            failures.Add(_lowLevelFailure);
+        }
+    }
 
     public void Verify(Win32.Point point)
     {
@@ -243,6 +296,7 @@ internal sealed class PointerMoveRecorder
 
     private void Report(FailureList failures, Win32.Point point, string outcome, string what, bool readQueue, Func<string, Exception> create)
     {
+        ReadLowLevel();
         _reported = true;
         _trace.Keep(_move, outcome, what);
         var readings = new FailureList();

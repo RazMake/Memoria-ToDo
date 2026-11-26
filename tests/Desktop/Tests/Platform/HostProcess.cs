@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using Memoria.ToDo.Shared.Platform;
 using Xunit;
 using Xunit.Sdk;
 
@@ -114,12 +115,17 @@ internal sealed class HostProcess : IDisposable
 
     public void Dispose()
     {
-        _dialogs.Dispose();
-        if (!_process.HasExited)
+        var failures = new FailureList();
+        failures.Attempt(_dialogs.Dispose);
+        failures.Attempt(() =>
         {
-            _process.Kill(entireProcessTree: true);
-        }
-        _process.Dispose();
+            if (!_process.HasExited)
+            {
+                _process.Kill(entireProcessTree: true);
+            }
+        });
+        failures.Attempt(_process.Dispose);
+        failures.ThrowIfAny();
     }
 
     // The project reference builds the program but doesn't copy it, so it's found in its own project's output,

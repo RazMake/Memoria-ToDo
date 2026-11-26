@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Threading.Channels;
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Xunit.Sdk;
 
 namespace Memoria.ToDo.Desktop.Platform.Tests;
@@ -15,37 +17,29 @@ internal sealed class DialogWatcher : IDisposable
     private readonly Channel<(nint Dialog, int ProcessId)> _shown = Channel.CreateUnbounded<(nint, int)>();
     private readonly HashSet<nint> _started = []; // Used only by the message-loop thread.
     private readonly Win32.WinEventProc _callback; // Kept so it isn't collected while Windows may call it.
-    private uint _loopThreadId;
+    private readonly IMessageLoopThread _thread;
 
-    public DialogWatcher()
+    public DialogWatcher() : this(callback =>
+        new MessageLoopThread(new NativeMessageLoop(), () => Win32.HookDialogEvents(callback), Win32.Unhook, TestWait.ForSignal))
     {
+    }
+
+    internal DialogWatcher(Func<Win32.WinEventProc, IMessageLoopThread> newThread)
+    {
+        ArgumentNullException.ThrowIfNull(newThread);
         _callback = OnEvent;
-        Exception? hookFailure = null;
-        using var listening = new ManualResetEventSlim();
         // Out-of-context hooks are called on the thread that set them, from its message loop, so it gets a thread of its own.
-        new Thread(() =>
+        _thread = newThread(_callback);
+        try
         {
-            nint hook;
-            try
-            {
-                hook = Win32.HookDialogEvents(_callback);
-            }
-            catch (Exception e)
-            {
-                hookFailure = e;
-                listening.Set();
-                return;
-            }
-            _loopThreadId = Win32.CurrentThreadId();
-            listening.Set();
-            Win32.RunMessageLoop();
-            Win32.Unhook(hook);
-        })
-        { IsBackground = true }.Start();
-        listening.Wait();
-        if (hookFailure is not null)
+            _thread.Start();
+        }
+        catch (Exception failure)
         {
-            throw new InvalidOperationException("The message box watcher couldn't listen for dialogs.", hookFailure);
+            var failures = new FailureList();
+            failures.Add(new InvalidOperationException("The message box watcher couldn't listen for dialogs.", failure));
+            failures.Attempt(() => _thread.Stop(failures));
+            failures.ThrowIfAny();
         }
     }
 
@@ -77,7 +71,12 @@ internal sealed class DialogWatcher : IDisposable
         }
     }
 
-    public void Dispose() => Win32.StopMessageLoop(_loopThreadId);
+    public void Dispose()
+    {
+        var failures = new FailureList();
+        _thread.Stop(failures);
+        failures.ThrowIfAny();
+    }
 
     private void OnEvent(nint hook, uint eventType, nint window, int objectId, int childId, uint thread, uint time)
     {

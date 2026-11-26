@@ -44,7 +44,8 @@ public class PointerMoveRecorderTests
         public Action? OnStop;
         public readonly PointerMoveRecorder Recorder;
 
-        public Scenario() => Recorder = new(Trace, Move, Own, Owner, Readings, () => { Stops++; OnStop?.Invoke(); });
+        public Scenario(Func<MarkedMoveReport>? lowLevel = null) =>
+            Recorder = new(Trace, Move, Own, Owner, Readings, () => { Stops++; OnStop?.Invoke(); }, lowLevel);
 
         public void Run(
             Action? acquire = null, Action? send = null, Action? wait = null,
@@ -61,6 +62,85 @@ public class PointerMoveRecorderTests
         failure is AggregateException all ? all.InnerExceptions.SelectMany(Leaves) : [failure];
 
     private static Exception Primary(Exception failure) => Leaves(failure).First();
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_native_observer_failure_after_delivery_keeps_its_trace_with_the_original_failure_first(bool duringCleanup)
+    {
+        var failure = new InvalidOperationException("native-observer-failed");
+        var scenario = new Scenario(() => new MarkedMoveReport(1,
+            [new(TimeSpan.Zero, TimeSpan.FromMilliseconds(2), 0, new() { X = 437, Y = -87 }, 1)],
+            duringCleanup ? null : failure));
+        var thrown = Assert.ThrowsAny<Exception>(() => scenario.Run(release: errors =>
+        {
+            if (duringCleanup) errors.Add(failure);
+        }));
+        var errors = Leaves(thrown).ToArray();
+        Assert.Same(failure, errors[0]);
+        var messages = string.Join("\n", errors.Select(error => error.Message));
+        Assert.Contains("low-level mouse hook", messages);
+        Assert.Contains("(437, -87)", messages);
+        Assert.Equal(1, scenario.Released);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Includes_the_native_snapshot_when_a_move_times_out_or_a_step_fails(bool sendFails)
+    {
+        var snapshots = 0;
+        var thread = Environment.CurrentManagedThreadId;
+        var scenario = new Scenario(() =>
+        {
+            Assert.Equal(thread, Environment.CurrentManagedThreadId);
+            snapshots++;
+            return new MarkedMoveReport(0, [], null);
+        });
+        var failure = Assert.ThrowsAny<Exception>(() => scenario.Run(
+            send: () => { if (sendFails) throw new InvalidOperationException("send-failed"); },
+            outcome: new PointerOutcome(PointerResult.TimedOut, "timeout", "timeout")));
+        Assert.Equal(1, snapshots);
+        Assert.Contains("low-level", string.Join("\n", Leaves(failure).Select(e => e.Message)), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("0", scenario.Trace.Describe());
+        Assert.Equal(1, scenario.Released);
+    }
+
+    [Fact]
+    public void An_observer_failure_fails_an_observed_move_and_is_kept_after_a_primary_failure()
+    {
+        var observerFailure = new InvalidOperationException("observer-failed");
+        var passed = new Scenario(() => new MarkedMoveReport(0, [], observerFailure));
+        Assert.Contains(observerFailure, Leaves(Assert.ThrowsAny<Exception>(() => passed.Run())));
+        var failed = new Scenario(() => new MarkedMoveReport(0, [], observerFailure));
+        var errors = Leaves(Assert.ThrowsAny<Exception>(() => failed.Run(
+            outcome: new PointerOutcome(PointerResult.TimedOut, "timeout", "timeout")))).ToArray();
+        Assert.IsType<TimeoutException>(errors[0]);
+        Assert.Contains(observerFailure, errors.Skip(1));
+    }
+
+    [Fact]
+    public void A_failed_snapshot_does_not_replace_the_primary_failure_or_prevent_cleanup()
+    {
+        var snapshotFailure = new InvalidOperationException("snapshot-failed");
+        var scenario = new Scenario(() => throw snapshotFailure);
+        var errors = Leaves(Assert.ThrowsAny<Exception>(() => scenario.Run(
+            outcome: new PointerOutcome(PointerResult.TimedOut, "timeout", "timeout")))).ToArray();
+        Assert.IsType<TimeoutException>(errors[0]);
+        Assert.Contains(snapshotFailure, errors.Skip(1));
+        Assert.Equal(1, scenario.Released);
+    }
+
+    [Fact]
+    public void Keeps_the_native_summary_when_later_trace_entries_are_dropped()
+    {
+        var scenario = new Scenario(() => new MarkedMoveReport(7, [], null));
+        scenario.Run();
+        for (var i = 0; i < 250; i++) scenario.Recorder.Note("later");
+        var text = scenario.Trace.Describe().Split("Entries, oldest first:", StringSplitOptions.None)[0];
+        Assert.Contains("low-level", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("7", text);
+    }
 
     [Fact]
     public void Ends_a_move_whose_message_was_observed_without_an_error_or_a_queue_reading()

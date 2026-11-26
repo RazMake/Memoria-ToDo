@@ -100,6 +100,9 @@ internal sealed class PointerTrace
 
         text.Append("Not shown: mouse capture held by an unobserved thread, windows of other threads or processes that came and went between readings, ")
             .Append("and whether Windows dropped or delayed a move. A missing message is evidence, not proof, that Windows did not deliver it. ")
+            .Append("A low-level hook installed later can run before ours and suppress an event; Windows can silently remove a slow low-level hook; ")
+            .Append("input can still be lost after the hook chain; a timeout does not prove the hook was present throughout the wait; ")
+            .Append("and the observer itself changes timing slightly. ")
             .Append("This trace names no cause.");
         return text.ToString();
     }

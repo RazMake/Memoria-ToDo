@@ -392,7 +392,9 @@ The user decided that Task View has a status bar along its bottom edge. It's [Up
 - **A failed sync's error shows in the status bar, right of the button**, in the theme's error color, as [Configure](configure.md#the-window-shows-its-settings-in-labeled-sections) shows its messages, the user decided. A sync that succeeds clears it. While a sync runs, the button's tooltip says "Syncing…".
 - **On its right, the app's version**, such as "Version 1.4.2". The user decided that it comes from the platform's [app version](README.md#the-apps-version-has-one-home), so `Create` takes no new argument for it.
 - **Just left of the version, an icon that shows whether Prevent screen saver is on**, with a tooltip, as the user asked. [Keep awake](keep-awake.md#the-status-bar-shows-whether-its-on) publishes the state, and its design says what each state's tooltip says; the Task list draws the icon and its tooltip from the state. The user decided that only Task View's bar shows it, that it's a sun, and that it's not a button:
-  - It's a sun, U+E706 from the icon font the Sync button uses, just left of the version: in the normal text color while on, muted while off or paused, and in the error color while it failed. The tooltip says which.
+  - It's a sun, U+E706 from the icon font the Sync button uses, just left of the version.
+  - It looks lit while on, the user decided: fully opaque, in a color that stands out from the bar's text. While off it looks unlit: muted and partly see-through. While [paused](keep-awake.md#locking-the-pc-pauses-it-until-the-pc-is-unlocked) it looks unlit too, since the app doesn't hold the screen on then, and while it failed it shows in the error color, fully opaque. The tooltip says which.
+  - Proposed: the lit color is the theme's caution color, `SystemFillColorCautionBrush`, the amber the bar's [update text](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) already uses, so the sun reads as lit and follows the light and dark themes. The unlit look is the secondary text color, partly see-through, as other dimmed parts of the app are. This is a decision to confirm.
   - It's not a button and never a keyboard stop; Configure changes the setting. Screen readers read its tooltip as its name.
   - It follows the state as it changes, while Task View is open.
 - **At its end, after the version, Updates' update text**, such as "Update available: 2.2.0", only while a new version is available or updating, as [Updates](updates.md#add-and-task-view-show-an-update-in-a-shared-status-bar) decides. Otherwise the version ends the bar.
@@ -665,6 +667,7 @@ The options below were considered and rejected, grouped by decision.
   - **An icon that turns the setting on or off when clicked**: a click by mistake would change a setting that stays, where Configure shows it with its help line.
   - **The icon in Add's status bar too**: Add is a quick entry window, and the setting doesn't change while it's open.
   - **A moon, U+E708**: it reads as sleep, the opposite of what the feature does.
+  - **The normal text color while on, and only a muted color while off**: the user asked that on look lit and off look unlit, which two text colors don't show.
   - **Text, such as "Screen stays on"**: it takes room the update text and a sync error need.
 
 Who shows formatted Markdown, and who opens links, is decided in the [Formatted view](formatted-view.md#ruled-out).

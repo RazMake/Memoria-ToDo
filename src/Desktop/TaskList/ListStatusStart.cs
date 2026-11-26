@@ -62,11 +62,13 @@ internal sealed class ListStatusStart : DockPanel
         var tooltip = StatusBarText.KeepAwakeTooltip(state);
         _sun.ToolTip = tooltip;
         AutomationProperties.SetName(_sun, tooltip);
-        _sun.SetResourceReference(TextBlock.ForegroundProperty, state switch
+        var (foreground, opacity) = state switch
         {
-            { Failure: not null } => "SystemFillColorCriticalBrush",
-            { IsOn: true, Paused: false } => "TextFillColorPrimaryBrush",
-            _ => "TextFillColorSecondaryBrush",
-        });
+            { Failure: not null } => ("SystemFillColorCriticalBrush", 1.0),
+            { IsOn: true, Paused: false } => ("SystemFillColorCautionBrush", 1.0),
+            _ => ("TextFillColorSecondaryBrush", 0.5),
+        };
+        _sun.SetResourceReference(TextBlock.ForegroundProperty, foreground);
+        _sun.Opacity = opacity;
     }
 }

@@ -6,7 +6,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
-- Prevent screen saver, a new setting in Configure, keeps the screen on and the PC awake while the app runs: no screen saver, no screen turning off, and no lock for lack of input. It's off at first, and each PC keeps its own choice. When you lock the PC, it pauses until you unlock it, without changing the setting. In Task View, the window that lists your tasks, a sun just left of the version shows whether it's on: in the normal text color while it's on, faded while it's off or paused, and in red when it isn't working. Rest the pointer on the sun to read which.
+- Prevent screen saver, a new setting in Configure, keeps the screen on and the PC awake while the app runs: no screen saver, no screen turning off, and no lock for lack of input. It's off at first, and each PC keeps its own choice. When you lock the PC, it pauses until you unlock it, without changing the setting. In Task View, the window that lists your tasks, a sun just left of the version shows whether it's on: lit in amber while it's on, faded and partly transparent while it's off or paused, and in red when it isn't working. Rest the pointer on the sun to read which.
 
 - Task View, the window that lists your tasks, now reopens at the size and place where you last closed it, even after you restart the app or your PC, and reopens maximized if you closed it maximized. Each PC keeps its own place. If that place is no longer on any screen, Task View opens on the screen with the mouse pointer, as before.
 

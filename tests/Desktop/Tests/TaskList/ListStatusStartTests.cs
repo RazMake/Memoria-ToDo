@@ -24,6 +24,7 @@ public class ListStatusStartTests
     private static readonly KeepAwakeState On = new(true, false, null);
     private static readonly KeepAwakeState Paused = new(true, true, null);
     private static readonly KeepAwakeState Failed = new(true, false, "Access is denied.");
+    private static readonly KeepAwakeState FailedWhileOff = new(false, false, "Access is denied.");
 
     [WpfFact]
     public void The_sun_is_the_icon_font_glyph_U_E706_like_the_Sync_button_uses()
@@ -100,38 +101,50 @@ public class ListStatusStartTests
     }
 
     [WpfTheory]
-    [InlineData(nameof(On), "Primary")]
-    [InlineData(nameof(Off), "Secondary")]
-    [InlineData(nameof(Paused), "Secondary")]
-    [InlineData(nameof(Failed), "Critical")]
-    public void The_sun_is_in_the_normal_text_color_while_on_muted_while_off_or_paused_and_in_the_error_color_while_failed(string stateName, string color)
+    [InlineData(nameof(On), "Caution", true)]
+    [InlineData(nameof(Off), "Secondary", false)]
+    [InlineData(nameof(Paused), "Secondary", false)]
+    [InlineData(nameof(Failed), "Critical", true)]
+    [InlineData(nameof(FailedWhileOff), "Critical", true)]
+    public void The_sun_is_lit_while_on_unlit_while_off_or_paused_and_opaque_in_the_error_color_while_failed(string stateName, string color, bool opaque)
     {
         using var host = new Host(State(stateName));
 
         Assert.Equal(Host.Colors[color], host.IconColor);
+        if (opaque)
+            Assert.Equal(1.0, host.IconOpacity);
+        else
+            Assert.True(host.IconOpacity is > 0 and < 1);
     }
 
     [WpfFact]
-    public void The_sun_follows_Keep_awake_while_the_bar_shows_in_its_tooltip_name_and_color()
+    public void The_sun_follows_Keep_awake_while_the_bar_shows_in_its_tooltip_name_color_and_opacity()
     {
         using var host = new Host(Off);
 
         host.KeepAwake.Publish(On);
         Assert.Equal("Prevent screen saver is on: the screen stays on.", KeepAwakeIcon.ToolTipOf(host.Icon));
         Assert.Equal(KeepAwakeIcon.ToolTipOf(host.Icon), KeepAwakeIcon.NameOf(host.Icon));
-        Assert.Equal(Host.Colors["Primary"], host.IconColor);
+        Assert.Equal(Host.Colors["Caution"], host.IconColor);
+        Assert.Equal(1.0, host.IconOpacity);
+
+        host.KeepAwake.Publish(Paused);
+        Assert.Equal("Prevent screen saver is paused while the PC is locked.", KeepAwakeIcon.ToolTipOf(host.Icon));
+        Assert.Equal(KeepAwakeIcon.ToolTipOf(host.Icon), KeepAwakeIcon.NameOf(host.Icon));
+        Assert.Equal(Host.Colors["Secondary"], host.IconColor);
+        Assert.True(host.IconOpacity is > 0 and < 1);
 
         host.KeepAwake.Publish(Failed);
         Assert.StartsWith("Prevent screen saver isn't working:", KeepAwakeIcon.ToolTipOf(host.Icon));
         Assert.Equal(KeepAwakeIcon.ToolTipOf(host.Icon), KeepAwakeIcon.NameOf(host.Icon));
         Assert.Equal(Host.Colors["Critical"], host.IconColor);
-
-        host.KeepAwake.Publish(Paused);
-        Assert.Equal("Prevent screen saver is paused while the PC is locked.", KeepAwakeIcon.ToolTipOf(host.Icon));
-        Assert.Equal(Host.Colors["Secondary"], host.IconColor);
+        Assert.Equal(1.0, host.IconOpacity);
 
         host.KeepAwake.Publish(Off);
         Assert.Equal("Prevent screen saver is off.", KeepAwakeIcon.ToolTipOf(host.Icon));
+        Assert.Equal(KeepAwakeIcon.ToolTipOf(host.Icon), KeepAwakeIcon.NameOf(host.Icon));
+        Assert.Equal(Host.Colors["Secondary"], host.IconColor);
+        Assert.True(host.IconOpacity is > 0 and < 1);
     }
 
     [WpfFact]
@@ -169,6 +182,7 @@ public class ListStatusStartTests
         nameof(On) => On,
         nameof(Paused) => Paused,
         nameof(Failed) => Failed,
+        nameof(FailedWhileOff) => FailedWhileOff,
         _ => throw new ArgumentOutOfRangeException(nameof(name)),
     };
 
@@ -177,6 +191,7 @@ public class ListStatusStartTests
         public static readonly IReadOnlyDictionary<string, Color> Colors = new Dictionary<string, Color>
         {
             ["Primary"] = System.Windows.Media.Colors.Navy,
+            ["Caution"] = System.Windows.Media.Colors.Goldenrod,
             ["Secondary"] = System.Windows.Media.Colors.Gray,
             ["Critical"] = System.Windows.Media.Colors.Crimson,
         };
@@ -188,6 +203,7 @@ public class ListStatusStartTests
         {
             KeepAwake = new FakeKeepAwakeStatus { State = state };
             container.Resources["TextFillColorPrimaryBrush"] = new SolidColorBrush(Colors["Primary"]);
+            container.Resources["SystemFillColorCautionBrush"] = new SolidColorBrush(Colors["Caution"]);
             container.Resources["TextFillColorSecondaryBrush"] = new SolidColorBrush(Colors["Secondary"]);
             container.Resources["SystemFillColorCriticalBrush"] = new SolidColorBrush(Colors["Critical"]);
             Bar = new ListStatusStart(sync, KeepAwake);
@@ -206,6 +222,8 @@ public class ListStatusStartTests
         public TextBlock Version => OpenWindows.Descendants(Bar).OfType<TextBlock>().Single(block => OpenWindows.TextOf(block) == StatusBarText.Version);
 
         public Color IconColor => ((SolidColorBrush)Icon.Foreground).Color;
+
+        public double IconOpacity => Icon.Opacity * Icon.Foreground.Opacity;
 
         public (double Left, double Right) Span(FrameworkElement element)
         {
