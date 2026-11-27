@@ -1,6 +1,14 @@
 # Continue the missing pointer-message investigation
 
-**The cause remains unknown.** The [thread-stage observers](../architecture/technology-stack.md#the-trace-follows-a-move-through-each-stage-on-the-test-thread) ran in the latest failure and recorded no input reaching the test thread. The user approved a [temporary low-level observer](../architecture/technology-stack.md#a-temporary-low-level-hook-follows-only-our-marked-move) to look before thread delivery. Neither extension changes input delivery or claims to fix the failure.
+**The cause remains unknown.** The [latest failure](#the-low-level-hook-saw-both-moves-but-the-test-threads-did-not) reached the low-level observer, but not the test threads. The observers add evidence, not a fix.
+
+## The low-level hook saw both moves but the test threads did not
+
+[Run 45922201736](https://github.com/RazMake/Memoria-ToDo/actions/runs/45922201736/job/140255287358), at `bb7548e`, failed both initial-positioning cases before either constructed a hover card. Each injected move reached the [low-level observer](../architecture/technology-stack.md#a-temporary-low-level-hook-follows-only-our-marked-move), and its downstream hook returned zero. Neither test thread recorded a mouse message. The cursor and foreground readings matched the target; the timeout's queue reading contained only the posted-message bit. These readings do not prove where delivery stopped.
+
+Both cases passed in the preceding [run 45907657051](https://github.com/RazMake/Memoria-ToDo/actions/runs/45907657051), and in the local diagnostic run on November 26. Their code did not change in `bb7548e`. This is a recurring intermittent failure, not evidence that the notice-handling change broke hover cards.
+
+A controlled local experiment tested whether a disabled window could cover the target while escaping the send check. A separate test-owned thread showed a topmost, non-activating cover, once enabled and once disabled. Its native enabled state was checked. In both cases, the existing window-at-point reading found the cover and the helper refused before sending input. This did not reproduce the hosted signature, so the proposed covering-window check was not added. The temporary experiment was removed; no input acceptance rule, timeout, or retry changed.
 
 ## The new thread-stage trace also saw no input
 
@@ -10,7 +18,7 @@ The packet was accepted and the cursor reached its target. No input appeared at 
 
 The observer's integration test and the `pointerStartsOnPart: False` case passed in this run. [Run 45764678558](https://github.com/RazMake/Memoria-ToDo/actions/runs/45764678558) later passed all 7,598 tests with the pointer helper unchanged. It used runner image `20261116.315.1`, while the failing run used `20261123.321.1`; however, earlier identical failures also used `20261116.315.1`. Pinning that older image is not an evidence-backed fix.
 
-The latest trace is retained here, without the surrounding runner timestamps:
+That earlier trace is retained here, without the surrounding runner timestamps:
 
 ```text
 Pointer trace of this test's real moves; 0 oldest entries dropped.

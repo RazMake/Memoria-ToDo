@@ -74,13 +74,13 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
         _dragPause = dragPause;
         _control = new WebView2CompositionControl
         {
-            // The page never holds the keyboard focus, so every key reaches the window. A click on the page then moves the
-            // focus to the nearest focusable ancestor, and Tab skips the page.
+            // This removes the page from WPF navigation; the browser can still take native focus on a click.
             Focusable = false,
             CreationProperties = new CoreWebView2CreationProperties { UserDataFolder = browserDataFolder },
             // The page sets no background, so the WPF theme shows through.
             DefaultBackgroundColor = Color.Transparent,
         };
+        _control.AddHandler(UIElement.GotFocusEvent, new RoutedEventHandler(OnBrowserFocused), handledEventsToo: true);
         _control.CoreWebView2InitializationCompleted += OnInitialized;
         // The control starts its browser by itself only when its Source is set, so start it once it is shown.
         _control.Loaded += OnLoaded;
@@ -96,6 +96,24 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
     public event EventHandler<string>? Failed;
 
     public event EventHandler<ImageResize>? ImageResized;
+
+    private void OnBrowserFocused(object sender, RoutedEventArgs e)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var target = FocusableAncestor.Of(_control);
+        _logger.Debug("Returning description browser focus to {FocusTarget}.", target?.GetType().Name);
+        if (target is null || !target.Focus())
+        {
+            _logger.Error("The description browser's keyboard focus could not be returned to an enabled ancestor.");
+            return;
+        }
+
+        _logger.Information("Returned description keyboard focus to {FocusTarget}.", target.GetType().Name);
+    }
 
     public void Show(string page)
     {
@@ -174,6 +192,7 @@ internal sealed class WpfDescriptionWebView : IDescriptionWebView
             _styleChanged.DevToolsProtocolEventReceived -= OnStyleInvalidated;
         }
 
+        _control.RemoveHandler(UIElement.GotFocusEvent, new RoutedEventHandler(OnBrowserFocused));
         _control.Dispose();
     }
 

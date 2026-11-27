@@ -54,7 +54,9 @@ internal sealed class DescriptionWebViewHarness : IDisposable
 
     /// <param name="dragPause">Tells when a drag has ended, or null for the real pause on the dispatcher's clock.</param>
     /// <param name="measure">Reads a dragged box's width, or null for the real DevTools measurement.</param>
-    public DescriptionWebViewHarness(IDragPause? dragPause = null, IImageMeasure? measure = null)
+    public DescriptionWebViewHarness(
+        IDragPause? dragPause = null, IImageMeasure? measure = null,
+        Func<FrameworkElement, FrameworkElement>? host = null)
     {
         CloneFolder = Path.Combine(_root, "clone");
         EditImagesFolder = Path.Combine(_root, "edit-images");
@@ -78,7 +80,7 @@ internal sealed class DescriptionWebViewHarness : IDisposable
         Control.Dispatcher.UnhandledException += OnUnhandled;
 
         // A stack gives the element all the height it asks for, as a scrolling list does, in a window shorter than long content.
-        _window = new Window { Width = 400, Height = 300, Content = new StackPanel { Children = { Control } } };
+        _window = new Window { Width = 400, Height = 300, Content = host?.Invoke(Control) ?? new StackPanel { Children = { Control } } };
         _window.Show();
     }
 
@@ -179,17 +181,25 @@ internal sealed class DescriptionWebViewHarness : IDisposable
     public async Task ClickLink(int index)
     {
         var core = await Started;
-        await WaitForRenderedFrame();
-        var centre = await core.ExecuteScriptAsync(
-            $"(() => {{ const r = document.querySelectorAll('a')[{index}].getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()");
-        var point = System.Text.Json.JsonSerializer.Deserialize<double[]>(centre)
-            ?? throw new InvalidOperationException($"Link {index} has no position.");
+        var point = await LinkPoint(index);
         foreach (var type in new[] { "mousePressed", "mouseReleased" })
         {
             var mouse = FormattableString.Invariant(
-                $"{{\"type\":\"{type}\",\"x\":{point[0]},\"y\":{point[1]},\"button\":\"left\",\"buttons\":{(type == "mousePressed" ? 1 : 0)},\"clickCount\":1}}");
+                $"{{\"type\":\"{type}\",\"x\":{point.X},\"y\":{point.Y},\"button\":\"left\",\"buttons\":{(type == "mousePressed" ? 1 : 0)},\"clickCount\":1}}");
             await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", mouse);
         }
+    }
+
+    public async Task<Point> LinkPoint(int index)
+    {
+        var core = await Started;
+        await WaitForRenderedFrame();
+        var centre = await core.ExecuteScriptAsync(
+            $"(() => {{ const r = document.querySelectorAll('a')[{index}].getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()")
+            .WaitAsync(Limit);
+        var point = System.Text.Json.JsonSerializer.Deserialize<double[]>(centre)
+            ?? throw new InvalidOperationException($"Link {index} has no position.");
+        return new Point(point[0], point[1]);
     }
 
     public void Dispose()

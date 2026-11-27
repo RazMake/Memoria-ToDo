@@ -6,6 +6,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- Clicking a formatted task description no longer leaves the keyboard focus inside its browser. Keyboard shortcuts keep reaching the app, and Tab moves to the next control.
+
 - When saving an edit to a task fails, the images you added in that edit are now put back, so they're no longer left in your synced folder: trying to save again adds them, and discarding the edit removes them. If putting them back fails too, the editor says the change may be only partly saved.
 
 - When a change may be only partly saved, Add, the window for adding a task, and Task View, the window that lists your tasks, now say so in the same words, followed by what went wrong. In Task View this now also covers moving, resolving, reopening, or deleting a task, moving a group, and changing a task's tags, which used to show an error box, and the list then shows what was really saved.

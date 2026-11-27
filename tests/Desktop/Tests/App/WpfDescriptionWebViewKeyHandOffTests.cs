@@ -1,9 +1,13 @@
 using System.Threading.Channels;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.FormattedView;
 using Memoria.ToDo.Desktop.Platform.Tests;
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Testing;
+using Serilog.Events;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.App.Tests;
@@ -76,13 +80,41 @@ public class WpfDescriptionWebViewKeyHandOffTests
     [WpfFact]
     public async Task Neither_clicking_the_page_nor_pressing_Tab_gives_it_the_keyboard_focus()
     {
-        using var harness = new DescriptionWebViewHarness();
-        await FocusedPage(harness);
+        var ancestor = new ContentControl { Focusable = true, IsTabStop = true };
+        var next = new Button { Content = "Next" };
+        using var harness = new DescriptionWebViewHarness(host: view =>
+        {
+            ancestor.Content = view;
+            return new StackPanel { Children = { ancestor, next } };
+        });
+        var core = await harness.Started;
+        harness.Port.Show(DescriptionPage.Of("[some text](https://example.test/)", dark: false, harness.Port.CloneAddress));
+        await harness.NextLoadedPageTitle();
+        Assert.True(next.Focus());
+        var point = await harness.LinkPoint(0);
+        var clicked = harness.NextReportedLink();
+
+        await RealClick.OnAsync(harness.Window, harness.Control, point, DescriptionWebViewHarness.Limit);
+        Assert.Equal("https://example.test/", await clicked);
 
         // A page that took the focus would hold it in the browser, outside WPF, so WPF would report no focused element.
         Assert.False(harness.Control.IsFocused);
         Assert.False(harness.Control.IsKeyboardFocusWithin);
-        Assert.Same(harness.Window, Keyboard.FocusedElement);
+        Assert.Same(ancestor, Keyboard.FocusedElement);
+        Assert.Equal("false", await core.ExecuteScriptAsync("document.hasFocus()").WaitAsync(DescriptionWebViewHarness.Limit));
+
+        var traversed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        next.GotKeyboardFocus += (_, _) => traversed.TrySetResult();
+        KeyboardInput.Chord(KeyboardInput.Tab);
+        await traversed.Task.WaitAsync(DescriptionWebViewHarness.Limit);
+
+        Assert.Same(next, Keyboard.FocusedElement);
+        Assert.False(harness.Control.IsKeyboardFocusWithin);
+        Assert.Equal("false", await core.ExecuteScriptAsync("document.hasFocus()").WaitAsync(DescriptionWebViewHarness.Limit));
+        Assert.Contains(harness.Log.Events, entry => entry.Level == LogEventLevel.Information
+            && entry.Properties.TryGetValue("FocusTarget", out var target)
+            && target is ScalarValue { Value: nameof(ContentControl) });
+        harness.Log.Events.AssertNoProblems();
     }
 
     private static Task<(Key, ModifierKeys)> Next(Channel<(Key, ModifierKeys)> keys) =>
