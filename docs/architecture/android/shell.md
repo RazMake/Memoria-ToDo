@@ -72,7 +72,24 @@ Proposed: the app follows the phone's light or dark setting. On Android 12 and l
 
 ## Public interface
 
-None. Shell is the Android app's entry point, and no module uses it.
+None. Shell is the Android app's entry point, and no module uses it. Only the composition root does, through one part, proposed for [delivery step 1](README.md#delivery-backlog) with what step 1 needs; later steps add the screens and services each way in needs:
+
+```csharp
+namespace Memoria.ToDo.Android.Shell;
+
+/// The ways into the app.
+public static class AppEntry
+{
+    /// Connects opening the app to Task View. The composition root calls it once, last, before Android
+    /// opens any screen. Throws ArgumentNullException when an argument is null.
+    public static void Connect(ITaskViewScreen taskView, Serilog.ILogger logger);
+}
+```
+
+Opening the app starts Shell's own entry screen, which shows nothing: it opens where the [ways in](#four-ways-lead-into-the-app) lead, then closes. So the way each start leads stays Shell's, even when Configure comes first. Proposed, each a decision to confirm:
+
+- **Shell logs each way in used at Information**, naming it, as the desktop's Shell logs each tray item and shortcut ([Logging](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens)). Where it leads is a Debug choice. The screens Shell opens log nothing of their own when they open.
+- **The entry screen has a fixed name**, `memoria.todo.shell.EntryActivity`, like every [screen's](platform.md#screens-open-through-one-opener-the-composition-root-supplies). Android opens it itself, so Shell needs no screen opener.
 
 ## Failure modes
 

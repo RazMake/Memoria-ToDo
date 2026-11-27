@@ -93,6 +93,26 @@ Shell and the Task list use these parts:
 
 The composition root gives the Task editor [Contacts](../contacts.md#public-interface), for the "@" list and the chips, as the desktop's does.
 
+Proposed for [delivery step 1](README.md#delivery-backlog), Show Add with an empty screen; later steps add the rest:
+
+```csharp
+namespace Memoria.ToDo.Android.TaskEditor;
+
+/// The Add screen.
+public interface IAddScreen
+{
+    /// Opens Add in front of the app's other screens.
+    void Show();
+}
+
+public static class AddScreen
+{
+    /// Prepares Add. Its Show asks screens to open Add's activity.
+    /// Throws ArgumentNullException when an argument is null.
+    public static IAddScreen Create(Memoria.ToDo.Android.Platform.IScreenOpener screens, Serilog.ILogger logger);
+}
+```
+
 ## Failure modes
 
 - **Saving fails, an image can't be saved, or the draft can't be read**: Add handles it as the [desktop does](../desktop/task-editor.md#failure-modes).

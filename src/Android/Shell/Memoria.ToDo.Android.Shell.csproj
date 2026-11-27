@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform\Memoria.ToDo.Android.Platform.csproj" />
+    <ProjectReference Include="..\TaskList\Memoria.ToDo.Android.TaskList.csproj" />
+    <PackageReference Include="Serilog" />
+    <InternalsVisibleTo Include="Memoria.ToDo.Android.Tests" />
+  </ItemGroup>
+
+</Project>

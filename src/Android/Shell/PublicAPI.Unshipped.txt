@@ -1,0 +1,2 @@
+Memoria.ToDo.Android.Shell.AppEntry
+static Memoria.ToDo.Android.Shell.AppEntry.Connect(Memoria.ToDo.Android.TaskList.ITaskViewScreen! taskView, Serilog.ILogger! logger) -> void

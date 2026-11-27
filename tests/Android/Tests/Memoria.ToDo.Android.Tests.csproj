@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Android\Platform\Memoria.ToDo.Android.Platform.csproj" />
+    <ProjectReference Include="..\..\..\src\Android\TaskEditor\Memoria.ToDo.Android.TaskEditor.csproj" />
+    <ProjectReference Include="..\..\..\src\Android\Configure\Memoria.ToDo.Android.Configure.csproj" />
+    <ProjectReference Include="..\..\..\src\Android\TaskList\Memoria.ToDo.Android.TaskList.csproj" />
+    <ProjectReference Include="..\..\..\src\Android\Shell\Memoria.ToDo.Android.Shell.csproj" />
+    <ProjectReference Include="..\Fakes\Memoria.ToDo.Android.Fakes.csproj" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Memoria.ToDo.Shared.Fakes" />
+  </ItemGroup>
+
+</Project>

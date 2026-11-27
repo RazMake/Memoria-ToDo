@@ -29,6 +29,7 @@
     <PackageVersion Include="Grpc.Net.Client" Version="2.85.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.36.2" />
     <PackageVersion Include="Grpc.Tools" Version="2.85.0" />
+    <PackageVersion Include="Xamarin.Google.Android.Material" Version="1.14.0.6" />
     <PackageVersion Include="Serilog" Version="4.4.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageVersion Include="Serilog.Sinks.Async" Version="2.1.0" />

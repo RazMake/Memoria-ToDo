@@ -23,6 +23,10 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Install the Android workload, which every build needs
+        run: dotnet workload install android
+      - name: Install the JDK and Android SDK the Android app builds with
+        run: dotnet build src/Android/App/Memoria.ToDo.Android.App.csproj -t:InstallAndroidDependencies -p:AcceptAndroidSDKLicenses=True
       - name: Build the Node.js client, which its tests and the Local API's integration tests load
         working-directory: src/Api/NodeClient
         run: |
@@ -34,6 +38,8 @@ jobs:
         run: |
           node --test --test-timeout=120000 "tests/Api/NodeClient/*.test.mjs"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build the Android app, which the solution leaves out
+        run: dotnet build src/Android/App/Memoria.ToDo.Android.App.csproj
       - name: Build and run every test
         run: |
           node .agents/desktop-check.mjs

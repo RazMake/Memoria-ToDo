@@ -1,8 +1,8 @@
 <Project>
 
   <PropertyGroup>
-    <TargetFramework Condition="'$(TargetFramework)' == ''">net11.0</TargetFramework>
-    <MemoriaAppTargetFramework>$(TargetFramework)-windows10.0.17763.0</MemoriaAppTargetFramework>
+    <MemoriaPcTargetFramework>net11.0</MemoriaPcTargetFramework>
+    <MemoriaAppTargetFramework>$(MemoriaPcTargetFramework)-windows10.0.17763.0</MemoriaAppTargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -10,6 +10,33 @@
     <Product>Memoria-ToDo</Product>
     <!-- Known-vulnerability reports depend on the day, not on our code; they warn but don't fail a restore. -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <!-- Android modules and their platform build for the PC and Android; a default TargetFramework would stop the
+       cross-targeting build. The Android App builds only for Android. Design: technology-stack.md,
+       "Each Android module builds for both the PC and Android". -->
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.StartsWith('$(MSBuildThisFileDirectory)src\Android'))">
+    <MemoriaIsAndroidProject>true</MemoriaIsAndroidProject>
+    <TargetFramework Condition="$(MSBuildProjectName.EndsWith('.App'))">$(MemoriaPcTargetFramework)-android</TargetFramework>
+    <TargetFrameworks Condition="!$(MSBuildProjectName.EndsWith('.App'))">$(MemoriaPcTargetFramework);$(MemoriaPcTargetFramework)-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' != '' And $(TargetFramework.EndsWith('-android'))">26</SupportedOSPlatformVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MemoriaIsAndroidProject)' != 'true'">
+    <TargetFramework Condition="'$(TargetFramework)' == ''">$(MemoriaPcTargetFramework)</TargetFramework>
+  </PropertyGroup>
+
+  <!-- Android-only code is in *.Android.cs files, which only the Android build compiles. -->
+  <PropertyGroup Condition="'$(TargetFramework)' != '' And !$(TargetFramework.EndsWith('-android'))">
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/*.Android.cs</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Without this, Android adds a public Resource class, which the PublicAPI files don't list. -->
+    <AndroidResourceDesignerClassModifier>internal</AndroidResourceDesignerClassModifier>
+    <!-- Builds use the per-user JDK and Android SDK that InstallAndroidDependencies fills, not the runner's own.
+         Design: technology-stack.md, "The pinned workload set decides the JDK and Android SDK". -->
+    <AndroidSdkDirectory Condition="'$(AndroidSdkDirectory)' == ''">$(LOCALAPPDATA)\Memoria-ToDo\android-sdk</AndroidSdkDirectory>
+    <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == ''">$(LOCALAPPDATA)\Memoria-ToDo\jdk</JavaSdkDirectory>
   </PropertyGroup>
 
   <!-- A test project is one whose name ends in ".Tests". -->

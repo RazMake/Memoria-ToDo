@@ -21,7 +21,7 @@ Configure changes the deletion delay and sets up sync as on the [desktop](../des
 Proposed, each a decision to confirm:
 
 - The swipe direction is this phone's setting and never syncs.
-- This phone's settings, the clone, and the trusted host keys live in the app's private storage, which Android removes when the app is uninstalled.
+- This phone's settings, the clone, and the trusted host keys live in the app's private storage, which Android removes when the app is uninstalled. The clone has one fixed folder there, so Configure has no folder field, unlike the [desktop](../desktop/configure.md#each-setting-has-one-owner). Android lets an app give libgit2 a file path only inside its own storage; folders the user picks elsewhere come as content addresses, not paths ([storage access framework](https://developer.android.com/training/data-storage/shared/documents-files)).
 - Android's Auto Backup is off for the app. Otherwise Android copies app data to the user's cloud backup by default ([Auto Backup](https://developer.android.com/identity/data/autobackup)), which would put every task there, and restore a clone without its key.
 
 ### The key is made inside the Android Keystore and never leaves it
@@ -45,6 +45,26 @@ Shell uses these parts:
 - **Show Configure**: opens the settings screen.
 - **Whether the phone is configured**, from Sync's setup.
 - **This phone's settings**: the swipe direction, with a notice when it changes. Shell hands it to the Task list.
+
+Proposed for [delivery step 1](README.md#delivery-backlog), Show Configure with an empty screen; later steps add the rest:
+
+```csharp
+namespace Memoria.ToDo.Android.Configure;
+
+/// The settings screen.
+public interface IConfigureScreen
+{
+    /// Opens Configure in front of the app's other screens.
+    void Show();
+}
+
+public static class ConfigureScreen
+{
+    /// Prepares Configure. Its Show asks screens to open Configure's activity.
+    /// Throws ArgumentNullException when an argument is null.
+    public static IConfigureScreen Create(Memoria.ToDo.Android.Platform.IScreenOpener screens, Serilog.ILogger logger);
+}
+```
 
 ## Failure modes
 

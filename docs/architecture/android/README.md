@@ -1,6 +1,6 @@
 # How the Android app is built
 
-The Android app is a .NET for Android app for adding a task in seconds on the phone and seeing the same task list as on the desktop. This page lists its four modules, the proof on a phone that comes before any other Android work, the Android versions and libraries it uses, and what it needs from later designs.
+The Android app is a .NET for Android app for adding a task in seconds on the phone and seeing the same task list as on the desktop. This page lists its four modules, the proof on a phone that came before any other Android work, the Android versions and libraries it uses, what it needs from later designs, and the steps that build it.
 
 ## Four modules make up the Android app
 
@@ -12,6 +12,8 @@ Each module is a project of its own, separate from the desktop module of the sam
 | [Task editor](task-editor.md) | The full-screen Add screen: its fields, toolbar, tag chips, and draft. Task View edits a task with the same screen. |
 | [Task list](task-list.md) | Task View: the list in rank order, expanding in place, swipes, reordering, the tag filter, search, resolved tasks, and the floating Add button |
 | [Configure](configure.md) | The settings screen: the phone's key, the shared deletion delay, the swipe direction, and sync setup and status |
+
+The [platform and composition root](platform.md) hold what the screens share and build the app when it starts.
 
 The shared modules serve the phone as they serve the desktop: [Editing](../editing.md) holds the formatting and snippet commands, [Rendering](../rendering.md) turns Markdown into HTML and styled text, [Tasks](../tasks.md) holds the task files, [Contacts](../contacts.md) holds the contacts that tasks mention, and [Sync through git](../sync.md) keeps devices the same. The phone has no Contacts screen for now. Where an Android screen works like its desktop counterpart, its design file links the [desktop design](../desktop/README.md) instead of repeating it.
 
@@ -72,6 +74,30 @@ The Android design relies on the [technology stack](../technology-stack.md), a l
 
 Everything else the Android screens need from Tasks and Sync is in the [desktop app's table](../desktop/README.md#later-designs-answer-what-these-files-leave-open), already answered.
 
+## Delivery backlog
+
+The Android app is built in steps, one row each, in the table's order. Each row links to the design sections it builds, and each ships something you can open on a phone. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested. The [open questions](#open-questions) name the steps they block. Every part moved to the .NET 11 release's SDK before step 1, as the [technology stack](../technology-stack.md#three-files-pin-every-version) says.
+
+The table lists each step, what it builds, and its status:
+
+| # | Step | Builds | Status |
+| --- | --- | --- | --- |
+| 1 | Projects and three empty screens | The Android part's projects, with the pinned [workload set](../technology-stack.md#three-files-pin-every-version) and [what each project builds for](platform.md#each-project-builds-for-the-pc-and-android-except-the-composition-root); the [composition root](platform.md#the-composition-root-builds-the-app-before-android-opens-a-screen), with its logger and the [theme](shell.md#the-app-follows-the-system-theme); the platform's [screen services](platform.md#public-interface); Shell's [opening the app](shell.md#public-interface) into Task View, without the redirect to Configure; and the Show parts of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), each with an empty screen that keeps clear of the [system bars](platform.md#each-screen-keeps-clear-of-the-system-bars); Auto Backup off, as [Configure](configure.md#each-setting-has-one-owner) proposes. Unit tests run on the PC only. | Next |
+| 2 | Tests on an emulator | The [test runner](../technology-stack.md#1-which-runner-runs-the-android-test-app-blocks-delivery-step-2) you approve; the test project's [Android build](../technology-stack.md#each-android-module-builds-for-both-the-pc-and-android), with UX tests of step 1's screens; [Test selection's](../test-selection.md) commands and emulator line for it; and the [Linux job](../technology-stack.md#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) | Not scheduled |
+| 3 | Adding tasks | The [Task editor's](task-editor.md#behavior) Add screen, except mentions and Edit, on [Tasks](../tasks.md), [Editing](../editing.md), and [Rendering](../rendering.md#titles-and-the-editor-get-styled-spans-not-html), in the clone's [fixed folder](configure.md#each-setting-has-one-owner); the Android file system, whose shared contract tests run in the test app; and Shell's [app shortcut](shell.md#four-ways-lead-into-the-app), checked against Add's [start targets](task-editor.md#add-opens-full-screen-with-the-keyboard-up) | Not scheduled |
+| 4 | Viewing tasks | The [Task list's](task-list.md#behavior) Task View, except pulling down, sync status, banners, and mentions; [Edit](task-editor.md#edit-opens-the-same-screen-for-a-task-in-task-view); and Configure's [deletion delay and swipe direction](configure.md#each-setting-has-one-owner) | Not scheduled |
+| 5 | Sync | Sync on the phone: the [libgit2 script and files](../technology-stack.md#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), the [Keystore key](configure.md#the-key-is-made-inside-the-android-keystore-and-never-leaves-it), Configure's [setup and status](configure.md#configure-shows-how-sync-is-doing), Shell's redirect to Configure until the phone is configured, and the [syncs while the app is open](shell.md#sync-runs-while-the-app-is-open-and-every-few-hours-in-the-background); the Task list's [pulling down](task-list.md#pulling-the-list-down-starts-a-sync) and [status line](task-list.md#task-view-shows-sync-status-and-banners) | Not scheduled |
+| 6 | Background sync | Shell's [background work](shell.md#sync-runs-while-the-app-is-open-and-every-few-hours-in-the-background) through WorkManager | Not scheduled |
+| 7 | Releases and updates | The signed APK in each release, with its [version code](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) and [signing key](../technology-stack.md#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline); Shell's [update check](shell.md#updates-come-from-this-repositorys-github-releases), with the Task list's [banner](task-list.md#task-view-shows-sync-status-and-banners) | Not scheduled |
+| 8 | Mentions | The Task editor's ["@" list and chips](task-editor.md#typing-an-at-sign-mentions-a-contact), and the Task list's [mentions](task-list.md#mentions-show-each-contacts-current-details) | Not scheduled |
+| 9 | Widget | Shell's [home-screen widget](shell.md#the-widget-shows-the-top-tasks-and-an-add-button), with the Task list's top open tasks | Not scheduled |
+
+Proposed, a decision to confirm:
+
+- **Adding and viewing come before sync**, as on the desktop. Until step 5, the phone keeps its tasks in its own clone folder, and nothing leaves it.
+
+The [technology stack](../technology-stack.md#each-android-module-builds-for-both-the-pc-and-android) says why step 1 runs nothing on an emulator, and [when the Linux job and the APK start](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases).
+
 ## Ruled out
 
 The options below were considered and rejected, grouped by decision.
@@ -80,3 +106,7 @@ The options below were considered and rejected, grouped by decision.
   - **libgit2 with libssh2**: a second C SSH stack we would maintain.
 - Screens:
   - **Android's built-in widgets only**: offered, and not chosen. Android has no chips, floating button, or Undo bar of its own, so the app would draw them itself.
+
+## Open questions
+
+This page has none of its own. One question, in the technology stack, blocks a step above: [which test runner](../technology-stack.md#1-which-runner-runs-the-android-test-app-blocks-delivery-step-2) runs the Android test app, which blocks step 2.

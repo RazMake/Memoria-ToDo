@@ -21,6 +21,16 @@
     <Project Path="src/Shared/Rendering/Memoria.ToDo.Shared.Rendering.csproj" />
     <Project Path="src/Api/Contract/Memoria.ToDo.Api.Contract.csproj" />
     <Project Path="src/Api/Client/Memoria.ToDo.Api.Client.csproj" />
+    <Project Path="src/Android/Platform/Memoria.ToDo.Android.Platform.csproj" />
+    <Project Path="src/Android/TaskEditor/Memoria.ToDo.Android.TaskEditor.csproj" />
+    <Project Path="src/Android/Configure/Memoria.ToDo.Android.Configure.csproj" />
+    <Project Path="src/Android/TaskList/Memoria.ToDo.Android.TaskList.csproj" />
+    <Project Path="src/Android/Shell/Memoria.ToDo.Android.Shell.csproj" />
+    <!-- Built only by its path until the SDK fixes dotnet test. Design: docs/architecture/technology-stack.md,
+         "The solution doesn't build the Android app until a fixed .NET SDK ships". -->
+    <Project Path="src/Android/App/Memoria.ToDo.Android.App.csproj">
+      <Build Project="false" />
+    </Project>
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Testing/Kinds/Memoria.ToDo.Testing.Kinds.csproj" />
@@ -33,5 +43,7 @@
     <Project Path="tests/Desktop/PlatformTestHost/Memoria.ToDo.Desktop.PlatformTestHost.csproj" />
     <Project Path="tests/Desktop/Tests/Memoria.ToDo.Desktop.Tests.csproj" />
     <Project Path="tests/Api/Tests/Memoria.ToDo.Api.Tests.csproj" />
+    <Project Path="tests/Android/Fakes/Memoria.ToDo.Android.Fakes.csproj" />
+    <Project Path="tests/Android/Tests/Memoria.ToDo.Android.Tests.csproj" />
   </Folder>
 </Solution>

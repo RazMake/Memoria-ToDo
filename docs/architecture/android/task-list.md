@@ -59,6 +59,10 @@ Proposed, each a decision to confirm:
 - When the phone is offline or sync fails, a line under the top app bar says so, with the last successful sync time. [Configure](configure.md#configure-shows-how-sync-is-doing) shows the details.
 - A banner at the top shows a message with an action, such as a newer version to install. Shell uses it for [updates](shell.md#updates-come-from-this-repositorys-github-releases).
 
+### A Settings item opens Configure
+
+The menu of Task View's top app bar has a Settings item, where Android apps usually put settings. It's how a configured phone reaches [Configure](configure.md), since [Shell](shell.md#four-ways-lead-into-the-app) opens Configure only until the phone is configured. The Task list can't use Configure, as the [module map](../modules.md#module-map) says, so the item calls an action the composition root passes to Task View's create method. You chose this on November 26, 2026.
+
 ## Public interface
 
 Shell uses these parts:
@@ -67,6 +71,30 @@ Shell uses these parts:
 - **The swipe direction**: which way resolves. Shell sets it from Configure's setting, so the Task list doesn't use Configure.
 - **Show a banner**: a message and its action, at the top of the list.
 - **The top open tasks**: the first open tasks in rank order, with a notice when they change. Shell's widget shows them.
+
+Proposed for [delivery step 1](README.md#delivery-backlog), Show Task View with an empty list, its floating Add button, and its [Settings item](#a-settings-item-opens-configure); later steps add the rest:
+
+```csharp
+namespace Memoria.ToDo.Android.TaskList;
+
+/// Task View.
+public interface ITaskViewScreen
+{
+    /// Opens Task View in front of the app's other screens.
+    void Show();
+}
+
+public static class TaskViewScreen
+{
+    /// Prepares Task View. Its Show asks screens to open Task View's activity, its floating button calls
+    /// add's Show, and its Settings item calls openSettings. Throws ArgumentNullException when an argument is null.
+    public static ITaskViewScreen Create(
+        Memoria.ToDo.Android.TaskEditor.IAddScreen add, System.Action openSettings,
+        Memoria.ToDo.Android.Platform.IScreenOpener screens, Serilog.ILogger logger);
+}
+```
+
+Each screen opens through the platform's [screen opener](platform.md#screens-open-through-one-opener-the-composition-root-supplies), as Add and Configure do.
 
 ## Failure modes
 
@@ -85,3 +113,6 @@ The options below were considered and rejected, grouped by decision.
   - **Both pulling the list down and a Sync button**: offered, and not chosen.
 - The order of the tag chips:
   - **Decided when the Android app is built**: the user wants one order everywhere now, set on the desktop.
+- How a configured phone reaches Configure:
+  - **A second app shortcut, "Settings", beside "Add task"**: few users find long-press shortcuts.
+  - **A second icon in the app list that opens Configure**: the phone would show two icons for one app.

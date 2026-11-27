@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="tasklist_title">Task View</string>
+  <string name="tasklist_settings">Settings</string>
+  <string name="tasklist_add_description">Add new task</string>
+</resources>

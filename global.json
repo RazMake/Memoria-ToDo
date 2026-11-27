@@ -1,7 +1,8 @@
 {
   "sdk": {
-    "version": "11.0.100-rc.3.26522.148",
-    "allowPrerelease": true,
+    "version": "11.0.100",
+    "workloadVersion": "11.0.100.1",
+    "allowPrerelease": false,
     "rollForward": "latestPatch",
     "errorMessage": "This repository's pinned .NET SDK isn't the first 'dotnet' on PATH in this shell. Install it, and set up the shell, as README.md's 'What you need' section says."
   },

@@ -33,6 +33,10 @@ public static class LogEventChecks
     public static void AssertNoProblems(this IEnumerable<LogEvent> entries) =>
         Assert.True(!entries.Any(entry => entry.Level >= LogEventLevel.Warning), "Unexpected problem entries: " + Describe(entries));
 
+    /// <summary>Asserts no entry is at Information or above, such as for a step that finishes no operation of its own.</summary>
+    public static void AssertNothingAtInformationOrAbove(this IEnumerable<LogEvent> entries) =>
+        Assert.True(!entries.Any(entry => entry.Level >= LogEventLevel.Information), "Unexpected entries: " + Describe(entries));
+
     /// <summary>Everything an entry holds that a reader of the log could see: its message, every value, and its exception's text.</summary>
     public static string EverythingIn(this LogEvent entry) =>
         string.Join('\n', [entry.RenderMessage(), .. entry.Properties.Select(p => p.Key + "=" + p.Value), entry.Exception?.ToString() ?? ""]);

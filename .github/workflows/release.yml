@@ -159,6 +159,8 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Install the Android workload, which every build needs
+        run: dotnet workload install android
       - name: Read the app's name from its Product property, and fail if it's empty
         run: |
           $name = (dotnet msbuild $env:APP_PROJECT -getProperty:Product).Trim()

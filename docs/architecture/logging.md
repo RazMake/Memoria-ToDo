@@ -136,7 +136,7 @@ Tests see what a module logs through one hand-written sink, `InMemoryLogSink`, i
 
 ### The Android app passes a logger too
 
-The shared modules take Serilog's `ILogger` on Android as on the desktop, so the [Android app](android/README.md)'s composition root makes a logger when it's built, names each module's as the desktop's does, and passes it. Serilog's packages target .NET Standard 2.0 and .NET 6, which .NET 11 for Android can use; not confirmed by a build. Where Android keeps its entries, and whether it shows them, are for the Android design. Proposed, a decision to confirm: until then the Android design adds no sink, and nothing is built for Android now.
+The shared modules take Serilog's `ILogger` on Android as on the desktop, so the [Android app](android/README.md)'s composition root makes a logger when it's built, names each module's as the desktop's does, and passes it. Serilog's packages target .NET Standard 2.0 and .NET 6, which .NET 11 for Android can use; not confirmed by a build. The Android design decides where the phone keeps its entries: in [Android's system log](android/platform.md#the-log-goes-to-androids-system-log).
 
 ### Five Serilog packages do the work
 

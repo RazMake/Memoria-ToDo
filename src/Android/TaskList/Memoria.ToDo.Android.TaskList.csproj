@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform\Memoria.ToDo.Android.Platform.csproj" />
+    <ProjectReference Include="..\TaskEditor\Memoria.ToDo.Android.TaskEditor.csproj" />
+    <PackageReference Include="Serilog" />
+    <InternalsVisibleTo Include="Memoria.ToDo.Android.Tests" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TargetFramework.EndsWith('-android'))">
+    <!-- The floating button and top app bar. The package doesn't restore for the PC build. -->
+    <PackageReference Include="Xamarin.Google.Android.Material" />
+  </ItemGroup>
+
+</Project>

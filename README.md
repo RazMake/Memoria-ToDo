@@ -1,6 +1,6 @@
 # Memoria-ToDo
 
-Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) and design are decided. The desktop app adds, views, and syncs tasks from its tray icon. The [delivery backlog](docs/architecture/desktop/README.md#delivery-backlog) tracks the remaining desktop work and the Android app. The repository also holds the rules every change follows and the AI agents that design, build, test, and review it.
+Memoria-ToDo will be a Windows desktop app and an Android phone app for capturing tasks fast, kept in sync through a git repository. Its [purpose](docs/architecture/purpose.md) and design are decided. The desktop app adds, views, and syncs tasks from its tray icon. The Android app's [delivery backlog](docs/architecture/android/README.md#delivery-backlog) tracks the steps that build it. The repository also holds the rules every change follows and the AI agents that design, build, test, and review it.
 
 | If you want to | Read |
 | --- | --- |
@@ -31,6 +31,15 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
   ```powershell
   $env:DOTNET_ROOT = "$env:LOCALAPPDATA\Memoria-ToDo\dotnet"; $env:PATH = "$env:DOTNET_ROOT;$env:PATH"
   ```
+
+- **The Android workload, a JDK, and the Android SDK**, for the [Android app](docs/architecture/android/README.md). Every build needs the workload, the desktop app's too, because [`global.json`](global.json) pins its version ([why](docs/architecture/technology-stack.md#three-files-pin-every-version)). In a session set up as above, from the repository root:
+
+  ```powershell
+  dotnet workload install android
+  dotnet build src\Android\App\Memoria.ToDo.Android.App.csproj -t:InstallAndroidDependencies -p:AcceptAndroidSDKLicenses=True
+  ```
+
+  The second command installs the JDK and the Android SDK packages the workload names, about 770 MB, into `%LOCALAPPDATA%\Memoria-ToDo\jdk` and `%LOCALAPPDATA%\Memoria-ToDo\android-sdk` ([why](docs/architecture/technology-stack.md#the-pinned-workload-set-decides-the-jdk-and-android-sdk)). Running it accepts Google's [Android SDK license](https://developer.android.com/studio/terms). Run both commands again after `global.json`'s workload version changes.
 
 - **Git on `PATH`**, for [Sync's integration tests](docs/architecture/technology-stack.md#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), which run it behind their own SSH server, and for the version tag script. Its version isn't pinned.
 - **GitHub CLI (`gh`)** for the **open GitHub Actions** shortcut and optional [terminal commands](docs/architecture/releasing.md). The commands need sign-in with `gh auth login`; releasing from GitHub's page needs only your browser.
