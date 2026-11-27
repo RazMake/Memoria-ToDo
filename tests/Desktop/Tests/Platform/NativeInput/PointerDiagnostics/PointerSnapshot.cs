@@ -29,9 +29,6 @@ internal static class PointerSnapshot
         return $"({cursor.X}, {cursor.Y})";
     });
 
-    public static string Windows(Win32.Point point, nint target) =>
-        $"expected window {Window(target, target)}, hit window {Window(Win32.WindowAt(point), target)}, foreground window {Window(Win32.ForegroundWindow(), target)}";
-
     public static string TypeName(object? element) => element?.GetType().Name ?? "none";
 
     public static string Window(nint window, nint target)

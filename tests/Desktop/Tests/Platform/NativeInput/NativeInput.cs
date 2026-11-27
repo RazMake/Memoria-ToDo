@@ -29,7 +29,7 @@ internal static class NativeInput
         Data = new InputUnion { Mouse = new MouseInputData { Flags = down ? MouseLeftDown : MouseLeftUp } },
     };
 
-    public static Input Move(Win32.Point point, nint extraInfo = 0)
+    public static Input Move(Win32.Point point)
     {
         if (!Win32.IsOnScreen(point))
         {
@@ -42,7 +42,7 @@ internal static class NativeInput
             Type = TypeMouse,
             Data = new InputUnion
             {
-                Mouse = new MouseInputData { Dx = x, Dy = y, Flags = MouseMove | MouseAbsolute | MouseVirtualDesk | MouseNoCoalesce, ExtraInfo = extraInfo },
+                Mouse = new MouseInputData { Dx = x, Dy = y, Flags = MouseMove | MouseAbsolute | MouseVirtualDesk | MouseNoCoalesce },
             },
         };
     }

@@ -46,7 +46,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet test "-p:MemoriaAllTestKinds=true" --report-xunit-junit --results-directory all-test-results --results-directory-layout per-module
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Save failed test reports, including pointer diagnostics
+      - name: Save failed test reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:

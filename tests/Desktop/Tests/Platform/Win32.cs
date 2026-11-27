@@ -39,24 +39,6 @@ internal static class Win32
     public struct MouseHook { public Point Point; public nint Window; public uint HitTest; public nint ExtraInfo; }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct LowLevelMouseHook
-    {
-        public Point Point; public uint MouseData; public uint Flags; public uint Time; public nint ExtraInfo;
-    }
-
-    [RealInput]
-    public static nint HookLowLevelMouse(MessageHook callback)
-    {
-        var module = GetModuleHandle(null);
-        return module != 0
-            ? Install(WhMouseLowLevel, callback, module, 0)
-            : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct SentMessage { public nint Result; public nint LParam; public nint WParam; public uint Id; public nint Window; }
-
-    [StructLayout(LayoutKind.Sequential)]
     public struct GuiThreadInfo
     {
         public int Size; public uint Flags; public nint Active; public nint Focus; public nint Capture;
@@ -76,7 +58,6 @@ internal static class Win32
     [DllImport("user32.dll", SetLastError = true)] private static extern int GetMessage(out Message message, nint window, uint min, uint max);
     [DllImport("user32.dll")] private static extern bool PeekMessage(out Message message, nint window, uint min, uint max, uint remove);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool PostThreadMessage(uint threadId, uint message, nint wParam, nint lParam);
-    [DllImport("kernel32.dll", SetLastError = true)] private static extern nint GetModuleHandle(string? name);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern uint WaitForSingleObject(nint handle, uint milliseconds);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint window);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
@@ -121,34 +102,16 @@ internal static class Win32
     public static Point CursorPosition() => GetCursorPos(out var point) ? point : throw new InvalidOperationException("No pointer position.");
 
     [RealInput]
-    public static nint HookMouseMessages(MessageHook callback) => HookThread(WhMouse, callback);
+    public static nint HookMouseMessages(MessageHook callback)
+    {
+        var hook = SetWindowsHookEx(WhMouse, callback, 0, GetCurrentThreadId());
+        return hook != 0 ? hook : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
 
-    private const int WhGetMessage = 3;
     private const int WhMouse = 7;
-    private const int WhMouseLowLevel = 14;
-    private const int WhCallWndProcRet = 12;
     private const int ErrorInvalidWindowHandle = 1400;
     // Include the touch and pointer queue bits on modern Windows.
     private const uint QsAllInput = 0x1CFF;
-
-    [RealInput]
-    public static nint HookSentMessages(MessageHook callback) => HookThread(WhCallWndProcRet, callback);
-
-    [RealInput]
-    public static nint HookRetrievedMessages(MessageHook callback) => HookThread(WhGetMessage, callback);
-
-    [RealInput]
-    private static nint HookThread(int kind, MessageHook callback)
-    {
-        return Install(kind, callback, 0, GetCurrentThreadId());
-    }
-
-    [RealInput]
-    private static nint Install(int kind, MessageHook callback, nint module, uint thread)
-    {
-        var hook = SetWindowsHookEx(kind, callback, module, thread);
-        return hook != 0 ? hook : throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-    }
 
     [RealInput]
     public static void UnhookMessages(nint hook)
