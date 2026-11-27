@@ -20,7 +20,7 @@ Every module follows the rules below, and the [module map](#module-map) lists th
 
 ### The platform serves every module and knows none
 
-- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), the [JSON style and file rules](#stores-share-one-json-style-and-one-set-of-file-rules) every store follows, the [exception for a skipped file](#a-call-that-needs-a-skipped-file-throws-one-type), and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The platform holds no log interface: every module and platform project depends on the [Serilog](https://serilog.net) package and logs through its `ILogger`, as [Logging](logging.md#every-module-logs-through-serilogs-logger) decides. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
+- **The platform is the code outside module projects and the composition root**: what every module shares, such as startup, settings, and storage access. It never names a module. The shared library's platform holds the [file system interface](#the-file-system-interface-reads-and-writes-whole-files), the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload), the [JSON style and file rules](#stores-share-one-json-style-and-one-set-of-file-rules) every store follows, the [exception for a skipped file](#a-call-that-needs-a-skipped-file-throws-one-type), the [exception for a saved change whose notices failed](#steps-that-must-all-run-throw-their-failures-together), and the [contact address](#a-contact-address-has-one-home), and each app's platform holds its startup. The platform holds no log interface: every module and platform project depends on the [Serilog](https://serilog.net) package and logs through its `ILogger`, as [Logging](logging.md#every-module-logs-through-serilogs-logger) decides. The shared library's platform is one project, `Memoria.ToDo.Shared.Platform`, in `src/Shared/Platform/`.
 - **Every module takes the time from .NET's [TimeProvider](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider)**, which gives the time and timers, and the composition root passes the system's. The shared library has no clock interface of its own. The one exception is the time on a log entry, which Serilog stamps, as [Logging](logging.md#every-module-logs-through-serilogs-logger) says.
 - **Every project outside the modules marks its public interface as modules do.** The platform's projects, and each app's projects outside its modules, such as the one with its composition root, keep everything else `internal` and list their public interface in the two public API files.
 - **Code shared by two modules moves to the platform**, as the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) requires. Code shared only inside one module stays in that module.
@@ -165,11 +165,26 @@ public sealed class SyncedRepository : IRepositoryAccess, ISyncedRepository
 
 ### Steps that must all run throw their failures together
 
-The synced repository raises every part's notices even when one throws, and [Contacts](contacts.md#failure-modes) raises Changed and reports a local save even when one of them throws. Both then throw by one rule, so the user decided it lives in the platform, in one small type both use:
+The synced repository raises every part's notices even when one throws, and [Contacts](contacts.md#failure-modes) and [Tasks](tasks.md#failure-modes) raise their notices and report a local save even when one of them throws. They then throw by one rule, so the user decided it lives in the platform, in one small type they all use:
 
 - **Each step is attempted**, even when an earlier one failed.
 - **One failure is thrown as it is**, keeping its stack trace, so a caller catching its type still catches it.
 - **Several make an `AggregateException`**, in the order they happened.
+
+These three rules hold for a reload, a Select, and a store's own steps. They don't hold for **a store's notices after a change it saved**: the change's notices, such as `Changed`, and the local save report. There, a caller that catches a write's failure type, such as `IOException`, would read a notice's failure of that type as "not saved", though the change is saved. So the user decided:
+
+- **When only notices failed after a saved change**, the store throws one `NoticeFailedException` holding every failure, even a single one, in the order they happened. Every step is still attempted. A caller catches this one type and knows the change is saved.
+- **The typed form, `NoticeFailedException<T>`, adds what was saved**, so a caller with no screen, such as the MCP server or the Local API, can return the saved item and its ID. Tasks throws `NoticeFailedException<TaskItem>`, and Contacts `NoticeFailedException<Contact>`. Windows catch the base type.
+- **A reload keeps the rules above**: no caller saved anything, so the [synced repository](#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) throws its parts' notice failures as before, and a store's notices after a reload never throw `NoticeFailedException`.
+
+Proposed, each a decision to confirm:
+
+- **A store whose own step failed partway, and then notices failed too, throws an `AggregateException` as before**, its own failure first, such as Tasks' delete whose images couldn't be removed, or Contacts' [partial renumber](contacts.md#groups-keep-the-order-of-their-positions). The change is then only partly done, which windows already say for an `AggregateException`. `NoticeFailedException` means only: the change was fully saved.
+- **`NoticeFailedException` derives from `Exception`, not from `AggregateException`**, so no existing catch of an `AggregateException` takes it by mistake.
+- **Its message is "A notice failed after the change was saved: "** followed by the first failure's message. The words a screen shows have their home in the desktop platform's [store failures](desktop/README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them).
+- **`Saved` is null when the change saves no item**: Tasks' settings, tag colors, tag order, and delete; Contacts' delete, group move, and template move.
+- **Both types and the new `FailureList` member live in the platform**, beside `FailureList`, in `src/Shared/Platform/`.
+- **`ToString()` holds every failure in full, in order**, as `AggregateException`'s does. The log writes an exception through its text, and `Exception`'s own `ToString()` renders only `InnerException`, the first failure, so the later ones would be lost.
 
 The user decided this declaration:
 
@@ -188,8 +203,40 @@ public sealed class FailureList
     /// Does nothing when no failure was kept. Throws the one failure as it is, keeping its stack trace,
     /// or an AggregateException with every failure, in the order they were kept.
     public void ThrowIfAny();
+
+    /// For a store's notices after a change it saved. Does nothing when no failure was kept. Otherwise throws
+    /// NoticeFailedException<T> with saved and every failure, in the order they were kept, even when there is one.
+    public void ThrowIfAnyAfterSave<T>(T? saved) where T : class;
+}
+
+/// A store saved a change, and then one or more of its notices, or its local save report, failed.
+/// The change stays saved.
+public class NoticeFailedException : Exception
+{
+    /// Throws ArgumentNullException for null failures, and ArgumentException when failures is empty
+    /// or holds null. InnerException is the first failure.
+    public NoticeFailedException(IReadOnlyList<Exception> failures);
+
+    /// Every failure, in the order they happened. Never empty.
+    public IReadOnlyList<Exception> InnerExceptions { get; }
+
+    /// This exception's text, then every failure's full text, its stack trace included, in order,
+    /// as AggregateException's ToString does.
+    public override string ToString();
+}
+
+/// NoticeFailedException with what the change saved.
+public sealed class NoticeFailedException<T> : NoticeFailedException where T : class
+{
+    /// Throws as the base constructor does.
+    public NoticeFailedException(T? saved, IReadOnlyList<Exception> failures);
+
+    /// The item as saved, or null when the change saves no item.
+    public T? Saved { get; }
 }
 ```
+
+The `ThrowIfAnyAfterSave` member is proposed, a decision to confirm. The two exception types are the user's decision; their members are proposed, a decision to confirm.
 
 ### Stores share one JSON style and one set of file rules
 
@@ -428,3 +475,8 @@ The options below were considered and rejected, grouped by the decision they bel
 - Where Contacts gets Tasks' JSON style and file rules:
   - **Move only the JSON writer settings, and let Contacts write its own skip and path checks**: a few dozen lines that could drift from Tasks'.
   - **Move nothing, and let Contacts copy the settings**: a style change would need two edits, which the [no-duplication rule](../../AGENTS.md#core-rule-no-duplication) forbids.
+- How a caller tells a saved change whose notices failed from one that wasn't saved:
+  - **Always an `AggregateException`, even for one failure**: it changes the rule for reloads too, and an `AggregateException` from a failed undo means nothing was saved, so callers still couldn't tell.
+  - **Callers ask the store again after any failure**, as the Task list's tag Undo did: every caller would copy the "did it land?" check, a direct add's new ID is unknown to its caller, and a sync landing between makes the answer wrong.
+  - **Notices never throw to the caller, and the store only logs them**: a failure would be swallowed, against [Fail fast](../../AGENTS.md#code-design).
+  - **A type in each store, Tasks' and Contacts' own**: the same rule would live in two places.

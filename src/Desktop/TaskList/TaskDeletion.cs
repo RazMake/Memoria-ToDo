@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Serilog;
 
@@ -5,7 +6,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// Deleting a task from the list: it hides at once, waits on the Undo bar, and is deleted for good when the bar ends.
-/// A failure the list knows is logged and reported with its reason.
+/// A failure the list knows is logged and reported with its reason; a delete saved before a notice failed is reported with the shared message.
 /// </summary>
 internal sealed class TaskDeletion(ITasks tasks, ListContent content, PendingUndo pending, Action<string> report, Action changed, ILogger logger)
 {
@@ -25,17 +26,20 @@ internal sealed class TaskDeletion(ITasks tasks, ListContent content, PendingUnd
     {
         try
         {
-            tasks.Delete(id);
-        }
-        catch (TaskNotFoundException)
-        {
-        }
-        catch (Exception failure) when (ListFailures.MessageOf(failure) is { } why)
-        {
-            _logger.Error(failure, "A task couldn't be deleted: {Reason}", why);
-            var removed = tasks.All.All(task => task.Id != id);
-            // Several failures at once say what may be unsaved; the images prefix would claim a delete they can't promise.
-            report(removed && failure is not AggregateException ? "The task was deleted, but some of its images couldn't be removed: " + why : why);
+            StoreFailures.Run(
+                () =>
+                {
+                    try
+                    {
+                        tasks.Delete(id);
+                    }
+                    catch (TaskNotFoundException)
+                    {
+                    }
+                },
+                failure => ListFailures.MessageOf(failure) is { } why ? WithImagesNote(id, failure, why) : null,
+                report,
+                _logger);
         }
         finally
         {
@@ -47,4 +51,11 @@ internal sealed class TaskDeletion(ITasks tasks, ListContent content, PendingUnd
 
         changed();
     }
+
+    // A delete that is done but couldn't remove the task's images says so. Several failures at once say what may be unsaved; the images
+    // prefix would claim a delete they can't promise. A notice that failed after the delete gets the shared message from Run, with no images named.
+    private string WithImagesNote(string id, Exception failure, string why) =>
+        tasks.All.All(task => task.Id != id) && failure is not AggregateException
+            ? "The task was deleted, but some of its images couldn't be removed: " + why
+            : why;
 }

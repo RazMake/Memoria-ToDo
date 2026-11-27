@@ -78,7 +78,7 @@ internal sealed class ContactTools(ToolRunner run, CloneCheck clone, IContacts c
     {
         clone.Require();
         Contact? saved = null;
-        contacts.Save(group, id, held =>
+        return ToolRunner.Saved(() => contacts.Save(group, id, held =>
         {
             // A new contact without a full name is left for Contacts to refuse.
             var current = held ?? new Contact(id, fullName ?? "");
@@ -108,8 +108,7 @@ internal sealed class ContactTools(ToolRunner run, CloneCheck clone, IContacts c
 
             saved = contact;
             return contact;
-        });
-        return saved!;
+        }), () => saved!);
     }, [id, group]);
 
     [McpServerTool(Destructive = true), Description("Deletes a contact from a group for good; it can't be restored.")]
@@ -118,8 +117,7 @@ internal sealed class ContactTools(ToolRunner run, CloneCheck clone, IContacts c
         [Description("The contact's ID.")] string id) => run.Run(() =>
     {
         clone.Require();
-        contacts.Delete(group, id);
-        return new { deleted = id };
+        return ToolRunner.Saved(() => contacts.Delete(group, id), () => new { deleted = id });
     }, [id, group]);
 
     [McpServerTool(Destructive = false), Description("Moves a group to show after previousGroup and before nextGroup, which must be neighbors; leave out previousGroup for the start, nextGroup for the end.")]
@@ -129,8 +127,8 @@ internal sealed class ContactTools(ToolRunner run, CloneCheck clone, IContacts c
         [Description("The group it shows before.")] string? nextGroup = null) => run.Run(() =>
     {
         clone.Require();
-        contacts.MoveGroup(group, previousGroup, nextGroup);
-        return new { groups = contacts.Groups.Select(item => item.Name).ToList() };
+        return ToolRunner.Saved(() => contacts.MoveGroup(group, previousGroup, nextGroup),
+            () => new { groups = contacts.Groups.Select(item => item.Name).ToList() });
     }, [group]);
 
     private Contact FindOne(string name) =>

@@ -567,6 +567,25 @@ that failure can show briefly. The pass still ends as a stop and the status from
 accept this, because closing the gap needs one lock shared by stopping and every status change. Alternative: add
 that lock, so no failure can show once stopping begins.
 
+**Decided by the user:** a pass's automatic deletion that was saved, but whose notices failed after it, doesn't fail
+the pass. The pass's first step runs Tasks' settings initialization and then its
+[automatic deletion](tasks.md#resolved-tasks-are-deleted-after-a-delay-every-device-shares). When the deletion saves
+its deletions and then a notice handler or the local save report fails, Tasks throws the platform's
+[`NoticeFailedException`](modules.md#steps-that-must-all-run-throw-their-failures-together). The deletions are saved,
+so the pass treats it as saved, as the [MCP server](desktop/mcp-server.md#failure-modes) and the
+[Local API](local-api-contract.md#failure-modes) do: it logs one Error entry with the exception and carries on, so
+this pass commits and pushes the deletions. The entry goes through Sync's logger, the one `SyncService.Create` takes
+and the service already logs each pass with, so no public interface changes. Settings initialization raises no
+notice and reports no local save, as [Tasks](tasks.md#sync-shares-the-repositorys-lock-never-a-network-wait) says,
+so it can't throw this exception, and the rule doesn't apply to it. A deletion that removed a task's file but not its images, with or
+without notice failures, still fails the pass as before, since that change is only partly done.
+
+Proposed, each a decision to confirm: the exception doesn't change what the pass shows, so a pass that otherwise
+succeeds shows as synced, with no tray notice, since the failure is in the app's own updating, not in syncing. The
+Error entry is written where the pass catches it, through a logger the pass's Git operations receive from the service
+inside Sync, and its text says the expired tasks were deleted but a notice failed after it. It isn't logged through
+the pass's failure log, which names a sync failure's kind.
+
 **Decided by the user:** a failed sync still shows the local changes it found that haven't reached the remote.
 When a sync fails at or after its first contact with the host, for example offline, at the stalled-network timeout,
 or when the host refuses the push, it shows pending changes if the clone holds uncommitted changes to tasks, images,

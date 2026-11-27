@@ -15,7 +15,9 @@ public interface ITaskSynchronization
 
     /// <summary>
     /// Deletes tasks whose resolution is strictly older than the shared delay.
-    /// Uses the existing task deletion behavior, including image cleanup and failure reporting.
+    /// Uses the existing task deletion behavior, including image cleanup and failure reporting. Throws
+    /// NoticeFailedException of TaskItem, with a null Saved, when the deletions were saved and then a notice handler or the
+    /// local save report failed, even for one failure.
     /// Throws before deleting anything when settings cannot be read or no repository is selected.
     /// </summary>
     void DeleteExpiredTasks();

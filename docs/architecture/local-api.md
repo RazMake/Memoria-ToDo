@@ -87,6 +87,8 @@ Each integration test uses its own pipe name and its own temporary clone. The .N
 
 The shutdown integration test checks [the shutdown bound](#shell-starts-the-api-once-this-is-the-only-instance-off-the-ui-thread) and that the outstanding call fails. It does not check the gRPC status when Kestrel forcibly closes the connection. The separate test for a call made after shutdown still requires `UNAVAILABLE`.
 
+When the test for a call made after shutdown sees another status, its failure preserves the available evidence for investigation. It reports the status, its detail, the .NET client's whole exception, inner exceptions included, and every entry the Local API logged. It still checks whether the pipe's name can be reused and reports a reuse failure alongside the status mismatch. This evidence may narrow the failure without identifying its cause. It changes only that test and its helpers: no product code logs more, and the test still requires `UNAVAILABLE`. Decided by the session, to confirm.
+
 ## Public interface
 
 Programs use the [contract and the two clients](local-api-contract.md#public-interface). Tasks' [direct task changes](tasks.md#direct-task-changes-are-a-capability-of-their-own) and Shell's [lifetime argument](desktop/shell.md#public-interface) are declared on their own pages. The desktop module, which only Shell and the composition root use:

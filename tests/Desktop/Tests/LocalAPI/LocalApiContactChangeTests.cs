@@ -3,6 +3,7 @@
 
 using Grpc.Core;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
 using Serilog.Events;
 using Xunit;
@@ -278,33 +279,33 @@ public class LocalApiContactChangeTests
     }
 
     [Fact]
-    public async Task A_failure_of_a_Changed_subscriber_after_SaveContact_wrote_ends_with_INTERNAL_and_logs_an_Error_with_it()
+    public async Task A_failure_of_a_Changed_subscriber_after_SaveContact_wrote_still_returns_the_saved_contact_and_logs_an_Error_with_it()
     {
         await using var api = new ApiHarness();
         api.SeedStandard();
         var failure = new InvalidOperationException("A subscriber broke.");
         api.Contacts.Changed += (_, _) => throw failure;
 
-        var outcome = await CallOutcome.FailsAsync(api.ContactCalls.SaveContactAsync(Save("team", ContactSeeds.Contact(("id", "9"), ("fullName", "Eva Ilie")))));
+        var saved = await api.ContactCalls.SaveContactAsync(Save("team", ContactSeeds.Contact(("id", "9"), ("fullName", "Eva Ilie"))));
 
-        Assert.Equal(StatusCode.Internal, outcome.StatusCode);
+        Assert.Equal(ContactSeeds.Map(("id", "9"), ("fullName", "Eva Ilie")), saved.Map());
+        Assert.Contains("9", api.ParsedContactFile(TestContactStore.TeamFile).Ids);
         var entry = await api.Log.EntryAsync(LogEventLevel.Error, "SaveContact");
-        Assert.True(entry.HasException(failure));
+        Assert.IsAssignableFrom<NoticeFailedException>(entry.Exception);
     }
 
     [Fact]
-    public async Task A_failure_of_a_Changed_subscriber_after_DeleteContact_wrote_ends_with_INTERNAL_and_logs_an_Error_with_it()
+    public async Task A_failure_of_a_Changed_subscriber_after_DeleteContact_wrote_still_deletes_normally_and_logs_an_Error_with_it()
     {
         await using var api = new ApiHarness();
         api.SeedStandard();
-        var failure = new InvalidOperationException("A subscriber broke.");
-        api.Contacts.Changed += (_, _) => throw failure;
+        api.Contacts.Changed += (_, _) => throw new InvalidOperationException("A subscriber broke.");
 
-        var outcome = await CallOutcome.FailsAsync(api.ContactCalls.DeleteContactAsync("team", "2"));
+        await api.ContactCalls.DeleteContactAsync("team", "2");
 
-        Assert.Equal(StatusCode.Internal, outcome.StatusCode);
+        Assert.DoesNotContain("2", api.ParsedContactFile(TestContactStore.TeamFile).Ids);
         var entry = await api.Log.EntryAsync(LogEventLevel.Error, "DeleteContact");
-        Assert.True(entry.HasException(failure));
+        Assert.IsAssignableFrom<NoticeFailedException>(entry.Exception);
     }
 
     [Fact]

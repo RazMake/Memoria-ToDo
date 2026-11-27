@@ -63,9 +63,9 @@ internal sealed class SyncWorld
     }
 
     /// <param name="syncClock">The clock Sync runs on; the device's fake clock by default. A test that waits for Sync's real network timeouts passes <see cref="TimeProvider.System"/>, since a frozen fake clock would never let them expire.</param>
-    public Device AddDevice(string name, TimeProvider? syncClock = null, IDeviceKeyStore? syncKeys = null)
+    public Device AddDevice(string name, TimeProvider? syncClock = null, IDeviceKeyStore? syncKeys = null, Serilog.ILogger? syncLogger = null)
     {
-        var device = new Device(this, name, syncClock, syncKeys);
+        var device = new Device(this, name, syncClock, syncKeys, syncLogger);
         devices.Add(device);
         return device;
     }
@@ -208,7 +208,7 @@ internal sealed class Device : IAsyncDisposable
 {
     private readonly SyncWorld world;
 
-    public Device(SyncWorld world, string name, TimeProvider? syncClock = null, IDeviceKeyStore? syncKeys = null)
+    public Device(SyncWorld world, string name, TimeProvider? syncClock = null, IDeviceKeyStore? syncKeys = null, Serilog.ILogger? syncLogger = null)
     {
         this.world = world;
         var folder = Path.Combine(world.Root, name);
@@ -219,7 +219,7 @@ internal sealed class Device : IAsyncDisposable
         Repository = new SyncedRepository(Serilog.Core.Logger.None);
         Store = TestTaskStore.Create(Files, new FakeImageEncoder(), Time, DeviceFolder, Repository);
         Contacts = ContactStore.Create(Files, Repository, Serilog.Core.Logger.None);
-        Sync = SyncService.Create(Repository, Store.Synchronization, Contacts.Files, Files, syncKeys ?? Keys, new StoreSelection(Repository), syncClock ?? Time, DeviceFolder, name, periodicInterval: null, logger: Serilog.Core.Logger.None);
+        Sync = SyncService.Create(Repository, Store.Synchronization, Contacts.Files, Files, syncKeys ?? Keys, new StoreSelection(Repository), syncClock ?? Time, DeviceFolder, name, periodicInterval: null, logger: syncLogger ?? Serilog.Core.Logger.None);
     }
 
     /// <summary>The synced repository the device's Tasks store, Contacts store, and Sync share.</summary>

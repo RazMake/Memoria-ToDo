@@ -2,7 +2,13 @@ using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Contacts;
 
-/// <summary>The contacts in the selected clone. Safe to call from any thread; runs one call at a time.</summary>
+/// <summary>
+/// The contacts in the selected clone. Safe to call from any thread; runs one call at a time.
+/// Save, Delete, MoveGroup, and <see cref="MoveTemplateFirst"/> throw <see cref="NoticeFailedException{T}"/> of <see cref="Contact"/> when the change was
+/// fully saved and then a Changed handler or the local save report failed, even for one failure. Its Saved is the contact
+/// as saved by Save, and null for the others. A write that failed partway, and then a notice failed too, throws an
+/// <see cref="AggregateException"/> with the write's failure first.
+/// </summary>
 public interface IContacts
 {
     /// <summary>Whether the clone has at least one group file directly in autocomplete/contacts/, skipped or not. False with no clone.</summary>

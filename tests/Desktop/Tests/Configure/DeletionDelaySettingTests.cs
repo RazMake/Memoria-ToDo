@@ -1,5 +1,7 @@
 using System.IO;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
+using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -108,6 +110,18 @@ public class DeletionDelaySettingTests
         setting.Commit("12");
 
         Assert.Null(setting.Message);
+    }
+
+    [Fact]
+    public void A_save_that_was_kept_before_a_notice_failed_shows_the_new_delay_and_the_shared_message()
+    {
+        var (setting, settings) = Open();
+        settings.SetFailure = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+
+        setting.Commit("30");
+
+        Assert.Equal("30", setting.Shown);
+        Assert.Equal("Saved, but the app couldn't finish updating: Changed failed.", setting.Message);
     }
 
     [Fact]

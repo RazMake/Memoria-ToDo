@@ -479,7 +479,7 @@ public class TagChangesTests
     }
 
     [Fact]
-    public void A_tag_change_Tasks_saved_but_may_be_only_partly_saved_reports_that_and_still_shows_its_bar()
+    public void A_tag_change_Tasks_saved_before_a_notice_failed_reports_that_and_still_shows_its_bar()
     {
         var shown = _tasks.Add("Buy milk", "", "home");
         _tasks.NoticesFail = true;
@@ -490,7 +490,7 @@ public class TagChangesTests
         Assert.Equal(Stored(shown), result);
         Assert.True(_pending.IsPending);
         Assert.Equal("Tag added", _pending.Label);
-        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
     }
 
     [Fact]
@@ -511,7 +511,7 @@ public class TagChangesTests
     }
 
     [Fact]
-    public void A_failed_Undo_that_may_be_only_partly_saved_removes_the_bar_reports_that_instead_of_throwing()
+    public void An_Undo_Tasks_saved_before_a_notice_failed_removes_the_bar_restores_the_old_tags_and_reports_that()
     {
         var shown = _tasks.Add("Buy milk", "", "home");
         Change(shown, "home", "errand");
@@ -521,7 +521,7 @@ public class TagChangesTests
 
         Assert.False(_pending.IsPending);
         Assert.Equal(["home"], StoredTags(shown));
-        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
     }
 
     [Fact]

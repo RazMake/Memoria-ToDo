@@ -4,6 +4,14 @@ Memoria.ToDo.Shared.Platform.FailureList.Add(System.Exception! failure) -> void
 Memoria.ToDo.Shared.Platform.FailureList.Attempt(System.Action! step) -> void
 Memoria.ToDo.Shared.Platform.FailureList.FailureList() -> void
 Memoria.ToDo.Shared.Platform.FailureList.ThrowIfAny() -> void
+Memoria.ToDo.Shared.Platform.FailureList.ThrowIfAnyAfterSave<T>(T? saved) -> void
+Memoria.ToDo.Shared.Platform.NoticeFailedException
+Memoria.ToDo.Shared.Platform.NoticeFailedException.InnerExceptions.get -> System.Collections.Generic.IReadOnlyList<System.Exception!>!
+override Memoria.ToDo.Shared.Platform.NoticeFailedException.ToString() -> string!
+Memoria.ToDo.Shared.Platform.NoticeFailedException.NoticeFailedException(System.Collections.Generic.IReadOnlyList<System.Exception!>! failures) -> void
+Memoria.ToDo.Shared.Platform.NoticeFailedException<T>
+Memoria.ToDo.Shared.Platform.NoticeFailedException<T>.NoticeFailedException(T? saved, System.Collections.Generic.IReadOnlyList<System.Exception!>! failures) -> void
+Memoria.ToDo.Shared.Platform.NoticeFailedException<T>.Saved.get -> T?
 Memoria.ToDo.Shared.Platform.FileLoad<T>
 Memoria.ToDo.Shared.Platform.FileLoad<T>.<Clone>$() -> Memoria.ToDo.Shared.Platform.FileLoad<T>!
 Memoria.ToDo.Shared.Platform.FileLoad<T>.Deconstruct(out T Value, out bool Present, out System.IO.InvalidDataException? Failure) -> void

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Platform;
@@ -29,6 +30,46 @@ internal sealed class ToolRunner(ILogger logger)
 
     private readonly ActiveWork _calls = new();
     private readonly CancellationTokenSource _stopping = new();
+
+    /// <summary>The sentence a reply adds, as its <c>notice</c>, when the change was saved and then a notice failed.</summary>
+    public const string NoticeSentence = "The change was saved, but the app couldn't finish updating after it.";
+
+    /// <summary>A reply built after the change was saved, and the notice failure that came with it.</summary>
+    private sealed record NoticeSaved(object Reply, NoticeFailedException Failure);
+
+    /// <summary>
+    /// Runs a store call that returns what it saved, and answers <paramref name="reply"/> built from it. When the store
+    /// saved and a notice then failed, the reply is built from the saved item the exception holds and the runner adds
+    /// <see cref="NoticeSentence"/> and logs the failure, so the call is a success.
+    /// </summary>
+    public static object Saved<T>(Func<T> save, Func<T?, object> reply) where T : class
+    {
+        try
+        {
+            return reply(save());
+        }
+        catch (NoticeFailedException<T> failure)
+        {
+            return new NoticeSaved(reply(failure.Saved), failure);
+        }
+    }
+
+    /// <summary>
+    /// Like <see cref="Saved{T}"/> for a store call that saves no item: a delete, a tag's color or order, or a setting.
+    /// <paramref name="reply"/> reads the new state.
+    /// </summary>
+    public static object Saved(Action save, Func<object> reply)
+    {
+        try
+        {
+            save();
+            return reply();
+        }
+        catch (NoticeFailedException failure)
+        {
+            return new NoticeSaved(reply(), failure);
+        }
+    }
 
     /// <summary>The assistant's view of a value: the JSON text a tool answers with.</summary>
     public static string ToJson(object value) => JsonSerializer.Serialize(value, Json);
@@ -67,6 +108,13 @@ internal sealed class ToolRunner(ILogger logger)
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(requestToken, _stopping.Token);
             var result = await call(linked.Token).ConfigureAwait(false);
+            NoticeFailedException? noticeFailure = null;
+            if (result is NoticeSaved noticeSaved)
+            {
+                result = noticeSaved.Reply;
+                noticeFailure = noticeSaved.Failure;
+            }
+
             var made = resultId?.Invoke(result);
             var logged = made is null ? idText : idText.Length == 0 ? made : $"{idText}, {made}";
             if (logged.Length == 0)
@@ -78,7 +126,16 @@ internal sealed class ToolRunner(ILogger logger)
                 logger.Information("Tool {Tool} done, IDs: {Ids}", tool, logged);
             }
 
-            return ToJson(result);
+            if (noticeFailure is null)
+            {
+                return ToJson(result);
+            }
+
+            // The change is saved, so this is a success; the exception goes to the entry for its trace.
+            logger.Error(noticeFailure, "Tool {Tool} saved the change, but a notice failed, IDs: {Ids}, error: {Error}", tool, logged, noticeFailure.GetType().Name);
+            var reply = (JsonObject)JsonSerializer.SerializeToNode(result, Json)!;
+            reply["notice"] = NoticeSentence;
+            return reply.ToJsonString(Json);
         }
         catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
         {

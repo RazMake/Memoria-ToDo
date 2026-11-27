@@ -96,7 +96,7 @@ internal sealed partial class TaskService
         if (written)
         {
             logger.Information("Changed the {Setting} from {OldValue} to {NewValue}", name, before, after);
-            Announce(Notice.Settings | Notice.LocalSaved);
+            AnnounceSaved(Notice.Settings | Notice.LocalSaved, null);
         }
     }
 }

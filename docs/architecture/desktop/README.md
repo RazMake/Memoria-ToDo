@@ -34,7 +34,7 @@ Each window module keeps its screens' state and logic in internal [view models](
 
 The desktop platform, `Memoria.ToDo.Desktop.Platform`, holds the app's startup, as [Modules](../modules.md#the-platform-serves-every-module-and-knows-none) decides. The composition root, `Memoria.ToDo.Desktop.App`, builds the app from the modules and hands it to the platform to run.
 
-The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; the app's [version](#the-apps-version-has-one-home), which the user decided; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows) and the theme follower, below the theme; and [Save keys](#the-save-shortcut-saves-in-any-window-that-edits), which the user decided; and [Start with Windows](#start-with-windows-is-a-port-the-platform-publishes), which the user decided; and the [on-or-off setting file](#an-on-or-off-setting-file-keeps-one-switch-on-this-device), which Updates and the MCP server share. The decided parts are:
+The platform's public interface has these parts: the three below, which are decided; a third part that [opens windows](#windows-open-on-the-screen-with-the-mouse-pointer), a fourth that [makes them again](#a-closed-window-is-made-again-on-the-next-show), and a fifth, the app's name, each proposed further down; the app's [version](#the-apps-version-has-one-home), which the user decided; and the [keyboard parts](#window-modules-read-keys-through-the-platform) the window modules share; and, proposed, [Close window keys](#the-close-window-shortcut-closes-any-of-the-apps-windows) and the theme follower, below the theme; and [Save keys](#the-save-shortcut-saves-in-any-window-that-edits), which the user decided; and [Start with Windows](#start-with-windows-is-a-port-the-platform-publishes), which the user decided; and the [message box](#the-message-box-is-a-port-the-platform-publishes), which the user decided; and the [on-or-off setting file](#an-on-or-off-setting-file-keeps-one-switch-on-this-device), which Updates and the MCP server share. The decided parts are:
 
 - **The app's lifetime**: an interface with two steps, start and stop. Start receives a way to end the app. [Shell](shell.md#public-interface) implements it, so the platform names no module. Proposed: the way to end the app works from any thread. The platform passes the call to the UI thread and returns without waiting, so a module that ends the app from a background task needs no thread rule of its own. This is a decision to confirm.
 - **Run the app**: takes a function that builds the lifetime, a positive finite shutdown grace period, and its logger, and returns the process's exit code. The composition root supplies 40 seconds; the platform does not know the modules' cleanup budgets. Invalid arguments fail before WPF or any shutdown work starts. In order, it:
@@ -537,6 +537,32 @@ public interface IStartWithWindows
 
 The user decided that the port moves from Configure to the platform, unchanged, since the MCP server can't use Configure, which uses it.
 
+### The message box is a port the platform publishes
+
+Add shows the message for a [save whose notices failed](task-editor.md#failure-modes) in a message box, since Add has already closed when the save returns. The user decided that the platform publishes the port and implements it, beside its internal error box, which already shows WPF's [message box](https://learn.microsoft.com/en-us/dotnet/api/system.windows.messagebox). The platform owns it, not the Task editor, by the [first-use rule](../../../AGENTS.md#core-rule-no-duplication): telling the user something in a box stands on its own, and any window may need it, so it costs nothing to share it now. The composition root makes the platform's implementation and passes it to each module that takes the port, so that module's tests use a [fake](../technology-stack.md#each-port-has-one-hand-written-fake-shared-by-every-test):
+
+```csharp
+namespace Memoria.ToDo.Desktop.Platform;
+
+/// A box that tells the user something and waits until they close it.
+public interface IMessageBox
+{
+    /// Shows the text with one OK button, and returns when the user closes the box.
+    /// Throws ArgumentNullException for a null text.
+    void Show(string text);
+}
+
+/// The Windows message box, through WPF's MessageBox. Making it shows nothing.
+public sealed class WindowsMessageBox : IMessageBox
+{
+    public WindowsMessageBox();
+
+    public void Show(string text);
+}
+```
+
+Proposed, a decision to confirm: the box is titled with the [app's name](#the-platform-runs-the-app-and-the-composition-root-builds-it), as the error box is, and shows the Warning icon, not the Error icon, since what it reports, such as a change that was saved, isn't an error the user must act on. The implementation is a public class, as `WindowsThemeSetting` is, so the composition root can make it; it isn't tested, since it only calls WPF, and the modules' tests use the fake.
+
 ### An on-or-off setting file keeps one switch on this device
 
 Decided: Updates' [Auto update](updates.md#auto-update-updates-each-night-once-no-window-is-open) and the [MCP server's switch](mcp-server.md#a-switch-in-configure-turns-it-off-on-this-device) keep their value by one rule, so the rule lives in the platform, in one class both use, as the [no-duplication rule](../../../AGENTS.md#core-rule-no-duplication) requires. Each module keeps its own file name, its default, and the name its messages use; the class knows neither module nor folder.
@@ -866,15 +892,26 @@ public static class StoreFailures
     /// and ArgumentException; null for any other failure.
     public static string? MessageOf(System.Exception failure);
 
-    /// Runs the call and returns true. When it throws a failure messageOf gives a message for, passes
-    /// the message to report and returns false; any other failure passes on. Throws ArgumentNullException
-    /// for a null argument.
+    /// Runs the call and returns true. When it throws a failure messageOf gives a message for, logs the failure
+    /// at Error, passes the message to report and returns false. When it throws NoticeFailedException, the
+    /// change was saved: logs it at Error, passes NoticeFailed's message to report, and returns true, without
+    /// asking messageOf. Any other failure passes on, unlogged. Throws ArgumentNullException for a null argument.
     public static bool Run(System.Action call, System.Func<System.Exception, string?> messageOf,
-        System.Action<string> report);
+        System.Action<string> report, Serilog.ILogger logger);
+
+    /// "Saved, but the app couldn't finish updating: " followed by the message of the first failure inside
+    /// failure. Throws ArgumentNullException for a null failure.
+    public static string NoticeFailed(Memoria.ToDo.Shared.Platform.NoticeFailedException failure);
 }
 ```
 
 A window passes `StoreFailures.MessageOf` to `Run` when it has no failures of its own, or a function that tries its own first, then `StoreFailures.MessageOf`. Proposed, a decision to confirm: the desktop platform's project references the shared library's platform, `Memoria.ToDo.Shared.Platform`, for `NoRepositoryFolderException`; a platform may use another platform, and still names no module.
+
+**A change saved before a notice failed reads as saved in every window.** The user decided that a store throws the platform's [`NoticeFailedException`](../modules.md#steps-that-must-all-run-throw-their-failures-together) when it saved a change and then a notice failed, and that every window shows one message for it: "Saved, but the app couldn't finish updating: " followed by the first failure's message. The user put its home in the Task editor's `SaveFailureText` unless the Contact list may not use the Task editor. It may not: the Task editor uses the Contact list, as the [module map](../modules.md#module-map) says, so the message lives here, in `StoreFailures.NoticeFailed`, where the Task editor, the Task list, the Contact list, and Configure all reach it. This home is a decision to confirm. Proposed, each a decision to confirm:
+
+- **`Run` treats `NoticeFailedException` as success**, reporting the message and returning true, so every window that runs its store calls through it does what it does after a save, and then shows why the app couldn't finish updating. A window that needs to show the message elsewhere, such as Task View for an edit's save, catches it before the editor's `Run` does.
+- **The window that shows the message logs the failure once, at Error**, with the exception, as `Run` does for any failure it reports.
+- **A window that catches it, reloads what it shows from the store**, since the failed notice may be the one that would have refreshed it.
 
 ### Leaving a changed edit asks once
 
@@ -989,5 +1026,4 @@ The table lists each step, what it builds, and its status:
 
 The remaining work follows this order:
 
-1. Add the [Add window's formatted preview](task-editor.md).
-2. Build the [Android app](../android/README.md).
+1. Build the [Android app](../android/README.md).

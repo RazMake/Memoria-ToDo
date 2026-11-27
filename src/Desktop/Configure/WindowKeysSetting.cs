@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Memoria.ToDo.Desktop.Platform;
 using Serilog;
 
 namespace Memoria.ToDo.Desktop.Configure;
@@ -86,19 +87,20 @@ internal abstract class WindowKeysSetting : IShortcutSetting
             return;
         }
 
-        try
+        string? saveMessage = null;
+        if (!StoreFailures.Run(
+            () => _save(shortcut!.ToDisplayText()),
+            error => $"{shortcut!.ToDisplayText()} wasn't saved for {Label}: {error.Message}",
+            message => saveMessage = message,
+            _logger))
         {
-            _save(shortcut!.ToDisplayText());
-        }
-        catch (Exception error)
-        {
-            _logger.Error(error, "Saving the {Label} shortcut {Shortcut} failed", Label, shortcut!.ToDisplayText());
-            _message.Say($"{shortcut!.ToDisplayText()} wasn't saved for {Label}: {error.Message}");
+            _message.Say(saveMessage);
             return;
         }
 
-        _message.Say(null);
-        Use(shortcut);
+        // A save kept before a notice failed leaves the shared message, and the keys are used as after any save.
+        _message.Say(saveMessage);
+        Use(shortcut!);
     }
 
     // The stored keys, the default when nothing is stored, or null with the reason when the text is unusable.

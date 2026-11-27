@@ -42,7 +42,7 @@ internal sealed class SettingsService : V1.Settings.SettingsBase
         tasks.RequireReadableSettings();
         try
         {
-            tasks.Settings.SetDeletionDelayDays(request.DeletionDelayDays);
+            NoticeFailures.Saved(() => tasks.Settings.SetDeletionDelayDays(request.DeletionDelayDays));
         }
         catch (InvalidDataException unreadable)
         {
@@ -61,7 +61,7 @@ internal sealed class SettingsService : V1.Settings.SettingsBase
         tasks.RequireReadableSettings();
         try
         {
-            tasks.TagColors.SetColor(request.Tag, request.Color);
+            NoticeFailures.Saved(() => tasks.TagColors.SetColor(request.Tag, request.Color));
         }
         catch (InvalidDataException unreadable)
         {
@@ -77,7 +77,7 @@ internal sealed class SettingsService : V1.Settings.SettingsBase
         tasks.RequireReadableSettings();
         try
         {
-            tasks.TagOrder.Move(request.Tag, request.HasPreviousTag ? request.PreviousTag : null, request.HasNextTag ? request.NextTag : null);
+            NoticeFailures.Saved(() => tasks.TagOrder.Move(request.Tag, request.HasPreviousTag ? request.PreviousTag : null, request.HasNextTag ? request.NextTag : null));
         }
         catch (InvalidDataException unreadable)
         {

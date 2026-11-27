@@ -16,12 +16,11 @@ internal sealed class TaskChangeTools(ToolRunner run, CloneCheck clone, ITasks t
         [Description("The tags, at most 15, none empty. The first tag groups the task. None when left out.")] string[]? tags = null)
     {
         string? addedId = null;
-        return run.Run(() =>
+        return run.Run(() => ToolRunner.Saved(() => direct.Add(title, description ?? "", tags ?? []), added =>
         {
-            var added = direct.Add(title, description ?? "", tags ?? []);
-            addedId = added.Id;
+            addedId = added!.Id;
             return TaskView.Of(added, withDescription: true);
-        }, resultId: _ => addedId);
+        }), resultId: _ => addedId);
     }
 
     [McpServerTool(Destructive = false), Description("Changes a task's title, description, or tags, and answers it. What you leave out stays as it is; tags replaces the whole list, and an empty list removes every tag. The first tag groups the task, and a task has at most 15 tags. If the task changed since this call read it, it fails and you should read the task again and retry.")]
@@ -33,7 +32,7 @@ internal sealed class TaskChangeTools(ToolRunner run, CloneCheck clone, ITasks t
     {
         clone.Require();
         var started = tasks.All.FirstOrDefault(task => task.Id == id) ?? throw new TaskNotFoundException();
-        return TaskView.Of(direct.Update(id, started.Updated, title, description, tags), withDescription: true);
+        return ToolRunner.Saved(() => direct.Update(id, started.Updated, title, description, tags), TaskViewOf);
     }, [id]);
 
     [McpServerTool(Destructive = false), Description("Saves an image with a task, appends the Markdown that shows it to the end of the task's description, and answers the task. The image is shrunk to at most 1 MB.")]
@@ -58,7 +57,7 @@ internal sealed class TaskChangeTools(ToolRunner run, CloneCheck clone, ITasks t
             throw new ArgumentException("The image isn't valid base64.");
         }
 
-        return TaskView.Of(direct.AddImage(Existing(id), bytes, altText), withDescription: true);
+        return ToolRunner.Saved(() => direct.AddImage(Existing(id), bytes, altText), TaskViewOf);
     }, [id]);
 
     [McpServerTool(Destructive = false), Description("Moves a task to show after previousId and before nextId, which must be neighbors. Leave out previousId to move it to the top, nextId to move it to the bottom. Answers the task.")]
@@ -68,30 +67,31 @@ internal sealed class TaskChangeTools(ToolRunner run, CloneCheck clone, ITasks t
         [Description("The ID of the task it shows before.")] string? nextId = null) => run.Run(() =>
     {
         clone.Require();
-        return TaskView.Of(tasks.Move(Existing(id), ExistingOrNull(previousId), ExistingOrNull(nextId)), withDescription: true);
+        return ToolRunner.Saved(() => tasks.Move(Existing(id), ExistingOrNull(previousId), ExistingOrNull(nextId)), TaskViewOf);
     }, [id, previousId, nextId]);
 
     [McpServerTool(Destructive = false), Description("Marks a task resolved, as the user does; it is deleted after the deletion delay. reopen_task undoes it. Answers the task.")]
     public Task<string> ResolveTask([Description("The task's ID.")] string id) => run.Run(() =>
     {
         clone.Require();
-        return TaskView.Of(tasks.Resolve(id), withDescription: true);
+        return ToolRunner.Saved(() => tasks.Resolve(id), TaskViewOf);
     }, [id]);
 
     [McpServerTool(Destructive = false), Description("Makes a resolved task open again. Answers the task.")]
     public Task<string> ReopenTask([Description("The task's ID.")] string id) => run.Run(() =>
     {
         clone.Require();
-        return TaskView.Of(tasks.Reopen(id), withDescription: true);
+        return ToolRunner.Saved(() => tasks.Reopen(id), TaskViewOf);
     }, [id]);
 
     [McpServerTool(Destructive = true), Description("Deletes a task and its images for good; this can't be undone. To finish a task, use resolve_task, which can be undone with reopen_task.")]
     public Task<string> DeleteTask([Description("The task's ID.")] string id) => run.Run(() =>
     {
         clone.Require();
-        tasks.Delete(Existing(id));
-        return new { deleted = id };
+        return ToolRunner.Saved(() => tasks.Delete(Existing(id)), () => new { deleted = id });
     }, [id]);
+
+    private static object TaskViewOf(TaskItem? saved) => TaskView.Of(saved!, withDescription: true);
 
     // Tasks refuses a malformed ID without saying it is unknown, so an ID that names no task is refused here as not found.
     private string Existing(string id) =>

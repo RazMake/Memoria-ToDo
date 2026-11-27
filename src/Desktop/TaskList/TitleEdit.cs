@@ -15,12 +15,16 @@ namespace Memoria.ToDo.Desktop.TaskList;
 internal sealed class TitleEdit : IFieldEdit
 {
     private readonly ITasks _tasks;
+    private readonly Action<string> _report;
+    private readonly ILogger _logger;
     private readonly TitleEditor _editor;
 
     public TitleEdit(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
-        SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested, IPointerPosition pointer, ILogger logger)
+        SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested, Action<string> report, IPointerPosition pointer, ILogger logger)
     {
         _tasks = tasks;
+        _report = report;
+        _logger = logger;
         Started = task;
         Tags = task.Tags;
         _editor = new TitleEditor(tasks, contacts, palette, theme, time, clipboard, saveKeys, pointer, logger) { Value = task.Title };
@@ -38,7 +42,7 @@ internal sealed class TitleEdit : IFieldEdit
 
     public bool HasChanges => _editor.HasChanges || EditSaves.TagsChanged(Started, Tags);
 
-    public bool Save() => _editor.Save(EditSaves.Title(_tasks, Started, Tags));
+    public bool Save() => _editor.Save(EditSaves.Title(_tasks, Started, Tags, _report, _logger));
 
     public void FocusEnd() => _editor.FocusEnd();
 

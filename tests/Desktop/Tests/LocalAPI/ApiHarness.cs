@@ -10,6 +10,18 @@ namespace Memoria.ToDo.Desktop.LocalAPI.Tests;
 /// <summary>What tests read from a call's outcome.</summary>
 internal static class CallOutcome
 {
+    public static void AssertStatus(RpcException failure, StatusCode expected, SignalLogSink log)
+    {
+        if (failure.StatusCode == expected)
+            return;
+
+        throw new InvalidOperationException(
+            $"Expected {expected}, got {failure.StatusCode}.\nDetail: {failure.Status.Detail}\n" +
+            $"Transport failure:\n{failure.Status.DebugException?.ToString() ?? "(none recorded)"}\n" +
+            $"Local API log:\n{log.Describe()}",
+            failure);
+    }
+
     /// <summary>The status a call over the pipe ends with; fails when it succeeds.</summary>
     public static async Task<RpcException> FailsAsync<T>(AsyncUnaryCall<T> call) => await FailsAsync(call.ResponseAsync);
 

@@ -1,6 +1,6 @@
 namespace Memoria.ToDo.Desktop.TaskEditor;
 
-/// <summary>The words a window shows when Tasks throws several failures at once.</summary>
+/// <summary>The words a window shows when Tasks throws several failures at once, so the change may be only partly done.</summary>
 public static class SaveFailureText
 {
     /// <summary>

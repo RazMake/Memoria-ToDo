@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
@@ -122,6 +123,18 @@ public sealed class TagControlTests
         host.Press(Key.Enter);
         Assert.False(TagControls.CustomIsOpen(host.Editor));
         Assert.Equal(["side-job", "home", "fails"], host.Editor.TaskTags);
+
+        // A color kept before a notice failed: the tag is chosen, Custom hides, and the message stays visible under the tags.
+        host.Services.TagColors.Failure = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+        host.OpenCustom();
+        host.Type("saved");
+        OpenWindows.Click(TagControls.ColorButton(host.Editor, TagColors.All[1].Name));
+        Assert.False(TagControls.CustomIsOpen(host.Editor));
+        Assert.Equal(["side-job", "home", "fails", "saved"], host.Editor.TaskTags);
+        Assert.Contains("Saved, but the app couldn't finish updating: Changed failed.", host.Texts);
+
+        host.OpenCustom();
+        Assert.DoesNotContain(host.Texts, text => text.StartsWith("Saved, but", StringComparison.Ordinal));
     }
 
     [WpfFact]

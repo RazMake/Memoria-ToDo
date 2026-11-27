@@ -1,5 +1,7 @@
 using System.IO;
 using System.Windows.Input;
+using Memoria.ToDo.Shared.Platform;
+using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -366,6 +368,19 @@ public abstract class WindowKeysSettingTests
     }
 
     // A pick that can't be saved.
+
+    [Fact]
+    public void A_pick_that_was_kept_before_a_notice_failed_stays_active_and_shows_the_shared_message()
+    {
+        Row.Create();
+        Row.SaveFailure = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+
+        Pick(Ctrl | Alt, Key.K);
+
+        Assert.Equal(CtrlAltK, Row.Keys.Active);
+        Assert.Equal((CtrlAltK.Modifiers, CtrlAltK.Key), Row.Applied[^1]);
+        Assert.Equal("Saved, but the app couldn't finish updating: Changed failed.", Row.Keys.Message);
+    }
 
     [Fact]
     public void A_pick_that_cannot_be_saved_goes_back_to_the_previous_keys_and_says_what_failed()

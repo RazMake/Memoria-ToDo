@@ -1,4 +1,6 @@
 using System.IO;
+using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -14,7 +16,16 @@ namespace Memoria.ToDo.Desktop.TaskList.Tests;
 public class EditSavesTests
 {
     private readonly ListTasks _tasks = new();
+    private readonly List<string> _reports = [];
+    private readonly InMemoryLogSink _log = new();
     private int _saves;
+
+    // The list's message line takes an Action<string>, the same report ListFailures.Run and ListActions take.
+    private Action<string> Title(TaskItem started, IReadOnlyList<string> tags) =>
+        EditSaves.Title(_tasks.Tasks, started, tags, _reports.Add, _log.CreateLogger());
+
+    private Action<string> Description(TaskItem started, IReadOnlyList<string> tags) =>
+        EditSaves.Description(_tasks.Tasks, started, tags, _reports.Add, _log.CreateLogger());
 
     private TaskItem Stored(TaskItem task) => _tasks.Tasks.All.Single(t => t.Id == task.Id);
 
@@ -32,7 +43,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         CountSaves();
 
-        EditSaves.Title(_tasks.Tasks, started, ["errand", "home"])("Buy oat milk");
+        Title(started, ["errand", "home"])("Buy oat milk");
 
         var stored = Stored(started);
         Assert.Equal("Buy oat milk", stored.Title);
@@ -49,7 +60,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         CountSaves();
 
-        EditSaves.Description(_tasks.Tasks, started, ["errand", "home"])("Oat milk, two cartons");
+        Description(started, ["errand", "home"])("Oat milk, two cartons");
 
         var stored = Stored(started);
         Assert.Equal("Oat milk, two cartons", stored.Description);
@@ -66,7 +77,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home", "errand");
         CountSaves();
 
-        EditSaves.Description(_tasks.Tasks, started, [])("Oat milk, two cartons");
+        Description(started, [])("Oat milk, two cartons");
 
         Assert.Equal("Oat milk, two cartons", Stored(started).Description);
         Assert.Empty(Stored(started).Tags);
@@ -78,8 +89,8 @@ public class EditSavesTests
     {
         var started = _tasks.Add("Buy milk", "Oat milk", "home", "errand");
 
-        EditSaves.Title(_tasks.Tasks, started, ["home", "errand"])("Buy oat milk");
-        EditSaves.Description(_tasks.Tasks, Stored(started), ["home", "errand"])("Oat milk, two cartons");
+        Title(started, ["home", "errand"])("Buy oat milk");
+        Description(Stored(started), ["home", "errand"])("Oat milk, two cartons");
 
         var stored = Stored(started);
         Assert.Equal("Buy oat milk", stored.Title);
@@ -92,7 +103,7 @@ public class EditSavesTests
     {
         var started = _tasks.Add("Buy milk", "Oat milk");
 
-        EditSaves.Description(_tasks.Tasks, started, [])("Oat milk, two cartons");
+        Description(started, [])("Oat milk, two cartons");
 
         Assert.Empty(Stored(started).Tags);
     }
@@ -105,7 +116,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         CountSaves();
 
-        EditSaves.Description(_tasks.Tasks, started, ["errand"])("Oat milk");
+        Description(started, ["errand"])("Oat milk");
 
         var stored = Stored(started);
         Assert.Equal(["errand"], stored.Tags);
@@ -120,7 +131,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         CountSaves();
 
-        EditSaves.Title(_tasks.Tasks, started, ["errand"])("Buy milk");
+        Title(started, ["errand"])("Buy milk");
 
         Assert.Equal(["errand"], Stored(started).Tags);
         Assert.Equal("Buy milk", Stored(started).Title);
@@ -133,7 +144,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home", "errand", "milk");
         CountSaves();
 
-        EditSaves.Description(_tasks.Tasks, started, ["milk", "home", "errand"])("Oat milk");
+        Description(started, ["milk", "home", "errand"])("Oat milk");
 
         Assert.Equal(["milk", "home", "errand"], Stored(started).Tags);
         Assert.Equal("Oat milk", Stored(started).Description);
@@ -145,7 +156,7 @@ public class EditSavesTests
     {
         var started = _tasks.Add("Buy milk", "", "home", "errand");
 
-        EditSaves.Title(_tasks.Tasks, started, ["errand", "home"])("Buy milk");
+        Title(started, ["errand", "home"])("Buy milk");
 
         Assert.Equal("errand", Stored(started).GroupTag);
     }
@@ -156,7 +167,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home", "errand");
         CountSaves();
 
-        EditSaves.Description(_tasks.Tasks, started, ["HOME", "Errand"])("Oat milk");
+        Description(started, ["HOME", "Errand"])("Oat milk");
 
         Assert.Equal(started, Stored(started));
         Assert.Equal(0, _saves);
@@ -170,7 +181,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "", "home");
         SetTagsElsewhere(started, "urgent", "home");
 
-        EditSaves.Title(_tasks.Tasks, started, ["home"])("Buy oat milk");
+        Title(started, ["home"])("Buy oat milk");
 
         Assert.Equal(["urgent", "home"], Stored(started).Tags);
         Assert.Equal("Buy oat milk", Stored(started).Title);
@@ -182,7 +193,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         SetTagsElsewhere(started, "urgent");
 
-        EditSaves.Description(_tasks.Tasks, started, ["home"])("Oat milk, two cartons");
+        Description(started, ["home"])("Oat milk, two cartons");
 
         Assert.Equal(["urgent"], Stored(started).Tags);
         Assert.Equal("Oat milk, two cartons", Stored(started).Description);
@@ -194,7 +205,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk");
         SetTagsElsewhere(started, "urgent");
 
-        EditSaves.Description(_tasks.Tasks, started, [])("Oat milk, two cartons");
+        Description(started, [])("Oat milk, two cartons");
 
         Assert.Equal(["urgent"], Stored(started).Tags);
     }
@@ -205,7 +216,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         SetTagsElsewhere(started, "urgent");
 
-        EditSaves.Description(_tasks.Tasks, started, ["errand"])("Oat milk, two cartons");
+        Description(started, ["errand"])("Oat milk, two cartons");
 
         Assert.Equal(["errand"], Stored(started).Tags);
     }
@@ -216,7 +227,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         _tasks.Tasks.SaveEdit(started, new TaskDraft(started.Id, "Buy oat milk", started.Description, [.. started.Tags]));
 
-        EditSaves.Description(_tasks.Tasks, started, ["errand", "home"])("Oat milk, two cartons");
+        Description(started, ["errand", "home"])("Oat milk, two cartons");
 
         Assert.Equal("Buy oat milk", Stored(started).Title);
         Assert.Equal(["errand", "home"], Stored(started).Tags);
@@ -231,10 +242,40 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         _tasks.Files.FailWritesUnder(_tasks.TaskFolder);
 
-        var failure = Assert.Throws<IOException>(() => EditSaves.Title(_tasks.Tasks, started, ["errand", "home"])("Buy oat milk"));
+        var failure = Assert.Throws<IOException>(() => Title(started, ["errand", "home"])("Buy oat milk"));
 
         Assert.StartsWith("Writing is not allowed here", failure.Message);
         Assert.Equal(started, Stored(started));
+    }
+
+    [Fact]
+    public void A_save_Tasks_kept_before_a_notice_failed_does_not_throw_reports_the_shared_message_and_logs_the_failure_once()
+    {
+        var started = _tasks.Add("Buy milk", "Oat milk", "home");
+        _tasks.NoticesFail = true;
+
+        Title(started, ["errand", "home"])("Buy oat milk");
+
+        Assert.Equal("Buy oat milk", Stored(started).Title);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
+        Assert.DoesNotContain("wasn't saved", _reports[0]);
+        var entry = Assert.Single(_log.Events, e => e.Level == Serilog.Events.LogEventLevel.Error);
+        Assert.IsAssignableFrom<NoticeFailedException>(entry.Exception);
+    }
+
+    [Fact]
+    public void A_description_save_Tasks_kept_before_a_notice_failed_does_not_throw_and_reports_the_shared_message_once()
+    {
+        var started = _tasks.Add("Buy milk", "Oat milk", "home");
+        _tasks.NoticesFail = true;
+
+        Description(started, ["errand", "home"])("Oat milk, two cartons");
+
+        var stored = Stored(started);
+        Assert.Equal("Oat milk, two cartons", stored.Description);
+        Assert.Equal(["errand", "home"], stored.Tags);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
+        Assert.Single(_log.Events, e => e.Level == Serilog.Events.LogEventLevel.Error);
     }
 
     [Fact]
@@ -242,7 +283,7 @@ public class EditSavesTests
     {
         var started = _tasks.Add("Buy milk", "", "home");
 
-        Assert.Throws<ArgumentException>(() => EditSaves.Title(_tasks.Tasks, started, ["errand"])(""));
+        Assert.Throws<ArgumentException>(() => Title(started, ["errand"])(""));
 
         Assert.Equal(["home"], Stored(started).Tags);
         Assert.Equal("Buy milk", Stored(started).Title);
@@ -254,7 +295,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         _tasks.Tasks.Delete(started.Id);
 
-        Assert.Throws<TaskNotFoundException>(() => EditSaves.Description(_tasks.Tasks, started, ["errand"])("Oat milk, two cartons"));
+        Assert.Throws<TaskNotFoundException>(() => Description(started, ["errand"])("Oat milk, two cartons"));
         Assert.Empty(_tasks.Tasks.All);
     }
 
@@ -266,7 +307,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         var images = _tasks.PasteImage(started.Id);
 
-        EditSaves.Description(_tasks.Tasks, started, ["errand", "home"])("Oat milk, two cartons");
+        Description(started, ["errand", "home"])("Oat milk, two cartons");
 
         Assert.DoesNotContain(images, _tasks.Files.FileExists);
         Assert.Equal(images.Count, _tasks.Files.AllFilesUnder(Path.Combine(_tasks.Clone, "images")).Count);
@@ -279,7 +320,7 @@ public class EditSavesTests
         var started = _tasks.Add("Buy milk", "Oat milk", "home");
         var images = _tasks.PasteImage(started.Id);
 
-        EditSaves.Description(_tasks.Tasks, started, ["errand"])("Oat milk");
+        Description(started, ["errand"])("Oat milk");
 
         Assert.DoesNotContain(images, _tasks.Files.FileExists);
         Assert.Equal(images.Count, _tasks.Files.AllFilesUnder(Path.Combine(_tasks.Clone, "images")).Count);

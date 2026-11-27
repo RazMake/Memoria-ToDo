@@ -1,3 +1,4 @@
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Serilog;
 
@@ -7,7 +8,7 @@ namespace Memoria.ToDo.Desktop.TaskList;
 /// A change of one task made from the list with no Edit: it saves at once through Tasks' save of an edit, with the task as
 /// shown, then waits on the Undo bar, which saves the opposite change. A failure the list knows is logged and reported with its
 /// reason and nothing is saved, except after several failures at once: the change then counts as saved, with its bar, when
-/// Tasks holds it.
+/// Tasks holds it. A change saved before a notice failed counts as saved too, with the shared message reported.
 /// </summary>
 internal sealed class UndoableSave(ITasks tasks, PendingUndo pending, EditCleanup cleanup, Action<string> report, ILogger logger)
 {
@@ -33,27 +34,42 @@ internal sealed class UndoableSave(ITasks tasks, PendingUndo pending, EditCleanu
     private bool TrySave(TaskItem started, Func<TaskItem, TaskDraft> draft, out TaskItem saved)
     {
         var wanted = draft(started);
-        try
-        {
-            saved = tasks.SaveEdit(started, wanted);
-            return true;
-        }
-        catch (Exception failure) when (ListFailures.MessageOf(failure) is { } reason)
-        {
-            _logger.Error(failure, "A task change couldn't be saved: {Reason}", reason);
-            report(reason);
+        TaskItem? kept = null;
+        var done = ListFailures.Run(
+            () =>
+            {
+                try
+                {
+                    kept = tasks.SaveEdit(started, wanted);
+                }
+                catch (NoticeFailedException<TaskItem> notice)
+                {
+                    kept = notice.Saved;
+                    throw;
+                }
+                catch (AggregateException)
+                {
+                    // Several failures at once may leave the change saved: it counts as saved when Tasks now holds the new tags.
+                    kept = HeldNow(started.Id, wanted.Tags);
+                    throw;
+                }
+            },
+            report,
+            _logger);
 
-            // Several failures at once may leave the change saved: it counts as saved when Tasks now holds the new tags.
-            if (failure is AggregateException && HeldNow(started.Id, wanted.Tags) is { } held)
+        if (kept is not null)
+        {
+            if (!done)
             {
                 _logger.Debug("The change was saved although Tasks threw several failures; it stays undoable");
-                saved = held;
-                return true;
             }
 
-            saved = started;
-            return false;
+            saved = kept;
+            return true;
         }
+
+        saved = started;
+        return done;
     }
 
     private TaskItem? HeldNow(string id, IReadOnlyList<string> tags) =>

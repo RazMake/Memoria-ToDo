@@ -41,7 +41,7 @@ internal sealed class TasksService : V1.Tasks.TasksBase
     public override Task<V1.TaskItem> CreateTask(V1.CreateTaskRequest request, ServerCallContext context)
     {
         RejectBoth(request.HasTag, request.Tags.Count > 0);
-        return Task.FromResult(Item(tasks.Direct.Add(request.Title, request.Description, request.HasTag ? OlderTag(request.Tag) : request.Tags)));
+        return Task.FromResult(Item(NoticeFailures.Saved(() => tasks.Direct.Add(request.Title, request.Description, request.HasTag ? OlderTag(request.Tag) : request.Tags))));
     }
 
     /// <inheritdoc />
@@ -51,29 +51,30 @@ internal sealed class TasksService : V1.Tasks.TasksBase
             throw new ArgumentException("UpdateTask needs base_updated, the task's updated time as the program read it.");
 
         RejectBoth(request.HasTag, request.Tags is not null);
-        return Task.FromResult(Item(tasks.Direct.Update(
+        return Task.FromResult(Item(NoticeFailures.Saved(() => tasks.Direct.Update(
             request.Id, request.BaseUpdated.ToDateTimeOffset(),
             request.HasTitle ? request.Title : null,
             request.HasDescription ? request.Description : null,
-            request.HasTag ? OlderTag(request.Tag) : request.Tags?.Names)));
+            request.HasTag ? OlderTag(request.Tag) : request.Tags?.Names))));
     }
 
     /// <inheritdoc />
     public override Task<V1.TaskItem> MoveTask(V1.MoveTaskRequest request, ServerCallContext context) =>
-        Task.FromResult(Item(tasks.Move(request.Id, request.HasPreviousId ? request.PreviousId : null, request.HasNextId ? request.NextId : null)));
+        Task.FromResult(Item(NoticeFailures.Saved(() =>
+            tasks.Move(request.Id, request.HasPreviousId ? request.PreviousId : null, request.HasNextId ? request.NextId : null))));
 
     /// <inheritdoc />
     public override Task<V1.TaskItem> ResolveTask(V1.ResolveTaskRequest request, ServerCallContext context) =>
-        Task.FromResult(Item(tasks.Resolve(request.Id)));
+        Task.FromResult(Item(NoticeFailures.Saved(() => tasks.Resolve(request.Id))));
 
     /// <inheritdoc />
     public override Task<V1.TaskItem> ReopenTask(V1.ReopenTaskRequest request, ServerCallContext context) =>
-        Task.FromResult(Item(tasks.Reopen(request.Id)));
+        Task.FromResult(Item(NoticeFailures.Saved(() => tasks.Reopen(request.Id))));
 
     /// <inheritdoc />
     public override Task<V1.DeleteTaskResponse> DeleteTask(V1.DeleteTaskRequest request, ServerCallContext context)
     {
-        tasks.Delete(request.Id);
+        NoticeFailures.Saved(() => tasks.Delete(request.Id));
         return Task.FromResult(new V1.DeleteTaskResponse());
     }
 
@@ -84,7 +85,7 @@ internal sealed class TasksService : V1.Tasks.TasksBase
         if (request.Image.Length > ApiLimits.MaxImageBytes)
             throw new RpcException(new Status(StatusCode.ResourceExhausted, $"An image can be at most {ApiLimits.MaxImageBytes} bytes."));
 
-        return Task.FromResult(Item(tasks.Direct.AddImage(request.Id, request.Image.ToByteArray(), request.AltText)));
+        return Task.FromResult(Item(NoticeFailures.Saved(() => tasks.Direct.AddImage(request.Id, request.Image.ToByteArray(), request.AltText))));
     }
 
     /// <inheritdoc />

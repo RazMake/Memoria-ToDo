@@ -87,12 +87,23 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         TagOrder = 16,
     }
 
-    /// <summary>Raises the events for what changed. Call it after leaving the lock, so handlers never run inside it.</summary>
+    /// <summary>Raises the events after a reload. Call it after leaving the lock, so handlers never run inside it.</summary>
     private void Announce(Notice notice)
     {
         var failures = new FailureList();
         Announce(notice, failures);
         failures.ThrowIfAny();
+    }
+
+    /// <summary>
+    /// Raises the events of a change that is saved, then throws <see cref="NoticeFailedException{T}"/> holding <paramref name="saved"/>
+    /// (null when the change saves no task) when any failed. Call it after leaving the lock, so handlers never run inside it.
+    /// </summary>
+    private void AnnounceSaved(Notice notice, TaskItem? saved)
+    {
+        var failures = new FailureList();
+        Announce(notice, failures);
+        failures.ThrowIfAnyAfterSave(saved);
     }
 
     /// <summary>Attempts every requested notice in order, each even when an earlier one threw, and keeps the failures in <paramref name="failures"/>.</summary>
@@ -112,16 +123,30 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
 
     /// <summary>
     /// Runs the removal under the lock. Once <paramref name="remove"/> calls its committed action, the removal is published,
-    /// so the notices run even when it then throws; its failure comes first, then the notices'.
+    /// so the notices run even when it then throws. When only notices fail, they throw as <see cref="NoticeFailedException{T}"/>
+    /// with no task; when the removal failed too, its failure comes first, then the notices', as an <see cref="AggregateException"/>.
     /// </summary>
     private void RemoveAndAnnounce(Action<string?, Action> remove)
     {
         var removed = false;
         var failures = new FailureList();
-        failures.Attempt(() => repository.LockedChange(clone => remove(clone, () => removed = true)));
+        var removalFailed = false;
+        try
+        {
+            repository.LockedChange(clone => remove(clone, () => removed = true));
+        }
+        catch (Exception e)
+        {
+            removalFailed = true;
+            failures.Add(e);
+        }
+
         if (removed)
             Announce(Notice.Tasks | Notice.LocalSaved, failures);
-        failures.ThrowIfAny();
+        if (removalFailed)
+            failures.ThrowIfAny();
+        else
+            failures.ThrowIfAnyAfterSave<TaskItem>(null);
     }
 
     private event EventHandler? settingsChanged;
@@ -148,7 +173,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         });
 
         logger.Information("Added task {TaskId} {Title}", task.Id, task.Title);
-        Announce(Notice.Tasks | Notice.LocalSaved);
+        AnnounceSaved(Notice.Tasks | Notice.LocalSaved, task);
         return task;
     }
 
@@ -247,7 +272,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
         if (written)
         {
             logger.Information("Saved an edit of task {TaskId} {Title}", result.Id, result.Title);
-            Announce(Notice.Tasks | Notice.LocalSaved);
+                        AnnounceSaved(Notice.Tasks | Notice.LocalSaved, result);
         }
 
         return result;
@@ -350,7 +375,7 @@ internal sealed partial class TaskService(IFileSystem files, IImageEncoder encod
     private void Saved(string how, TaskItem task)
     {
         logger.Information("{How} task {TaskId} {Title}", how, task.Id, task.Title);
-        Announce(Notice.Tasks | Notice.LocalSaved);
+                AnnounceSaved(Notice.Tasks | Notice.LocalSaved, task);
     }
 
     /// <summary>The task in <see cref="All"/>. Call under the lock.</summary>

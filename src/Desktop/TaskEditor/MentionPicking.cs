@@ -1,4 +1,5 @@
 using System.IO;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 
@@ -37,20 +38,22 @@ internal sealed class MentionPicking(ITextField field, ChoiceList list, PopupLis
 
     protected override void Opening() => _template = 0;
 
-    // The mention is already in; a failed move leaves it there, and the list keeps its order.
+    // The mention is already in; a failed move leaves it there, and the list keeps its order. A move kept before a notice failed
+    // is a move that worked, which Run reports with the shared message.
     protected override void Chosen(Contact contact)
     {
         var template = _usedTemplate;
-        try
-        {
-            Contacts.MoveTemplateFirst(template);
-            _log.Debug("Asked Contacts to move the mention template {Template} first after choosing {ContactId}", template, contact.Id);
-        }
-        catch (Exception e) when (e is NoRepositoryFolderException or InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            _log.Error(e, "The mention template {Template} couldn't be moved first after choosing {ContactId}", template, contact.Id);
-            report?.Invoke("The mention format wasn't moved first: " + e.Message);
-        }
+        StoreFailures.Run(
+            () =>
+            {
+                Contacts.MoveTemplateFirst(template);
+                _log.Debug("Asked Contacts to move the mention template {Template} first after choosing {ContactId}", template, contact.Id);
+            },
+            failure => failure is NoRepositoryFolderException or InvalidDataException or IOException or UnauthorizedAccessException
+                ? "The mention format wasn't moved first: " + failure.Message
+                : null,
+            message => report?.Invoke(message),
+            _log);
     }
 
     // Read once per choice: Contacts may reload while the text is inserted, so Chosen moves the template TextFor used.

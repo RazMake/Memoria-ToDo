@@ -20,8 +20,21 @@ public static class StoreFailures
     };
 
     /// <summary>
+    /// "Saved, but the app couldn't finish updating: " followed by the message of the first failure inside
+    /// <paramref name="failure"/>, the one message every window shows for a change a store saved before a notice failed.
+    /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="failure"/> is null.</exception>
+    public static string NoticeFailed(NoticeFailedException failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        return "Saved, but the app couldn't finish updating: " + failure.InnerExceptions[0].Message;
+    }
+
+    /// <summary>
     /// Runs the call and returns true. When it throws a failure <paramref name="messageOf"/> gives a message for, logs
-    /// the failure at Error, passes the message to <paramref name="report"/> and returns false; any other failure passes
+    /// the failure at Error, passes the message to <paramref name="report"/> and returns false. When it throws
+    /// <see cref="NoticeFailedException"/>, the change was saved: logs it at Error, passes <see cref="NoticeFailed"/>'s message to
+    /// <paramref name="report"/> and returns true, without asking <paramref name="messageOf"/>. Any other failure passes
     /// on, unlogged, since whoever ends it logs it.
     /// </summary>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
@@ -34,6 +47,13 @@ public static class StoreFailures
         try
         {
             call();
+            return true;
+        }
+        catch (NoticeFailedException failure)
+        {
+            var message = NoticeFailed(failure);
+            logger.Error(failure, "A change was saved, but a notice failed: {Reason}", message);
+            report(message);
             return true;
         }
         catch (Exception failure) when (messageOf(failure) is { } message)

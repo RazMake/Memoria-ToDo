@@ -2,20 +2,20 @@
 
 Status: Decided
 
-The Formatted view is the desktop module that shows a task's title and description formatted, with no Markdown characters, and opens their web links in the default browser. Task View uses it now, also for the Preview of a description it edits, [Updates](updates.md#what-is-new-shows-each-newer-releases-notes) uses it for What is new, and Add's preview will use it later.
+The Formatted view is the desktop module that shows a task's title and description formatted, with no Markdown characters, and opens their web links in the default browser. Task View uses it, also for the Preview of a description it edits, and [Updates](updates.md#what-is-new-shows-each-newer-releases-notes) uses it for What is new.
 
 ## Behavior
 
 ### It shows what Rendering decides, never Markdown
 
-The user decided that Task View shows titles and descriptions formatted, as a reader sees them, and that this part is common, so Add can later show a preview with it. [Rendering](../rendering.md) stays the one home of the formatting rules; the Formatted view only shows its output in WPF:
+The user decided that Task View shows titles and descriptions formatted, as a reader sees them, and that this part is common, since What is new and the Task editor's mention chip use it too. [Rendering](../rendering.md) stays the one home of the formatting rules; the Formatted view only shows its output in WPF:
 
 - **A title shows as native WPF text**, from Rendering's [styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html) without the spans marked as markers. Bold, italic, code, strikethrough, links, and colors show. Proposed: each stretch's color comes from Rendering's [text look](../rendering.md#headings-links-code-and-italic-text-have-one-look-in-each-theme) for the current theme, which gives a palette color, a link, code, or italic text its color. This is a decision to confirm. A title needs no web view.
 - **A description shows in a web view**, as Rendering's [description page](../rendering.md#public-interface). The web view runs no scripts and loads images only from the clone's address, as [Rendering](../rendering.md#the-web-view-runs-no-scripts-and-loads-images-only-from-the-clones-address) requires.
 - **A description shown as an edit's preview** shows Rendering's page with [resizable images](#a-resized-image-is-reported-not-saved) instead. Its user turns the preview on and off; the description starts as a plain one, whose images have no resize corner.
 - **Both follow the theme**: when Windows switches between light and dark, a shown title and description switch too.
 
-The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview) doesn't use the Formatted view to show its text. It shows Markdown source, with its markers dimmed, which changes for different reasons than what a reader sees. Add's preview isn't built yet: it will reopen the editor's no-preview rule. The user decided that the Task editor uses the Formatted view's [mention chip](#public-interface) alone, since a chip shows a mention as a reader sees it.
+The [Task editor](task-editor.md#the-editor-styles-markdown-in-place-with-no-preview) doesn't use the Formatted view to show its text. It shows Markdown source, with its markers dimmed, which changes for different reasons than what a reader sees. The user decided that the Task editor uses the Formatted view's [mention chip](#public-interface) alone, since a chip shows a mention as a reader sees it.
 
 Proposed, each a decision to confirm:
 
@@ -276,7 +276,7 @@ The options below were considered and rejected, grouped by decision.
 
 - Which module shows formatted Markdown:
   - **The Task editor**: the module that edits Markdown source would also show it formatted and open links, and the Task list would get its whole formatted view through the editor.
-  - **The Task list, for itself only**: Add will later show a preview with the same view, so the user wants it common.
+  - **The Task list, for itself only**: What is new and the Task editor's mention chip use the same view, so the user wants it common.
   - **The desktop platform**: it [never names a module](../modules.md#the-platform-serves-every-module-and-knows-none), and the view reads Rendering's spans.
   - **Rendering**: Rendering is in the shared library, which has no screens and serves both apps ([How the apps fit together](../overview.md#two-apps-share-one-c-library)), while the view is WPF.
 - How a title's shown text reaches screen readers and the list:

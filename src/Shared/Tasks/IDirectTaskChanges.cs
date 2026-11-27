@@ -3,7 +3,9 @@ namespace Memoria.ToDo.Shared.Tasks;
 /// <summary>
 /// Task changes for a caller with no editor: the Local API and the MCP server. Never reads or changes the kept draft or an open
 /// edit's waiting images. Safe to call from any thread; uses the task store's lock. Each change writes the task's file,
-/// then raises Changed on the calling thread and reports the local save, as ITasks' changes do.
+/// then raises Changed on the calling thread and reports the local save, as ITasks' changes do. Each change throws
+/// NoticeFailedException of TaskItem when it was saved and then a notice handler or the local save report failed, even for one
+/// failure; its Saved is the task the call returns.
 /// </summary>
 public interface IDirectTaskChanges
 {

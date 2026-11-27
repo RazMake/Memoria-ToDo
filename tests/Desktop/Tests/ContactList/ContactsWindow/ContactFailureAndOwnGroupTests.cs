@@ -1,58 +1,70 @@
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
 using Xunit;
 
 namespace Memoria.ToDo.Desktop.ContactList.Tests.ContactsWindow;
 
-/// <summary>Failures the window doesn't know: only a skipped group's rejection gets a message, anything else reaches the app's unhandled-error path.</summary>
+/// <summary>A change Contacts saved before a notice failed counts as saved: the window shows the shared message, reloads, and logs the failure once.</summary>
 [Unit]
-public class ContactUnexpectedFailureTests
+public class ContactNoticeFailureTests
 {
     private const string Failure = "A Changed subscriber failed.";
+    private const string Message = "Saved, but the app couldn't finish updating: " + Failure;
 
     private readonly ContactServices _services = ContactServices.Typical();
 
-    // Contacts raises Changed after it wrote, on the thread of the call, and lets a subscriber's failure out as it is.
-    private void MakeChangedFail() => _services.Contacts.Changed += (_, _) => throw new InvalidOperationException(Failure);
+    private ContactsModel ModelWithFailingNotice()
+    {
+        var model = new ContactsModel(_services.Contacts, _services.Prompts, _services.Log.CreateLogger());
+        _services.Contacts.Changed += (_, _) => throw new InvalidOperationException(Failure);
+        return model;
+    }
+
+    private void AssertLoggedOnce() =>
+        Assert.Single(_services.Log.Events.At(Serilog.Events.LogEventLevel.Error));
 
     [Fact]
-    public void A_save_that_throws_InvalidOperationException_while_its_group_is_still_loaded_escapes()
+    public void A_save_Contacts_kept_before_a_notice_failed_closes_the_form_shows_the_message_and_reloads_the_groups()
     {
-        var model = _services.Model();
+        var model = ModelWithFailingNotice();
         model.Select("team", "bob");
         model.BeginEdit();
         model.Form!["title"] = "Lead";
-        MakeChangedFail();
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => model.SaveForm());
+        var saved = model.SaveForm();
 
-        Assert.Equal(Failure, thrown.Message);
-        Assert.Null(model.Message);
+        Assert.True(saved);
+        Assert.Null(model.Form);
+        Assert.Equal(Message, model.Message);
+        Assert.Equal(_services.Model().Groups.Select(group => group.Name), model.Groups.Select(group => group.Name));
+        AssertLoggedOnce();
     }
 
     [Fact]
-    public void A_delete_that_throws_InvalidOperationException_while_its_group_is_still_loaded_escapes()
+    public void A_delete_Contacts_kept_before_a_notice_failed_shows_the_message_and_reloads_the_groups()
     {
-        var model = _services.Model();
+        var model = ModelWithFailingNotice();
         model.Select("team", "bob");
         _services.Prompts.Delete = true;
-        MakeChangedFail();
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => model.Delete());
+        var deleted = model.Delete();
 
-        Assert.Equal(Failure, thrown.Message);
-        Assert.Null(model.Message);
+        Assert.True(deleted);
+        Assert.Equal(Message, model.Message);
+        Assert.DoesNotContain(model.Groups.Single(group => group.Name == "team").Contacts, contact => contact.Contact.Id == "bob");
+        AssertLoggedOnce();
     }
 
     [Fact]
-    public void A_move_that_throws_InvalidOperationException_while_its_groups_are_still_loaded_escapes()
+    public void A_group_move_Contacts_kept_before_a_notice_failed_shows_the_message_and_reloads_the_groups()
     {
-        var model = _services.Model();
-        MakeChangedFail();
+        var model = ModelWithFailingNotice();
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => model.MoveGroup("friends", "team"));
+        model.MoveGroup("friends", "team");
 
-        Assert.Equal(Failure, thrown.Message);
-        Assert.Null(model.Message);
+        Assert.Equal(Message, model.Message);
+        Assert.Equal(_services.Model().Groups.Select(group => group.Name), model.Groups.Select(group => group.Name));
+        AssertLoggedOnce();
     }
 }
 

@@ -2,11 +2,12 @@ using LibGit2Sharp;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
+using Serilog;
 
 namespace Memoria.ToDo.Shared.Sync;
 
 /// <summary>One sync pass on the worker: check, delete, commit, then fetch, merge and push until the remote accepts.</summary>
-internal sealed class GitPass(ISyncedRepository repository, ITaskSynchronization tasks, IContactFileRules contacts, TimeProvider time, string folder, GitConnection connection, CancellationToken token)
+internal sealed class GitPass(ISyncedRepository repository, ITaskSynchronization tasks, IContactFileRules contacts, TimeProvider time, string folder, GitConnection connection, ILogger logger, CancellationToken token)
 {
     private const int MaxPushAttempts = 3;
     private const string FallbackBranch = "main";
@@ -182,11 +183,24 @@ internal sealed class GitPass(ISyncedRepository repository, ITaskSynchronization
         try
         {
             tasks.EnsureSettings();
-            tasks.DeleteExpiredTasks();
+            DeleteExpiredTasks();
         }
         catch (InvalidDataException ex)
         {
             throw new GitFailureException(SyncFailure.InvalidFile, ex.Message, ex);
+        }
+    }
+
+    // The deletions are saved when only a notice failed after them, so the pass logs that and carries on to commit and push them.
+    private void DeleteExpiredTasks()
+    {
+        try
+        {
+            tasks.DeleteExpiredTasks();
+        }
+        catch (NoticeFailedException ex)
+        {
+            logger.Error(ex, "Deleted the expired tasks, but a notice failed after it");
         }
     }
 

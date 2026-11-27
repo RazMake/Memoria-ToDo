@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Testing;
@@ -210,6 +211,22 @@ public class MentionTemplateFirstTests
         _field.Undo();
 
         Assert.Equal("see @bo", _field.Text);
+    }
+
+    [Fact]
+    public void A_move_the_file_kept_before_a_notice_failed_leaves_the_template_first_keeps_the_mention_and_says_so_on_the_message_line()
+    {
+        UseContacts(WithTitle, FirstName);
+        _field.Type("@");
+        NextTemplate(1);
+        _services.Contacts.Changed += (_, _) => throw new IOException("Changed failed.");
+
+        _list.Choose(0);
+
+        Assert.Equal("[Ana](contact:ana \"{firstName}\")", _field.Text);
+        Assert.Equal([FirstName, WithTitle], TemplatesInFile());
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _messages);
+        Assert.Single(_log.Events.At(LogEventLevel.Error));
     }
 
     [Fact]

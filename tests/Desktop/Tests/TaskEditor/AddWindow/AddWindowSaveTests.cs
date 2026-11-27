@@ -203,17 +203,45 @@ public class AddWindowSaveTests
         Assert.Equal("Buy milk", Assert.Single(screen.Saved).Title);
         Assert.False(screen.IsShowing);
 
-        // Tasks adds the task but its notices fail, so the add may be only partly done: Add stays open with the text.
+        // Tasks adds the task but its notices fail: the task is saved, so Save closes Add as on success, the draft is cleared,
+        // and the message box says what failed.
         screen.Show();
         screen.Fill("Buy bread", "One loaf");
         screen.Services.NoticesFail = true;
+        var showingWhenBoxShown = true;
+        screen.Services.MessageBox.WhenShown = _ => showingWhenBoxShown = screen.IsShowing;
         screen.Save();
 
-        Assert.True(screen.ShowsText("The change may be only partly saved: Changed failed."));
+        Assert.False(screen.IsShowing);
+        Assert.False(showingWhenBoxShown, "The message box showed while Add was still open behind it.");
+        screen.Services.MessageBox.WhenShown = null;
+        Assert.Equal(["Buy bread", "Buy milk"], screen.Saved.Select(task => task.Title));
+        Assert.Null(screen.KeptDraft);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], screen.Services.MessageBox.Texts);
+
+        // A save right after is a new task, never one refused as already existing.
+        screen.Show();
+        Assert.Equal("", screen.Editor.Value.Title);
+        screen.Fill("Buy butter");
+        screen.Save();
+
+        Assert.False(screen.IsShowing);
+        Assert.Equal(3, screen.Saved.Count);
+        Assert.Equal(2, screen.Services.MessageBox.Texts.Count);
+        Assert.DoesNotContain(screen.Services.MessageBox.Texts, text => text.Contains("A task with this ID", StringComparison.Ordinal));
+
+        // Save and clear keeps Add open and empty, and the message box says it too.
+        screen.Show();
+        screen.Fill("Buy tea");
+        string? titleWhenBoxShown = null;
+        screen.Services.MessageBox.WhenShown = _ => titleWhenBoxShown = screen.Editor.Value.Title;
+        screen.SaveAndClear();
+
+        Assert.Equal("", titleWhenBoxShown);
         Assert.True(screen.IsShowing);
-        Assert.Equal("Buy bread", screen.Editor.Value.Title);
-        Assert.Equal("One loaf", screen.Editor.Value.Description);
-        Assert.Equal("Buy bread", screen.Saved[0].Title);
+        Assert.Equal("", screen.Editor.Value.Title);
+        Assert.Equal(4, screen.Saved.Count);
+        Assert.Equal(3, screen.Services.MessageBox.Texts.Count);
     }
 
     private static void AssertTabOrder(AddScreen screen)

@@ -40,4 +40,14 @@ public sealed class FailureList
             ExceptionDispatchInfo.Capture(failures[0]).Throw();
         throw new AggregateException("More than one step failed.", failures);
     }
+
+    /// <summary>
+    /// For a store's notices after a change it saved. Does nothing when no failure was kept. Otherwise throws
+    /// <see cref="NoticeFailedException{T}"/> with <paramref name="saved"/> and every failure, in the order they were kept, even when there is one.
+    /// </summary>
+    public void ThrowIfAnyAfterSave<T>(T? saved) where T : class
+    {
+        if (failures is not null)
+            throw new NoticeFailedException<T>(saved, failures);
+    }
 }

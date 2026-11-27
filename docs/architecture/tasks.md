@@ -212,7 +212,7 @@ continues to refresh screens; settings and tag colors each have their own notice
 a local save. Skipped-file snapshots name corrupt, unreadable, and newer-version files without deleting them, by the platform's [skip rule](modules.md#stores-share-one-json-style-and-one-set-of-file-rules).
 
 Decisions to confirm: a reload always raises the settings-change notice, even when values are unchanged;
-`EnsureSettings` raises no `LocalSaved` notice because initialization is already part of a sync pass. Proposed: a reload
+`EnsureSettings` raises no `LocalSaved` notice because initialization is already part of a sync pass. It raises no other notice either, so it never throws `NoticeFailedException`. Proposed: a reload
 always raises the tag-color notice too, the same way. This is a decision to confirm.
 
 ### Images are at most 1 MB and live beside their task
@@ -411,6 +411,9 @@ public static class TaskStore
 }
 
 /// Safe to call from any thread; runs one call at a time.
+/// Every call that saves a change, Add, SaveEdit, Move, Resolve, Reopen, and Delete, throws
+/// NoticeFailedException<TaskItem> when the change was saved and then a notice handler or the local save
+/// report failed, as Failure modes says; Saved is the task the call returns, or null for Delete.
 public interface ITasks
 {
     /// Every task, open and resolved, in rank order; tasks with the same rank in ID order.
@@ -781,7 +784,8 @@ public interface ITaskStore : ITasks
 /// <summary>
 /// Task changes for a caller with no editor, such as the local API and the MCP server. Never reads or changes the kept draft or an open
 /// edit's waiting images. Safe to call from any thread; uses the task store's lock. Each change writes the task's file,
-/// then raises Changed on the calling thread and reports the local save, as ITasks' changes do.
+/// then raises Changed on the calling thread and reports the local save, as ITasks' changes do, and throws
+/// NoticeFailedException<TaskItem> with the task as saved when a notice or the report fails after the save.
 /// </summary>
 public interface IDirectTaskChanges
 {
@@ -869,9 +873,14 @@ The check and a later call each take the lock on their own, so a sync that skips
 - **The top task's rank isn't a valid key**: adding fails with `InvalidDataException` rather than guess an order.
 - **Saving an edit fails while moving its images or writing the task file**: Tasks moves every image it moved back to the edit's folder and rethrows the original error, so the task file and the task's images folder are as they were, no notice is raised, and no local save is reported. A retry works, and discarding the edit deletes every one of its images. If moving one back fails too, that image stays in the task's folder, and Tasks throws an `AggregateException` with the original error first, then each failure of the undo, in the order they happened.
 - **`tags.json` can't be read, or has a newer `version`**: Tasks leaves it unchanged, and the sync status names it, or asks the user to update the app. Every tag shows its default color and has no place, so tags show in alphabetical order, and picking a color or moving a tag fails without writing, so the screen that asked says why. Tasks still load.
-- **A notice handler or the local save report fails after a change**: the change stays saved. Tasks still raises every notice the change calls for, in this order: `Changed`, then the settings', the tag colors', and the tag order's, and then reports the local save. Each runs even when an earlier one failed, so Sync always learns of the save. Each event counts as one step, as in [Contacts](contacts.md#failure-modes): when one of its handlers throws, that event's later handlers don't run. Tasks then throws by the platform's [rule for steps that must all run](modules.md#steps-that-must-all-run-throw-their-failures-together): one failure as it is, several as an `AggregateException`, in the order they happened.
-- **Deleting a task fails after its file is deleted**, while deleting its images, by hand or by automatic deletion: the task is gone, so Tasks raises `Changed` and reports the local save as above, then throws, the deletion's own failure first. Proposed, matching Contacts' [partial renumber](contacts.md#failure-modes): this is a decision to confirm. Every other change either writes its one file or fails before any notice.
-- **A notice fails after a reload**: the [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) runs each part's notices as one step, so Tasks itself runs all four of its notices, each even when an earlier one failed, and reports no local save. The repository keeps what Tasks throws as one failure, so several of Tasks' failures arrive as one `AggregateException` inside the repository's. Proposed: this is a decision to confirm.
+- **A notice handler or the local save report fails after a change**: the change stays saved. Tasks still raises every notice the change calls for, in this order: `Changed`, then the settings', the tag colors', and the tag order's, and then reports the local save. Each runs even when an earlier one failed, so Sync always learns of the save. Each event counts as one step, as in [Contacts](contacts.md#failure-modes): when one of its handlers throws, that event's later handlers don't run. The user decided that Tasks then throws the platform's [`NoticeFailedException<TaskItem>`](modules.md#steps-that-must-all-run-throw-their-failures-together), holding every failure in the order they happened, even when only one failed, so a caller can tell a saved change from one that wasn't saved. Its `Saved` is the task as saved: what `Add`, `SaveEdit`, `Move`, `Resolve`, `Reopen`, and the direct `Add`, `Update`, and `AddImage` return. It's null for a delete, a settings change, a tag color, and a tag move. Automatic deletion, which Sync runs, throws it too, with a null `Saved`, and a sync pass then carries on, as [Sync's failure modes](sync.md#failure-modes) say. Tasks promises, through every one of these calls:
+  - When exactly one notice handler or the local save report throws, the call throws `NoticeFailedException<TaskItem>` holding it, never that failure as it is, whatever its type.
+  - When several throw, the call throws the same type, holding every failure in order.
+  - The change stays saved, and every later notice and the local save report still run.
+  - A failure before or during the write, with no notice failure, is thrown as before; so is `SaveEdit`'s and `Add`'s `AggregateException` when an undo fails too.
+  - A reload's notices keep their rule, below.
+- **Deleting a task fails after its file is deleted**, while deleting its images, by hand or by automatic deletion: the task is gone, so Tasks raises `Changed` and reports the local save as above, then throws. With no notice failure, the deletion's own failure is thrown as it is. When notices fail too, Tasks throws an `AggregateException`, the deletion's own failure first, as the platform's [rule](modules.md#steps-that-must-all-run-throw-their-failures-together) says for a change only partly done. Proposed, matching Contacts' [partial renumber](contacts.md#failure-modes): this is a decision to confirm. Every other change either writes its one file or fails before any notice.
+- **A notice fails after a reload**: the [synced repository](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) runs each part's notices as one step, so Tasks itself runs all four of its notices, each even when an earlier one failed, and reports no local save. The repository keeps what Tasks throws as one failure, so several of Tasks' failures arrive as one `AggregateException` inside the repository's. Proposed: this is a decision to confirm. No caller saved anything, so a reload never throws `NoticeFailedException`, as the user decided.
 Proposed, each a decision to confirm: `Add` refuses a draft whose ID is already a task or whose task file path is occupied (`ArgumentException`); the `AggregateException` when an undo also fails; task and draft files with an ID that isn't a lowercase UUID are unreadable; a description's line breaks are stored as `\n`; times are stored to the millisecond; draft images are deleted on discard for the kept draft and for every ID that got an image since the app started, including a draft never kept; images left by an earlier run for a draft that was never kept, or whose draft file is unreadable, aren't cleaned up, because the file system can't list folders. Known limitation, not fixed: `Add` checks that the task file path is free and then writes, so another process creating that file in between could be overwritten; this is a single-user local app, and closing the gap needs a create-only `IFileSystem` operation, a public interface change.
 
 ## Ruled out

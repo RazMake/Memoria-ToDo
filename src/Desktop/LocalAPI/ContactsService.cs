@@ -42,7 +42,7 @@ internal sealed class ContactsService : V1.Contacts.ContactsBase
             throw new ArgumentException("SaveContact needs a contact.");
 
         var contact = ContactMessages.ToContact(request.Contact);
-        contacts.Save(request.Group, contact);
+        NoticeFailures.Saved(() => contacts.Save(request.Group, contact));
 
         return Task.FromResult(ContactMessages.Of(contact));
     }
@@ -56,15 +56,15 @@ internal sealed class ContactsService : V1.Contacts.ContactsBase
         if (group is not null && !group.Members.Any(member => member.Id.Equals(request.Id, StringComparison.OrdinalIgnoreCase)))
             throw NotFound($"The group '{request.Group}' has no contact '{request.Id}'.");
 
-        contacts.Delete(request.Group, request.Id);
+        NoticeFailures.Saved(() => contacts.Delete(request.Group, request.Id));
         return Task.FromResult(new V1.DeleteContactResponse());
     }
 
     /// <inheritdoc />
     public override Task<V1.GroupList> MoveGroup(V1.MoveGroupRequest request, ServerCallContext context)
     {
-        contacts.MoveGroup(
-            request.Group, request.HasPreviousGroup ? request.PreviousGroup : null, request.HasNextGroup ? request.NextGroup : null);
+        NoticeFailures.Saved(() => contacts.MoveGroup(
+            request.Group, request.HasPreviousGroup ? request.PreviousGroup : null, request.HasNextGroup ? request.NextGroup : null));
         return Task.FromResult(Groups());
     }
 

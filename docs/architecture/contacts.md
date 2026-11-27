@@ -438,7 +438,9 @@ public interface IContacts
     IReadOnlyList<ISkippedRepositoryFile> SkippedFiles { get; }
 
     /// Raised after any change to what this interface returns, on the thread whose call made it,
-    /// or after the repository's reload.
+    /// or after the repository's reload. Save, Delete, MoveGroup, and MoveTemplateFirst throw
+    /// NoticeFailedException<Contact> when the change was saved and then a Changed handler or the local save
+    /// report failed, as Failure modes says; Saved is the contact as saved, or null for a change that saves none.
     event EventHandler? Changed;
 }
 
@@ -466,7 +468,12 @@ public interface IContactFileRules
 - **Moving a template first fails**, because the templates file can't be read now, needs a newer app, or can't be written: `MoveTemplateFirst` throws, the file stays whole, and the list keeps its order. The [Task editor](desktop/task-editor.md#failure-modes) keeps the mention it inserted and says why.
 - **A call names a group whose file was skipped**: Save, Delete, and MoveGroup fail with the platform's [`SkippedFileException`](modules.md#a-call-that-needs-a-skipped-file-throws-one-type), naming that file, before writing. The user decided that Contacts, which owns the file layout, says so with a type, so no caller matches paths. Proposed, a decision to confirm: MoveGroup checks the moved group first, then the previous and next neighbors, and checks them before any other rule; until now it said such a group was unknown.
 - **A write fails**: the call throws the file system's exception; the file stays whole, as the [file system interface](modules.md#the-file-system-interface-reads-and-writes-whole-files) promises, and the screen that asked says why.
-- **A Changed handler or the local save report fails**: after a write, Contacts still raises Changed and reports the local save, each even when the other fails. The user decided this follows the [synced repository's rule](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload): one failure is thrown as it is, and several make an `AggregateException`, the write's own failure first, then Changed's, then the report's.
+- **A Changed handler or the local save report fails**: after a write, Contacts still raises Changed and reports the local save, each even when the other fails, and the change stays saved. The user decided that Contacts then throws the platform's [`NoticeFailedException<Contact>`](modules.md#steps-that-must-all-run-throw-their-failures-together), holding every failure in order, Changed's first, then the report's, even when only one failed, so a caller can tell a saved change from one that wasn't saved. Its `Saved` is the contact as saved by either `Save`; it's null for `Delete`, `MoveGroup`, and `MoveTemplateFirst`. When the write itself failed partway, as a [partial renumber](#groups-keep-the-order-of-their-positions) can, and a notice fails too, Contacts throws an `AggregateException` as before, the write's own failure first, then Changed's, then the report's. Proposed, a decision to confirm, as for Tasks' [delete](tasks.md#failure-modes). Contacts promises, through `Save`, `Delete`, `MoveGroup`, and `MoveTemplateFirst`:
+  - When exactly one of Changed and the report throws, the call throws `NoticeFailedException<Contact>` holding it, never that failure as it is.
+  - When both throw, the call throws the same type, holding both in order.
+  - The change stays saved, and the report still runs when Changed failed.
+  - A failure before or during the write, with no notice failure, is thrown as before.
+  - A reload's notices keep the [synced repository's rule](modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) and never throw `NoticeFailedException`.
 - **A sync deletes a contact being edited in the Contact list**: Save adds it back. This is an accepted risk, decided with the [Contact list](desktop/contact-list.md#failure-modes).
 - **A device still runs an app older than the [nickname](#a-nickname-falls-back-to-the-first-name)**: it keeps and merges `nickname` as an unknown field, so no data is lost, but its search ignores it. It reads a templates file that names `{nickname}` as naming an unknown field, so it skips the file, lists it in Sync's status, and offers only the default `{fullName}` until the device updates. Its mentions still show, rebuilt from their stored template only when that template is valid there; a mention stored with `{nickname}` shows its stored text.
 

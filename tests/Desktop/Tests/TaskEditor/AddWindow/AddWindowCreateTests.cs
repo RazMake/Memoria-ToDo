@@ -18,9 +18,21 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, null!, services.Updates, services.SaveKeys, services.Pointer, Logger.None));
+            services.Files, null!, services.Updates, services.SaveKeys, services.MessageBox, services.Pointer, Logger.None));
 
         Assert.Equal("closeWindowKeys", failure.ParamName);
+    }
+
+    [Fact]
+    public void Rejects_a_missing_message_box()
+    {
+        var services = new EditorServices();
+
+        var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
+            services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
+            services.Files, services.CloseWindowKeys, services.Updates, services.SaveKeys, null!, services.Pointer, Logger.None));
+
+        Assert.Equal("messageBox", failure.ParamName);
     }
 
     [Fact]
@@ -30,7 +42,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.CloseWindowKeys, null!, services.SaveKeys, services.Pointer, Logger.None));
+            services.Files, services.CloseWindowKeys, null!, services.SaveKeys, services.MessageBox, services.Pointer, Logger.None));
 
         Assert.Equal("updates", failure.ParamName);
     }
@@ -42,7 +54,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.CloseWindowKeys, services.Updates, null!, services.Pointer, Logger.None));
+            services.Files, services.CloseWindowKeys, services.Updates, null!, services.MessageBox, services.Pointer, Logger.None));
 
         Assert.Equal("saveKeys", failure.ParamName);
     }
@@ -54,7 +66,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, services.Contacts, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.CloseWindowKeys, services.Updates, services.SaveKeys, services.Pointer, null!));
+            services.Files, services.CloseWindowKeys, services.Updates, services.SaveKeys, services.MessageBox, services.Pointer, null!));
 
         Assert.Equal("logger", failure.ParamName);
     }
@@ -78,7 +90,7 @@ public class AddWindowCreateTests
 
         var failure = Assert.Throws<ArgumentNullException>(() => AddWindow.Create(
             services.Tasks, services.TagColors, null!, Palette.Colors, services.Theme, services.Time, services.Clipboard, services.ImageFiles,
-            services.Files, services.CloseWindowKeys, services.Updates, services.SaveKeys, services.Pointer, Logger.None));
+            services.Files, services.CloseWindowKeys, services.Updates, services.SaveKeys, services.MessageBox, services.Pointer, Logger.None));
 
         Assert.Equal("contacts", failure.ParamName);
     }

@@ -413,6 +413,62 @@ public class TagsModelCustomTests
     }
 
     [Fact]
+    public void A_color_that_was_kept_before_a_notice_failed_still_adds_the_tag_and_says_so_where_a_failed_save_shows()
+    {
+        _services.TagColors.Failure = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+
+        var result = _model.AddTypedTextInColor("red-1");
+
+        Assert.True(result);
+        Assert.Equal(["errand"], _model.Tags);
+        Assert.Equal([["errand"]], _raised);
+        Assert.Equal("Saved, but the app couldn't finish updating: Changed failed.", _model.ColorMessage);
+    }
+
+    private string SavedMessageLeftWithCustomClosed()
+    {
+        _services.TagColors.Failure = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+        _model.OpenCustom();
+        _model.TypedText = "errand";
+        _model.AddTypedTextInColor("red-1");
+        Assert.False(_model.IsCustomOpen);
+        return _model.ColorMessage;
+    }
+
+    [Fact]
+    public void Opening_Custom_clears_a_message_left_by_a_notice_failure()
+    {
+        Assert.NotEqual("", SavedMessageLeftWithCustomClosed());
+
+        _model.OpenCustom();
+
+        Assert.Equal("", _model.ColorMessage);
+    }
+
+    [Fact]
+    public void Setting_the_tags_clears_a_message_left_by_a_notice_failure()
+    {
+        Assert.NotEqual("", SavedMessageLeftWithCustomClosed());
+
+        _model.Tags = ["other"];
+
+        Assert.Equal("", _model.ColorMessage);
+    }
+
+    [Fact]
+    public void A_message_left_by_a_notice_failure_stays_while_Custom_is_closed()
+    {
+        var message = SavedMessageLeftWithCustomClosed();
+
+        _model.CloseCustom();
+        _model.Add("other");
+
+        Assert.Equal(message, _model.ColorMessage);
+    }
+
+    [Fact]
     public void A_failure_that_isnt_a_known_one_is_not_swallowed()
     {
         _services.TagColors.Failure = new InvalidOperationException("a bug");

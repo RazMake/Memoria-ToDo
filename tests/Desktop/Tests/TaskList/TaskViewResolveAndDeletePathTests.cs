@@ -35,7 +35,7 @@ public class TaskViewResolveAndDeletePathTests
         services.NoticesFail = true;
         screen.ClickCheckBox("Buy milk");
         services.NoticesFail = false;
-        Assert.True(screen.ShowsText("The change may be only partly saved: Changed failed."));
+        Assert.True(screen.ShowsText("Saved, but the app couldn't finish updating: Changed failed."));
         Assert.NotNull(services.Stored("Buy milk").Resolved);
         Assert.Equal("2 resolved", screen.ResolvedLabel);
 

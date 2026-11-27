@@ -18,20 +18,14 @@ internal sealed class TagTools(ToolRunner run, CloneCheck clone, ITasks tasks, I
     public Task<string> SetTagColor(
         [Description("The tag.")] string tag,
         [Description("The color's name.")] string color) => run.Run(() =>
-    {
-        colors.SetColor(tag, color);
-        return new { tag, color };
-    });
+        ToolRunner.Saved(() => colors.SetColor(tag, color), () => new { tag, color }));
 
     [McpServerTool(Destructive = false), Description("Moves a tag to sit after previousTag and before nextTag, which must be neighbors; leave out previousTag for the start, nextTag for the end. Answers the tags in their new order.")]
     public Task<string> MoveTag(
         [Description("The tag to move.")] string tag,
         [Description("The tag it sits after.")] string? previousTag = null,
         [Description("The tag it sits before.")] string? nextTag = null) => run.Run(() =>
-    {
-        order.Move(tag, previousTag, nextTag);
-        return TagsInOrder();
-    });
+        ToolRunner.Saved(() => order.Move(tag, previousTag, nextTag), TagsInOrder));
 
     private object TagsInOrder()
     {

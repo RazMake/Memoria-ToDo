@@ -80,7 +80,9 @@ The Local API maps each failure by its type, through one registration table, mos
 | Only these "not ready" cases: no repository folder (`NoRepositoryFolderException`); sync not set up, such as no repository or key for `SyncNow` (Sync's [`SyncNotReadyException`](sync.md#public-interface)); a skipped file the call needs, such as `tags.json` (the platform's [`SkippedFileException`](modules.md#a-call-that-needs-a-skipped-file-throws-one-type)) | `FAILED_PRECONDITION` |
 | A request over 33 MiB, or an image over 32 MiB | `RESOURCE_EXHAUSTED` |
 | The program cancelled the call | `CANCELLED` |
-| Anything else, such as a `Changed` handler that throws after a change was saved | `INTERNAL`, with the exception logged |
+| Anything else, such as a failure inside the app no other row names | `INTERNAL`, with the exception logged |
+
+A change the app saved before a notice failed isn't a failure: the call succeeds, as [Failure modes](#failure-modes) says, so the table gains no status for it.
 
 That the .NET client reports every failure to connect as `UNAVAILABLE` is decided by the implementation, to confirm.
 
@@ -206,6 +208,7 @@ export interface MemoriaClient {
 - **A program and Task View change the same task**: `UpdateTask` fails with `ABORTED` when the task changed since the program read it, and Task View's save merges, as [above](#task-calls-never-touch-your-draft-or-open-edit).
 - **You edit a description while a program adds an image to it**: when your save replaces the description, the image's link goes, and the image stays in the clone unlinked. You accepted this, as for any edit of the same field.
 - **A call fails inside the app**: `INTERNAL`, with an Error entry in the [log](local-api.md#every-call-is-logged-where-it-ends).
+- **The app saved a change, and then a notice or the local save report failed inside the app** (the platform's [`NoticeFailedException<T>`](modules.md#steps-that-must-all-run-throw-their-failures-together)), even only one failure, for any task, settings, or contact call that changes something: the user decided that the call succeeds with the reply it gives after that save, built from the exception's saved item, such as `CreateTask`'s new task with its ID, and that the app logs one Error entry with the failures. No new status is added. So a program that retries only after an error never makes a second task. Proposed, a decision to confirm: a call whose change saves no item, such as `DeleteTask` or a settings call, replies as after a save, and the call's own log entry stays at Information, beside that Error entry.
 
 ## Ruled out
 

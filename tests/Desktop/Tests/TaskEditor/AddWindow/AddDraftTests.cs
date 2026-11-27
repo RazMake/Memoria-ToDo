@@ -1,4 +1,6 @@
 using System.IO;
+using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
@@ -13,12 +15,126 @@ public class AddDraftTests
 
     private readonly EditorServices _services = new();
     private readonly FakeDraftEditor _editor = new();
+    private readonly FakeMessageBox _messageBox = new();
+    private readonly InMemoryLogSink _log = new();
     private readonly AddDraft _draft;
 
     public AddDraftTests()
     {
         _services.UseRepository();
-        _draft = new AddDraft(_services.Tasks, _editor, Serilog.Core.Logger.None);
+        _draft = new AddDraft(_services.Tasks, _editor, _messageBox, _log.CreateLogger());
+    }
+
+    private const string NoticeMessage = "Saved, but the app couldn't finish updating: Changed failed.";
+
+    [Fact]
+    public void Rejects_a_missing_message_box()
+    {
+        var thrown = Assert.Throws<ArgumentNullException>(() => new AddDraft(_services.Tasks, _editor, null!, Serilog.Core.Logger.None));
+
+        Assert.Equal("messageBox", thrown.ParamName);
+    }
+
+    [Fact]
+    public void A_save_Tasks_kept_before_a_notice_failed_asks_the_window_to_hide_clears_the_draft_and_shows_the_message_once()
+    {
+        _draft.Restore();
+        Type("Buy milk");
+        var id = _editor.Value.TaskId;
+        _services.NoticesFail = true;
+
+        var hide = _draft.Save(keepOpen: false);
+
+        Assert.True(hide);
+        Assert.Equal(id, Assert.Single(_services.Tasks.All).Id);
+        Assert.Null(_services.Tasks.LoadDraft());
+        Assert.Equal("", _editor.Value.Title);
+        Assert.NotEqual(id, _editor.Value.TaskId);
+        Assert.Equal([NoticeMessage], _messageBox.Texts);
+    }
+
+    [Fact]
+    public void A_save_and_keep_open_Tasks_kept_before_a_notice_failed_starts_a_new_draft_and_shows_the_message()
+    {
+        _draft.Restore();
+        Type("Buy milk");
+        _services.NoticesFail = true;
+
+        var hide = _draft.Save(keepOpen: true);
+
+        Assert.False(hide);
+        Assert.Single(_services.Tasks.All);
+        Assert.Equal("", _editor.Value.Title);
+        Assert.Equal(1, _editor.TitleFocused);
+        Assert.Equal([NoticeMessage], _messageBox.Texts);
+    }
+
+    [Fact]
+    public void A_save_right_after_a_notice_failure_adds_its_own_task_and_never_says_the_ID_exists()
+    {
+        _draft.Restore();
+        Type("First");
+        _services.NoticesFail = true;
+        _draft.Save(keepOpen: true);
+        Type("Second");
+
+        var hide = _draft.Save(keepOpen: false);
+
+        Assert.True(hide);
+        Assert.Equal(2, _services.Tasks.All.Count);
+        Assert.DoesNotContain(_messageBox.Texts, text => text.Contains("task with this ID", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(_editor.Messages, text => text.Contains("task with this ID", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal([NoticeMessage, NoticeMessage], _messageBox.Texts);
+    }
+
+    [Fact]
+    public void The_message_box_shows_after_the_draft_is_already_the_new_empty_one()
+    {
+        _draft.Restore();
+        Type("Buy milk", "Oat");
+        var id = _editor.Value.TaskId;
+        (string Title, string Description, string TaskId)? atShow = null;
+        _messageBox.WhenShown = _ => atShow = (_editor.Value.Title, _editor.Value.Description, _editor.Value.TaskId);
+        _services.NoticesFail = true;
+
+        _draft.Save(keepOpen: false);
+
+        Assert.NotNull(atShow);
+        Assert.Equal("", atShow.Value.Title);
+        Assert.Equal("", atShow.Value.Description);
+        Assert.NotEqual(id, atShow.Value.TaskId);
+        Assert.Null(_services.Tasks.LoadDraft());
+    }
+
+    [Fact]
+    public void With_Add_kept_open_the_fields_are_already_cleared_for_the_next_task_when_the_message_box_shows()
+    {
+        _draft.Restore();
+        Type("Buy milk", "Oat");
+        var id = _editor.Value.TaskId;
+        (string Title, string Description, string TaskId)? atShow = null;
+        _messageBox.WhenShown = _ => atShow = (_editor.Value.Title, _editor.Value.Description, _editor.Value.TaskId);
+        _services.NoticesFail = true;
+
+        _draft.Save(keepOpen: true);
+
+        Assert.NotNull(atShow);
+        Assert.Equal("", atShow.Value.Title);
+        Assert.Equal("", atShow.Value.Description);
+        Assert.NotEqual(id, atShow.Value.TaskId);
+    }
+
+    [Fact]
+    public void A_save_Tasks_kept_before_a_notice_failed_is_logged_once_as_an_error_with_the_exception()
+    {
+        _draft.Restore();
+        Type("Buy milk");
+        _services.NoticesFail = true;
+
+        _draft.Save(keepOpen: false);
+
+        var entry = Assert.Single(_log.Events, e => e.Level == Serilog.Events.LogEventLevel.Error);
+        Assert.IsAssignableFrom<Memoria.ToDo.Shared.Platform.NoticeFailedException>(entry.Exception);
     }
 
     private void Type(string title, string description = "") =>

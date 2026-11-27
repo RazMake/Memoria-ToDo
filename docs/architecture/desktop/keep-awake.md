@@ -18,11 +18,6 @@ The user asked for a setting that keeps the screen from timing out, through Wind
 - **It's kept in `prevent-screen-saver.txt` in this device's folder**, `%LocalAppData%\Memoria-ToDo`, beside Updates' `auto-update.txt` and the MCP server's `mcp-server.txt`, through the platform's [on-or-off setting file](README.md#an-on-or-off-setting-file-keeps-one-switch-on-this-device). A missing file means off, and a damaged one counts as off. Its messages call it "Prevent screen saver's file".
 - **A switch applies at once**: turning it on sets the request, unless the session is locked, and turning it off clears it.
 
-Not confirmed by a run:
-
-- That the display request also stops the lock that an organization's "machine inactivity limit" policy sets, which may work apart from the screen saver.
-- That a request set while a remote desktop session is connected keeps the remote session's screen on.
-
 ### Locking the PC pauses it until the PC is unlocked
 
 The user decided that while the feature is on, locking the PC turns it off until the PC is unlocked, when it comes back. Locking changes only what the app asks of Windows, never the setting. The user also decided which locks pause it; the rest is proposed, each a decision to confirm:

@@ -64,6 +64,7 @@ internal sealed class TaskListWindow : Window
     private string? _detailsId;
     private bool _previewing;
     private bool _closing;
+    private int _reports;
     private bool _closed;
 
     public TaskListWindow(ITasks tasks, ITagColors tagColors, ITagOrder tagOrder, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time,
@@ -121,7 +122,7 @@ internal sealed class TaskListWindow : Window
         _deletion = new TaskDeletion(tasks, _content, _pending, Report, Refresh, logger);
         _cleanup = new EditCleanup(tasks, _pending, Report, logger);
         _tagChanges = new TagChanges(tasks, _pending, _cleanup, Report, logger);
-        _editing = new ListEditing(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit, pointer, logger);
+        _editing = new ListEditing(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, _cleanup, RestoreEdit, Report, pointer, logger);
         _rows = new GroupedRows(tagColors, theme, tagOrder, CreateRow, task => LiveMentions.Of(contacts, task.Title, title: true), pointer);
         _groupActions = new GroupActions(tagOrder, Report, logger);
         _header.ShowMessage(message);
@@ -129,7 +130,7 @@ internal sealed class TaskListWindow : Window
         _header.UndoClicked += (_, _) =>
         {
             _pending.Undo();
-            // An Undo that failed with several failures at once may still have saved; the list shows what Tasks holds.
+            // An Undo that failed with several failures at once may still have saved, and one whose notice failed did; the list shows what Tasks holds.
             Refresh();
         };
         _header.EdgeRowRequested += (_, last) => SelectEdgeRow(last);
@@ -397,6 +398,7 @@ internal sealed class TaskListWindow : Window
 
     private void Report(string message)
     {
+        _reports++;
         if (_closing)
         {
             _carry(message);
@@ -699,17 +701,21 @@ internal sealed class TaskListWindow : Window
             return;
         }
 
-        if (!_actions.Resolve(id, resolved))
+        var reports = _reports;
+        var done = _actions.Resolve(id, resolved);
+        if (!done)
         {
             row?.Revert();
-            Refresh();
         }
+
+        ShowAgainIfReported(done, reports);
     }
 
     // ---- Order ----
 
     // Order is a row's place in its group, so a task no row shows doesn't move.
-    // A move that fails shows the list again as Tasks holds it, since several failures at once may have saved it.
+    // A move that fails shows the list again as Tasks holds it, since several failures at once may have saved it. So does a move
+    // saved before a notice failed, since the failed notice may be the one that refreshes the list.
     private void Nudge(TaskRow? row, int step)
     {
         _header.ShowMessage(null);
@@ -730,18 +736,23 @@ internal sealed class TaskListWindow : Window
 
     private void MoveTask(Move move)
     {
-        if (!_actions.Move(move))
-        {
-            Refresh();
-        }
+        var reports = _reports;
+        ShowAgainIfReported(_actions.Move(move), reports);
     }
 
     // The group moves at once, in Tasks' tag order. The list regroups when the order says it changed, so a move that can't be
-    // saved leaves the group where it was, unless several failures at once saved it.
+    // saved leaves the group where it was, unless several failures at once saved it. A move saved before a notice failed shows again.
     private void MoveGroup(GroupMove move)
     {
         _header.ShowMessage(null);
-        if (!_groupActions.Move(move))
+        var reports = _reports;
+        ShowAgainIfReported(_groupActions.Move(move), reports);
+    }
+
+    // Shows the list as Tasks holds it when the change failed, or reported a failed notice, which may be the one that refreshes it.
+    private void ShowAgainIfReported(bool done, int reportsBefore)
+    {
+        if (!done || _reports != reportsBefore)
         {
             Refresh();
         }

@@ -175,18 +175,17 @@ internal sealed class ShortcutSetting(
         StoredShortcut.Read(Label, defaultShortcut, readStored, Shortcut.Parse, _logger, out problem);
 
     // Saves a registered pick. When saving fails, the row goes back to its previous shortcut and says what failed,
-    // including a failure to register the previous one again.
+    // including a failure to register the previous one again. A save kept before a notice failed keeps the pick, with the shared message.
     private void Persist(Shortcut? previous, Shortcut shortcut)
     {
-        try
+        var saved = StoreFailures.Run(
+            () => save(shortcut.ToDisplayText()),
+            error => $"{shortcut.ToDisplayText()} wasn't saved for {Label}: {error.Message}",
+            message => Message = message,
+            _logger);
+        if (!saved)
         {
-            save(shortcut.ToDisplayText());
-        }
-        catch (Exception error)
-        {
-            _logger.Error(error, "Saving the {Label} shortcut {Shortcut} failed", Label, shortcut.ToDisplayText());
             Active = previous;
-            Message = $"{shortcut.ToDisplayText()} wasn't saved for {Label}: {error.Message}";
             if (!_released)
             {
                 Reregister(previous);

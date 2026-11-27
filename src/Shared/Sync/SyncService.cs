@@ -30,7 +30,7 @@ public static class SyncService
         ILogger logger)
     {
         var worker = new OwnedWorker();
-        return Create(repository, tasks, contacts, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, new NativeGitOperations(repository, tasks, contacts, time, worker), worker, logger);
+        return Create(repository, tasks, contacts, files, keys, repositories, time, deviceFolder, defaultDeviceName, periodicInterval, new NativeGitOperations(repository, tasks, contacts, time, worker, logger), worker, logger);
     }
 
     internal static ISyncService Create(

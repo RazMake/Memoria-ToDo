@@ -1,5 +1,7 @@
 using System.IO;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
+using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -51,6 +53,17 @@ public class GroupActionsTests
         Assert.False(done);
         Assert.Equal("tags.json has a newer version.", Assert.Single(_reports));
         Assert.Equal(["home", "play", "work"], Shown);
+    }
+
+    [Fact]
+    public void A_group_move_the_tag_order_saved_before_a_notice_failed_reports_that_and_counts_as_done()
+    {
+        _tagOrder.Failure = new NoticeFailedException<TaskItem>(null, [new IOException("tags.json notice failed.")]);
+
+        var done = _actions.Move(new GroupMove("work", null, "home"));
+
+        Assert.True(done);
+        Assert.Equal(["Saved, but the app couldn't finish updating: tags.json notice failed."], _reports);
     }
 
     [Fact]

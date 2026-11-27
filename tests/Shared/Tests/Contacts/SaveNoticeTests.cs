@@ -1,9 +1,10 @@
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
 using Xunit;
 
 namespace Memoria.ToDo.Shared.Contacts.Tests;
 
-/// <summary>After a save, Contacts raises Changed and then the repository reports a local save, on the calling thread and outside the lock.</summary>
+/// <summary>After a save, Contacts raises Changed and then the repository reports a local save, on the calling thread and outside the lock; a failing notice after the save is thrown as NoticeFailedException of the contact.</summary>
 [Unit]
 public sealed class SaveNoticeTests
 {
@@ -61,43 +62,15 @@ public sealed class SaveNoticeTests
     }
 
     [Fact]
-    public void Still_reports_the_local_save_and_throws_the_handler_s_exception_as_it_is_when_a_Changed_handler_fails()
+    public void Keeps_the_saved_contact_and_still_reports_the_local_save_when_a_Changed_handler_fails()
     {
-        var failure = new InvalidOperationException("handler");
-        f.Contacts.Changed += (_, _) => throw failure;
+        f.Contacts.Changed += (_, _) => throw new InvalidOperationException("handler");
         var before = f.Notices.Count;
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => f.Contacts.Save("team", new Contact("1", "Ana Popa")));
+        Assert.Throws<NoticeFailedException<Contact>>(() => f.Contacts.Save("team", new Contact("1", "Ana Popa")));
 
-        Assert.Same(failure, thrown);
         Assert.Equal(["Changed", "LocalSaved"], NoticesSince(before));
         Assert.Equal("Ana Popa", f.Member("team", "1").FullName);
-    }
-
-    [Fact]
-    public void Still_raises_Changed_and_throws_the_report_s_exception_as_it_is_when_the_local_save_report_fails()
-    {
-        var failure = new InvalidOperationException("report");
-        f.Repository.LocalSaved += (_, _) => throw failure;
-        var before = f.Notices.Count;
-
-        var thrown = Assert.Throws<InvalidOperationException>(() => f.Contacts.Save("team", new Contact("1", "Ana Popa")));
-
-        Assert.Same(failure, thrown);
-        Assert.Equal(["Changed", "LocalSaved"], NoticesSince(before));
-    }
-
-    [Fact]
-    public void Throws_an_AggregateException_with_Changed_s_failure_then_the_report_s_when_both_fail()
-    {
-        var changed = new InvalidOperationException("handler");
-        var report = new InvalidOperationException("report");
-        f.Contacts.Changed += (_, _) => throw changed;
-        f.Repository.LocalSaved += (_, _) => throw report;
-
-        var thrown = Assert.Throws<AggregateException>(() => f.Contacts.Save("team", new Contact("1", "Ana Popa")));
-
-        Assert.Equal(new Exception[] { changed, report }, thrown.InnerExceptions);
     }
 
     [Fact]

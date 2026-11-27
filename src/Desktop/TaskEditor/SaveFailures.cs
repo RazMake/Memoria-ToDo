@@ -26,17 +26,23 @@ internal static class SaveFailures
     };
 
     /// <summary>
-    /// Calls <paramref name="save"/> with the value and clears the message. Returns false, showing the failure's message,
-    /// when <paramref name="save"/> threw a known failure, which it also logs at Error; other failures propagate.
+    /// Calls <paramref name="save"/> with the value and clears the message, unless the save was kept and a notice failed
+    /// after it: then the shared message <see cref="StoreFailures.Run"/> reports stays shown. Returns false, showing the
+    /// failure's message, when <paramref name="save"/> threw a known failure, which it also logs at Error; other failures propagate.
     /// </summary>
     public static bool Try<T>(Action<T> save, T value, Action<string> showMessage, ILogger logger)
     {
-        if (!StoreFailures.Run(() => save(value), MessageOf, showMessage, logger))
+        var shown = false;
+        if (!StoreFailures.Run(() => save(value), MessageOf, message => { shown = true; showMessage(message); }, logger))
         {
             return false;
         }
 
-        showMessage("");
+        if (!shown)
+        {
+            showMessage("");
+        }
+
         return true;
     }
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Serilog;
 
@@ -52,7 +53,10 @@ internal sealed class DeletionDelaySetting
         }
     }
 
-    /// <summary>Saves the typed text as the delay. A text that can't be saved leaves <see cref="Shown"/> as it was.</summary>
+    /// <summary>
+    /// Saves the typed text as the delay. A text that can't be saved leaves <see cref="Shown"/> as it was; one saved before a
+    /// notice failed shows the new delay, with the shared message.
+    /// </summary>
     public void Commit(string text)
     {
         text = text.Trim();
@@ -63,20 +67,18 @@ internal sealed class DeletionDelaySetting
             {
                 problem = $"The deletion delay wasn't changed: \"{text}\" isn't a whole number of days.";
             }
-            else
+            else if (StoreFailures.Run(
+                () => _settings.SetDeletionDelayDays(days),
+                error => error is ArgumentOutOfRangeException ? null : $"The deletion delay wasn't saved: {error.Message}",
+                message => problem = message,
+                _logger))
             {
-                _settings.SetDeletionDelayDays(days);
                 Shown = days.ToString(CultureInfo.InvariantCulture);
             }
         }
         catch (ArgumentOutOfRangeException)
         {
             problem = $"The deletion delay wasn't changed: {text} is outside the allowed range.";
-        }
-        catch (Exception error)
-        {
-            _logger.Error(error, "The deletion delay couldn't be saved");
-            problem = $"The deletion delay wasn't saved: {error.Message}";
         }
 
         Message = problem;

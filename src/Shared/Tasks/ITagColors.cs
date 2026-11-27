@@ -3,6 +3,8 @@ namespace Memoria.ToDo.Shared.Tasks;
 /// <summary>
 /// Each tag's color, kept in tags.json and shared by every device. Safe to call from any thread;
 /// uses the task store's lock. Tags are normalized with TagName.Normalize. A color's name is kept without interpreting it.
+/// SetColor throws NoticeFailedException of TaskItem, with a null Saved, when the color was saved and then a notice
+/// handler or the local save report failed, even for one failure.
 /// </summary>
 public interface ITagColors
 {

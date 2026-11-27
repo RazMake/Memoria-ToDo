@@ -3,6 +3,8 @@ namespace Memoria.ToDo.Shared.Tasks;
 /// <summary>
 /// Each tag's place in the order both apps show tags in, kept in tags.json beside the tag's color and shared by every
 /// device. Safe to call from any thread; uses the task store's lock. Tags are normalized with TagName.Normalize.
+/// Move throws NoticeFailedException of TaskItem, with a null Saved, when the move was saved and then a notice
+/// handler or the local save report failed, even for one failure.
 /// </summary>
 public interface ITagOrder
 {

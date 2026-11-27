@@ -73,7 +73,7 @@ public class TaskViewTagPathTests
         services.NoticesFail = true;
         screen.ClearTag("Buy milk", "errand");
         services.NoticesFail = false;
-        Assert.True(screen.ShowsText("The change may be only partly saved: Changed failed."));
+        Assert.True(screen.ShowsText("Saved, but the app couldn't finish updating: Changed failed."));
         Assert.Equal(["a-home"], services.Stored("Buy milk").Tags);
         Assert.Equal(["a-home"], screen.PillTags("Buy milk"));
         Assert.True(screen.ShowsText("Tag removed"));

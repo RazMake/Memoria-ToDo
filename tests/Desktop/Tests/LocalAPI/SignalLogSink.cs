@@ -30,6 +30,9 @@ internal sealed class SignalLogSink : ILogEventSink
     /// <summary>A logger that writes only to this sink, at every level.</summary>
     public ILogger CreateLogger() => new LoggerConfiguration().MinimumLevel.Verbose().WriteTo.Sink(this).CreateLogger();
 
+    public string Describe() =>
+        string.Join('\n', Events.Select(entry => $"{entry.Level}: {entry.EverythingIn()}"));
+
     /// <inheritdoc />
     public void Emit(LogEvent logEvent)
     {

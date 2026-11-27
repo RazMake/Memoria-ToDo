@@ -36,7 +36,7 @@ public static class TestTaskStore
 
     /// <summary>
     /// Adds a Changed handler and a local save report handler that throw while <see cref="NoticeFailures.Active"/> is true, so a change Tasks
-    /// saves then throws an <see cref="AggregateException"/> of "Changed failed." then "Report failed.". Call it before other handlers
+    /// saves then throws a <see cref="NoticeFailedException{T}"/> of <see cref="TaskItem"/> holding "Changed failed." then "Report failed.". Call it before other handlers
     /// subscribe: after the first one throws, the later handlers of the same event don't run.
     /// </summary>
     public static NoticeFailures FailNotices(this ITasks tasks)

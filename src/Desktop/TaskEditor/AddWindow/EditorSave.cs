@@ -37,7 +37,8 @@ internal sealed class EditorSave
     /// Adds typed tag text as a tag, then calls <paramref name="save"/> with the value, unless the Title is empty, which
     /// it marks and puts the cursor in. Returns false when the typed tag couldn't be added or the Title is empty, saving
     /// nothing, or when <paramref name="save"/> threw a failure Tasks' saves are known to throw, which it shows; after several
-    /// failures at once the change may be partly saved. Other failures propagate.
+    /// failures at once the change may be partly saved. A save kept before a notice failed returns true, with the shared
+    /// message shown. Other failures propagate.
     /// </summary>
     public bool Run(Action<TaskDraft> save)
     {

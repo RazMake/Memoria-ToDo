@@ -20,12 +20,13 @@ internal sealed class AddWindowView : Window, IAddWindow
     private readonly TaskEditorControl _editor;
     private readonly AddDraft _draft;
     private readonly ILogger _logger;
+    private bool _keepingOpen;
 
-    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates, SaveKeys saveKeys, ILogger logger)
+    public AddWindowView(ITasks tasks, TaskEditorControl editor, IUpdateStatus updates, SaveKeys saveKeys, IMessageBox messageBox, ILogger logger)
     {
         _editor = editor;
         _logger = logger;
-        _draft = new AddDraft(tasks, editor, logger);
+        _draft = new AddDraft(tasks, editor, new HideFirstBox(this, messageBox), logger);
         Title = "Add new Task";
         Width = 480;
         MinHeight = 240;
@@ -114,9 +115,24 @@ internal sealed class AddWindowView : Window, IAddWindow
 
     private void Save(bool keepOpen)
     {
+        _keepingOpen = keepOpen;
         if (_draft.Save(keepOpen))
         {
             HideAndKeepDraft();
+        }
+    }
+
+    // The message box blocks, so a save that doesn't keep Add open hides it first, and the box shows over nothing of Add's.
+    private sealed class HideFirstBox(AddWindowView window, IMessageBox inner) : IMessageBox
+    {
+        public void Show(string text)
+        {
+            if (!window._keepingOpen)
+            {
+                window.HideAndKeepDraft();
+            }
+
+            inner.Show(text);
         }
     }
 }

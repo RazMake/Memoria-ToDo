@@ -1,4 +1,5 @@
 using System.IO;
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Serilog;
 
@@ -14,14 +15,17 @@ internal sealed class AddDraft
 
     private readonly ITasks _tasks;
     private readonly IDraftEditor _editor;
+    private readonly IMessageBox _messageBox;
     private readonly ILogger _logger;
     private bool _unreadableDraftOnDisk;
 
-    public AddDraft(ITasks tasks, IDraftEditor editor, ILogger logger)
+    public AddDraft(ITasks tasks, IDraftEditor editor, IMessageBox messageBox, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(messageBox);
         ArgumentNullException.ThrowIfNull(logger);
         _tasks = tasks;
         _editor = editor;
+        _messageBox = messageBox;
         _logger = logger;
     }
 
@@ -68,16 +72,23 @@ internal sealed class AddDraft
 
     /// <summary>
     /// Adds the editor's task and starts a new draft. Returns true when the window should hide, which is after a save
-    /// that doesn't <paramref name="keepOpen"/>; false when nothing was saved or the window stays open.
+    /// that doesn't <paramref name="keepOpen"/>; false when nothing was saved or the window stays open. A task saved before
+    /// a notice failed counts as saved: the new draft starts as usual, then the message box says what failed.
     /// </summary>
     public bool Save(bool keepOpen)
     {
-        if (!_editor.Save(draft => _tasks.Add(draft)))
+        string? noticeFailure = null;
+        if (!_editor.Save(draft => StoreFailures.Run(() => _tasks.Add(draft), _ => null, message => noticeFailure = message, _logger)))
         {
             return false;
         }
 
         StartNew();
+        if (noticeFailure is not null)
+        {
+            _messageBox.Show(noticeFailure);
+        }
+
         if (keepOpen)
         {
             _editor.FocusTitle();

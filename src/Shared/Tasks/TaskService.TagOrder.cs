@@ -45,7 +45,7 @@ internal sealed partial class TaskService
             if (written)
             {
                 owner.logger.Information("Moved tag {Tag}", tag);
-                owner.Announce(Notice.TagOrder | Notice.LocalSaved);
+                owner.AnnounceSaved(Notice.TagOrder | Notice.LocalSaved, null);
             }
         }
 

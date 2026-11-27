@@ -24,7 +24,8 @@ internal sealed partial class ContactService
                 saved = change(MemberWithId(group, id)?.Contact) ?? throw new ArgumentException("The change returned no contact.", nameof(change));
                 return [SaveInto(current, group, saved)];
             },
-            written => logger.Information("Saved contact {ContactId} {ContactName} in {GroupFile}", saved!.Id, saved.FullName, GroupFileOf(written[0])));
+            written => logger.Information("Saved contact {ContactId} {ContactName} in {GroupFile}", saved!.Id, saved.FullName, GroupFileOf(written[0])),
+            () => saved);
     }
 
     public void Delete(string groupName, string id)
@@ -57,7 +58,7 @@ internal sealed partial class ContactService
         ArgumentNullException.ThrowIfNull(template);
         var (wrote, listChanged) = repository.LockedChange(clone => MoveTemplateFirstIn(clone ?? throw new NoRepositoryFolderException(), template));
         if (wrote)
-            Announce(null);
+            Announce(null, null);
         else if (listChanged)
             Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -100,10 +101,12 @@ internal sealed partial class ContactService
     /// <summary>
     /// Writes the group files the plan names, one by one, under the lock, then announces what was written outside it.
     /// A write that fails partway still publishes the files already written. Then Changed is raised and the local save reported,
-    /// each even when the other fails; one failure is thrown as it is, several together in that order: the write's, Changed's, the report's.
+    /// each even when the other fails. When only they fail, <see cref="NoticeFailedException{T}"/> holds their failures, in that order,
+    /// and <paramref name="savedContact"/>'s contact (null: the change saves none). When the write failed too, an
+    /// <see cref="AggregateException"/> holds the write's failure first, then Changed's, then the report's.
     /// <paramref name="logWritten"/> logs the operation under the lock once files were written, given the files written, so it is logged even when a notice then fails.
     /// </summary>
-    private void Change(Func<ContactSnapshot, IReadOnlyList<GroupFile>> plan, Action<IReadOnlyList<GroupFile>> logWritten)
+    private void Change(Func<ContactSnapshot, IReadOnlyList<GroupFile>> plan, Action<IReadOnlyList<GroupFile>> logWritten, Func<Contact?>? savedContact = null)
     {
         var (wrote, writeFailure) = repository.LockedChange(clone =>
         {
@@ -133,18 +136,25 @@ internal sealed partial class ContactService
             return (written.Count > 0, failed);
         });
         if (wrote)
-            Announce(writeFailure);
+            Announce(writeFailure, savedContact?.Invoke());
     }
 
-    /// <summary>Raises Changed, then reports the local save, each even when the other fails; throws what failed, in order: <paramref name="writeFailure"/>'s, Changed's, the report's.</summary>
-    private void Announce(Exception? writeFailure)
+    /// <summary>
+    /// Raises Changed, then reports the local save, each even when the other fails. Throws what failed, in order: <paramref name="writeFailure"/>'s,
+    /// Changed's, the report's, as an <see cref="AggregateException"/> or the one failure. Without a write failure, it throws
+    /// <see cref="NoticeFailedException{T}"/> with <paramref name="saved"/> instead, for even one failure.
+    /// </summary>
+    private void Announce(Exception? writeFailure, Contact? saved)
     {
         var failures = new FailureList();
         if (writeFailure is not null)
             failures.Add(writeFailure);
         failures.Attempt(() => Changed?.Invoke(this, EventArgs.Empty));
         failures.Attempt(repository.ReportLocalSave);
-        failures.ThrowIfAny();
+        if (writeFailure is null)
+            failures.ThrowIfAnyAfterSave(saved);
+        else
+            failures.ThrowIfAny();
     }
 
     private static GroupFile SaveInto(ContactSnapshot current, GroupFile group, Contact contact)

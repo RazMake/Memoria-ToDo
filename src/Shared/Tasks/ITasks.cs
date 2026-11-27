@@ -2,7 +2,12 @@ using Memoria.ToDo.Shared.Platform;
 
 namespace Memoria.ToDo.Shared.Tasks;
 
-/// <summary>Every task, and the operations on them. Safe to call from any thread; runs one call at a time.</summary>
+/// <summary>
+/// Every task, and the operations on them. Safe to call from any thread; runs one call at a time.
+/// Every call that saves a change (<see cref="Add"/>, <see cref="SaveEdit"/>, <see cref="Move"/>, <see cref="Resolve"/>, <see cref="Reopen"/>, and <see cref="Delete"/>)
+/// throws <see cref="NoticeFailedException{T}"/> of <see cref="TaskItem"/> when the change was saved and then a notice handler or the local save
+/// report failed, even for one failure. Its Saved is the task the call returns, or null for <see cref="Delete"/>.
+/// </summary>
 public interface ITasks
 {
     /// <summary>Every task, open and resolved, in rank order; tasks with the same rank in ID order.</summary>

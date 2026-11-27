@@ -61,6 +61,25 @@ public class StoreFailuresMessageTests
     }
 }
 
+/// <summary>The one message for a change a store saved and then a notice failed, which every window that shows it shares.</summary>
+[Unit]
+public class StoreFailuresNoticeFailedTests
+{
+    [Fact]
+    public void Says_the_change_was_saved_and_gives_the_first_failures_message()
+    {
+        var failed = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed."), new IOException("Report failed.")]);
+
+        Assert.Equal("Saved, but the app couldn't finish updating: Changed failed.", StoreFailures.NoticeFailed(failed));
+    }
+
+    [Fact]
+    public void Rejects_a_missing_exception()
+    {
+        Assert.Equal("failure", Assert.Throws<ArgumentNullException>(() => StoreFailures.NoticeFailed(null!)).ParamName);
+    }
+}
+
 /// <summary>Running a store call so that a known failure is reported with its message and any other failure passes on.</summary>
 [Unit]
 public class StoreFailuresRunTests
@@ -144,6 +163,28 @@ public class StoreFailuresRunTests
     }
 
     [Fact]
+    public void A_change_saved_before_a_notice_failed_is_reported_with_the_shared_message_and_returns_true()
+    {
+        var failed = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+
+        var done = StoreFailures.Run(() => throw failed, StoreFailures.MessageOf, _reports.Add, Logger.None);
+
+        Assert.True(done);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
+    }
+
+    [Fact]
+    public void A_change_saved_before_a_notice_failed_is_never_worded_by_the_given_function()
+    {
+        var failed = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+        var asked = 0;
+
+        StoreFailures.Run(() => throw failed, _ => { asked++; return "other"; }, _reports.Add, Logger.None);
+
+        Assert.Equal(0, asked);
+    }
+
+    [Fact]
     public void Rejects_a_missing_argument_and_runs_no_call()
     {
         var calls = 0;
@@ -187,6 +228,18 @@ public class StoreFailuresLoggingTests
         StoreFailures.Run(() => throw failure, _ => "This task no longer exists.", _reports.Add, _logs.CreateLogger());
 
         Assert.True(Assert.Single(_logs.Events, e => e.Level == LogEventLevel.Error).HasException(failure));
+    }
+
+    [Fact]
+    public void A_change_saved_before_a_notice_failed_is_logged_once_at_Error_with_its_exception()
+    {
+        var failed = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+
+        StoreFailures.Run(() => throw failed, StoreFailures.MessageOf, _reports.Add, _logs.CreateLogger());
+
+        var entry = Assert.Single(_logs.Events);
+        Assert.Equal(LogEventLevel.Error, entry.Level);
+        Assert.True(entry.HasException(failed));
     }
 
     [Fact]

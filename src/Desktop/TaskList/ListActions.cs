@@ -5,7 +5,8 @@ namespace Memoria.ToDo.Desktop.TaskList;
 
 /// <summary>
 /// Resolving, reopening, and moving tasks from the list. A failure the list knows is logged and reported with its reason and
-/// answered with false; any other failure is not swallowed.
+/// answered with false; a change saved before a notice failed is reported with the shared message and answered with true; any
+/// other failure is not swallowed.
 /// </summary>
 internal sealed class ListActions(ITasks tasks, Action<string> report, ILogger logger)
 {

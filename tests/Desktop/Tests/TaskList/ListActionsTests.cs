@@ -111,33 +111,33 @@ public class ListActionsTests
     }
 
     [Fact]
-    public void A_resolve_that_may_be_only_partly_saved_reports_that_instead_of_throwing()
+    public void A_resolve_Tasks_saved_before_a_notice_failed_reports_that_and_counts_as_done()
     {
         var task = _tasks.Add("Buy milk");
         _tasks.NoticesFail = true;
 
         var done = _actions.Resolve(task.Id, resolved: true);
 
-        Assert.False(done);
-        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+        Assert.True(done);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
         Assert.NotNull(_tasks.Tasks.All.Single().Resolved);
     }
 
     [Fact]
-    public void A_reopen_that_may_be_only_partly_saved_reports_that_instead_of_throwing()
+    public void A_reopen_Tasks_saved_before_a_notice_failed_reports_that_and_counts_as_done()
     {
         var task = _tasks.AddResolved("Done one");
         _tasks.NoticesFail = true;
 
         var done = _actions.Resolve(task.Id, resolved: false);
 
-        Assert.False(done);
-        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+        Assert.True(done);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
         Assert.Null(_tasks.Tasks.All.Single().Resolved);
     }
 
     [Fact]
-    public void A_move_that_may_be_only_partly_saved_reports_that_instead_of_throwing()
+    public void A_move_Tasks_saved_before_a_notice_failed_reports_that_and_counts_as_done()
     {
         _tasks.Add("B");
         var a = _tasks.Add("A");
@@ -145,8 +145,8 @@ public class ListActionsTests
 
         var done = _actions.Move(new Move(a.Id, Id("B"), null));
 
-        Assert.False(done);
-        Assert.Equal(["The change may be only partly saved: Changed failed."], _reports);
+        Assert.True(done);
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
         Assert.Equal(["B", "A"], _tasks.OpenTitlesInRankOrder());
     }
 

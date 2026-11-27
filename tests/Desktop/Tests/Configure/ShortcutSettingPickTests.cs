@@ -1,6 +1,8 @@
 using System.IO;
 using System.Windows.Input;
 using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Shared.Platform;
+using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -200,6 +202,18 @@ public class ShortcutSettingPickTests
     }
 
     // A pick that registers but can't be saved.
+
+    [Fact]
+    public void A_pick_that_was_kept_before_a_notice_failed_stays_active_and_shows_the_shared_message()
+    {
+        add.SaveFailure = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+
+        PickOnAdd(Ctrl | Shift, Key.K);
+
+        Assert.Equal(CtrlShiftK, add.Setting.Active);
+        Assert.Equal([ShortcutCall.Register(CtrlShiftK)], add.Action.Calls);
+        Assert.Equal("Saved, but the app couldn't finish updating: Changed failed.", add.Setting.Message);
+    }
 
     [Fact]
     public void A_pick_that_cannot_be_saved_goes_back_to_the_previous_shortcut_and_says_what_failed()

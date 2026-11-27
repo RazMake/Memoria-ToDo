@@ -17,12 +17,16 @@ namespace Memoria.ToDo.Desktop.TaskList;
 internal sealed class DescriptionEdit : IDescriptionEdit
 {
     private readonly ITasks _tasks;
+    private readonly Action<string> _report;
+    private readonly ILogger _logger;
     private readonly DescriptionEditor _editor;
 
     public DescriptionEdit(ITasks tasks, IContacts contacts, IReadOnlyList<PaletteColor> palette, ITheme theme, TimeProvider time, IClipboard clipboard,
-        IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys, TaskItem task, Action saveRequested, Action cancelRequested, IPointerPosition pointer, ILogger logger)
+        IImageFileChooser imageFiles, IFileSystem files, SaveKeys saveKeys,         TaskItem task, Action saveRequested, Action cancelRequested, Action<string> report, IPointerPosition pointer, ILogger logger)
     {
         _tasks = tasks;
+                _report = report;
+                _logger = logger;
         Started = task;
         Tags = task.Tags;
         _editor = new DescriptionEditor(tasks, contacts, palette, theme, time, clipboard, imageFiles, files, saveKeys, pointer, logger) { TaskId = task.Id, Value = task.Description };
@@ -40,7 +44,7 @@ internal sealed class DescriptionEdit : IDescriptionEdit
 
     public bool HasChanges => _editor.HasChanges || EditSaves.TagsChanged(Started, Tags);
 
-    public bool Save() => _editor.Save(EditSaves.Description(_tasks, Started, Tags));
+    public bool Save() => _editor.Save(EditSaves.Description(_tasks, Started, Tags, _report, _logger));
 
     public void FocusEnd() => _editor.FocusEnd();
 

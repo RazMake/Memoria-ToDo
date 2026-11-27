@@ -65,11 +65,12 @@ public sealed class TagEditor : UserControl
         box.Children.Add(_input);
         _custom.Children.Add(box);
         _custom.Children.Add(_colors);
-        _custom.Children.Add(_message);
         var panel = new StackPanel();
         panel.Children.Add(_pills);
         panel.Children.Add(_menu);
         panel.Children.Add(_custom);
+        // Outside Custom, so a message left by a color kept before a notice failed shows after Custom closes.
+        panel.Children.Add(_message);
         Content = panel;
 
         model.TagsChanged += tags => TagsChanged?.Invoke(this, tags);

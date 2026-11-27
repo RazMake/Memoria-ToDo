@@ -50,7 +50,7 @@ internal sealed partial class TaskService
             if (written)
             {
                 owner.logger.Information("Changed the color of tag {Tag} from {OldColor} to {NewColor}", tag, oldColor, colorName);
-                owner.Announce(Notice.TagColors | Notice.LocalSaved);
+                owner.AnnounceSaved(Notice.TagColors | Notice.LocalSaved, null);
             }
         }
     }

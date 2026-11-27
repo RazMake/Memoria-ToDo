@@ -8,7 +8,9 @@ namespace Memoria.ToDo.Desktop.LocalAPI;
 
 /// <summary>
 /// The error table of docs/architecture/local-api-contract.md: the gRPC status of each failure, by its type. A new case is a new row,
-/// above any row for a type it derives from.
+/// above any row for a type it derives from. A change saved before a notice failed isn't a failure here: the call ends OK
+/// (see <see cref="NoticeFailures"/>), and a store's own failure with notice failures arrives as an aggregate, which is
+/// <c>INTERNAL</c> like any failure inside the app no row names.
 /// </summary>
 internal static class StatusMap
 {

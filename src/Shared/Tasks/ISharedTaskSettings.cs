@@ -4,6 +4,8 @@ namespace Memoria.ToDo.Shared.Tasks;
 /// Settings shared by every device. Safe to call from any thread; uses the task store's lock.
 /// A missing file supplies defaults. An unreadable or unsupported file makes reads and writes
 /// throw InvalidDataException rather than replace it or use defaults for automatic deletion.
+/// Each setter throws NoticeFailedException of TaskItem, with a null Saved, when the setting was saved and then a notice
+/// handler or the local save report failed, even for one failure.
 /// </summary>
 public interface ISharedTaskSettings
 {

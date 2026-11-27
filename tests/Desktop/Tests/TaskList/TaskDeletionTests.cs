@@ -145,7 +145,7 @@ public class TaskDeletionTests
     }
 
     [Fact]
-    public void A_delete_that_may_be_only_partly_saved_reports_that_refreshes_the_list_instead_of_throwing()
+    public void A_delete_Tasks_saved_before_a_notice_failed_leaves_the_task_gone_refreshes_the_list_and_names_no_images()
     {
         var task = _tasks.Add("Buy milk");
         _deletion.Start(task.Id);
@@ -157,7 +157,25 @@ public class TaskDeletionTests
         Assert.Empty(_tasks.Tasks.All);
         Assert.Null(_content.HiddenId);
         Assert.True(_changed > afterStart);
-        Assert.Contains("The change may be only partly saved: Changed failed.", Assert.Single(_reports));
+        Assert.Equal(["Saved, but the app couldn't finish updating: Changed failed."], _reports);
+    }
+
+    [Fact]
+    public void A_delete_whose_images_could_not_be_removed_and_a_notice_failed_says_the_change_may_be_only_partly_saved()
+    {
+        var task = _tasks.Add("Buy milk");
+        var images = Path.Combine(_tasks.Clone, "images");
+        _tasks.Files.WriteFile(Path.Combine(images, task.Id, "photo.png"), [1, 2, 3]);
+        _deletion.Start(task.Id);
+        _tasks.Files.FailDeletesUnder(images);
+        _tasks.NoticesFail = true;
+
+        _tasks.Time.Advance(BarEnds);
+
+        Assert.Empty(_tasks.Tasks.All);
+        Assert.Null(_content.HiddenId);
+        var report = Assert.Single(_reports);
+        Assert.StartsWith("The change may be only partly saved: ", report);
     }
 
     [Fact]

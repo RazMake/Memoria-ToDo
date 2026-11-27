@@ -1,6 +1,8 @@
 using System.IO;
 using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
+using Memoria.ToDo.Shared.Tasks;
 using Memoria.ToDo.Testing;
 using Serilog.Events;
 using Xunit;
@@ -65,6 +67,20 @@ public class ConfigureErrorLoggingTests : IDisposable
         new RepositoryChange(_ui, () => { }).SetKey(address);
 
         AssertErrorWith(failure);
+    }
+
+    [Fact]
+    public void A_deletion_delay_kept_before_a_notice_failed_is_logged_once_as_an_error_with_the_exception()
+    {
+        var failure = new NoticeFailedException<TaskItem>(null, [new IOException("Changed failed.")]);
+        var settings = new FakeSharedTaskSettings { SetFailure = failure };
+        var setting = new DeletionDelaySetting(settings, _log.CreateLogger());
+        setting.Refresh();
+
+        setting.Commit("30");
+
+        AssertErrorWith(failure);
+        Assert.Single(_log.Events, entry => entry.Level == LogEventLevel.Error);
     }
 
     [Fact]

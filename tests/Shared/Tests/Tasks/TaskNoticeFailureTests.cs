@@ -1,4 +1,5 @@
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Testing;
 using Xunit;
 
@@ -6,8 +7,9 @@ namespace Memoria.ToDo.Shared.Tasks.Tests;
 
 /// <summary>
 /// After a change is saved, Tasks raises the notices the change calls for (Changed, then the settings', tag colors', and tag order's)
-/// and reports the local save, each even when an earlier one failed, then throws by the platform's rule for steps that must all run.
-/// A reload raises all four notices, reports no save, and throws by the same rule.
+/// and reports the local save, each even when an earlier one failed, then throws NoticeFailedException of the task, holding every failure
+/// in order, even one. A failure before or during the write is thrown as before, and so is a deletion's own failure when no notice fails.
+/// A reload raises all four notices, reports no save, and throws by the platform's rule for steps that must all run.
 /// </summary>
 [Unit]
 public sealed class TaskNoticeFailureTests
@@ -32,52 +34,64 @@ public sealed class TaskNoticeFailureTests
         f.Repository.LocalSaved += (_, _) => log.Add("LocalSaved");
     }
 
-    public static IEnumerable<TheoryDataRow<Action<ITaskStore>>> Changes() =>
+    /// <summary>The notice a call raises, named as the test's log records it.</summary>
+    public enum Notice { Changed, Settings, TagColors, TagOrder }
+
+    /// <summary>A call that saves a change, the notice it raises, and whether it saves a task (so its failure's Saved is that task).</summary>
+    public sealed record Call(string Name, Notice Raises, bool SavesTask, Action<ITaskStore> Run);
+
+    public static IEnumerable<TheoryDataRow<Call>> Calls() =>
     [
-        Change("SaveEdit", s => s.SaveEdit(s.All.Single(t => t.Id == Open), new TaskDraft(Open, "Edited", "", ["work"]))),
-        Change("Move", s => s.Move(Expired, null, Open)),
-        Change("Resolve", s => s.Resolve(Open)),
-        Change("Reopen", s => s.Reopen(Done)),
-        Change("Delete", s => s.Delete(Open)),
-        Change("DeleteExpiredTasks", s => s.Synchronization.DeleteExpiredTasks()),
+        Row("Add", Notice.Changed, true, s => s.Add(new TaskDraft(TasksFixture.Id(900), "Added", "", []))),
+        Row("SaveEdit", Notice.Changed, true, s => s.SaveEdit(s.All.Single(t => t.Id == Open), new TaskDraft(Open, "Edited", "", ["work"]))),
+        Row("Move", Notice.Changed, true, s => s.Move(Expired, null, Open)),
+        Row("Resolve", Notice.Changed, true, s => s.Resolve(Open)),
+        Row("Reopen", Notice.Changed, true, s => s.Reopen(Done)),
+        Row("Delete", Notice.Changed, false, s => s.Delete(Open)),
+        Row("DeleteExpiredTasks", Notice.Changed, false, s => s.Synchronization.DeleteExpiredTasks()),
+        Row("Direct.Add", Notice.Changed, true, s => s.Direct.Add("Added", "", [])),
+        Row("Direct.Update", Notice.Changed, true, s => s.Direct.Update(Open, DirectChangeChecks.SeededTime, "Edited", null, null)),
+        Row("Direct.AddImage", Notice.Changed, true, s => s.Direct.AddImage(Open, TasksFixture.TinyPng(), "pic")),
+        Row("SetDeletionDelayDays", Notice.Settings, false, s => s.Settings.SetDeletionDelayDays(3)),
+        Row("SetAddNewTaskShortcut", Notice.Settings, false, s => s.Settings.SetAddNewTaskShortcut("Ctrl+K")),
+        Row("SetManageTasksShortcut", Notice.Settings, false, s => s.Settings.SetManageTasksShortcut("Ctrl+K")),
+        Row("SetCloseWindowShortcut", Notice.Settings, false, s => ShortcutSetting.CloseWindow.Set(s.Settings, "Ctrl+K")),
+        Row("SetSaveShortcut", Notice.Settings, false, s => ShortcutSetting.Save.Set(s.Settings, "Ctrl+K")),
+        Row("SetConfigureShortcut", Notice.Settings, false, s => ShortcutSetting.Configure.Set(s.Settings, "Ctrl+K")),
+        Row("SetContactsShortcut", Notice.Settings, false, s => ShortcutSetting.Contacts.Set(s.Settings, "Ctrl+K")),
+        Row("TagColors.SetColor", Notice.TagColors, false, s => s.TagColors.SetColor("work", "red")),
+        Row("TagOrder.Move", Notice.TagOrder, false, s => s.TagOrder.Move("work", null, "home")),
     ];
 
-    private static TheoryDataRow<Action<ITaskStore>> Change(string name, Action<ITaskStore> change) =>
-        new(change) { TestDisplayName = name };
+    private static TheoryDataRow<Call> Row(string name, Notice raises, bool savesTask, Action<ITaskStore> run) =>
+        new(new Call(name, raises, savesTask, run)) { TestDisplayName = name };
 
     private static InvalidOperationException Failure(string name) => new(name);
 
-    private InvalidOperationException FailChanged()
+    private Exception Fail(Notice notice, Exception? failure = null)
     {
-        var failure = Failure("Changed");
-        f.Tasks.Changed += (_, _) => throw failure;
+        failure ??= Failure(notice.ToString());
+        switch (notice)
+        {
+            case Notice.Changed: f.Tasks.Changed += (_, _) => throw failure; break;
+            case Notice.Settings: f.Store.Settings.Changed += (_, _) => throw failure; break;
+            case Notice.TagColors: f.Store.TagColors.Changed += (_, _) => throw failure; break;
+            default: f.Store.TagOrder.Changed += (_, _) => throw failure; break;
+        }
         return failure;
     }
 
-    private InvalidOperationException FailSettings()
-    {
-        var failure = Failure("Settings");
-        f.Store.Settings.Changed += (_, _) => throw failure;
-        return failure;
-    }
+    private Exception FailChanged() => Fail(Notice.Changed);
 
-    private InvalidOperationException FailColors()
-    {
-        var failure = Failure("TagColors");
-        f.Store.TagColors.Changed += (_, _) => throw failure;
-        return failure;
-    }
+    private Exception FailSettings() => Fail(Notice.Settings);
 
-    private InvalidOperationException FailOrder()
-    {
-        var failure = Failure("TagOrder");
-        f.Store.TagOrder.Changed += (_, _) => throw failure;
-        return failure;
-    }
+    private Exception FailColors() => Fail(Notice.TagColors);
 
-    private InvalidOperationException FailReport()
+    private Exception FailOrder() => Fail(Notice.TagOrder);
+
+    private Exception FailReport(Exception? failure = null)
     {
-        var failure = Failure("report");
+        failure ??= Failure("report");
         f.Repository.LocalSaved += (_, _) => throw failure;
         return failure;
     }
@@ -95,50 +109,69 @@ public sealed class TaskNoticeFailureTests
         Assert.Equal(["Changed", "LocalSaved"], log);
     }
 
-    [Fact]
-    public void Still_reports_the_local_save_and_throws_the_handler_s_exception_as_it_is_when_a_Changed_handler_fails_after_Add()
+    [Theory]
+    [MemberData(nameof(Calls))]
+    public void Throws_NoticeFailedException_of_the_task_holding_the_one_failure_when_a_notice_handler_fails(Call call)
     {
-        var failure = FailChanged();
-        var draft = f.Draft("Added");
+        var failure = Fail(call.Raises, new IOException("handler"));
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => f.Tasks.Add(draft));
+        var thrown = Assert.Throws<NoticeFailedException<TaskItem>>(() => call.Run(f.Store));
 
-        Assert.Same(failure, thrown);
-        Assert.Equal(["Changed", "LocalSaved"], log);
+        Assert.Equal([failure], thrown.InnerExceptions);
+        Assert.Same(failure, thrown.InnerException);
     }
 
     [Theory]
-    [MemberData(nameof(Changes))]
-    public void Still_reports_the_local_save_and_throws_the_handler_s_exception_as_it_is_when_a_Changed_handler_fails(Action<ITaskStore> change)
+    [MemberData(nameof(Calls))]
+    public void Throws_NoticeFailedException_of_the_task_holding_the_one_failure_when_the_local_save_report_fails(Call call)
     {
-        var failure = FailChanged();
+        var failure = FailReport(new InvalidOperationException("report"));
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => change(f.Store));
+        var thrown = Assert.Throws<NoticeFailedException<TaskItem>>(() => call.Run(f.Store));
 
-        Assert.Same(failure, thrown);
-        Assert.Equal(["Changed", "LocalSaved"], log);
+        Assert.Equal([failure], thrown.InnerExceptions);
     }
 
-    [Fact]
-    public void Still_raises_Changed_and_throws_the_report_s_exception_as_it_is_when_the_local_save_report_fails()
+    [Theory]
+    [MemberData(nameof(Calls))]
+    public void Throws_NoticeFailedException_of_the_task_holding_the_notice_s_failure_then_the_report_s_when_both_fail(Call call)
     {
-        var failure = FailReport();
-
-        var thrown = Assert.Throws<InvalidOperationException>(() => f.Tasks.Resolve(Open));
-
-        Assert.Same(failure, thrown);
-        Assert.Equal(["Changed", "LocalSaved"], log);
-    }
-
-    [Fact]
-    public void Throws_an_AggregateException_with_Changed_s_failure_then_the_report_s_when_both_fail()
-    {
-        var changed = FailChanged();
+        var notice = Fail(call.Raises, new IOException("handler"));
         var report = FailReport();
 
-        var thrown = Assert.Throws<AggregateException>(() => f.Tasks.Add(f.Draft()));
+        var thrown = Assert.Throws<NoticeFailedException<TaskItem>>(() => call.Run(f.Store));
 
-        Assert.Equal(new Exception[] { changed, report }, thrown.InnerExceptions);
+        Assert.Equal([notice, report], thrown.InnerExceptions);
+    }
+
+    [Theory]
+    [MemberData(nameof(Calls))]
+    public void Still_raises_the_notice_and_reports_the_local_save_when_the_notice_fails(Call call)
+    {
+        Fail(call.Raises);
+
+        Assert.Throws<NoticeFailedException<TaskItem>>(() => call.Run(f.Store));
+
+        Assert.Equal([call.Raises.ToString(), "LocalSaved"], log);
+    }
+
+    [Theory]
+    [MemberData(nameof(Calls))]
+    public void Carries_the_task_as_saved_for_a_call_that_saves_one_and_null_for_the_others(Call call)
+    {
+        FailReport();
+
+        var thrown = Assert.Throws<NoticeFailedException<TaskItem>>(() => call.Run(f.Store));
+
+        if (call.SavesTask)
+        {
+            var saved = Assert.IsType<TaskItem>(thrown.Saved);
+            TaskAssert.SameTask(saved, Assert.Single(f.Tasks.All, task => task.Id == saved.Id));
+        }
+        else
+        {
+            Assert.Null(thrown.Saved);
+        }
     }
 
     [Fact]
@@ -147,7 +180,7 @@ public sealed class TaskNoticeFailureTests
         var draft = f.Draft("Added");
         FailChanged();
 
-        Assert.Throws<InvalidOperationException>(() => f.Tasks.Add(draft));
+        Assert.Throws<NoticeFailedException<TaskItem>>(() => f.Tasks.Add(draft));
 
         Assert.Contains("Added", f.Titles);
         Assert.True(f.Files.FileExists(f.TaskFile(draft.TaskId)));
@@ -159,67 +192,61 @@ public sealed class TaskNoticeFailureTests
         FailChanged();
         f.Tasks.Changed += (_, _) => log.Add("Changed again");
 
-        Assert.Throws<InvalidOperationException>(() => f.Tasks.Resolve(Open));
+        Assert.Throws<NoticeFailedException<TaskItem>>(() => f.Tasks.Resolve(Open));
 
         Assert.Equal(["Changed", "LocalSaved"], log);
     }
 
     [Fact]
-    public void Throws_only_the_first_failure_of_an_event_s_handlers()
+    public void Holds_only_the_first_failure_of_an_event_s_handlers()
     {
         var first = FailChanged();
         f.Tasks.Changed += (_, _) => throw Failure("second handler");
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => f.Tasks.Resolve(Open));
+        var thrown = Assert.Throws<NoticeFailedException<TaskItem>>(() => f.Tasks.Resolve(Open));
 
-        Assert.Same(first, thrown);
+        Assert.Equal([first], thrown.InnerExceptions);
     }
 
     [Fact]
-    public void Still_reports_the_local_save_and_keeps_the_setting_when_a_settings_handler_fails()
+    public void Keeps_the_setting_when_a_settings_handler_fails()
     {
-        var failure = FailSettings();
+        FailSettings();
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => f.Store.Settings.SetDeletionDelayDays(3));
+        Assert.Throws<NoticeFailedException<TaskItem>>(() => f.Store.Settings.SetDeletionDelayDays(3));
 
-        Assert.Same(failure, thrown);
-        Assert.Equal(["Settings", "LocalSaved"], log);
         Assert.Equal(3, f.Store.Settings.DeletionDelayDays);
     }
 
     [Fact]
-    public void Throws_an_AggregateException_with_the_settings_failure_then_the_report_s_when_both_fail()
+    public void Keeps_the_shortcut_when_the_settings_handler_and_the_report_both_fail()
     {
         var settings = FailSettings();
         var report = FailReport();
 
-        var thrown = Assert.Throws<AggregateException>(() => f.Store.Settings.SetSaveShortcut("Ctrl+K"));
+        var thrown = Assert.Throws<NoticeFailedException<TaskItem>>(() => f.Store.Settings.SetSaveShortcut("Ctrl+K"));
 
-        Assert.Equal(new Exception[] { settings, report }, thrown.InnerExceptions);
+        Assert.Equal([settings, report], thrown.InnerExceptions);
         Assert.Equal("Ctrl+K", f.Store.Settings.SaveShortcut);
     }
 
     [Fact]
-    public void Still_reports_the_local_save_and_keeps_the_color_when_a_tag_colors_handler_fails()
+    public void Keeps_the_color_when_a_tag_colors_handler_fails()
     {
-        var failure = FailColors();
+        FailColors();
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => f.Store.TagColors.SetColor("work", "red"));
+        Assert.Throws<NoticeFailedException<TaskItem>>(() => f.Store.TagColors.SetColor("work", "red"));
 
-        Assert.Same(failure, thrown);
-        Assert.Equal(["TagColors", "LocalSaved"], log);
         Assert.Equal("red", f.Store.TagColors.ColorOf("work"));
     }
 
     [Fact]
-    public void Still_reports_the_local_save_and_keeps_the_new_order_when_a_tag_order_handler_fails()
+    public void Keeps_the_new_order_when_a_tag_order_handler_fails()
     {
-        var failure = FailOrder();
+        FailOrder();
 
-        var thrown = Assert.Throws<InvalidOperationException>(() => f.Store.TagOrder.Move("work", null, "home"));
+        Assert.Throws<NoticeFailedException<TaskItem>>(() => f.Store.TagOrder.Move("work", null, "home"));
 
-        Assert.Same(failure, thrown);
-        Assert.Equal(["TagOrder", "LocalSaved"], log);
         Assert.Equal(["work", "home"], f.Store.TagOrder.Sort(["home", "work"]));
     }
 
@@ -239,6 +266,18 @@ public sealed class TaskNoticeFailureTests
         f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
 
         Assert.ThrowsAny<Exception>(() => f.Tasks.Resolve(Open));
+
+        Assert.Empty(log);
+    }
+
+    [Fact]
+    public void Throws_the_write_s_failure_as_it_is_when_the_file_cannot_be_written_even_though_notice_handlers_would_fail()
+    {
+        FailChanged();
+        FailReport();
+        f.Files.FailWritesUnder(Path.Combine(f.Clone, "tasks"));
+
+        Assert.Throws<IOException>(() => f.Tasks.Resolve(Open));
 
         Assert.Empty(log);
     }

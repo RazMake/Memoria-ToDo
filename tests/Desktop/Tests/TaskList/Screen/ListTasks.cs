@@ -1,6 +1,7 @@
 using System.IO;
 using Memoria.ToDo.Shared.Contacts;
 using Memoria.ToDo.Shared.Fakes;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Xunit;
 
@@ -40,7 +41,7 @@ internal class ListTasks
     private readonly TestTaskStore.NoticeFailures _notices;
 
     /// <summary>
-    /// While true, every change Tasks saves ends with two failed notices, so Tasks throws an <see cref="AggregateException"/> after the
+    /// While true, every change Tasks saves ends with two failed notices, so Tasks throws a <see cref="NoticeFailedException{T}"/> of <see cref="TaskItem"/> after the
     /// change is saved. Its first failure's message is "Changed failed."
     /// </summary>
     public bool NoticesFail

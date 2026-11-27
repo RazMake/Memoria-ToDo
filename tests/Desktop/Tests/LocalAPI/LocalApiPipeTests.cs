@@ -216,8 +216,13 @@ public class LocalApiPipeTests
         await api.Lifetime.StopAsync().WaitAsync(Bound);
 
         var failure = await CallOutcome.FailsAsync(api.Tasks.ListTasksAsync(new V1.ListTasksRequest(), deadline: Deadline));
-        Assert.Equal(StatusCode.Unavailable, failure.StatusCode);
-        await using var reused = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance);
+        var failures = new FailureList();
+        failures.Attempt(() => CallOutcome.AssertStatus(failure, StatusCode.Unavailable, api.Log));
+        failures.Attempt(() =>
+        {
+            using var reused = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance);
+        });
+        failures.ThrowIfAny();
     }
 
     [Fact]

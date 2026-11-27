@@ -1,3 +1,4 @@
+using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Tasks;
 using Serilog;
 
@@ -105,8 +106,10 @@ internal sealed class TagsModel
     /// <summary>Why the typed tag wasn't added, or empty.</summary>
     public string ColorMessage { get; private set; } = "";
 
+    /// <summary>Opens Custom, clearing a message left by a color kept before a notice failed.</summary>
     public void OpenCustom()
     {
+        ColorMessage = "";
         IsCustomOpen = true;
         Changed?.Invoke();
     }
@@ -236,7 +239,8 @@ internal sealed class TagsModel
     /// <summary>
     /// A click on a color: keeps the color for the typed tag, then chooses it and closes Custom. Returns true when nothing
     /// was typed or the tag was chosen; false when the task is full or the color couldn't be kept, which leaves Custom open
-    /// with the text and the reason in <see cref="ColorMessage"/>.
+    /// with the text and the reason in <see cref="ColorMessage"/>. A color kept before a notice failed counts as kept: the tag is
+    /// chosen and Custom closes, and <see cref="ColorMessage"/> holds the shared message for it.
     /// </summary>
     public bool AddTypedTextInColor(string color)
     {
@@ -246,12 +250,18 @@ internal sealed class TagsModel
         }
 
         var tag = TypedTag();
-        if (IsRefusedAsFull(tag) || !TryKeepColor(tag, color))
+        if (IsRefusedAsFull(tag) || !TryKeepColor(tag, color, out var noticeFailed))
         {
             return false;
         }
 
         ChooseTyped(tag);
+        if (noticeFailed is not null)
+        {
+            ColorMessage = noticeFailed;
+            Changed?.Invoke();
+        }
+
         return true;
     }
 
@@ -319,20 +329,19 @@ internal sealed class TagsModel
         ColorMessage = "";
     }
 
-    private bool TryKeepColor(string tag, string color)
+    // Keeps the color. False, with the reason in ColorMessage, when it couldn't be kept; otherwise true, with the shared message in
+    // noticeFailed when a notice failed after the color was kept.
+    private bool TryKeepColor(string tag, string color, out string? noticeFailed)
     {
-        try
+        string? message = null;
+        var kept = StoreFailures.Run(() => _tagColors.SetColor(tag, color), TagColorFailures.MessageOf, text => message = text, _logger);
+        if (!kept)
         {
-            _tagColors.SetColor(tag, color);
-        }
-        catch (Exception failure) when (TagColorFailures.MessageOf(failure) is not null)
-        {
-            _logger.Error(failure, "A tag's color couldn't be kept");
-            ColorMessage = TagColorFailures.MessageOf(failure)!;
+            ColorMessage = message!;
             Changed?.Invoke();
-            return false;
         }
 
-        return true;
+        noticeFailed = kept ? message : null;
+        return kept;
     }
 }

@@ -6,6 +6,7 @@ using Memoria.ToDo.Desktop.Fakes;
 using Memoria.ToDo.Desktop.Platform;
 using Memoria.ToDo.Shared.Fakes;
 using Memoria.ToDo.Shared.Contacts;
+using Memoria.ToDo.Shared.Platform;
 using Memoria.ToDo.Shared.Rendering;
 using Memoria.ToDo.Shared.Tasks;
 
@@ -48,7 +49,7 @@ internal sealed class EditorServices
     private readonly TestTaskStore.NoticeFailures _notices;
 
     /// <summary>
-    /// While true, every change Tasks saves ends with two failed notices, so Tasks throws an <see cref="AggregateException"/> after the
+    /// While true, every change Tasks saves ends with two failed notices, so Tasks throws a <see cref="NoticeFailedException{T}"/> of <see cref="TaskItem"/> after the
     /// change is saved. Its first failure's message is "Changed failed."
     /// </summary>
     public bool NoticesFail
@@ -128,10 +129,13 @@ internal sealed class EditorServices
 
     public FakeDragPointer Pointer { get; } = new();
 
+    /// <summary>The message box the window made by <see cref="CreateAddWindow"/> shows its "saved, but" message in; it records the texts shown.</summary>
+    public FakeMessageBox MessageBox { get; } = new();
+
     /// <summary>The entries the window made by <see cref="CreateAddWindow"/> logged, through the logger it was given.</summary>
     public InMemoryLogSink Log { get; } = new();
 
-    public IAddWindow CreateAddWindow() => Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys, Pointer, Log.CreateLogger());
+    public IAddWindow CreateAddWindow() => Memoria.ToDo.Desktop.TaskEditor.AddWindow.Create(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, CloseWindowKeys, Updates, SaveKeys, MessageBox, Pointer, Log.CreateLogger());
 
     public TaskEditorControl CreateEditor() => new(Tasks, TagColors, Contacts, Palette.Colors, Theme, Time, Clipboard, ImageFiles, Files, SaveKeys, Pointer, Serilog.Core.Logger.None);
 

@@ -117,6 +117,12 @@ Memoria.ToDo.Desktop.Platform.MessageLine
 Memoria.ToDo.Desktop.Platform.MessageLine.MessageLine() -> void
 Memoria.ToDo.Desktop.Platform.MessageLine.Show(string? text) -> void
 Memoria.ToDo.Desktop.Platform.StoreFailures
+static Memoria.ToDo.Desktop.Platform.StoreFailures.NoticeFailed(Memoria.ToDo.Shared.Platform.NoticeFailedException! failure) -> string!
+Memoria.ToDo.Desktop.Platform.IMessageBox
+Memoria.ToDo.Desktop.Platform.IMessageBox.Show(string! text) -> void
+Memoria.ToDo.Desktop.Platform.WindowsMessageBox
+Memoria.ToDo.Desktop.Platform.WindowsMessageBox.Show(string! text) -> void
+Memoria.ToDo.Desktop.Platform.WindowsMessageBox.WindowsMessageBox() -> void
 static Memoria.ToDo.Desktop.Platform.StoreFailures.MessageOf(System.Exception! failure) -> string?
 static Memoria.ToDo.Desktop.Platform.StoreFailures.Run(System.Action! call, System.Func<System.Exception!, string?>! messageOf, System.Action<string!>! report, Serilog.ILogger! logger) -> bool
 Memoria.ToDo.Desktop.Platform.LeaveAnswer

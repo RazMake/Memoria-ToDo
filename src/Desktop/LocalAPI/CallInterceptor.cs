@@ -34,7 +34,14 @@ internal sealed class CallInterceptor : Interceptor
             if (!gate.AcceptsCalls)
                 throw AppStopping();
 
+            var notices = NoticeFailures.Begin();
             var response = await continuation(request, context);
+            foreach (var notice in notices)
+            {
+                // The change was saved, so the call still ends OK; the failure is logged here, where the call ends.
+                logger.Error(notice, "Call {Method} {Ids} saved the change, but a notice failed", MethodOf(context), RequestIds.Of(request));
+            }
+
             Log(CallTemplate, context, request, StatusCode.OK, null, started);
             return response;
         }

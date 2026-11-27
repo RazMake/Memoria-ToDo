@@ -13,10 +13,7 @@ internal sealed class SettingsTools(ToolRunner run, UiContext ui, ISharedTaskSet
 
     [McpServerTool(Destructive = true), Description("Sets how many days a resolved task stays before it is deleted. A shorter delay deletes tasks sooner, and that can't be undone.")]
     public Task<string> SetDeletionDelay([Description("From 1 to 365.")] int days) => run.Run(() =>
-    {
-        settings.SetDeletionDelayDays(days);
-        return new { days };
-    });
+        ToolRunner.Saved(() => settings.SetDeletionDelayDays(days), () => new { days }));
 
     [McpServerTool(ReadOnly = true), Description("Gets whether the app starts when the user signs in to Windows.")]
     public Task<string> GetStartWithWindows(CancellationToken cancellationToken) =>
