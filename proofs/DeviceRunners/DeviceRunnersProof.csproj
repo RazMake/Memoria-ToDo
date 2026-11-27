@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <AssemblyName>Memoria.ToDo.Android.Tests</AssemblyName>
+    <RootNamespace>Memoria.DeviceRunnersProof</RootNamespace>
+    <ApplicationTitle>Memoria DeviceRunners proof</ApplicationTitle>
+    <ApplicationId>org.memoria.proofs.devicerunners</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <GenerateTestingPlatformEntryPoint>false</GenerateTestingPlatformEntryPoint>
+    <RuntimeIdentifier>android-x64</RuntimeIdentifier>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DeviceRunners.Testing.Targets" />
+    <PackageReference Include="DeviceRunners.VisualRunners.Maui" />
+    <PackageReference Include="DeviceRunners.VisualRunners.Xunit3" />
+    <PackageReference Include="DeviceRunners.UITesting.Maui" />
+    <PackageReference Include="Microsoft.Maui.Controls" />
+    <PackageReference Include="xunit.v3.extensibility.core" />
+    <PackageReference Include="xunit.v3.assert" />
+    <PackageReference Include="xunit.v3.runner.utility" />
+    <ProjectReference Include="$(MemoriaSourceRoot)\src\Android\Configure\Memoria.ToDo.Android.Configure.csproj" />
+    <TrimmerRootAssembly Include="$(AssemblyName)" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,16 @@
+<Project>
+  <Import Project="$(MemoriaSourceRoot)\Directory.Packages.props" />
+  <PropertyGroup>
+    <DeviceRunnersProofVersion>0.1.0-preview.12</DeviceRunnersProofVersion>
+    <MauiProofVersion>11.0.10</MauiProofVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="DeviceRunners.Testing.Targets" Version="$(DeviceRunnersProofVersion)" />
+    <PackageVersion Include="DeviceRunners.VisualRunners.Maui" Version="$(DeviceRunnersProofVersion)" />
+    <PackageVersion Include="DeviceRunners.VisualRunners.Xunit3" Version="$(DeviceRunnersProofVersion)" />
+    <PackageVersion Include="DeviceRunners.UITesting.Maui" Version="$(DeviceRunnersProofVersion)" />
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiProofVersion)" />
+    <PackageVersion Include="xunit.v3.runner.utility"
+                    Version="@(PackageVersion->WithMetadataValue('Identity', 'xunit.v3.extensibility.core')->'%(Version)')" />
+  </ItemGroup>
+</Project>

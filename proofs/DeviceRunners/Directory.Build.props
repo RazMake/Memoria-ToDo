@@ -1,0 +1,7 @@
+<Project>
+  <Import Project="$(MemoriaSourceRoot)\Directory.Build.props" />
+  <PropertyGroup>
+    <TargetFramework>$(MemoriaPcTargetFramework)-android</TargetFramework>
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+  </PropertyGroup>
+</Project>
