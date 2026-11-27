@@ -6,6 +6,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+## 1.5.0
+
 - Clicking a formatted task description no longer leaves the keyboard focus inside its browser. Keyboard shortcuts keep reaching the app, and Tab moves to the next control.
 
 - When saving an edit to a task fails, the images you added in that edit are now put back, so they're no longer left in your synced folder: trying to save again adds them, and discarding the edit removes them. If putting them back fails too, the editor says the change may be only partly saved.
@@ -13,6 +15,7 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 - When a change may be only partly saved, Add, the window for adding a task, and Task View, the window that lists your tasks, now say so in the same words, followed by what went wrong. In Task View this now also covers moving, resolving, reopening, or deleting a task, moving a group, and changing a task's tags, which used to show an error box, and the list then shows what was really saved.
 
 - When a change is saved but the app then can't finish updating after it, the app now treats the change as saved and says "Saved, but the app couldn't finish updating:", followed by what went wrong. Before, it said the change wasn't saved, and Add kept the task you'd typed, so trying again failed because the task already existed. Now Add closes as usual and shows the message in a box, while Task View, the Contacts window, and Configure show it where they show other messages. AI assistants and your own programs now get the saved task or contact back instead of an error, so they don't add it twice. When this happens while sync deletes old resolved tasks, sync carries on, so the deletion still reaches your other devices.
+
 ## 1.4.0
 
 - Prevent screen saver, a new setting in Configure, keeps the screen on and the PC awake while the app runs: no screen saver, no screen turning off, and no lock for lack of input. It's off at first, and each PC keeps its own choice. When you lock the PC, it pauses until you unlock it, without changing the setting. In Task View, the window that lists your tasks, a sun just left of the version shows whether it's on: lit in amber while it's on, faded and partly transparent while it's off or paused, and in red when it isn't working. Rest the pointer on the sun to read which.
