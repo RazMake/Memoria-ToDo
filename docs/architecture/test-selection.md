@@ -2,7 +2,7 @@
 
 Status: Decided
 
-A session's final validation runs every kind of test, but only for the modules the session changed and the modules that depend on them, and only for the changed screens when a change stays inside them. The full suite runs only in the cloud, once per release. Each screen keeps at most 10 UX tests, each one following a whole common path. All of it cuts the time a change waits for tests, and the number of screen tests that can fail for reasons outside the code.
+A session's final validation runs every test kind for changed modules and their dependents, narrowed to changed screens where possible. Release checks run only in the cloud. The decided [platform split](android-releases.md) gives each release its own shipped-code selection, replacing today's full-suite gate. Each screen keeps at most 10 UX tests.
 
 ## Behavior
 
@@ -14,18 +14,19 @@ The user decided these, on November 22, 2026:
 4. **Each UX test names its screen, and our analyzer counts the tests of each screen across every class**, so the limit holds per screen, not per class. Each UX class names its screen in its attribute, `[UX("<Screen>")]`, and the analyzer fails the build when that name differs from the class's screen folder, as [below](#our-analyzer-counts-each-screens-ux-tests).
 8. **Each screen of a module with several screens has its own folder, in its code and its tests**, so the script reads a changed file's screen from its path, as [below](#a-change-inside-screens-runs-only-those-screens-tests).
 5. **A change that stays inside one screen, or a few, runs only those screens' tests** of the changed module, as [below](#a-change-inside-screens-runs-only-those-screens-tests).
-6. **A release runs the full suite once, in its own Tests job or in a passed Run All tests run of the same commit that it reuses**, as [below](#the-full-suite-runs-only-in-the-cloud).
+6. **A release checks every test of what its platform ships, once on the tagged commit**, in its own Tests job or a passed platform run it reuses, as [below](#the-full-suite-runs-only-in-the-cloud). Today's full-suite gate remains until that split is implemented.
 7. **A change to shared test support selects every test in each test project that references it; the script follows one test folder's use of another's test code; and every module that depends on a changed module runs, whether or not its public interface changed.** The [rules below](#each-changed-path-selects-tests-by-one-rule) apply them.
 
 Why: before this design, a full local run was about 6,800 tests, about 1,140 of them UX tests, and most failures in past sessions came from the desktop, not the code: a locked PC, a disconnected Remote Desktop session, a window that lost focus, or a changed display scale. Fewer screen tests, run only where a change can break them, fail less often and finish sooner. The UX tests are now [100 across 18 screens](#existing-ux-tests-shrink-one-screen-at-a-time).
 
 ### The full suite runs only in the cloud
 
-Every test, of every kind, runs only in the [Run All tests](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) workflow on GitHub, through its [automatic and manual triggers or a release](releasing.md#three-workflows-unit-tests-on-each-push-every-test-on-main-releases-by-hand). No session runs the full suite on your PC, unless a change selects every module, as the [rules below](#each-changed-path-selects-tests-by-one-rule) say for build files.
+Today Run All tests runs the repository-wide suite on GitHub. The decided [platform workflows](android-releases.md#two-platform-test-workflows-replace-run-all-tests) replace that entry, with no aggregate. Their selections together cover the repository-wide suite. No session runs every test locally unless the changed-file rules select every module.
 
-- **A [release run](releasing.md#a-release-run-plans-tests-tags-then-publishes) tags and publishes only after every test passed on the commit it tags.** The [release command](releasing.md#the-release-command-previews-asks-once-then-follows-the-run) runs no .NET test on your PC.
-- **A release run [reuses a passed Run All tests run](releasing.md#a-release-reuses-a-passed-run-all-tests-run-of-its-commit) of its commit, and runs every test itself only when there's none.** So a release is checked by every test, once.
-- **Every delivery report says what final validation ran.** When it ran less than every test, the report says the rest runs only in Run All tests, since a test in a module the session didn't select can only fail there.
+- **Each release gates on its platform only**, under the [reuse rule](android-releases.md#the-pipelines-share-tools-never-release-prerequisites). A failing emulator never blocks desktop; a failing desktop screen never blocks Android. Shared shipped-code failures can block both.
+- **The project graph is the selection's one source.** Starting from each platform's app and published client projects, include their transitive product dependencies and their tests of every kind. Relevant architecture checks belong to that platform's selection. Shared test support does not pull unrelated platform modules into the gate. Platform builds must not compile unrelated app projects merely because they share a solution.
+- **Use the affected-tests script's existing graph and namespace mapping**, with a platform selection alongside its changed-file selection. Do not keep module lists in workflows. Reject unassigned test coverage rather than silently omitting it. Device selections use the [approved runner's](technology-stack.md#devicerunners-runs-the-android-test-app) isolated VSTest commands. These extensions are not implemented.
+- **Every delivery report says what final validation ran.** Tests outside that selection run only in their platform's cloud workflow, not as prerequisites of the other platform's release.
 
 ### A script turns the changed files into the commands to run
 

@@ -59,7 +59,7 @@ Proposed, each a decision to confirm:
 
 At most once a day, the app checks this repository's GitHub Releases. The repository is public, so the check needs no token; GitHub allows 60 such requests an hour ([rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)). A newer APK, the Android package file, shows a banner in Task View. Tapping it downloads the APK and opens Android's installer. The user allows the app to install apps once, the first time ([install permission](https://developer.android.com/reference/android/Manifest.permission#REQUEST_INSTALL_PACKAGES)).
 
-Releases reuse the desktop's release step, as the [Android app page](README.md#later-designs-answer-what-these-files-leave-open) lists. Android installs an update only when it's signed with the same key as the installed app ([app signing](https://developer.android.com/studio/publish/app-signing)).
+Releases use the [independent Android pipeline](../android-releases.md). This check follows its [platform-filtered discovery rule](../android-releases.md#each-updater-finds-only-its-own-releases), not GitHub's repository-wide latest release. Android installs an update only when it's signed with the same key as the installed app ([app signing](https://developer.android.com/studio/publish/app-signing)).
 
 Proposed, each a decision to confirm:
 

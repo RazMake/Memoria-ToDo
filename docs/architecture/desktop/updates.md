@@ -127,6 +127,8 @@ Velopack updates only a copy it installed ([UpdateManager](https://docs.velopack
 
 Updates reaches Velopack only through its install port, which the composition root implements with [Velopack](https://www.nuget.org/packages/Velopack/1.2.0) 1.2.0 and this repository's GitHub Releases, as Shell's adapter does today. The repository is public, so the check needs no token. So Updates' unit tests use a fake, and only the adapter's integration tests reach Velopack.
 
+The decided [Android release split](../android-releases.md#each-updater-finds-only-its-own-releases) changes the adapter's release discovery, and the desktop Publish job's delta lookup, without changing this module's port. Both must find desktop releases past unrelated Android releases. That change and the manual upgrade guidance for older desktop versions are not implemented yet.
+
 ## Public interface
 
 The composition root creates Updates once and passes it on: Shell starts and stops it, and Add, Task View, and Configure show its state. Proposed: the exact parts below. This is a decision to confirm.

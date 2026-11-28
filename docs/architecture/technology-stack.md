@@ -1,8 +1,8 @@
 # How the code is built, tested, and released
 
-Status: Drafting
+Status: Decided
 
-The technology stack is the set of tools that lay out, build, test, and release both apps from this repository. Each choice has its own section under [Behavior](#behavior).
+The technology stack is the set of tools that lay out, build, test, and release both apps from this repository. Each choice has its own section under [Behavior](#behavior). The decided [Android release split](android-releases.md) is not implemented yet.
 
 ## Behavior
 
@@ -232,9 +232,11 @@ Ruled out: a retry or a longer wait, which would hide the failure; refusing a cl
   | --- | --- |
   | A red run of new integration tests, and each group of the closing failure proof | `dotnet test --project <test project> -p:MemoriaAllTestKinds=true --filter-method "<full method name>"`, narrowed with the filters above |
   | Final validation: every kind of test, for the modules a session changed and the modules that depend on them | `dotnet test --project <test project> -p:MemoriaAllTestKinds=true --filter-namespace "<namespace>*"`, one command per test project with one namespace filter per selected module, as [Test selection](test-selection.md#a-script-turns-the-changed-files-into-the-commands-to-run) picks them |
-  | The full suite, only in [Run All tests](#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases), which each release run calls or reuses | `dotnet test -p:MemoriaAllTestKinds=true` |
+  | Today's full suite, only in [Run All tests](#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases), until the platform split is built | `dotnet test -p:MemoriaAllTestKinds=true` |
 
   The full suite's command is the one command that builds the code and runs every test, which the [design backlog](README.md#design-backlog) asks for. Until a fixed SDK ships, it builds everything except the Android app, which Run All tests builds in a step of its own, as [below](#the-solution-doesnt-build-the-android-app-until-a-fixed-net-sdk-ships) says. It runs only in the cloud, as [Test selection](test-selection.md#the-full-suite-runs-only-in-the-cloud) says.
+
+  The [platform split](android-releases.md#two-platform-test-workflows-replace-run-all-tests) replaces that solution-wide release command with selections for each app. PC selections keep MTP and the bounds above. Native device commands use the isolated [DeviceRunners runner](#devicerunners-runs-the-android-test-app), not MTP.
 - **Proposed: setting `TestingPlatformCommandLineArguments` yourself fails the build of a test project**, with an error that names `MemoriaAllTestKinds`. A property given with `-p:` replaces every value `Directory.Build.props` sets ([global properties](https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-properties#global-properties)), so emptying it, as runs of every test did before, would also drop the hang dump. This is a decision to confirm.
 - **A run in which no test ran fails.** With the .NET 11 SDK, a test project that matches no tests exits with code 8, but `dotnet test` counts that as success when it adds up the results, so one empty test project doesn't fail the run. A run where no project ran any test exits with code 8, a failure ([whole-run minimums](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp#whole-run-and-per-module-minimums)). So a focused run that selects no unit test, such as one for the [architecture tests](#architecture-tests-check-the-module-map), fails during development; those tests run with every other test. For the same reason, every push fails the [workflow](#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) until the first unit test exists, which you accepted.
 - **The filter's trait name and unit kind name come from the [kinds' constants file](#attributes-mark-each-tests-kind)**, so `Directory.Build.props` keeps no copy of them. It reads the file with `System.IO.File::ReadAllText` and picks out the two names with a regular expression, both allowed in MSBuild property functions ([static property functions](https://learn.microsoft.com/en-us/visualstudio/msbuild/property-functions#static-property-functions)). If the file's layout changes so the match fails, the filter matches nothing, and plain `dotnet test` fails with exit code 8.
@@ -255,11 +257,11 @@ Each Android module's one project builds twice, for the PC and for Android, so i
 - **One project per module stays**, as [Modules](modules.md#a-module-is-one-capability-behind-a-small-interface) decides, at the cost of two builds per project.
 - **The [Android test project](#each-part-keeps-its-tests-in-one-test-project) builds for both too.** Its PC build holds the Android modules' unit tests, which run during development and on each push. Its Android build is one test app holding the UX tests of the Android screens and the integration tests of the few Android-only parts.
 - **The test app comes with the Android app's [second step](android/README.md#delivery-backlog).** You decided on November 26, 2026, that the first step runs nothing on an emulator: its tests are unit tests on the PC, its Android build only has to build, and you open the app once by hand on a phone or emulator. Until the second step, the test project builds only for the PC, so plain `dotnet test` runs as before, and the first step's screens get their UX tests in the second.
-- **The test app runs on an emulator only at the session's end and before each release**: on your PC in the closing failure proof, and at final validation when it selects an Android module, as [Run timing](../../AGENTS.md#run-timing) says, and in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) of Run All tests, which each release run calls or reuses.
+- **The test app runs on an emulator only at the session's end and in Android's cloud gate**: on your PC in the closing failure proof, and at final validation when it selects an Android module, as [Run timing](../../AGENTS.md#run-timing) says, and in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release), which only Android releases call or reuse.
 
-Not confirmed: which test runner runs xUnit.net v3 tests in an Android test app on .NET 11's runtime. xUnit.net v3 ships no runner for devices, so a test app must supply its own ([xUnit discussion](https://github.com/xunit/xunit/discussions/3112)), and the proof on a phone ran no tests. The runner is a new dependency, so the implementation brings one that works to you before adding it, as [Contributions](../../AGENTS.md#contributions) asks. If none works, that's a [design gap](../contributing/process.md#changing-the-code) for you to decide.
+The [approved DeviceRunners host](#devicerunners-runs-the-android-test-app) supplies xUnit.net v3's device runner. Production integration is not implemented.
 
-Not confirmed by a run: a test project that builds for both, where plain `dotnet test` runs only its PC build, and final validation's [one command](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-kind-of-test) also runs its Android build on an emulator. [XHarness](https://github.com/dotnet/xharness#system-requirements), which runs the test app in the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release), runs it from Windows too.
+Not confirmed by a run: a test project that builds for both while plain `dotnet test` runs only its PC build, a Windows device run, or final validation's generated device commands.
 
 ### The solution doesn't build the Android app until a fixed .NET SDK ships
 
@@ -280,7 +282,7 @@ A UX test builds one screen inside the test process, with fake services, and nev
 | --- | --- | --- |
 | A Windows Presentation Foundation (WPF) screen of the desktop app | On the PC, in the [desktop test project](#each-part-keeps-its-tests-in-one-test-project) | [Xunit.StaFact](https://github.com/AArnott/Xunit.StaFact)'s `[WpfFact]`, which runs a test on a single-threaded apartment (STA) thread with a dispatcher, as WPF needs. Its 4.x versions support xUnit.net v3 4.x. Not confirmed: .NET 11. |
 | The WebView2 web view in the desktop's Task View | Nowhere: WebView2 runs its own browser processes outside the test process ([process model](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/process-model)) | A UX test of Task View passes a fake web view through the [Formatted view's interface](desktop/formatted-view.md#public-interface); only integration tests check the real one |
-| A .NET for Android screen | On an emulator, in the Android test app, at the session's end and before each release, since Android views need Android's runtime | The runner the implementation finds, as [the Android modules' section](#each-android-module-builds-for-both-the-pc-and-android) says. [DeviceRunners](https://mattleibow.github.io/DeviceRunners/articles/using-dotnet-test.html) runs xUnit.net v3 tests on Android through `dotnet test`, but its test app is a .NET MAUI app. Not confirmed: hosting our .NET for Android views in it, and .NET 11. |
+| A .NET for Android screen | On an emulator, in the Android test app, at the session's end and in Android's release gate, since Android views need Android's runtime | [DeviceRunners](#devicerunners-runs-the-android-test-app), with the verified paths in its [hosted proof](#devicerunners-proof-passed-on-hosted-linux) |
 
 - **Desktop test classes that use the screen run one at a time.** They are every UX class, plus each integration class that shows a window, starts a process that does, registers a hot key, or sends input. Each one carries `[Collection(ScreenTests.Collection)]`, defined in `tests/Desktop/Tests/ScreenTests.cs`, and xUnit.net runs one collection's classes one after another ([parallelism](https://xunit.net/docs/running-tests-in-parallel)). Side by side in one process, one class's window takes the activation, keyboard focus, or pointer from another's: a measured run failed 145 of 1,099 desktop tests. Unit classes stay out of the collection, so the timed unit run keeps its parallelism. This is a decision to confirm.
 - **A test outside the screen collection fails when it shows a window or starts the platform test program.** The user decided this after a class without the attribute started the [platform test program](#code-and-tests-sit-in-mirrored-trees-by-part-in-one-solution) beside screen tests in a hosted run, most likely making their windows lose activation and the pointer. Without a check, the next such class fails other classes' tests now and then, never its own. The user also decided that such a window closes at once and fails its own test when that test ends, while the run goes on. The rest is proposed, each a decision to confirm:
@@ -493,11 +495,11 @@ The desktop app is self-contained: it carries the .NET runtime it runs on, so in
 
 ### Three GitHub Actions workflows check pushes, run every test, and publish releases
 
-Three GitHub Actions workflows, on Windows runners, build both apps, so releases don't depend on one PC. They use the [pinned versions](#three-files-pin-every-version) and the two test commands [above](#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-kind-of-test). The [coder](../../.agents/subagents/coder.md) writes their files in `.github/workflows/`, as it writes the version files and other build files. That folder is [review surface](../../AGENTS.md#contributions), so you review every change to them, such as to the time limit or to how they use the signing secrets. [Release a version](releasing.md#three-workflows-unit-tests-on-each-push-every-test-on-main-releases-by-hand) owns Run All tests and the release run, and [Version tags](version-tags.md) how a version tag is made or cleared.
+Today's three GitHub Actions workflows run on Windows. The decided [platform split](android-releases.md#two-platform-test-workflows-replace-run-all-tests) replaces their shared release gate and adds Android's own release. It is not implemented. All workflows use the [pinned versions](#three-files-pin-every-version). Their files in `.github/workflows/` remain [review surface](../../AGENTS.md#contributions).
 
 - **Each push builds the code and runs the unit tests**, in `build.yml`, with plain `dotnet test`, and builds the Android app [in a step of its own](#the-solution-doesnt-build-the-android-app-until-a-fixed-net-sdk-ships). [The next section](#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue) says which unit runs it times.
 - **Run All tests, in `all-tests.yml`, tests every kind without publishing anything**, on the same Windows runner as a release. Its [triggers and release reuse](releasing.md#three-workflows-unit-tests-on-each-push-every-test-on-main-releases-by-hand) are defined in the release guide. Local evidence alone does not verify hosted behavior.
-- **Test then Tag and Release, in `release.yml`, publishes only a commit whose every test passed.** You decided on November 22, 2026, that a release never runs the same tests twice on one commit, and on November 23 that a release run [plans, tests, tags, then publishes](releasing.md#a-release-run-plans-tests-tags-then-publishes), reusing a passed Run All tests run of its commit. Its Publish job checks out the new tag, then builds, signs, and publishes one GitHub release. The release holds the desktop installer, Velopack's update files, and the Android package (APK). Velopack's flow downloads the last release, packs the new one, and uploads it ([GitHub Actions](https://docs.velopack.io/distributing/github-actions)). The APK is built and signed with `dotnet publish` ([publish from the command line](https://learn.microsoft.com/en-us/dotnet/maui/android/deployment/publish-cli)), with the key from [its secret](#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline).
+- **Today's Test then Tag and Release, in `release.yml`, publishes only a commit whose full gate passed.** It [plans, tests, tags, then publishes](releasing.md#a-release-run-plans-tests-tags-then-publishes), reusing a passed exact-commit run. Its Publish job checks out the tag and publishes the desktop installer, Velopack's update files, and the Local API clients. Velopack downloads the last desktop release, packs the new one, and uploads it ([GitHub Actions](https://docs.velopack.io/distributing/github-actions)). Android gets its own [Publish job](android-releases.md#the-android-pipeline-plans-tests-tags-then-publishes); it never joins desktop assets.
 - **A failed test or build publishes nothing**, as [Fail fast](../../AGENTS.md#code-design) asks.
 - **The tag is the version's only home.** The APK's [version code](https://developer.android.com/studio/publish/versioning) is computed from it.
 
@@ -505,12 +507,12 @@ Proposed, each a decision to confirm:
 
 - **A tag such as `v1.2.3` gives the version 1.2.3** to the desktop app's files and its Velopack package. A version tag is `v` followed by three numbers, `<major>.<minor>.<patch>`, with no leading zeros, as [Semantic Versioning](https://semver.org/#spec-item-2) requires. The [version tag script](version-tags.md#the-script-holds-the-version-tag-rule-and-the-release-run-asks-it) holds this rule in code, and the Publish job asks it for the version of the tag it checked out.
 - **Only a commit on the default branch is released.** The release run's Plan and Tag jobs give the tested commit to the version tag script, which [refuses one](version-tags.md#on-github-the-script-tags-the-commit-its-given) that isn't on the default branch, as git's [`merge-base --is-ancestor`](https://git-scm.com/docs/git-merge-base#Documentation/git-merge-base.txt---is-ancestor) checks. Velopack updates every installed copy, so a tag on an unmerged branch would otherwise reach every user.
-- **The APK joins releases with the Android app's [seventh step](android/README.md#delivery-backlog), and the [Linux job](#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) starts with its second**, as you decided on November 26, 2026. Each starts when it has something to ship or run: the second step adds the test app, and until the seventh, which brings sync and updates, no one can install an app that can't sync. The app ID and [signing key](#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline) are first used then. Until then, a release holds only the desktop files.
+- **Android publication starts with the app's seventh [delivery step](android/README.md#delivery-backlog), and the Linux test job with its second.** The [independent pipeline](android-releases.md) changes where they run, not when they are delivered. No empty-screen app is published early.
 - **The app's name lives only in the `Product` property of `Directory.Build.props`**, which the build writes into every assembly, where the desktop platform's [App name](desktop/README.md#the-platform-runs-the-app-and-the-composition-root-builds-it) reads it. The Publish job reads it with `dotnet msbuild <project> -getProperty:Product` ([evaluate properties](https://learn.microsoft.com/en-us/visualstudio/msbuild/evaluate-items-and-properties)) for the installer and the release, and fails when it's empty.
 - **The release is published only when every file is attached, named with the app's name and its version**, such as `<name> 1.2.3`. The Publish job uploads to a draft, which no user and no installed app sees, and publishes it as its last step, so a failed upload leaves no release that's missing a file ([`vpk upload github`](https://docs.velopack.io/reference/cli/content/vpk-windows) leaves a draft unless told to publish). It holds the installer and Velopack's update files, packed under the app's [installer ID](desktop/shell.md#velopack-installs-the-app-and-keeps-it-up-to-date), but not Velopack's portable zip, since a zipped folder was [ruled out](desktop/shell.md#ruled-out). It carries its version's notes from the [changelog](../contributing/changelog.md), which the desktop app's [What is new](desktop/updates.md#what-is-new-shows-each-newer-releases-notes) shows; the job takes them from the [version tag script](version-tags.md#a-version-is-tagged-only-when-the-changelog-has-its-notes) before building, and fails without them. Not confirmed: that Velopack also shows them as the GitHub release's description.
 - **The desktop app is built for x64 processors only.** Windows on Arm runs it through emulation ([emulation on Arm](https://learn.microsoft.com/en-us/windows/arm/apps-on-arm-x86-emulation)).
 - **Each job's token gets only the permissions its job needs.** The timed job writes issues, the release run's Plan job also reads Actions results (`actions: read`), which listing a commit's runs needs, and only its Tag and Publish jobs write the repository's contents, which a tag and a release need ([`GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token)).
-- **Every job names its runner image exactly, `windows-2025`, not the latest one**, so a new image arrives only when you change the name ([runner images](https://github.com/actions/runner-images)).
+- **Every job names its runner image exactly**, so a new image arrives only when you change the name ([runner images](https://github.com/actions/runner-images)). PC builds and APK signing use `windows-2025`; the Android emulator uses `ubuntu-24.04`.
 - **The workflow uses only GitHub's own actions, each pinned to its major version.** GitHub already runs the jobs, so its actions add no one new to trust.
 - **The Publish job gives its token to Velopack's download of the last release**, so GitHub's lower limit for requests without a token doesn't fail it ([rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)).
 
@@ -577,21 +579,52 @@ Not confirmed: whether the `duration:` label is translated when the runner's lan
 
 ### A Linux job runs the Android tests on an emulator before each release
 
-In each Run All tests run, and so in each release run's Tests job, one more job runs on a GitHub-hosted Linux runner, from the Android app's [second step](android/README.md#delivery-backlog) on. It starts an Android emulator and runs the Android [test app](#each-android-module-builds-for-both-the-pc-and-android): the UX tests of Android screens and the integration tests of Android-only parts. The [run check](releasing.md#a-release-reuses-a-passed-run-all-tests-run-of-its-commit) requires this job's pass too, as it requires `full-tests`, so a release that reuses a run runs no Android test again.
+From Android's second [delivery step](android/README.md#delivery-backlog), its own [test workflow](android-releases.md#two-platform-test-workflows-replace-run-all-tests) has a Linux emulator job. It runs the Android test app's native UX and integration tests. Only the Android release requires this job; desktop releases never call or wait for it.
 
 - **The job runs on Linux because GitHub states the emulator's hardware acceleration only for its Linux runners** ([GitHub-hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)). Likely, but not confirmed: its Windows runners can't run the emulator, because they lack nested virtualization; an issue about it is open ([runner-images issue 9343](https://github.com/actions/runner-images/issues/9343)).
-- **[XHarness](https://github.com/dotnet/xharness) runs the test app from Linux.** It installs the app on the emulator, runs it, and collects its results ([system requirements](https://github.com/dotnet/xharness#system-requirements)).
-- **XHarness is a .NET tool, so `.config/dotnet-tools.json` pins it**, as it [pins every tool](#three-files-pin-every-version). It's published only as a prerelease, on Microsoft's dotnet-eng feed rather than NuGet.org ([installation](https://github.com/dotnet/xharness#installation-and-usage)).
-- **A failed Android test, or an emulator that doesn't start, publishes nothing**, like any [failed test](#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases).
+- **[DeviceRunners](#devicerunners-runs-the-android-test-app) installs and runs the host and collects its TRX results.** Production configuration follows the verified setup in the [proof record](#devicerunners-proof-passed-on-hosted-linux), with bounded boot, test execution, and diagnostics.
+- **A failed test, skipped test, empty selection, missing report, or emulator startup fails Android's gate.** Reports and bounded device diagnostics are retained before the job stops its own emulator. A zero exit code alone is insufficient.
 
-Not confirmed: the emulator on a hosted Linux runner with the test runner the implementation finds, as [the Android modules' section](#each-android-module-builds-for-both-the-pc-and-android) says.
+This job and the platform run check remain unimplemented.
+
+### DeviceRunners runs the Android test app
+
+You approved [DeviceRunners](https://mattleibow.github.io/DeviceRunners/articles/using-dotnet-test.html) and its MAUI test-host dependencies for Android delivery step 2. This does not make the production Android app a MAUI app. PC tests retain Microsoft.Testing.Platform (MTP); only device commands use a separate VSTest configuration derived from the SDK pin. The root `global.json` stays in MTP mode.
+
+Production implementation must pin the dependencies through the existing version files, select Android sources correctly on Linux, and generate the launcher's Java name from the test host's application ID. The [proof record](#devicerunners-proof-passed-on-hosted-linux) holds the verified setup. Device commands must retain hang bounds, fail on skipped or empty runs, and supply the affected-test script's Android final-validation selection. No production integration is implemented yet.
+
+Ruled out for this runner:
+
+- **A custom xUnit.net v3 instrumentation runner started by XHarness:** avoids MAUI but adds runner code to maintain.
+- **No native UX tests:** checks only view models, not Android screen behavior.
+
+### DeviceRunners proof passed on hosted Linux
+
+[Run 46090139476](https://github.com/RazMake/Memoria-ToDo/actions/runs/46090139476) passed on `ubuntu-24.04` with an accelerated Android API 36 x64 emulator. The [never-merged proof](https://github.com/RazMake/Memoria-ToDo/tree/cd4cd87f42be7112ed74d91068f11f8bce303c91/proofs/DeviceRunners) uses SDK 11.0.100, DeviceRunners 0.1.0-preview.12, MAUI controls 11.0.10 with DeviceRunners' compatibility package 10.0.20, and the repository's xUnit.net v3 packages at 4.0.2. The native Configure activity ran inside the test host; the production app was not launched.
+
+| Check | Observed result |
+| --- | --- |
+| `Category=UX` selects the native Configure screen test | Its toolbar had the expected title and a nonzero width and height; one test passed, none skipped, exit 0 |
+| An intentional assertion failure reaches the caller | One test failed for that assertion, none skipped, exit 1, with its failure in the TRX report |
+| A final selection runs the screen test and the Android-process check | Two tests passed, none failed or skipped, exit 0 |
+
+The [proof workflow](https://github.com/RazMake/Memoria-ToDo/blob/cd4cd87f42be7112ed74d91068f11f8bce303c91/.github/workflows/devicerunners-proof.yml) saves the reports, summary, and Logcat. Its intentional failure produces an error annotation even though the workflow passes: the driver requires that failure before its final passing run.
+
+The proof needed these setup choices:
+
+- **VSTest mode for the device command.** DeviceRunners' published targets replace `VSTest` and mark the host as not being an MTP application. The driver generates a separate VSTest configuration from the repository's SDK pin; the repository's MTP selection stays unchanged.
+- **One private home for both AVD tools.** The emulator must find the descriptor that `avdmanager` creates. Startup has a bound, and Logcat collection has its own bound so an unavailable device cannot prevent saving the emulator log.
+- **Android properties before selecting source files.** The source's Windows path checks select PC builds on Linux. The proof applies its Android properties to each referenced module before the source build properties can exclude Android-only files. It leaves production projects unchanged.
+- **The launcher name DeviceRunners expects.** Its CLI defaults to `<package>.MainActivity`. The host generates that name from its application ID rather than repeating the ID in code.
+
+**Approved but not implemented:** [DeviceRunners adoption](#devicerunners-runs-the-android-test-app), with isolated VSTest device commands and MTP for PC tests. The proof does not check a dual-targeted test project, a Windows device run, every Android screen, or the affected-test script's final-validation commands. No production dependency is added, and the proof branch is never merged.
 
 ### The pinned workload set decides the JDK and Android SDK
 
 The Android build needs a JDK and Android SDK packages, such as a platform and build tools, and none of the [three version files](#three-files-pin-every-version) names them. The pinned workload set decides both, so no fourth version file is needed.
 
 - **The workload names every version it installs.** Android workload 37.2.31, in the pinned set, names Microsoft's OpenJDK 21.0.8, the android-37.0 platform, build tools 37.0.0, platform tools 37.0.1, and the SDK's command-line tools 21.0, in its `Xamarin.Installer.Common.props`. A new workload set brings the versions it needs.
-- **Every PC and each workflow job that builds runs the workload's `InstallAndroidDependencies` build target.** It installs those packages and the JDK into the folders `AndroidSdkDirectory` and `JavaSdkDirectory` name, outside the repository, and skips what's already there ([install dependencies](https://learn.microsoft.com/en-us/dotnet/android/getting-started/installation/dependencies)). On November 26, 2026, it installed all of them into empty folders, about 770 MB, and an Android app then built.
+- **Each PC or workflow job that builds Android runs the workload's `InstallAndroidDependencies` target.** It installs those packages and the JDK into the folders `AndroidSdkDirectory` and `JavaSdkDirectory` name, outside the repository, and skips what's already there ([install dependencies](https://learn.microsoft.com/en-us/dotnet/android/getting-started/installation/dependencies)). On November 26, 2026, it installed all of them into empty folders, about 770 MB, and an Android app then built. The independent desktop gate and publisher must not require Android toolchain setup.
 - **`AcceptAndroidSDKLicenses=True` accepts Google's Android SDK license** for the packages the target installs. The target stops without it. The [README](../../README.md#what-you-need)'s command says so, so you accept the license by running it, and the workflows pass it too.
 
 Proposed, a decision to confirm:
@@ -622,12 +655,18 @@ Not confirmed: that two runs of the script with the same commit and NDK build id
 
 ### The APK signing key lives in a GitHub Actions secret, backed up offline
 
-Every update must be signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)), so losing it ends updates. The key store lives in a GitHub Actions secret, so the release run's [Publish job](#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases), the only job that uses it, can sign the APK. You keep an offline backup of the key store and its passwords outside GitHub.
+Every update must be signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)), so losing it ends updates. The key store lives in a GitHub Actions secret, so only [Android Publish](android-releases.md#the-android-pipeline-plans-tests-tags-then-publishes) can sign the APK. Desktop publishing and test jobs receive no Android signing secrets. You keep an offline backup of the key store and its passwords outside GitHub.
 
 - **Only the job that publishes a version tag uses the signing secrets.** A workflow reads a secret only where it names it ([secrets](https://docs.github.com/en/actions/concepts/security/secrets)), and only you commit workflows, as [Contributions](../../AGENTS.md#contributions) says.
 - **The key never enters the repository.** Development builds and the proofs use the SDK's debug key, whose APKs can't update a released app.
 
 Likely, but not confirmed: the key store goes into the secret as base64 text, which GitHub suggests for small binary files ([base64 secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#storing-base64-binary-blobs-as-secrets)), and its two passwords, for the key store and for the key, go into two more secrets. The build reads the passwords from environment variables, which keeps them out of logs ([publish from the command line](https://learn.microsoft.com/en-us/dotnet/maui/android/deployment/publish-cli)).
+
+### The Android tag determines the APK's version code
+
+The [Android tag](version-tags.md#each-app-has-its-own-tags-and-notes) supplies its display version and `versionCode`. The code is `major * 1000000 + minor * 1000 + patch`. Minor and patch must each be at most 999; major must be at most 2,099. The Android release's Plan job refuses a version outside these bounds before tests or tagging. Desktop versions have no such limits.
+
+This produces increasing codes for increasing Android versions, below Google Play's 2,100,000,000 limit ([Android versioning](https://developer.android.com/studio/publish/versioning)). Retries of the same tag retain the same code. The tag is the only version source, not a workflow run number or tag count. Production version stamping is not implemented.
 
 ## Public interface
 
@@ -823,14 +862,4 @@ The options below were considered and rejected, grouped by the decision they bel
 
 ## Open questions
 
-The Android app's [delivery backlog](android/README.md#delivery-backlog) needs this answer.
-
-### 1. Which runner runs the Android test app? Blocks delivery step 2
-
-xUnit.net v3 has no runner for devices ([xUnit discussion](https://github.com/xunit/xunit/discussions/3112)), as [above](#each-android-module-builds-for-both-the-pc-and-android) says.
-
-- **A. [DeviceRunners](https://mattleibow.github.io/DeviceRunners/articles/using-dotnet-test.html) (recommended to try first).** It runs xUnit.net v3 on Android through `dotnet test -f <android>`, with filters, so the commands stay `dotnet test`. Its test app is a .NET MAUI app, so the test app adds the MAUI workload and packages, and hosting our activities in it on .NET 11 isn't confirmed.
-- **B. A small runner of our own in the test app**, on xUnit.net v3's runner library, run as an Android instrumentation that [XHarness](https://github.com/dotnet/xharness) starts. No MAUI, but we keep the runner's code, and XHarness's own xUnit runner is built on xUnit.net v2 ([its project](https://github.com/dotnet/xharness/blob/main/src/Microsoft.DotNet.XHarness.TestRunners.Xunit/Microsoft.DotNet.XHarness.TestRunners.Xunit.csproj)).
-- **C. No Android UX tests**: only integration tests of the Android-only parts, on an emulator. Least to build, but Android screens would be checked only through their view models.
-
-Recommended: step 2 starts with a throwaway proof on the [proof branch](#the-throwaway-proofs-run-on-a-never-merged-branch-before-this-page-is-decided) that tries A, then B, on an emulator, and brings you what worked before any runner is added.
+None. The Android test host and independent pipelines remain to be implemented.
