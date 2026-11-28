@@ -10,7 +10,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $SourceRoot = (Resolve-Path $SourceRoot).Path
 $project = Join-Path $PSScriptRoot 'DeviceRunnersProof.csproj'
-$properties = @("-p:MemoriaSourceRoot=$SourceRoot")
+$proofProps = Join-Path $PSScriptRoot 'Directory.Build.props'
+$properties = @("-p:MemoriaSourceRoot=$SourceRoot", "-p:DirectoryBuildPropsPath=$proofProps")
 if ($AndroidSdkDirectory) { $properties += "-p:AndroidSdkDirectory=$AndroidSdkDirectory" }
 if ($JavaSdkDirectory) { $properties += "-p:JavaSdkDirectory=$JavaSdkDirectory" }
 
