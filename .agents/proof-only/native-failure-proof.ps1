@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $proofRoot = Join-Path '.agents' 'proof-only'
 $manifest = Get-Content -LiteralPath (Join-Path $proofRoot 'native-groups.json') -Raw | ConvertFrom-Json
 if ($manifest.groups.Count -lt 1) { throw 'There are no native failure-proof groups.' }
+New-Item -ItemType Directory -Path 'test-results/android-device' -Force | Out-Null
 $groupNumber = 0
 foreach ($group in $manifest.groups) {
     $groupNumber++
