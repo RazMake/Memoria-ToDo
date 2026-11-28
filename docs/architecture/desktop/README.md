@@ -627,7 +627,7 @@ A file you edit by hand in the clone, such as the [mention templates file](../co
 
 - **The app watches every file in the selected clone**, subfolders included, and moves the watch when Configure selects another folder. The watch moves before the stores read the new folder, so an edit saved while they read is seen. When a selection fails, the watch follows the folder the repository still holds, the old one or, when only a notice failed, the new one. With no folder, nothing is watched.
 - **Any change except to `.git` or a file in it reloads the whole clone**, the user's choice: a file created, changed, deleted, or renamed, in any store's files. The [synced repository](../modules.md#the-synced-repository-gives-every-store-one-clone-one-lock-and-one-reload) reloads every part at once, so a narrower watch would save nothing. `.git` itself is left out too, since Windows reports it as changed whenever Git adds or removes a file directly in it.
-- **The reload is the repository's `Update` with a change that does nothing.** So it runs under the lock, reloads every store, raises their notices after releasing the lock, and reports no local save. A hand edit starts no sync; it travels with the next one, as before.
+- **The reload is the repository's `Update` with a change that does nothing.** So it runs under the lock, reloads every store, raises their notices after releasing the lock, and reports no local save. A hand edit starts no sync; it travels with the next one, as before. The one exception is a hand edit to a [data type file](#hand-edits-to-the-data-type-files-sync-after-30-quiet-seconds).
 - **The reload waits until no change has come for 500 ms**, even when the timer's call comes late, so an editor's save or a checkout, which make many changes, reloads once. A file read halfway through a save is skipped, as any unreadable file is, and the save's last change reloads it again.
 - **A reload for a folder no longer selected does nothing**, even when the selection changes just as the reload starts. Stopping the app cancels a waiting reload and stops the watch.
 - **The app's own saves and Sync's merges also reload once.** That's accepted: Sync already reloads after each save, and telling the app's writes apart would need the file system to report them. On a clone of 500 tasks and 200 contacts, a reload took about 130 ms and allocated about 5 MB that the next collection frees. It holds the repository's lock all that time, so a save made meanwhile waits for it.
@@ -649,7 +649,51 @@ These were ruled out:
 - **Checking file times every 30 seconds**: up to 30 seconds late, and constant disk work.
 - **Watching only Contacts' files, or only the templates file**: hand edits to task files and settings would still wait for a sync, and the repository can only reload everything.
 - **A watcher in the shared platform, or in each store**: Android doesn't need one, and a store reloading on its own was [ruled out](../contacts.md#ruled-out).
-- **Starting a sync after a hand edit**: not asked for, and Sync's own merges would start more passes.
+- **Starting a sync after every hand edit**: not asked for, and Sync's own merges would start more passes. The user later asked for it for the [data type files](#hand-edits-to-the-data-type-files-sync-after-30-quiet-seconds) only.
+
+### Hand edits to the data type files sync after 30 quiet seconds
+
+The user chose a full sync, which commits and pushes, 30 seconds after the last hand edit to the [key-field data type files](../contacts.md#key-fields-choose-from-the-users-data-type-files) or the [mention templates file](../contacts.md#mention-templates-come-from-a-synced-file). Edits to other files still wait for the next sync, as [above](#the-composition-root-reloads-the-clone-when-a-file-in-it-changes). Only the desktop watches; Android keeps its existing sync behavior. This design is not implemented yet.
+
+The user approved Contacts' path-identification API and Sync's automatic request API. The user also chose to preserve other sync triggers and the current skipped-file policy. The remaining operational details below are decisions to confirm:
+
+- **The same watch serves both jobs.** The [reload's watch](#the-composition-root-reloads-the-clone-when-a-file-in-it-changes) passes each change to the 500 ms reload, as today, and to a second, separate 30-second wait in a small new component of the composition root. No second watcher, and no second sync schedule.
+- **Contacts says which paths count**, through its [file-rule predicate](../contacts.md#public-interface), so filenames and their parent paths have one home. The app turns the watcher's `\` into `/` and asks Contacts. Other paths, including `.git`, start nothing.
+- **Creating, changing, deleting, or renaming one of the files counts.** A rename counts when its old or its new name is one of the files, so renaming `pronouns.json` away counts as much as renaming a file to it. For that, the watcher reports a rename as two changes, its old path, then its new one. Today it reports only the new path; the reload doesn't mind, since it reloads everything.
+- **Each such change restarts the 30-second wait.** At 30 quiet seconds, the app makes one [automatic sync request](../sync.md#automatic-requests-start-a-fresh-pass-without-the-local-save-delay), bound to the watched clone. There is no extra 5-second local-save delay. If a pass is running, the request queues a fresh follow-up rather than joining a pass that may already have read the files. The 30 seconds bounds the request, not completion of network I/O.
+- **The 30 seconds says when the app asks for a sync, not that the file waits that long.** Any sync that runs first carries the edit, as it does for any hand edit today: after another save, at start, when Task View opens, every 30 minutes, on a retry, or when you press Sync. Holding the files back from those syncs would need Sync to leave paths out of its commit.
+- **The wait ends with the folder.** Selecting another folder, a failed selection that moves the watch, or stopping the app cancels it, and a wait that ends late for a folder no longer selected does nothing.
+- **When the watcher loses track, the app assumes a relevant file changed.** An overflow restarts the wait and reloads. A watcher error schedules one final delayed request before stopping the watch and logs the existing Warning. A watch that cannot start reports that hand edits will wait for normal sync; it reports no successful watch.
+- **A change to a parent folder counts too.** Renaming or deleting a folder containing the files restarts the wait even if Windows reports no individual file event. Contacts' predicate recognizes those parent paths.
+- **The app's own writes may start the wait too.** Ignoring every event during sync would lose genuine concurrent hand edits. A merge or template move may cause one redundant no-change pass; a pass that makes no writes must not restart the wait. Preparing an unselected clone produces no watcher request, because its watch starts only after preparation succeeds.
+- **Failures use normal sync handling.** Offline failures retain the files, show the existing status, and use Sync's existing retries, not another retry loop. A request rejected because no repository or key is ready logs a Warning and leaves the changes for the next normal sync. Unexpected request failures are logged at Error at the owned callback boundary, not discarded or reported as success.
+- **The log explains it**, as [Logging](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. Information records the sync request, the folder, change count, and first path, not the file's contents. Debug records timer resets, cancellations, and obsolete-folder requests. Sync owns pass results and network-failure logs.
+
+The change touches the desktop App's watcher and small debounce component ([WindowsFolderWatcher.cs](../../../src/Desktop/App/WindowsFolderWatcher.cs), [CloneReloads.cs](../../../src/Desktop/App/CloneReloads.cs), wired in [Program.cs](../../../src/Desktop/App/Program.cs)), Contacts' file rule, and Sync's request handling. The tests check these behaviors with fake time and completion signals, never sleeps:
+
+| Behavior | Kind |
+| --- | --- |
+| Each recognized file requests sync at exactly 30 quiet seconds, not at 29.999 seconds; no extra local-save delay is added | Unit, App and Sync |
+| Every change restarts the wait, and the 500 ms reload still runs on its own | Unit, App |
+| Creating, deleting, renaming either way, and replacing or deleting a parent folder count; unrelated files and folders and `.git` don't | Unit, App |
+| Selecting another folder, a failed selection, or stopping the app cancels the wait, and a late timer does nothing | Unit, App |
+| An overflow restarts the wait; a watcher error starts it once | Unit, App |
+| Information records an accepted request; not-ready and unexpected failures use Warning and Error respectively, without false success | Unit, App |
+| Contacts' predicate recognizes only its data-type/template files and their ancestors, using its existing path rules | Unit, Contacts |
+| An edit during an active pass queues a fresh follow-up; obsolete-clone requests are discarded; manual and periodic sync remain unchanged | Unit, Sync |
+| App-originated events do not create an endless sync loop; invalid files retain the existing warning and raw-byte sync behavior | Unit, App and Sync |
+| A rename reports both its old and its new path | Integration, App |
+
+These were ruled out:
+
+- **Committing without pushing**: the user chose a full sync.
+- **Calling Sync now when the 30 seconds pass**: it can join a pass that already read the files and treats an automatic request as manual.
+- **Reporting a local save after the 30 seconds**: Sync adds another 5 seconds, missing the requested delay.
+- **Holding every other sync until the wait ends**: the user chose to preserve those triggers.
+- **Blocking unreadable data-type files from all syncs**: the user chose the current skip-and-warn policy.
+- **A second watcher, or the app's own sync timer**: two watches of one folder, and a second schedule beside Sync's.
+- **A list of the three paths in the composition root**: a second home for Contacts' file layout.
+- **Ignoring changes while a sync runs**: a hand edit saved during a sync would be lost until the next one.
 
 ## Split panes, search band, and drag parts serve every window that needs them
 
@@ -1027,3 +1071,7 @@ The table lists each step, what it builds, and its status:
 The remaining work follows this order:
 
 1. Build the [Android app](../android/README.md), in the steps of its [delivery backlog](../android/README.md#delivery-backlog).
+
+## Open questions
+
+None for hand-edit synchronization. Implementation and tests are deferred to design backlog row 27.

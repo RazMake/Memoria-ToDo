@@ -2,7 +2,7 @@
 
 Status: Decided
 
-Configure is the desktop app's settings window. It changes the four global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, preventing the screen saver, AI assistant access, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
+Configure is the desktop app's settings window. It changes the four global shortcuts, the shortcuts that close the app's windows and save an edit, starting with Windows, preventing the screen saver, AI assistant access, and the deletion delay, and it sets up sync and shows its status, which Sync owns. Cloning an empty repository also adds [example files](#cloning-an-empty-repository-adds-examples-on-the-desktop-only). Its Application section opens with a card that shows the app's version and updates, which [Updates](updates.md) owns.
 
 ## Behavior
 
@@ -237,8 +237,52 @@ The user can change the address and the device name during setup. The key button
 
 After Clone or Use this clone, Configure runs one sync and waits for it, so a read-only key fails here. An offline or failed first sync keeps the selected clone for a retry and local work, but doesn't mark setup complete.
 
-### Git Access makes, copies, and forgets the device's key
+### Cloning an empty repository adds examples, on the desktop only
 
+A new user who clones an empty repository sees no task and no contact, so nothing shows what the files look like. The user decided: after **Clone a repo**, the desktop app automatically adds a small set of example files to the new clone, before the first sync pushes it. This design is not implemented yet.
+
+The user decided these rules:
+
+- **An empty clone has no app-data files.** Any file in the task, image, or contact trees, or `tags.json`, prevents adding examples, including an empty, malformed, or unsupported file the stores skipped. An empty directory does not count. A `README.md`, `.gitignore`, license, or `settings.json` does not prevent adding examples, so a repository created with a README, or one a phone set up first, still qualifies. Existing invalid settings still fail through their normal validation; examples never repair or replace them. Use existing repo clone, app startup, and later syncs never add examples.
+- **The completed setup shows every kind of file the app keeps in the repository**: task files, images, `settings.json`, `tags.json`, contact group files, the user's own contact, both data type files, and the mention templates file, as [Tasks](../tasks.md#the-repository-holds-task-files-image-folders-settings-and-tag-colors) and [Contacts](../contacts.md#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts) define them. Files that stay on the device, such as logs, the draft, keys, and trusted host keys, are never examples.
+- **The own contact is a clearly fictional placeholder to edit**, not the user's identity. The app cannot delete that contact through its normal contact actions, so the example explains replacing its details instead.
+- **Shared settings keep their existing defaults.** The first sync creates a missing `settings.json` through its existing settings initialization; the example bundle does not duplicate those defaults. An existing settings file is left untouched.
+- **Every example is made up.** No name, text, or picture comes from the user's files or any repository the app is set up with, not even anonymized.
+- **Only the desktop adds examples.** The Android app never does; a phone gets them through sync, like any other file. So no example code lives in the shared library, whose Sync both apps run.
+- **Ready-made files are bundled with the desktop App project**, laid out like the repository, with fixed fictional IDs and fixed content. A private desktop example-writer component implements [Configure's port](#public-interface), and the composition root wires it. It writes through the platform file system, not through new Tasks or Contacts operations. The user approved [preparing the new clone before selection](../sync.md#a-new-clone-is-prepared-before-selection), so no sync or watcher sees incomplete examples. Two desktops using the same bundle therefore produce identical example files.
+- **A failed write stops setup and undoes only that attempt's new files**, including its temporary files, before the first sync. The writer never removes the clone, pre-existing files, or another writer's files. The failure is shown and logged. If cleanup also fails, both failures and the affected paths are reported. The new clone stays unselected and the previous selection stays active, so background sync cannot publish the partial set. After recovery, cloning again into a new or empty folder retries initialization.
+
+The following details complete those choices; they are decisions to confirm:
+
+- **The examples read as examples, and fit together.** Each example task's title starts with "Example:" and its first tag is `example`, and every name is plainly invented. Tasks mention the example contacts through the example templates, link to each other with `task:` links, and one shows the example image. Contacts use the example career paths and pronouns, and `tags.json` colors and orders the example tags. So the set shows how the files connect, not only what each holds.
+- **Nothing names a real person or organization.** Web addresses use only the domains reserved for examples, `example.com`, `example.org`, and `example.net` ([RFC 2606](https://www.rfc-editor.org/rfc/rfc2606.html#section-3)). The image is a drawing, not a photo.
+- **No example task is resolved.** Its fixed resolve time would be long past, so the first sync's [automatic deletion](../tasks.md#resolved-tasks-are-deleted-after-a-delay-every-device-shares) would delete it at once.
+- **Examples are ordinary files.** No extra marker or Remove examples action is added. The user changes or deletes them through existing actions, except the own contact, whose details are replaced as described above. Deleting examples does not make startup or sync recreate them; a fresh desktop clone with no app-data files qualifies again.
+- **Examples never replace a file.** Just before writing, the writer checks that the new clone counts as empty, and writes nothing otherwise. Each example then goes only where no file exists: the writer writes it beside its place and moves it there, and the platform's move [fails when the target exists](../modules.md#the-file-system-interface-reads-and-writes-whole-files). A file that appears after the check fails the attempt, as any write failure does.
+- **Examples travel with the first sync.** They're written before Configure runs the [first sync](#the-sync-settings-section-sets-the-devices-clone), so its commit pushes them. When that sync fails, such as offline or with a read-only key, the complete examples stay in the clone and go with the next sync, as any local change does. Concurrent remote changes follow the existing [merge rules](../sync.md#each-sync-commits-fetches-merges-and-pushes-one-branch); initialization adds no special conflict policy.
+- **Examples stay readable as formats grow.** Each file uses the format version it was written for, and a newer app reads every older version, by the platform's [version rule](../modules.md#stores-share-one-json-style-and-one-set-of-file-rules). A test loads every example through the real Tasks and Contacts stores and fails when any file is skipped, so a change that breaks them updates them in the same change.
+- **The example files are the one home of their content.** This page states only their intent, and no page repeats their text. The files are written at implementation.
+- **Configure says what it did.** After the first sync, the Repository card's message says "The repository was empty, so the app added examples. Change or delete them as you like." A failed sync shows its own message instead, as today.
+- **The log explains it**, as [Logging](../logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. App logs the examples it added at Information, with the folder and the number of files, and at Debug why it added none, naming the first file that made the clone count as not empty. Configure logs a failure it shows at Error.
+
+The change touches Configure's clone step ([RepositoryChange.cs](../../../src/Desktop/Configure/RepositoryChange.cs)), the desktop App's private example-writer component and bundled files, wired in [Program.cs](../../../src/Desktop/App/Program.cs), and Sync's [clone preparation](../sync.md#a-new-clone-is-prepared-before-selection), with their tests. Tasks and Contacts gain no example-generation behavior. Android only adapts its clone call to pass no preparation step. The tests check these behaviors:
+
+| Behavior | Kind |
+| --- | --- |
+| Clone hands Sync the step that adds the examples, then runs the first sync; Use existing repo clone never adds any | Unit, Configure |
+| A failure to add examples shows and logs its reason and prevents the first sync | Unit, Configure |
+| A clone with only a README or settings gets examples; any app-data file, including a malformed or unsupported file, prevents them; no existing file or setting is replaced | Unit, App |
+| The bundle and the normal settings initialization together provide every file kind, including the fictional own contact | Unit, App |
+| A file that appears where an example goes is never replaced, and the attempt fails; cancellation before writing writes nothing | Unit, App |
+| Preparation completes before selection, including when a background pass is already queued; no partial examples can be committed | Unit, Sync |
+| Failed or cancelled preparation keeps the previous selection and leaves the new clone unselected; no preparation step behaves as today | Unit, Sync |
+| A partial write removes only this attempt's files, preserves pre-existing and concurrently created files, and reports both write and cleanup failures when cleanup fails | Unit, App |
+| Every example loads through the real stores with no skipped file, and every mention, `task:` link, and image link in them finds its contact, task, or image | Unit, App |
+| Every web address in the examples uses a reserved example domain | Unit, App |
+| The examples added are logged at Information, with the folder and the number of files | Unit, App |
+| A clone of an empty bare repository pushes the examples in its first sync's commit | Integration, App |
+
+### Git Access makes, copies, and forgets the device's key
 The repository's host lets this device sync only after the user adds the device's public key there, as [Sync through git](../sync.md#configure-keeps-the-selected-clone-or-makes-a-new-one) says. The user decided what each key button does:
 
 - **Generate key**, while the device has no key, makes the key, then copies its public key.
@@ -343,7 +387,7 @@ The composition root and Shell use these parts:
   - It accepts only Ctrl, Alt, Shift, and Win as modifier keys, and only a real key: one WPF defines, but not the placeholders WPF reports for a key pressed with Alt, a key an input method handles, or a dead key. So every shortcut a caller gets follows the rules.
 - **Dispose Configure**: detaches shared settings/setup/status subscriptions and closes its window. Shell still owns shortcut unregistration and Sync's lifetime.
 
-Configure publishes one port, and uses the platform's [Start with Windows](README.md#start-with-windows-is-a-port-the-platform-publishes), which keeps its `Run`-key contract:
+Configure publishes the ports below, and uses the platform's [Start with Windows](README.md#start-with-windows-is-a-port-the-platform-publishes), which keeps its `Run`-key contract:
 
 - **[Setup actions](../../../src/Desktop/Configure/ISetupActions.cs)** copies the public key and opens the add-key page Sync gives. Generate key and Copy public key only copy; Set key copies, then opens the page, as [above](#git-access-makes-copies-and-forgets-the-devices-key) says. App adapts its existing clipboard and browser components; Configure never reaches another window module's port. Failures are shown under setup. The user decided that it also copies any text, for the [Examples dialog's](#the-ai-assistants-row-lets-assistants-in-and-examples-shows-how-to-connect-them) Copy buttons, through the same clipboard code:
 
@@ -355,6 +399,24 @@ Configure publishes one port, and uses the platform's [Start with Windows](READM
 The composition root implements this port. Its real adapter has integration tests; Configure's UX tests use
 the shared fakes.
 
+The user decided that Configure publishes one more port, implemented by a private desktop App component. `Create` takes it after `keepAwake`, before the logger. This interface is designed but not implemented; the folder is the new clone Sync hasn't selected yet:
+
+```csharp
+namespace Memoria.ToDo.Desktop.Configure;
+
+/// Adds the bundled examples through a desktop-only implementation.
+public interface IRepositoryExamples
+{
+    /// Adds every example file to the new clone at folder, which Sync hasn't selected yet, when it counts as empty,
+    /// and returns true. Returns false and writes nothing otherwise. Never replaces a file: one that exists where an
+    /// example goes fails the call. Validates the bundle and destination before writing. On a write failure or
+    /// cancellation, removes only this attempt's new and temporary files, then throws. Cleanup failures are thrown
+    /// together with the original failure and identify the remaining paths. Never selects or deletes the clone.
+    Task<bool> AddIfEmptyAsync(string folder, CancellationToken cancellationToken);
+}
+```
+
+Configure passes Sync a preparation step that calls this port and remembers whether it added files, for the Repository card's message. Use existing repo clone passes none.
 ## Failure modes
 
 - **A shortcut is taken**: Configure says why under its field, and the previous shortcut stays active. When a row's shortcut is taken as the app starts, that row has none: Shell opens Configure, which says why, and the tray menu still works.
@@ -366,6 +428,7 @@ the shared fakes.
 - **A shared setting is saved, but a notice or the local save report fails after it** (the platform's [`NoticeFailedException`](../modules.md#steps-that-must-all-run-throw-their-failures-together)), for the deletion delay or a shortcut: the row shows the new value, as after a save, and its message shows the desktop platform's [message for it](README.md#the-message-line-and-store-failures-serve-every-window-that-shows-them), never that the setting wasn't saved. Configure logs the failure once, at Error. Proposed, a decision to confirm: a shortcut saved this way is registered as after any save.
 - **Installing can't write the `Run` key**: the app still installs, since Velopack's install step can't stop the install ([hooks](https://docs.velopack.io/integrating/hooks)). The app doesn't start at sign-in, and Configure shows the setting off.
 - **Setting up sync fails**, such as when the host rejects the key or the repository isn't found: Configure shows the error, as [Sync through git](../sync.md#failure-modes) lists, and the device stays unconfigured until setup succeeds.
+- **The examples can't be written after a clone**, such as on a full disk: the Repository card shows the reason, Configure logs it at Error, the writer undoes only its own files, and the first sync doesn't run. Both failures and remaining paths are shown if cleanup fails. The new clone stays unselected, so no background pass can publish the partial set; the previous clone remains available. A complete set left by a failed first sync is different: it stays for the normal sync retry.
 - **A key button can't copy, or Set key can't open the host's page**: the message in the button's card shows the error. A failed copy opens no page, and a failed page leaves the key copied. When Generate key made the key but couldn't copy it, the key stays.
 - **Forget key can't delete the key**: the message under Git Access shows the error, and the key stays.
 - **Accept host key can't save the trust**: the message under Git Access shows the error, and the saved trust doesn't change.
@@ -413,6 +476,12 @@ The options below were considered and rejected, grouped by decision.
 - Where Check for updates sits, and what it says when nothing is new:
   - **On the same line as What is new and Update Now**: the button would move as those buttons appear and disappear.
   - **Saying nothing when nothing is new**: the user couldn't tell a finished check from one that did nothing.
+- Where examples come from, proposed for the [examples](#cloning-an-empty-repository-adds-examples-on-the-desktop-only):
+  - **Sync's clone adds them**: both apps run Sync, so the phone would add them, which the user ruled out.
+  - **Anonymized copies of the user's own files**: the user ruled it out.
+  - **A marker on each example, and a Remove examples action**: a format change and more code for a one-time cleanup the user can do by hand.
+  - **A guided tour, or a choice of example sets**: more than the request needs.
+  - **Example text in the docs**: a second copy that would drift from the files.
 - Adding the device's key at the host:
   - **Copy public key also opens the host's page**: the user chose a Copy public key that only copies, and a Set key beside Clone that opens the page.
   - **Opening the add-key page of the selected clone's host**: the user wants the page of the address being typed, which works before any clone exists.
@@ -453,6 +522,22 @@ The options below were considered and rejected, grouped by decision.
   - **"Configuration window"**: it differs from the window's title and the tray menu's item.
 - How `settings.json` keeps Configure's shortcut:
   - **Version 2, with the new field**: every older app's settings reads and writes fail until it updates, which Tasks [ruled out](../tasks.md#ruled-out) for tag colors.
+- When examples are added:
+  - **An Add examples check box**: an extra choice and control where automatic initialization was preferred.
+  - **Only a remote with no branches**: README-only and settings-only repositories would get no examples.
+  - **During shared clone, phone setup, startup, or later sync**: phone initialization is forbidden, and later operations must not recreate deleted examples.
+- What examples include:
+  - **No own contact**: the special contact file would remain unexplained.
+  - **Non-default shared settings**: examples would change every device's behavior.
+  - **Data anonymized from the user's files**: the user requires wholly made-up data.
+- Where examples live:
+  - **New Tasks or Contacts operations just for examples**: unnecessary shared API changes and duplicate examples from generated IDs.
+  - **An extra setup-actions member**: clipboard and browser actions would also own repository writes.
+- When writing examples fails:
+  - **Keep partial examples for manual recovery**: an incomplete set could be published later.
+  - **Continue with the first sync**: setup would publish incomplete examples despite the error.
+  - **Delete the whole successfully cloned folder**: initialization only owns the files it adds, not pre-existing or concurrently created files.
+  - **Select before initialization and add a persistent sync hold**: more public surface and recovery state than preparing an unselected clone.
 
 The other settings Configure shows were chosen elsewhere, with their rejected options: the default shortcuts in [Shell](shell.md#ruled-out), the deletion delay in [purpose and scope](../purpose.md#ruled-out), and the sync settings in [Sync through git](../sync.md#ruled-out).
 
@@ -535,4 +620,4 @@ Earlier proposed settings remain marked above.
 
 ## Open questions
 
-None.
+None for example initialization. The implementation and its tests are deferred to design backlog row 26.
