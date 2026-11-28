@@ -157,7 +157,7 @@ Proposed, each a decision to confirm:
 
 The user decided that a key field's choices come from synced files the user writes by hand, with no editor for now, and the user already made them in `autocomplete/contacts/dataTypes/`. Each file a key field reads, listed below, is one data type; the folder also holds the [templates file](#mention-templates-come-from-a-synced-file), which isn't. A data type file is an object with a `version` and one list named after the file without `.json`, such as `{ "version": 1, "careerPaths": [ ... ] }`; the user chose this shape. The list holds objects, each with a unique `id` and any other properties that describe it, such as a career path's `name` and `short`, or a pronoun's `subject` and `object`. A key field stores an entry's `id`.
 
-Today two fields are key fields: `careerPathKey` chooses from `careerPaths.json`, and `pronounsKey` from `pronouns.json`. `levelId` and `workingType` have no data type file, so they're plain text.
+Today two fields are key fields: `careerPathKey` chooses from `careerPaths.json`, and `pronounsKey` from `pronouns.json`. `levelId` and `workingType` have no data type file, so they're plain text. On the desktop, [hand edits to these files and the templates file trigger sync](desktop/README.md#hand-edits-to-the-data-type-files-sync-after-30-quiet-seconds).
 
 The user decided that **a missing data type file is reported only when the clone [has contacts](#the-clone-keeps-contacts-in-group-files-under-autocompletecontacts)**, so users who don't keep contacts see no problem in Sync's status. A data type file that's there but can't be read is always reported.
 
@@ -193,6 +193,7 @@ Proposed, each a decision to confirm:
 The user decided that the templates are a list in a synced file the user writes by hand, with no editor for now, and that Tab in the "@" list cycles through them. The user then asked that the "@" list start on the template used last, on every device that syncs.
 
 - **The file is `autocomplete/contacts/dataTypes/mentionTemplates.json`**, the user's choice: `{ "version": 1, "templates": ["{fullName}", "{fullName} ({careerPath.short})", "{firstName}"] }`. Its order is the order Tab cycles them in. It isn't a [data type](#key-fields-choose-from-the-users-data-type-files): no key field chooses from it.
+- **A hand edit syncs on its own on the desktop**, as the [desktop app](desktop/README.md#hand-edits-to-the-data-type-files-sync-after-30-quiet-seconds) decides.
 - **With no file, the list is `["{fullName}"]`**, and nothing is reported. The user decided an empty file, of zero bytes, counts as no file.
 - **A template shows a time as `HH:mm`**, as [search](#search-matches-every-typed-word-in-any-field) does, the user's choice. Proposed, a decision to confirm: a date shows as `yyyy-MM-dd`.
 - **`{nickname}` shows the [nickname, else the first name](#a-nickname-falls-back-to-the-first-name)**, the user's choice, so `{nickname}` shows "Cami" for a contact with that nickname, and "Ana" for one with only `firstName: "Ana"`. It's the one placeholder that doesn't show its field's stored value. `{firstName}` still shows only the first name.
@@ -450,6 +451,11 @@ public interface IContactFileRules
     /// Whether the path, relative to the clone, is a group file, a data type file, or the templates file.
     /// Throws ArgumentException for a rooted path or one with "." or ".." parts.
     bool Holds(string relativePath);
+
+    /// Whether changing this relative path affects a data type or mention templates file, including its
+    /// ancestor folders. Other valid paths return false. Uses Holds' path validation and case matching.
+    /// Designed for the desktop watch; not implemented yet.
+    bool AffectsDataTypesOrTemplates(string relativePath);
 
     /// The merged bytes, or null when the merged file is deleted. Null means the side has no file.
     /// Throws InvalidDataException when a present side can't be read or needs a newer app;

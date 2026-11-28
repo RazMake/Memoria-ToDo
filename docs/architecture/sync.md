@@ -66,6 +66,7 @@ The table lists what starts a sync on the desktop; the Android [Shell](android/s
 | When | What happens |
 | --- | --- |
 | A change is saved | A sync starts about 5 seconds later, so a burst of edits makes one commit |
+| A data type or mention templates file is edited by hand | The [desktop app's debounce](desktop/README.md#hand-edits-to-the-data-type-files-sync-after-30-quiet-seconds) makes an automatic request without the local-save delay |
 | The app starts, Task View opens, or 30 minutes pass | A sync starts |
 | The user presses Sync in Task View, or Sync now in Configure | A sync starts at once; the user asked for the button, to sync faster |
 | A sync failed | It retries, waiting longer each time, up to 15 minutes |
@@ -128,7 +129,7 @@ Proposed: a device is set up in Configure in these steps. This is a decision to 
 1. The user enters the repository's SSH address, such as `git@github.com:<you>/<repository>.git`, and the device name, which starts as the machine's name.
 2. The user manages the device key through Configure's [key controls](desktop/configure.md#git-access-makes-copies-and-forgets-the-devices-key). On GitHub, the repository's [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) needs "Allow write access".
 3. Sync checks the host key: silently for the four built-in hosts, and with explicit acceptance for any other.
-4. Configure keeps the selected clone, lets the user select another existing clone, or clones into a new or empty folder. On an empty repository, the first device creates `settings.json`.
+4. Configure keeps the selected clone, lets the user select another existing clone, or clones into a new or empty folder. On an empty repository, the first device creates `settings.json`. On the desktop, a clone with none of the app's data first gets [examples](desktop/configure.md#cloning-an-empty-repository-adds-examples-on-the-desktop-only), which this sync pushes.
 
 Afterwards, Configure shows the last sync time, the status, and Sync now.
 
@@ -349,7 +350,7 @@ library types are not public. The user decided that Contacts is a shared module 
 
 | Contract | Caller and purpose |
 | --- | --- |
-| [`ISyncService`](../../src/Shared/Sync/ISyncService.cs) | Shell, Task list, and Configure: lifecycle, manual sync, status, and setup |
+| [`ISyncService`](../../src/Shared/Sync/ISyncService.cs) | Shell, Task list, Configure, and App: lifecycle, manual and automatic requests, status, and setup |
 | [`ISyncStatus`](../../src/Shared/Sync/Status/ISyncStatus.cs) | Immutable status and failure kind, successful-sync time, pending changes, and the repository's skipped-file reports, Tasks' and Contacts' alike |
 | [`ISyncSetup`](../../src/Shared/Sync/Setup/ISyncSetup.cs) | Configure: device name, key generation and deletion, clone or existing-clone selection, explicit custom-host trust, and the typed-address check |
 | [`ISyncSetupState`](../../src/Shared/Sync/Setup/ISyncSetupState.cs) | Immutable setup state, including the selected clone, public key, and host's add-key page |
@@ -424,7 +425,8 @@ dependency is added. Existing unsafe-state checks still run before changing an e
 
 `UseExistingAsync` can reuse the currently selected clone; it validates before changing its origin or selection.
 It contacts no host, so it doesn't check push access. `CloneAsync` checks push access right after cloning, removes
-what it cloned when that check fails, and selects only after both succeed. Neither operation counts as the first
+what it cloned when that check fails, and selects only after both succeed. It then runs any supplied
+[preparation step](#a-new-clone-is-prepared-before-selection) before selecting. Neither operation counts as the first
 successful writable sync: Configure then awaits `SyncNowAsync`, which verifies push access even when there are no
 new local commits.
 A failed first sync leaves the selected clone available for offline work and setup retry. A detached HEAD,
@@ -441,6 +443,37 @@ Setup keeps the clone the user already configured; selecting a folder is not an 
 The existing device-local `repository-folder.txt` remains the only persisted selected-path setting, as
 [Configure](desktop/configure.md#the-sync-settings-section-sets-the-devices-clone) records. Sync's implementation
 must commit, fetch, merge, and push through the configured repository rather than require a replacement clone.
+
+### A new clone is prepared before selection
+
+The user approved an optional preparation callback on `ISyncSetup.CloneAsync`, for the desktop's [examples](desktop/configure.md#cloning-an-empty-repository-adds-examples-on-the-desktop-only). Sync contains no example data or generation logic. Android passes `null`; Use existing repo clone has no preparation step.
+
+After cloning and checking push access succeed, Sync awaits the callback inside its existing setup-operation gate, before persisting or adopting the new folder. Stores and the desktop watch remain on the previous selection. Queued sync passes cannot observe an incomplete new clone. The callback runs off the UI thread and must not call Sync or select the repository itself.
+
+Preparation failure or cancellation leaves the new clone unselected and preserves the previous selection, including across restart. The callback owns undoing its changes and reporting any cleanup failures. Sync does not delete a successfully cloned folder because preparation failed; existing cleanup for native clone or push-access failure is unchanged. Setup reports the preparation failure through its normal status and exception boundary, and Configure shows and logs it.
+
+This designed declaration replaces the current one at implementation, with all callers adapted and no compatibility overload:
+
+```csharp
+Task CloneAsync(
+    string address, string folder, Func<string, CancellationToken, Task>? prepare, CancellationToken cancellationToken);
+```
+
+### Automatic requests start a fresh pass without the local-save delay
+
+The user approved a small automatic request on `ISyncService` for the [desktop hand-edit debounce](desktop/README.md#hand-edits-to-the-data-type-files-sync-after-30-quiet-seconds). It requests the normal commit, fetch, merge, and push, without the store-save delay or a manual-sync status.
+
+```csharp
+/// Requests a fresh automatic pass for the expected selected clone, without the local-save delay.
+/// Coalesces requests; if a pass is active, queues a follow-up that reads changes after this request.
+/// Invalid arguments fail before scheduling. Obsolete-folder requests are discarded with a Debug log,
+/// both before scheduling and before dispatch. Throws SyncNotReadyException for the existing not-ready cases.
+void RequestSync(string expectedFolder);
+```
+
+The request uses the existing scheduler and owned worker, not another sync loop. It is bound to the expected clone, so a delayed request cannot sync a replacement folder. A running pass is never taken as proof that it included this edit. Failures, pending-file reporting, and retries follow the existing sync policy. Manual, local-save, startup, periodic, and retry triggers are unchanged.
+
+Focused unit tests cover an idle request without extra delay, an active pass followed by a fresh pass, request coalescing, obsolete-folder cancellation, not-ready errors, and unchanged manual and periodic behavior. These contracts and tests are deferred to design backlog rows 27 and 28.
 
 ### Implementation and focused checks
 
