@@ -1,4 +1,7 @@
 <Project>
+  <PropertyGroup Condition="'$(MemoriaProofTargetFramework)' != ''">
+    <TargetFramework>$(MemoriaProofTargetFramework)</TargetFramework>
+  </PropertyGroup>
   <Import Project="$(MemoriaSourceRoot)\Directory.Build.props" />
   <PropertyGroup>
     <TargetFramework>$(MemoriaPcTargetFramework)-android</TargetFramework>

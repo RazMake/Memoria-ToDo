@@ -23,6 +23,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Cannot evaluate the Android proof project." }
     $evaluated = ($evaluation | ConvertFrom-Json).Properties
     $properties += "-p:TargetFramework=$($evaluated.TargetFramework)"
+    $properties += "-p:MemoriaProofTargetFramework=$($evaluated.TargetFramework)"
     $properties += "-p:SupportedOSPlatformVersion=$($evaluated.SupportedOSPlatformVersion)"
     $sourceCommit = & git --no-pager rev-parse HEAD
     if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the source commit.' }
