@@ -2,17 +2,25 @@
 
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <MemoriaXunitVersion>4.0.2</MemoriaXunitVersion>
+    <MemoriaDeviceRunnersVersion>0.1.0-preview.12</MemoriaDeviceRunnersVersion>
     <!-- Velopack must match vpk's version, so vpk's entry in the tools manifest is its only home. -->
     <MemoriaToolsManifest>$(MSBuildThisFileDirectory).config\dotnet-tools.json</MemoriaToolsManifest>
     <MemoriaVelopackVersion Condition="Exists($(MemoriaToolsManifest))">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText($(MemoriaToolsManifest))), '"vpk"\s*:\s*\{\s*"version"\s*:\s*"([^"]+)"').Groups[1].Value)</MemoriaVelopackVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.2" />
+    <PackageVersion Include="xunit.v3.mtp-v2" Version="$(MemoriaXunitVersion)" />
     <PackageVersion Include="Microsoft.Testing.Extensions.HangDump" Version="2.5.1" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CrashDump" Version="2.5.1" />
-    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.2" />
-    <PackageVersion Include="xunit.v3.assert" Version="4.0.2" />
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="$(MemoriaXunitVersion)" />
+    <PackageVersion Include="xunit.v3.runner.utility" Version="$(MemoriaXunitVersion)" />
+    <PackageVersion Include="DeviceRunners.Testing.Targets" Version="$(MemoriaDeviceRunnersVersion)" />
+    <PackageVersion Include="DeviceRunners.VisualRunners.Maui" Version="$(MemoriaDeviceRunnersVersion)" />
+    <PackageVersion Include="DeviceRunners.VisualRunners.Xunit3" Version="$(MemoriaDeviceRunnersVersion)" />
+    <PackageVersion Include="DeviceRunners.UITesting.Maui" Version="$(MemoriaDeviceRunnersVersion)" />
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="11.0.10" />
+    <PackageVersion Include="xunit.v3.assert" Version="$(MemoriaXunitVersion)" />
     <PackageVersion Include="Xunit.StaFact" Version="4.0.24" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0" />

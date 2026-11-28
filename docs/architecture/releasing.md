@@ -1,32 +1,26 @@
-# How you release a version and run every test on GitHub
+# How you release a version and run platform tests on GitHub
 
 Status: Decided
 
-Today's workflows run every test on a push to `main`. To release desktop, open **Actions** and start **Test then Tag and Release** on `main`. It tests the commit or reuses its passed full run, then tags and publishes. The decided [platform split](android-releases.md) replaces the full gate with independent desktop and Android test workflows; it is not implemented yet. In VS Code, **Tasks: Run Task > open GitHub Actions** opens that page.
+To release desktop, open **Actions** and start **Test then Tag and Release** on `main`. It tests the commit or reuses its passed desktop run, then tags and publishes. [Publish an Android APK](publishing-android.md) starts Android's separate pipeline. In VS Code, **Tasks: Run Task > open GitHub Actions** opens that page.
 
 ## Behavior
 
-This page describes today's workflows and owns their shared release rules, VS Code shortcut, and optional commands. [Android releases](android-releases.md) owns the target split, including replacement of Run All tests. Until implementation, the workflows and commands below still behave as described. The [technology stack](technology-stack.md) owns tools and signing; [version tags](version-tags.md) owns platform versions and notes. The commands are repository tooling, not an app module.
+This page owns the shared release rules, VS Code shortcut, and optional desktop commands. [Android releases](android-releases.md) owns the platform split and workflow table. The [technology stack](technology-stack.md) owns tools and signing; [version tags](version-tags.md) owns platform versions and notes. The commands are repository tooling, not an app module.
 
-### Three workflows: unit tests on each push, every test on main, releases by hand
+### Five workflows: unit tests on each push, platform tests on main, releases by hand
 
-The table lists them:
-
-| File | Name on the Actions page | Starts on | What it does |
-| --- | --- | --- | --- |
-| `build.yml` | Build and unit tests | Each branch push | Builds and runs the unit tests, and [times](technology-stack.md#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue) the default branch's run |
-| `all-tests.yml` | Run All tests | [Each push to `main`](#every-push-to-main-runs-every-test), **Run workflow** on any pushed branch or tag, or a call from `release.yml` | Its `full-tests` job, the one home of the full-test steps: the [desktop check](technology-stack.md#agents-check-the-desktop-before-they-start-screen-tests), then the [full-suite command](technology-stack.md#plain-dotnet-test-runs-only-unit-tests-and-final-validation-runs-every-kind-of-test). When tests fail, it keeps only their [reports](technology-stack.md#run-all-tests-keeps-only-the-test-reports-when-its-tests-fail). It publishes nothing. |
-| `release.yml` | Test then Tag and Release | **Run workflow** on the default branch | Plans, tests, tags, and publishes, [below](#a-release-run-plans-tests-tags-then-publishes). The only way a version is published. |
+The [platform workflow table](android-releases.md#two-platform-test-workflows-replace-run-all-tests) lists the entries. The former Run All tests file now runs desktop tests only. Android has its own test and release entries; there is no aggregate release gate.
 
 No workflow starts on a tag, so a version tag pushed any other way, such as with `git tag`, publishes nothing.
 
 ### Every push to main runs every test
 
-A push to `main`, including a merged pull request, starts Run All tests on the pushed commit. Other branches' pushes still start only Build and unit tests. No pull-request trigger is added.
+A push to `main`, including a merged pull request, starts **Run Desktop tests** and **Run Android tests** independently on the pushed commit. Other branches' pushes still start only Build and unit tests. No pull-request trigger is added.
 
 - **The trigger filters on `main`**, so other branches and tag pushes create no full-test run. If the default branch is renamed, update that filter too.
 - **A newer push does not cancel an earlier run.** Each push keeps its own result.
-- **Unit tests run in both workflows on `main`.** Build and unit tests keeps its [timing check](technology-stack.md#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue); Run All tests keeps every test kind.
+- **Build and unit tests keeps its [timing check](technology-stack.md#the-workflow-times-the-unit-run-and-a-slow-run-opens-one-issue).** Each platform workflow runs every test kind of what it ships.
 
 ### Start a release or an extra test run from GitHub
 
@@ -35,7 +29,8 @@ Open the repository's **Actions** page. Starting a workflow needs repository wri
 | To | Do this |
 | --- | --- |
 | Release a version | Select **Test then Tag and Release**, choose **Run workflow** on `main`, enter a `part` or leave it empty, and leave `tag` and `commit` empty. Starting the run approves publishing: Plan shows the tag in its log, and the run does not pause to ask again. |
-| Run every test without releasing | A push to `main` does this automatically. For an extra run on any pushed branch or tag, select **Run All tests** and choose **Run workflow**. |
+| Run platform tests without releasing | A push to `main` starts both selections. For an extra run, choose **Run Desktop tests** or **Run Android tests**, then **Run workflow** on the pushed branch or tag. |
+| Publish an Android APK | Follow [Publish an Android APK](publishing-android.md); desktop release inputs never start Android publication. |
 | Investigate a failed release | Open the failed job's log, then use the [failure table](#a-failed-release-run-leaves-a-tag-only-once-tag-passed). |
 
 ### A release run plans, tests, tags, then publishes
@@ -52,20 +47,20 @@ You leave `tag` and `commit` empty when you start a run on GitHub's page. Each r
 
 Its four jobs run in order:
 
-1. **Plan** checks the request before any test runs. It asks the version tag script for a [preview on the run's commit](version-tags.md#on-github-the-script-tags-the-commit-its-given), so it fails at once on an unknown part, a commit that isn't on the default branch, or a changelog with no notes for the version. Then it asks the [run check](#a-release-reuses-a-passed-run-all-tests-run-of-its-commit) whether Run All tests already passed on that commit.
-2. **Tests** calls `all-tests.yml` ([reusable workflows](https://docs.github.com/actions/how-tos/reuse-automations/reuse-workflows)), so a release runs exactly what Run All tests runs, on the same commit. It's skipped when Plan found a pass.
+1. **Plan** checks the request before any test runs. It asks the version tag script for a [preview on the run's commit](version-tags.md#on-github-the-script-tags-the-commit-its-given), so it fails at once on an unknown part, a commit that isn't on the default branch, or a changelog with no notes for the version. Then it asks the [run check](#a-release-reuses-a-passed-platform-test-run-of-its-commit) whether that platform already passed on that commit.
+2. **Tests** calls the platform's [reusable test workflow](android-releases.md#two-platform-test-workflows-replace-run-all-tests), on the same commit. It's skipped when Plan found a pass.
 3. **Tag** runs only when Plan passed and Tests passed or was skipped, never after a failure or a cancel. Through the version tag script, it makes Plan's tag on the tested commit and pushes it, or refuses when the next tag changed since Plan. A push to the default branch during the tests changes nothing: Tag still tags the tested commit. The tagger is `github-actions[bot]`; a decision to confirm.
 4. **Publish** checks out the new tag and runs the [release steps](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases).
 
 - **Only Tag and Publish write the repository's contents.** Plan also reads Actions results; the other jobs only read.
-- **Release runs go one at a time, in order.** The whole workflow shares one concurrency group with `queue: max`, so up to 100 runs wait and none is canceled ([concurrency](https://docs.github.com/actions/how-tos/writing-workflows/choosing-when-your-workflow-runs/control-the-concurrency-of-workflows-and-jobs)). Run All tests runs and pushes run alongside them.
+- **Each platform's release runs go one at a time, in order.** Each release workflow has its own concurrency group with `queue: max`, `release` for desktop and `android-release` for Android, so up to 100 runs of each wait and none is canceled ([concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)). Platform test runs and pushes run alongside them. Not confirmed by a hosted run; actionlint 1.7.12 doesn't know the `queue` field yet and reports it.
 - **Inputs reach a step only through environment variables**, never written into its command, so typed text can't run as code ([script injections](https://docs.github.com/actions/concepts/security/script-injections)). A decision to confirm.
 
-### A release reuses a passed Run All tests run of its commit
+### A release reuses a passed platform test run of its commit
 
 You decided on November 22, 2026, that a release never runs the same tests twice on one commit, and kept it on November 23. Plan runs the [run check](../../.agents/full-run-check.mjs), the rule's one home. Each point below is a decision to confirm:
 
-- **A pass is the newest Run All tests run of that exact commit, started by `push` or `workflow_dispatch`, whose newest attempt passed, `full-tests` job included.** Automatic and manual runs are considered together. Other events never count; adding a trigger later does not silently make its runs eligible.
+- **A pass is the newest selected-platform run of that exact commit, started by `push` or `workflow_dispatch`, whose newest attempt and every required job passed.** The [shared metadata](../../.agents/release-platforms.json) names the workflow and jobs. Automatic and manual runs are considered together. Other events never count; adding a trigger later does not silently make its runs eligible.
 - **An unfinished or failed newest eligible run isn't a pass**, so Tests runs every test itself. Plan never waits for another run. To reuse the automatic run, start the release after that run passes.
 - **A release run's own Tests never counts**, even when Tag or Publish failed after it. GitHub lists a called workflow's jobs under the caller's run, so counting them would give the rule a second kind of run to read. A failed Publish needs no new tests anyway, as [below](#a-failed-release-run-leaves-a-tag-only-once-tag-passed).
 - **A run shows what Plan found.** Plan writes a notice, shown on the run's summary page, and a line in its job summary ([workflow commands](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands)). It names the commit and links the reused run, or says Tests runs every test.
@@ -92,11 +87,11 @@ This optional terminal command previews the tag and commit before asking you to 
 5. **It follows that run until it ends.** When the run fails, it lists each failed job with its link, says whether the version tag now exists on origin, and gives the matching row of the [failure table](#a-failed-release-run-leaves-a-tag-only-once-tag-passed). It never re-runs a job.
 6. **When the run passes**, it checks that the release is published, isn't a prerelease, and holds exactly one nonempty Windows setup executable, then guides [your checks](#installation-and-the-smoke-check-stay-manual).
 
-It never looks for an earlier Run All tests run, since Plan does that, and never pushes a tag; a decision to confirm. It requires an interactive terminal, so redirected input can't approve a release; also a decision to confirm.
+It never looks for an earlier platform test run, since Plan does that, and never pushes a tag; a decision to confirm. It requires an interactive terminal, so redirected input can't approve a release; also a decision to confirm.
 
-### The Run All tests command tests the commit you pushed
+### The `run-all-tests` command tests the commit you pushed
 
-The optional `node .agents\run-all-tests.mjs` command starts Run All tests on your current branch and follows it. It takes no arguments and asks nothing.
+The optional `node .agents\run-all-tests.mjs` command retains its filename but now starts **Run Desktop tests** on your current branch and follows it. It takes no arguments and asks nothing. Start Android tests separately from Actions.
 
 - **It refuses before starting** when you aren't on a branch, or your branch's newest commit isn't exactly origin's, so the run tests the commit you have. Uncommitted changes don't stop it; it warns that they aren't tested.
 - **It checks the started run's commit**, as the release command does, then follows the run.
@@ -131,7 +126,7 @@ No app module uses this tooling. You use:
 - **`node .agents\run-all-tests.mjs`**, optional. Exit code 0 means the run passed.
 - **Test then Tag and Release's inputs**, [above](#a-release-run-plans-tests-tags-then-publishes).
 
-Both commands describe themselves with `--help`. Plan reads the run check's command line, `node .agents/full-run-check.mjs --repo <owner/name> --commit <ID>`. A decision to confirm:
+Both commands describe themselves with `--help`. Plan reads the run check's command line, `node .agents/full-run-check.mjs --repo <owner/name> --commit <ID> [--platform desktop|android]`. Desktop remains the default. A decision to confirm:
 
 | Outcome | Standard output | Error output | Exit code |
 | --- | --- | --- | --- |
@@ -145,7 +140,7 @@ Both commands describe themselves with `--help`. Plan reads the run check's comm
 - **Repository or changelog not ready:** the preview names the fix; you may fix it and retry, or cancel.
 - **The default branch moves between the preview and the run's start:** the command stops, Plan refuses, and nothing is tagged. Run the command again.
 - **A release run fails:** the [failure table](#a-failed-release-run-leaves-a-tag-only-once-tag-passed) says what's left and what you do.
-- **Run All tests is started on a branch without `all-tests.yml`:** GitHub refuses, and the command shows its message. Merge the default branch, push, and try again.
+- **Run Desktop tests is started on a branch without `all-tests.yml`:** GitHub refuses, and the command shows its message. Merge the default branch, push, and try again.
 - **The command is interrupted, or a wait expires, after it started a run:** the run goes on, and the command prints its link.
 - **Manual checks fail or stay unconfirmed:** the release may already be public. The command reports failure.
 
@@ -159,7 +154,7 @@ Both commands describe themselves with `--help`. Plan reads the run check's comm
   - **One workflow with a mode input**: one **Run workflow** entry with a list, not two named entries, and every condition grows.
   - **File names that spell the display names**, such as `test-tag-release.yml`: more links change, and GitHub lists a renamed file's past runs apart.
 - How a release is tested:
-  - **Each release run always runs every test itself**: a release right after a passing Run All tests would run the suite twice, which reverses your November 22 choice.
+  - **Each release run always runs every test itself**: a release right after a passing platform test run would run its tests twice, which reverses your November 22 choice.
   - **A release run's passed Tests counts as a pass**: a second kind of run for the rule to read.
   - **The release command also looks for an earlier run**: Plan already does, and the rule would have a second caller.
   - **Every test on each branch push, or on your PC before tagging**: each branch push would wait for the full suite; on your PC, releases depended on its desktop, as from November 16 to 22, 2026.

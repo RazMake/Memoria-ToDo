@@ -145,6 +145,142 @@ const everyTestCommand = 'dotnet test -p:MemoriaAllTestKinds=true';
 const nodeCommand = 'node --test ".agents/*.test.mjs"';
 const generateCommand = 'node .agents/generate.mjs --check';
 
+describe('release script coverage (unit)', () => {
+  test('rejects uncovered script tests before printing a test plan', async () => {
+    const result = await run([], {
+      changes: () => [], projects: () => projects, testFiles: () => testFiles,
+      scriptTests: () => ['unassigned'],
+    });
+    assert.equal(result.code, 1);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /unassigned.*not assigned/);
+  });
+});
+
+describe('independent platform release selections (unit)', () => {
+  const androidApp = src('Android', 'App');
+  const androidPlatform = src('Android', 'Platform');
+  const androidConfigure = src('Android', 'Configure');
+  const androidTests = 'tests/Android/Tests/Memoria.ToDo.Android.Tests.csproj';
+  test('checks every architecture consumer when release metadata changes', () => {
+    const result = planTests({
+      changes: modified('.agents/release-platforms.json'),
+      projects: [...projects, project(androidTests)],
+      testFiles: [...testFiles, moduleTests('Android', 'Configure')],
+    });
+    assert.ok(result.selections.some(selection => selection.project === testingTests && selection.kind === 'project'));
+    assert.ok(result.selections.some(selection => selection.project === androidTests));
+  });
+
+  for (const platform of ['desktop', 'android']) {
+    test(`includes the shared generator tests in the ${platform} gate`, () => {
+      const result = planTests({ platform, changes: [], projects: platformProjects, testFiles: platformFiles });
+      assert.ok(result.extras.some(extra => extra.command.includes('.agents/generate.test.mjs')));
+    });
+  }
+  const platformProjects = [
+    ...projects, project(src('Api', 'Client'), sharedPlatform), project(androidPlatform, sharedPlatform),
+    project(androidConfigure, androidPlatform, sharedTasks),
+    project(androidApp, androidConfigure, sharedSync),
+    project(androidTests, androidConfigure, androidPlatform),
+  ];
+  const platformFiles = [...testFiles, moduleTests('Android', 'Configure'), moduleTests('Android', 'Platform')];
+  const platformPlan = (platform, extraProjects = [], extraFiles = []) => planTests({
+    platform, changes: [], projects: [...platformProjects, ...extraProjects], testFiles: [...platformFiles, ...extraFiles],
+  });
+
+  test('selects Android and its shipped shared modules without desktop screens', () => {
+    const result = platformPlan('android');
+    const namespaces = result.selections.map(s => s.namespace);
+    assert.ok(namespaces.includes('Memoria.ToDo.Android.Configure.Tests'));
+    assert.ok(namespaces.includes('Memoria.ToDo.Shared.Sync.Tests'));
+    assert.ok(!namespaces.some(n => n?.startsWith('Memoria.ToDo.Desktop.')));
+    assert.equal(result.desktopCheck, false);
+    assert.ok(result.commands.some(c => c.includes('android-device-tests.mjs')));
+  });
+
+  test('selects desktop and its shipped dependencies without Android tests', () => {
+    const result = platformPlan('desktop');
+    const namespaces = result.selections.map(s => s.namespace);
+    assert.ok(namespaces.includes('Memoria.ToDo.Desktop.TaskList.Tests'));
+    assert.ok(namespaces.includes('Memoria.ToDo.Shared.Tasks.Tests'));
+    assert.ok(!namespaces.includes('Memoria.ToDo.Shared.Sync.Tests'));
+    assert.ok(!result.commands.some(c => c.includes('tests/Android')));
+    assert.equal(result.desktopCheck, true);
+  });
+
+  test('refuses test coverage that belongs to neither shipped platform', () => {
+    assertPlanError(() => platformPlan('android', [project(src('Shared', 'Orphan'))], [moduleTests('Shared', 'Orphan')]), /Orphan/);
+  });
+
+  test('accepts a platform command without asking for changed files', async () => {
+    const result = await run(['--platform', 'android'], {
+      changes: () => assert.fail('release selection must not read working-tree changes'),
+      projects: () => platformProjects, testFiles: () => platformFiles, scriptTests: () => [],
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /Memoria\.ToDo\.Android\.Configure\.Tests/);
+  });
+
+  test('keeps desktop architecture checks out of the Android gate and the reverse', () => {
+    const files = [
+      testFile('tests/Testing/Tests/Architecture/Android.cs', 'Memoria.ToDo.Architecture.Android'),
+      testFile('tests/Testing/Tests/Architecture/Desktop.cs', 'Memoria.ToDo.Architecture.Desktop'),
+    ];
+    for (const [platform, other] of [['android', 'Desktop'], ['desktop', 'Android']]) {
+      const result = platformPlan(platform, [], files);
+      const command = result.commands.find(command => command.includes(testingTests));
+      assert.ok(command.includes(`Memoria.ToDo.Architecture.${platform === 'android' ? 'Android' : 'Desktop'}`));
+      assert.ok(!command.includes(`Memoria.ToDo.Architecture.${other}`));
+      assert.match(command, /Memoria\.ToDo\.Testing\.Analyzers/);
+    }
+  });
+
+  test('runs only the platform release tools and their shared support', () => {
+    const android = platformPlan('android').commands.find(command => command.startsWith('node --test'));
+    const desktop = platformPlan('desktop').commands.find(command => command.startsWith('node --test'));
+    assert.ok(android.includes('android-apk.test.mjs'));
+    assert.ok(android.includes('github-runs.test.mjs'));
+    assert.ok(!android.includes('desktop-check.test.mjs'));
+    assert.ok(desktop.includes('desktop-release-files.test.mjs'));
+    assert.ok(!desktop.includes('android-device-tests.test.mjs'));
+    assert.ok(!android.includes('*'));
+    assert.ok(!desktop.includes('*'));
+  });
+
+  for (const [platform, other, otherApp] of [['android', 'Desktop', app], ['desktop', 'Android', androidApp]]) {
+    test(`does not validate ${other} reference faults in the ${platform} gate`, () => {
+      const broken = platformProjects.map(project => project.path === otherApp
+        ? { ...project, references: [...project.references, `src/${other}/Missing/Missing.csproj`] } : project);
+      const result = planTests({ platform, changes: [], projects: broken, testFiles: platformFiles });
+      assert.ok(result.commands.some(command => command.includes('dotnet test')));
+      assert.ok(!result.selections.some(selection => selection.namespace?.startsWith(`Memoria.ToDo.${other}.`)));
+    });
+    test(`does not validate ${other} test namespace faults in the ${platform} gate`, () => {
+      const result = platformPlan(platform, [], [testFile(`tests/${other}/Tests/Platform/Broken.cs`, 'BrokenNamespace')]);
+      assert.ok(result.commands.some(command => command.includes('dotnet test')));
+      assert.ok(!result.selections.some(selection => selection.namespace?.startsWith(`Memoria.ToDo.${other}.`)));
+    });
+  }
+  test('selects Android PC and device checks when the linked native host changes', () => {
+    const result = planTests({ changes: [{ status: 'modified', path: 'tests/Android/PlatformTestHost/MainActivity.Android.cs' }],
+      projects: platformProjects, testFiles: platformFiles });
+    assert.ok(result.selections.some(selection => selection.kind === 'project' && selection.project.startsWith('tests/Android/')));
+    assert.ok(result.commands.some(command => command.startsWith('node .agents/android-device-tests.mjs ')));
+    assert.equal(result.desktopCheck, false);
+  });
+  test('does not mistake shared coverage for an orphan when the unrelated app project is malformed', () => {
+    const onlyDesktop = 'src/Shared/DesktopOnly/Memoria.ToDo.Shared.DesktopOnly.csproj';
+    const declared = [...platformProjects.map(project => project.path === app
+      ? { ...project, references: [...project.references, onlyDesktop] } : project), { path: onlyDesktop, references: [] }];
+    const broken = declared.map(project => project.path === app ? { ...project, references: [], validProject: false } : project);
+    const files = [...platformFiles, testFile('tests/Shared/Tests/DesktopOnly/Behaviour.cs', 'Memoria.ToDo.Shared.DesktopOnly.Tests')];
+    const result = planTests({ platform: 'android', changes: [], projects: broken, testFiles: files });
+    assert.ok(result.commands.some(command => command.startsWith('dotnet test --project tests/Android/')));
+    assert.ok(!result.selections.some(selection => selection.namespace?.startsWith('Memoria.ToDo.Desktop.')));
+  });
+});
+
 // ---------- product code ----------
 
 describe('a changed product project (unit)', () => {
@@ -616,11 +752,11 @@ describe('the printed plan (unit)', () => {
     assert.ok(!text.includes('No tests to run'));
   });
 
-  test('says that only the cloud checks a changed workflow file, and to check Run All tests on the Actions page or start it with the command', () => {
+  test('points to both platform workflows for a changed workflow file', () => {
     const text = formatPlan(plan(modified('.github/workflows/ci.yml')));
     assert.ok(text.includes('.github/workflows/ci.yml'));
-    assert.ok(text.includes('node .agents/run-all-tests.mjs'), text);
-    assert.match(text, /run all tests/i);
+    assert.match(text, /run desktop tests/i);
+    assert.match(text, /run android tests/i);
     assert.match(text, /actions page/i);
     assert.doesNotMatch(text, /\brun all tests task\b/i);
     assert.doesNotMatch(text, /Start the manual run/);
@@ -637,6 +773,7 @@ describe('the printed plan (unit)', () => {
 describe('running the script (unit)', () => {
   const okPorts = (calls = []) => ({
     changes: async (base) => { calls.push(['changes', base]); return modified('src/Desktop/Logs/LogView.cs'); },
+    scriptTests: async () => [],
     projects: async () => { calls.push(['projects']); return projects; },
     testFiles: async () => { calls.push(['testFiles']); return testFiles; },
   });

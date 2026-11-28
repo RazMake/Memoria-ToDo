@@ -15,10 +15,16 @@
   <!-- Android modules and their platform build for the PC and Android; a default TargetFramework would stop the
        cross-targeting build. The Android App builds only for Android. Design: technology-stack.md,
        "Each Android module builds for both the PC and Android". -->
-  <PropertyGroup Condition="$(MSBuildProjectDirectory.StartsWith('$(MSBuildThisFileDirectory)src\Android'))">
+  <PropertyGroup>
+    <MemoriaRelativeDirectory>$([System.IO.Path]::GetRelativePath('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)').Replace('\', '/'))/</MemoriaRelativeDirectory>
+    <MemoriaIsAndroidDeviceTarget Condition="'$(MemoriaAndroidTestTarget)' == 'android' And $(MemoriaRelativeDirectory.StartsWith('tests/Android/'))">true</MemoriaIsAndroidDeviceTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(MemoriaRelativeDirectory.StartsWith('src/Android/')) Or '$(MemoriaIsAndroidDeviceTarget)' == 'true'">
     <MemoriaIsAndroidProject>true</MemoriaIsAndroidProject>
+    <TargetFramework Condition="'$(MemoriaAndroidTestTarget)' == 'android'">$(MemoriaPcTargetFramework)-android</TargetFramework>
+    <TargetFramework Condition="'$(MemoriaAndroidTestTarget)' == 'pc' And !$(MSBuildProjectName.EndsWith('.App'))">$(MemoriaPcTargetFramework)</TargetFramework>
     <TargetFramework Condition="$(MSBuildProjectName.EndsWith('.App'))">$(MemoriaPcTargetFramework)-android</TargetFramework>
-    <TargetFrameworks Condition="!$(MSBuildProjectName.EndsWith('.App'))">$(MemoriaPcTargetFramework);$(MemoriaPcTargetFramework)-android</TargetFrameworks>
+    <TargetFrameworks Condition="!$(MSBuildProjectName.EndsWith('.App')) And '$(MemoriaAndroidTestTarget)' == ''">$(MemoriaPcTargetFramework);$(MemoriaPcTargetFramework)-android</TargetFrameworks>
     <SupportedOSPlatformVersion Condition="'$(TargetFramework)' != '' And $(TargetFramework.EndsWith('-android'))">26</SupportedOSPlatformVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(MemoriaIsAndroidProject)' != 'true'">
@@ -46,7 +52,7 @@
     <MemoriaTestKindsFile>$(MSBuildThisFileDirectory)tests\Testing\Kinds\TestKinds.cs</MemoriaTestKindsFile>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(MemoriaIsTestProject)' == 'true'">
+  <PropertyGroup Condition="'$(MemoriaIsTestProject)' == 'true' And '$(MemoriaIsAndroidDeviceTarget)' != 'true'">
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <!-- The kinds' strings live only in TestKinds.cs. -->
@@ -66,7 +72,7 @@
     <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(MemoriaIsTestProject)' == 'true'">
+  <ItemGroup Condition="'$(MemoriaIsTestProject)' == 'true' And '$(MemoriaIsAndroidDeviceTarget)' != 'true'">
     <PackageReference Include="xunit.v3.mtp-v2" />
     <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
     <PackageReference Include="Microsoft.Testing.Extensions.CrashDump" />
@@ -81,7 +87,7 @@
   </ItemGroup>
 
   <!-- A hand-set TestingPlatformCommandLineArguments would silently drop the unit filter, the hang dump, and the crash dump. -->
-  <Target Name="MemoriaCheckTestArguments" BeforeTargets="Build" Condition="'$(MemoriaIsTestProject)' == 'true'">
+  <Target Name="MemoriaCheckTestArguments" BeforeTargets="Build" Condition="'$(MemoriaIsTestProject)' == 'true' And '$(MemoriaIsAndroidDeviceTarget)' != 'true'">
     <Error Condition="'$(TestingPlatformCommandLineArguments)' != '$(MemoriaTestArguments)'" Text="Don't set TestingPlatformCommandLineArguments: it would drop the unit filter, the hang dump, and the crash dump. To run UX or integration tests, pass -p:MemoriaAllTestKinds=true. See docs/architecture/technology-stack.md." />
   </Target>
 

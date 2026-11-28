@@ -6,7 +6,7 @@ import { repositoryWithTooling, runCommand } from './github-runs.fake-github.pro
 import { checkFullRun, createSource, run } from './full-run-check.mjs';
 import { commitA, commitB } from './version-tag.fake-git.mjs';
 
-// full-run-check.mjs decides which workflow run proves a commit passed every test: a Run All tests run (all-tests.yml). Its interface:
+// full-run-check.mjs checks the selected platform's test run for an exact commit. Its interface:
 //   checkFullRun(commit, source) -> { state: 'passed' | 'running' | 'failed' | 'none', run? }
 //   source = { runs(commit) -> run[], jobs(databaseId) -> job[] }, where a run is
 //     { databaseId, path, event, headSha, status, conclusion, url } and a job is { name, conclusion };
@@ -30,6 +30,46 @@ function sourceOf(runs, jobs = {}) {
     jobs: async (id) => { asked.push(id); return jobs[id] ?? passedJobs; },
   };
 }
+
+describe('independent Android test gates (unit)', () => {
+  const androidRun = (changes = {}) => manual({ path: '.github/workflows/android-tests.yml', ...changes });
+  const androidJobs = [
+    { name: 'android-pc-tests', conclusion: 'success' },
+    { name: 'android-device-tests', conclusion: 'success' },
+  ];
+  const args = ['--repo', repositoryName, '--commit', commitA, '--platform', 'android'];
+
+  test('reuses only a successful Android run with both required jobs', async () => {
+    const result = await run(args, sourceOf([androidRun(), manual({ databaseId: 99, conclusion: 'failure' })], { 30: androidJobs }));
+    assert.deepEqual(result, { code: 0, stdout: `${runUrl(30)}\n`, stderr: '' });
+  });
+
+  for (const scenario of ['missing', 'failed', 'skipped', 'unfinished']) {
+    test(`does not reuse an Android run whose native gate is ${scenario}`, async () => {
+      const jobs = scenario === 'missing' ? androidJobs.slice(0, 1)
+        : [androidJobs[0], { ...androidJobs[1], conclusion: { failed: 'failure', skipped: 'skipped', unfinished: null }[scenario] }];
+      const result = await run(args, sourceOf([androidRun()], { 30: jobs }));
+      assert.deepEqual(result, { code: 0, stdout: '', stderr: '' });
+    });
+  }
+
+  test('ignores a successful desktop run and release-called Android run', async () => {
+    const result = await run(args, sourceOf([manual(), androidRun({ databaseId: 40, event: 'workflow_call' })]));
+    assert.deepEqual(result, { code: 0, stdout: '', stderr: '' });
+  });
+
+  test('does not let an older Android pass hide the newest failed attempt', async () => {
+    const result = await run(args, sourceOf([androidRun(), androidRun({ databaseId: 40, conclusion: 'failure' })], { 30: androidJobs }));
+    assert.deepEqual(result, { code: 0, stdout: '', stderr: '' });
+  });
+  for (const conclusion of ['failure', 'skipped']) {
+    test(`does not reuse a required Android job with both successful and ${conclusion} results`, async () => {
+      const jobs = [...androidJobs, { ...androidJobs[1], conclusion }];
+      const result = await run(args, sourceOf([androidRun()], { 30: jobs }));
+      assert.deepEqual(result, { code: 0, stdout: '', stderr: '' });
+    });
+  }
+});
 
 describe('the run that proves a commit passed every test (unit)', () => {
   test('accepts a finished manual run of the commit whose full-tests job passed', async () => {

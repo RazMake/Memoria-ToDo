@@ -1,0 +1,123 @@
+# Android's gate is independent of desktop builds and screens.
+# Design: docs/architecture/android-releases.md.
+name: Run Android tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  android-pc-tests:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-dotnet
+        with:
+          workload: maui-android
+      - name: Run Android and its shared PC tests
+        run: |
+          node .agents/platform-tests.mjs --platform android --pc-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save failed PC test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-pc-reports-${{ github.run_attempt }}
+          path: test-results/**/*.junit.xml
+          retention-days: 7
+          if-no-files-found: warn
+
+  android-device-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      EMULATOR_PORT: '5554'
+      SYSTEM_IMAGE: system-images;android-36;google_apis;x86_64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-dotnet
+        with:
+          workload: maui-android
+      - name: Install the pinned Android SDK and JDK into private directories
+        run: |
+          $sdk = Join-Path $env:RUNNER_TEMP 'memoria-android-sdk'
+          $jdk = Join-Path $env:RUNNER_TEMP 'memoria-jdk'
+          dotnet build src/Android/App/Memoria.ToDo.Android.App.csproj -t:InstallAndroidDependencies `
+            "-p:AndroidSdkDirectory=$sdk" "-p:JavaSdkDirectory=$jdk" -p:AcceptAndroidSDKLicenses=True
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "ANDROID_HOME=$sdk" >> $env:GITHUB_ENV
+          "ANDROID_SDK_ROOT=$sdk" >> $env:GITHUB_ENV
+          "JAVA_HOME=$jdk" >> $env:GITHUB_ENV
+          "DEVICE=emulator-$env:EMULATOR_PORT" >> $env:GITHUB_ENV
+          $userHome = Join-Path $env:RUNNER_TEMP 'memoria-android-user'
+          New-Item -ItemType Directory -Path (Join-Path $userHome 'avd') -Force | Out-Null
+          "ANDROID_USER_HOME=$userHome" >> $env:GITHUB_ENV
+          "ANDROID_AVD_HOME=$userHome/avd" >> $env:GITHUB_ENV
+      - name: Create the isolated emulator
+        run: |
+          & "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'emulator' $env:SYSTEM_IMAGE
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          'no' | & "$env:ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd `
+            --name memoria-tests --package $env:SYSTEM_IMAGE
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "$env:ANDROID_AVD_HOME/memoria-tests.ini")) { throw 'The emulator descriptor is missing.' }
+      - name: Boot the headless emulator with bounded readiness checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'status=$?; if [ "$status" -ne 0 ]; then tail -n 150 "$RUNNER_TEMP/emulator.log"; fi' EXIT
+          test -e /dev/kvm
+          sudo chown "$(id -u):$(id -g)" /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -accel-check
+          nohup "$ANDROID_HOME/emulator/emulator" -avd memoria-tests -port "$EMULATOR_PORT" \
+            -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -no-boot-anim \
+            > "$RUNNER_TEMP/emulator.log" 2>&1 < /dev/null &
+          echo "$!" > "$RUNNER_TEMP/emulator.pid"
+          timeout 180s "$ANDROID_HOME/platform-tools/adb" -s "$DEVICE" wait-for-device
+          timeout 180s "$ANDROID_HOME/platform-tools/adb" -s "$DEVICE" shell \
+            'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 1; done'
+      - name: Run native UX and Android-process integration tests
+        run: |
+          node .agents/android-device-tests.mjs --project tests/Android/Tests/Memoria.ToDo.Android.Tests.csproj `
+            --results-directory test-results/android-device
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Collect bounded Logcat diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -x "$ANDROID_HOME/platform-tools/adb" ]; then
+            if ! timeout 15s "$ANDROID_HOME/platform-tools/adb" -s "$DEVICE" logcat -d > "$RUNNER_TEMP/device.log" 2>&1; then
+              echo "::warning::Could not collect Logcat."
+            fi
+          fi
+      - name: Save device reports and emulator logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-device-reports-${{ github.run_attempt }}
+          path: |
+            test-results/android-device/
+            ${{ runner.temp }}/emulator.log
+            ${{ runner.temp }}/device.log
+          retention-days: 7
+          if-no-files-found: error
+      - name: Stop this job's emulator
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "$RUNNER_TEMP/emulator.pid" ]; then
+            pid="$(cat "$RUNNER_TEMP/emulator.pid")"
+            if kill -0 "$pid" 2>/dev/null; then kill "$pid"; fi
+          fi

@@ -2,7 +2,7 @@
 
 Status: Decided
 
-A session's final validation runs every test kind for changed modules and their dependents, narrowed to changed screens where possible. Release checks run only in the cloud. The decided [platform split](android-releases.md) gives each release its own shipped-code selection, replacing today's full-suite gate. Each screen keeps at most 10 UX tests.
+A session's final validation runs every test kind for changed modules and their dependents, narrowed to changed screens where possible. Release checks run only in the cloud. Each release gates only on its own platform's shipped-code selection, as the [platform split](android-releases.md) decides. Each screen keeps at most 10 UX tests.
 
 ## Behavior
 
@@ -14,19 +14,29 @@ The user decided these, on November 22, 2026:
 4. **Each UX test names its screen, and our analyzer counts the tests of each screen across every class**, so the limit holds per screen, not per class. Each UX class names its screen in its attribute, `[UX("<Screen>")]`, and the analyzer fails the build when that name differs from the class's screen folder, as [below](#our-analyzer-counts-each-screens-ux-tests).
 8. **Each screen of a module with several screens has its own folder, in its code and its tests**, so the script reads a changed file's screen from its path, as [below](#a-change-inside-screens-runs-only-those-screens-tests).
 5. **A change that stays inside one screen, or a few, runs only those screens' tests** of the changed module, as [below](#a-change-inside-screens-runs-only-those-screens-tests).
-6. **A release checks every test of what its platform ships, once on the tagged commit**, in its own Tests job or a passed platform run it reuses, as [below](#the-full-suite-runs-only-in-the-cloud). Today's full-suite gate remains until that split is implemented.
+6. **A release checks every test of what its platform ships, once on the tagged commit**, in its own Tests job or a passed platform run it reuses, as [below](#the-full-suite-runs-only-in-the-cloud). Not confirmed by a hosted run: no platform workflow has passed yet.
 7. **A change to shared test support selects every test in each test project that references it; the script follows one test folder's use of another's test code; and every module that depends on a changed module runs, whether or not its public interface changed.** The [rules below](#each-changed-path-selects-tests-by-one-rule) apply them.
 
 Why: before this design, a full local run was about 6,800 tests, about 1,140 of them UX tests, and most failures in past sessions came from the desktop, not the code: a locked PC, a disconnected Remote Desktop session, a window that lost focus, or a changed display scale. Fewer screen tests, run only where a change can break them, fail less often and finish sooner. The UX tests are now [100 across 18 screens](#existing-ux-tests-shrink-one-screen-at-a-time).
 
 ### The full suite runs only in the cloud
 
-Today Run All tests runs the repository-wide suite on GitHub. The decided [platform workflows](android-releases.md#two-platform-test-workflows-replace-run-all-tests) replace that entry, with no aggregate. Their selections together cover the repository-wide suite. No session runs every test locally unless the changed-file rules select every module.
+The [platform workflows](android-releases.md#two-platform-test-workflows-replace-run-all-tests) run their own selections on GitHub, with no aggregate entry. Their selections together cover the repository-wide suite. No session runs every test locally unless the changed-file rules select every module.
 
 - **Each release gates on its platform only**, under the [reuse rule](android-releases.md#the-pipelines-share-tools-never-release-prerequisites). A failing emulator never blocks desktop; a failing desktop screen never blocks Android. Shared shipped-code failures can block both.
 - **The project graph is the selection's one source.** Starting from each platform's app and published client projects, include their transitive product dependencies and their tests of every kind. Relevant architecture checks belong to that platform's selection. Shared test support does not pull unrelated platform modules into the gate. Platform builds must not compile unrelated app projects merely because they share a solution.
-- **Use the affected-tests script's existing graph and namespace mapping**, with a platform selection alongside its changed-file selection. Do not keep module lists in workflows. Reject unassigned test coverage rather than silently omitting it. Device selections use the [approved runner's](technology-stack.md#devicerunners-runs-the-android-test-app) isolated VSTest commands. These extensions are not implemented.
+- **Use `node .agents/affected-tests.mjs --platform desktop|android` for the shipped-code selection**, alongside the existing changed-file selection. Release roots and tool selections live in [shared metadata](../../.agents/release-platforms.json), not workflow module lists. Device selections use the [approved runner's](technology-stack.md#devicerunners-runs-the-android-test-app) isolated VSTest commands.
+- **`platform-tests.mjs` executes that plan without evaluating shell text.** It builds the Node.js client before dependent .NET tests and can run Android's PC selection with `--pc-only`; the separate Linux job runs native checks.
+- **Every script-test file has a release gate.** The shared metadata assigns them; both gates run the agent-file generator's tests. Planning fails before printing commands when a script-test file is assigned to neither gate. You approved this check on November 28, 2026.
 - **Every delivery report says what final validation ran.** Tests outside that selection run only in their platform's cloud workflow, not as prerequisites of the other platform's release.
+How a platform's selection treats the project graph. Each point is a decision to confirm:
+
+- **The selected platform's graph always validates fully.** A missing or invalid project anywhere in its release roots' closure fails the plan, naming the project.
+- **Coverage that belongs to no platform fails whenever that can be known.** A module with tests that neither platform ships fails the plan, naming the module. Inside the selected platform's own part this always holds.
+- **An incomplete unrelated graph never blocks the selected platform.** When the other platform's closure has a missing or invalid project, the plan doesn't validate it, and doesn't conclude that a shared module with tests ships nowhere.
+- **The plan says when it defers that check.** Its reasons then state that unshipped shared coverage can't be assigned against the incomplete unrelated graph, and that the selected closure is checked. It never drops the selected closure silently.
+
+The alternatives were failing both platforms on any graph fault, which makes one platform's broken project a prerequisite of the other's release, and skipping unassigned-coverage checks altogether, which lets tests that no release runs go unnoticed.
 
 ### A script turns the changed files into the commands to run
 
@@ -44,7 +54,7 @@ What it prints, in this order:
 - **Why each module or screen is selected**: changed, the files that changed it; narrowed, the screens every changed file sits in; a dependent, the module it depends on; or a user of test code, the folder whose code it uses. A wrong selection is explained by the output alone, as [Log so problems can be traced](../../AGENTS.md#code-design) asks.
 - **Whether the desktop check is needed**: yes whenever a command runs desktop tests, so the agent runs the [desktop check](technology-stack.md#agents-check-the-desktop-before-they-start-screen-tests) first, as [Run timing](../../AGENTS.md#run-timing) asks.
 - **The commands**, one per line, each runnable from the repository root, or "No tests to run" when nothing is selected.
-- **What only the cloud checks**: a changed workflow file is checked only by a workflow run, so the output points to [Run All tests](releasing.md#start-a-release-or-an-extra-test-run-from-github) on GitHub's Actions page, or the optional `node .agents/run-all-tests.mjs` command.
+- **What only the cloud checks**: changed workflows and shared actions point to the separate [desktop and Android test workflows](releasing.md#start-a-release-or-an-extra-test-run-from-github).
 
 Proposed, a decision to confirm: the script only prints. The agent runs each command, so the [hang bound](technology-stack.md#a-hang-dump-stops-a-test-application-that-hangs-despite-its-bounds) and the desktop check stay with the agent, as today. A `--run` option that runs them too was left out as code nobody needs yet.
 
@@ -61,9 +71,11 @@ The script holds these rules in code, their only home; this table explains them.
 | A module's test folder, `tests/<Part>/Tests/<Module>/` | That folder, its screen folders included, and the test folders that use its test code |
 | A test project's own files: its `.csproj`, or a file at the `Tests/` folder's top, such as `ScreenTests.cs` | Every test in that test project |
 | Shared test support: `tests/<Part>/Fakes/`, or `tests/Desktop/PlatformTestHost/` | Every test in each test project that references it. You decided this: a change to a desktop fake runs every desktop test, but never misses one. |
+| Android's linked native host, `tests/Android/PlatformTestHost/` | Android's whole PC test project and native device checks |
 | `tests/Testing/Tests/`, or `tests/Testing/UnitRunTiming/` | Every test in `Memoria.ToDo.Testing.Tests` |
 | Files that every build reads: `Directory.Build.props`, `Directory.Packages.props`, `global.json`, `.config/dotnet-tools.json`, `.editorconfig`, `tests/xunit.runner.json`, the solution file, the [kind attributes](technology-stack.md#attributes-mark-each-tests-kind), and [our analyzer](technology-stack.md#our-analyzer-fails-the-build-when-a-test-class-has-no-kind-attribute-or-two) | Every test, of every kind |
 | `.agents/` scripts, `*.mjs` | `node --test ".agents/*.test.mjs"`, every kind |
+| Shared release metadata, `.agents/release-platforms.json` | Every script test, both app test projects, and Testing's architecture checks |
 | `.agents/subagents/`, `.agents/skills/`, or the files the generator writes: `.claude/agents/`, `.claude/skills/`, `.codex/agents/`, `.github/agents/` | `node .agents/generate.mjs --check` |
 | `.github/workflows/` | No local run; the cloud note above |
 | Documentation and editor settings: `docs/`, every other `*.md`, `.vscode/`, `.gitignore`, `.ignore`, `.gitattributes` | Nothing |
@@ -195,7 +207,7 @@ None. No module uses the script or the analyzer rule.
 - **A selected module has no test folder**: nothing runs for it, and the output says so.
 - **A code folder looks like a screen folder but has no matching test folder**: the script treats its files as the module's top and selects the whole module, so it selects more, never less.
 - **A screen has an 11th UX test, a UX theory, a UX class beside its screen folders, or a screen name that differs from its folder**: the build fails with `MTD0005`, `MTD0006`, `MTD0007`, or `MTD0008`, naming the class, method, or attribute.
-- **A test outside the selection breaks**: final validation can't see it; the next Run All tests run or release run fails on it, and no release can be published from that commit.
+- **A test outside the selection breaks**: final validation can't see it; the next run of its platform's test workflow, or that platform's release run, fails on it, and that platform can't release that commit.
 - **A run with desktop tests starts on a locked or disconnected PC**: the desktop check stops the session first, as [Run timing](../../AGENTS.md#run-timing) says.
 
 ## Ruled out

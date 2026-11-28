@@ -11,8 +11,9 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
 | See what changed in each version, or add an entry | [Changelog](CHANGELOG.md), and [how to write it](docs/contributing/changelog.md) |
 | Let an AI assistant use the desktop app | [Connect an AI assistant](docs/user/connect-an-ai-assistant.md) |
 | Run the desktop app with F5 | [What you need](#what-you-need) |
-| Publish a version from GitHub's Actions page | [Release a version](docs/architecture/releasing.md) |
-| Run every test in the cloud, without releasing | [Start Run All tests](docs/architecture/releasing.md#start-a-release-or-an-extra-test-run-from-github) |
+| Publish a desktop version from GitHub's Actions page | [Release a version](docs/architecture/releasing.md) |
+| Publish a signed Android APK | [Publish an Android APK](docs/architecture/publishing-android.md) |
+| Run platform tests in the cloud, without releasing | [Start a test workflow](docs/architecture/releasing.md#start-a-release-or-an-extra-test-run-from-github) |
 | Clear a version tag | [How a version tag is made and cleared](docs/architecture/version-tags.md) |
 
 ## What you need
@@ -32,14 +33,14 @@ Memoria-ToDo will be a Windows desktop app and an Android phone app for capturin
   $env:DOTNET_ROOT = "$env:LOCALAPPDATA\Memoria-ToDo\dotnet"; $env:PATH = "$env:DOTNET_ROOT;$env:PATH"
   ```
 
-- **The Android workload, a JDK, and the Android SDK**, for the [Android app](docs/architecture/android/README.md). Every build needs the workload, the desktop app's too, because [`global.json`](global.json) pins its version ([why](docs/architecture/technology-stack.md#three-files-pin-every-version)). In a session set up as above, from the repository root:
+- **The Android workload, a JDK, and the Android SDK**, for the [Android app](docs/architecture/android/README.md) and repository-wide builds. Desktop work doesn't need them: desktop-only builds and tests can disable workload resolution with `$env:MSBuildEnableWorkloadResolver = 'false'`; unset it before an Android build. In a session set up as above, from the repository root:
 
   ```powershell
   dotnet workload install android
   dotnet build src\Android\App\Memoria.ToDo.Android.App.csproj -t:InstallAndroidDependencies -p:AcceptAndroidSDKLicenses=True
   ```
 
-  The second command installs the JDK and the Android SDK packages the workload names, about 770 MB, into `%LOCALAPPDATA%\Memoria-ToDo\jdk` and `%LOCALAPPDATA%\Memoria-ToDo\android-sdk` ([why](docs/architecture/technology-stack.md#the-pinned-workload-set-decides-the-jdk-and-android-sdk)). Running it accepts Google's [Android SDK license](https://developer.android.com/studio/terms). Run both commands again after `global.json`'s workload version changes.
+  The second command installs the JDK and the Android SDK packages the workload names, about 770 MB, into `%LOCALAPPDATA%\Memoria-ToDo\jdk` and `%LOCALAPPDATA%\Memoria-ToDo\android-sdk` ([why](docs/architecture/technology-stack.md#the-pinned-workload-set-decides-the-jdk-and-android-sdk)). Running it accepts Google's [Android SDK license](https://developer.android.com/studio/terms). Run both commands again after `global.json`'s workload version changes. The native [DeviceRunners test host](docs/architecture/technology-stack.md#devicerunners-runs-the-android-test-app) uses MAUI, so building it, running its device tests, or running the `.agents` integration tests that evaluate it also needs `dotnet workload install maui-android`. PC unit builds of the Android test project don't: their selector leaves MAUI off.
 
 - **Git on `PATH`**, for [Sync's integration tests](docs/architecture/technology-stack.md#syncs-integration-tests-run-an-ssh-server-inside-the-test-process), which run it behind their own SSH server, and for the version tag script. Its version isn't pinned.
 - **GitHub CLI (`gh`)** for the **open GitHub Actions** shortcut and optional [terminal commands](docs/architecture/releasing.md). The commands need sign-in with `gh auth login`; releasing from GitHub's page needs only your browser.

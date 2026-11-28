@@ -14,7 +14,13 @@ internal sealed partial class ModuleMap
 {
     private static readonly string[] ExpectedHeader = ["Module", "What it does", "Design file", "May use"];
 
-    public ModuleMap(IReadOnlyList<MapModule> modules) => Modules = modules;
+    private readonly IReadOnlyList<MapModule> _resolutionModules;
+
+    public ModuleMap(IReadOnlyList<MapModule> modules, IReadOnlySet<string>? parts = null)
+    {
+        _resolutionModules = modules;
+        Modules = parts is null ? modules : [.. modules.Where(module => parts.Contains(module.Part))];
+    }
 
     public IReadOnlyList<MapModule> Modules { get; }
 
@@ -41,12 +47,12 @@ internal sealed partial class ModuleMap
 
     /// <summary>The module a "May use" name means for a module of <paramref name="part"/>: the part's own, else the shared library's, else the Api part's.</summary>
     public MapModule Resolve(string part, string name) =>
-        Modules.FirstOrDefault(m => m.Part == part && m.Name == name)
-        ?? Modules.FirstOrDefault(m => m.Part == "Shared" && m.Name == name)
-        ?? Modules.FirstOrDefault(m => m.Part == "Api" && m.Name == name)
+        _resolutionModules.FirstOrDefault(m => m.Part == part && m.Name == name)
+        ?? _resolutionModules.FirstOrDefault(m => m.Part == "Shared" && m.Name == name)
+        ?? _resolutionModules.FirstOrDefault(m => m.Part == "Api" && m.Name == name)
         ?? throw new InvalidOperationException($"The module map names '{name}' as used by a {part} module, but lists no such module.");
 
-    public static ModuleMap Read(string modulesMarkdown)
+    public static ModuleMap Read(string modulesMarkdown, IReadOnlySet<string>? parts = null)
     {
         var modules = new List<MapModule>();
         string? part = null;
@@ -91,6 +97,10 @@ internal sealed partial class ModuleMap
             {
                 throw new InvalidOperationException($"A module-map table row has no 'The ... has N modules' sentence before it: {line}");
             }
+            if (parts is not null && !parts.Contains(part) && part is not ("Shared" or "Api"))
+            {
+                continue;
+            }
 
             var cells = line.Trim('|').Split('|').Select(c => c.Trim()).ToArray();
             if (!headerSeen)
@@ -113,7 +123,7 @@ internal sealed partial class ModuleMap
             modules.Add(new MapModule(part, cells[0], mayUse));
         }
 
-        return new ModuleMap(modules);
+        return new ModuleMap(modules, parts);
     }
 
     [GeneratedRegex(@"^The (shared library|desktop app|Api part|Android app) has ")]

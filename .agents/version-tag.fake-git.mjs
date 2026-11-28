@@ -49,7 +49,9 @@ export const changelogWith = (...versions) => [
 export const validChangelog = changelogWith(...[...Array(11).keys()].flatMap((major) => [...Array(11).keys()].flatMap((minor) => [...Array(11).keys()].map((patch) => `${major}.${minor}.${patch}`))));
 
 /** Stands in for the files run() reads: the checked-out CHANGELOG.md, as `changelog` or none. */
-export const createFakeFiles = ({ changelog } = {}) => ({ readChangelog: async () => changelog });
+export const createFakeFiles = ({ changelog, androidChangelog } = {}) => ({
+  readChangelog: async (file = 'CHANGELOG.md') => file === 'CHANGELOG.Android.md' ? androidChangelog : changelog,
+});
 
 const tagObjectId = (name, commit) => createHash('sha1').update(`${name}:${commit}`).digest('hex');
 const remoteEntry = (name, value) => (typeof value === 'string' ? { commit: value, id: tagObjectId(name, value) } : { id: tagObjectId(name, value.commit), ...value });
@@ -75,6 +77,8 @@ export function createFakeGit(options = {}) {
     refuseLocalDelete: undefined,
     changelog: validChangelog,
     changelogs: {},
+    androidChangelog: validChangelog,
+    androidChangelogs: {},
     ...options,
     commits: {
       c1: { shortId: 'abc1234', subject: 'Add release notes' },
@@ -133,7 +137,10 @@ export function createFakeGit(options = {}) {
       const info = state.commits[id];
       return info ? { ...info } : undefined;
     }),
-    changelogAt: track('changelogAt', async (commit) => (Object.hasOwn(state.changelogs, commit) ? state.changelogs[commit] : state.changelog)),
+    changelogAt: track('changelogAt', async (commit, file = 'CHANGELOG.md') => {
+      const texts = file === 'CHANGELOG.Android.md' ? state.androidChangelogs : state.changelogs;
+      return Object.hasOwn(texts, commit) ? texts[commit] : file === 'CHANGELOG.Android.md' ? state.androidChangelog : state.changelog;
+    }),
     createTag: track('createTag', async (name, commit, message) => {
       if (local.has(name)) throw new Error(`fatal: tag '${name}' already exists`);
       if (!message) throw new Error('an annotated tag needs a message');

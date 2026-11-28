@@ -8,8 +8,9 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { extractPlatform, platformOf, validateScriptTests } from './release-platforms.mjs';
 
-const usage = 'usage: node .agents/affected-tests.mjs [--base <ref>]';
+const usage = 'usage: node .agents/affected-tests.mjs [--base <ref>] | --platform desktop|android';
 const ROOT_NAMESPACE = 'Memoria.ToDo';
 const ARCHITECTURE_NAMESPACE = `${ROOT_NAMESPACE}.Architecture`;
 const TESTING_PART = 'Testing';
@@ -19,6 +20,9 @@ const commands = {
   generate: 'node .agents/generate.mjs --check',
   everyTest: 'dotnet test -p:MemoriaAllTestKinds=true',
 };
+export const androidDeviceTestScript = '.agents/android-device-tests.mjs';
+const deviceCommand = (project, namespaces = []) =>
+  `node ${androidDeviceTestScript} --project ${project}${namespaces.map(namespace => ` --namespace "${namespace}"`).join('')}`;
 // The Node.js client of the Local API (technology-stack.md): install, build, then its tests with Node.js's per-test timeout.
 const nodeClientCommands = [
   'npm ci --prefix src/Api/NodeClient',
@@ -61,17 +65,20 @@ const productProject = /^(src\/[^/]+\/[^/]+)\/[^/]+\.csproj$/;
 const testProject = /^tests\/([^/]+)\/Tests\/[^/]+\.csproj$/;
 
 /** Reads the project graph, checking that every reference names a project. */
-function readProjectGraph(projects) {
+function readProjectGraph(projects, validateAll = true) {
   const known = new Set(projects.map((p) => p.path));
+  const byPath = new Map(projects.map(project => [project.path, project]));
+  const forward = new Map(projects.map(p => [p.path, p.references]));
   const reverse = new Map();
   const linkers = new Map(); // a file a test project links -> the test projects that link it
-  for (const { path, references, linkedFiles = [] } of projects) {
+  for (const { path, references, linkedFiles = [], validProject } of projects) {
+    if (validateAll && validProject === false) throw new PlanError(`${path} is not a project file`);
     for (const file of linkedFiles) {
       if (!linkers.has(file)) linkers.set(file, []);
       linkers.get(file).push(path);
     }
     for (const reference of references) {
-      if (!known.has(reference)) throw new PlanError(`${path} references ${reference}, which does not exist`);
+      if (validateAll && !known.has(reference)) throw new PlanError(`${path} references ${reference}, which does not exist`);
       if (!reverse.has(reference)) reverse.set(reference, []);
       reverse.get(reference).push(path);
     }
@@ -89,6 +96,20 @@ function readProjectGraph(projects) {
   const moduleOfProject = new Map([...productModules].map(([module, path]) => [path, module]));
   return {
     productModules,
+    knownProject: path => known.has(path) && byPath.get(path)?.validProject !== false,
+    dependenciesOf(roots, validate = true) {
+      const found = new Set();
+      const pending = [...roots];
+      while (pending.length) {
+        const path = pending.pop();
+        if (validate && !known.has(path)) throw new PlanError(`release root ${path} has no project`);
+        if (validate && byPath.get(path)?.validProject === false) throw new PlanError(`${path} is not a project file`);
+        if (found.has(path)) continue;
+        found.add(path);
+        pending.push(...forward.get(path) ?? []);
+      }
+      return found;
+    },
     projectInFolder: (folder) => projectByFolder.get(folder),
     /** The part's test project, or undefined when it has none (for example, it was deleted). */
     testProject: (part) => testProjects.get(part),
@@ -220,7 +241,8 @@ const rules = [
   }),
   rule(/^tests\/Testing\/(?:Tests|UnitRunTiming)\//,
     (c, change) => c.wholeTestProject(TESTING_PART, change)),
-  rule(/^(tests\/[^/]+\/(?:Fakes|PlatformTestHost))\//, (c, change, match) => {
+  rule(/^tests\/(Android|Desktop)\/PlatformTestHost\//, (c, change, match) => c.wholeTestProject(match[1], change)),
+  rule(/^(tests\/[^/]+\/Fakes)\//, (c, change, match) => {
     const project = c.repo.graph.projectInFolder(match[1]);
     if (!project) return c.unresolved(change);
     for (const user of c.repo.graph.testProjectsUsing(project)) c.wholeProject(user, change.path);
@@ -243,8 +265,15 @@ const rules = [
   }, (match, repo) => repo.units.screenUnit(match[1], match[2], match[3]) !== undefined),
   rule(/^src\/([^/]+)\/([^/]+)\/.+/, (c, change, match) => c.changedModule(change, modulePathOf(match))?.top.push(change.path)),
   rule(/^\.agents\/[^/]+\.mjs$/, (c, { path }) => c.extra(commands.node, path)),
+  rule(/^\.agents\/android-device-tests\//, (c, { path }) => c.extra(commands.node, path)),
+  rule(/^\.agents\/release-platforms\.json$/, (c, change) => {
+    c.extra(commands.node, change.path);
+    c.wholeTestProject('Desktop', change);
+    c.wholeTestProject('Android', change);
+    c.wholeTestProject(TESTING_PART, change);
+  }),
   rule(/^(?:\.agents\/(?:subagents|skills)|\.claude\/(?:agents|skills)|\.codex\/agents|\.github\/agents)\//, (c, { path }) => c.extra(commands.generate, path)),
-  rule(/^\.github\/workflows\//, (c, { path }) => c.cloud.push(path)),
+  rule(/^\.github\/(?:workflows|actions)\//, (c, { path }) => c.cloud.push(path)),
   rule(/^(?:docs\/|\.vscode\/|\.gitignore$|\.ignore$|\.gitattributes$)|\.md$/, () => undefined),
 ];
 
@@ -332,9 +361,14 @@ const filtersOf = {
 };
 
 /** Decides what to run for `changes`. Touches no git and no files; throws PlanError for any problem it finds. */
-export function planTests({ changes, projects, testFiles }) {
-  const graph = readProjectGraph(projects);
-  const repo = { graph, units: readTestUnits(testFiles, graph) };
+export function planTests({ changes, projects, testFiles, platform }) {
+  const selectedPlatform = platform === undefined ? undefined : platformOf(platform);
+  const graph = readProjectGraph(projects, selectedPlatform === undefined);
+  const shipped = selectedPlatform ? graph.dependenciesOf(selectedPlatform.roots) : undefined;
+  const shippedParts = shipped && new Set([...shipped].filter(project => productProject.test(project)).map(project => project.split('/')[1]));
+  const files = shippedParts ? testFiles.filter(file => shippedParts.has(testFileLocation.exec(file.path)?.[1])) : testFiles;
+  const repo = { graph, units: readTestUnits(files, graph) };
+  if (selectedPlatform) return planPlatform(selectedPlatform, graph, repo.units, shipped);
   const found = collectSelections(changedPaths(changes), repo);
 
   const extras = [];
@@ -343,7 +377,40 @@ export function planTests({ changes, projects, testFiles }) {
   }
   if (found.everyTest.length) {
     extras.push({ command: commands.everyTest, reasons: [changedReason(found.everyTest)] });
+    const deviceProject = graph.testProject('Android');
+    if (deviceProject) extras.push({ command: deviceCommand(deviceProject), reasons: [changedReason(found.everyTest)] });
     return finish({ selections: [], extras, noTests: [], cloud: found.cloud });
+  }
+
+  function planPlatform(platform, graph, units, shipped) {
+    const assigned = new Set([...graph.dependenciesOf(platformOf('desktop').roots, false), ...graph.dependenciesOf(platformOf('android').roots, false)]);
+    const assignmentsKnown = [...assigned].every(graph.knownProject);
+    const ownPart = platform.roots[0].split('/')[1];
+    const selections = [];
+    for (const [module, project] of graph.productModules) {
+      const unit = units.moduleUnit(...module.split('/').slice(1));
+      if (!unit) continue;
+      if (!assigned.has(project) && (unit.part === ownPart || assignmentsKnown))
+        throw new PlanError(`${module} has test coverage but belongs to neither release platform`);
+      if (shipped.has(project)) selections.push({
+        kind: 'module', project: unit.project, namespace: unit.namespace, reasons: [`shipped by: ${platform.name}`],
+      });
+    }
+    const testing = graph.testProject(TESTING_PART);
+    if (testing) {
+      const namespaces = new Set(testFiles.filter(file => file.path.startsWith('tests/Testing/Tests/'))
+        .map(file => file.namespace).filter(namespace => namespace && (
+          !inside(namespace, ARCHITECTURE_NAMESPACE) || namespace === `${ARCHITECTURE_NAMESPACE}.${platform.name === 'desktop' ? 'Desktop' : 'Android'}`)));
+      for (const namespace of namespaces) selections.push({
+        kind: 'module', project: testing, namespace, reasons: ['platform architecture and shared repository test support'],
+      });
+    }
+    const extras = [{ command: `node --test --test-timeout=120000 ${platform.testScripts.map(script => `.agents/${script}.test.mjs`).join(' ')}`, reasons: ['platform release tools and shared support'] }];
+    if (!assignmentsKnown) extras[0].reasons.push('Unshipped shared coverage cannot be assigned against an incomplete unrelated platform graph; the selected closure is checked.');
+    if (platform.name === 'desktop') {
+      for (const command of nodeClientCommands) extras.push({ command, reasons: ['published Local API client'] });
+    }
+    return finish({ selections, extras, noTests: [], cloud: [] });
   }
 
   const selected = new Map(); // test folder -> reasons
@@ -412,14 +479,16 @@ function finish({ selections, extras, noTests, cloud }) {
     byProject.get(selection.project).push(...filtersOf[selection.kind](selection.namespace));
   }
   const dotnet = [...byProject].map(([project, filters]) =>
-    `dotnet test --project ${project} -p:MemoriaAllTestKinds=true${filters.map((f) => ` --filter-namespace "${f}"`).join('')}`);
+    `dotnet test --project ${project} -p:MemoriaAllTestKinds=true${project.startsWith('tests/Android/') ? ' -p:MemoriaAndroidTestTarget=pc' : ''}${filters.map((f) => ` --filter-namespace "${f}"`).join('')}`);
+  const device = [...byProject].filter(([project]) => project.startsWith('tests/Android/'))
+    .map(([project]) => deviceCommand(project, selections.filter(s => s.project === project && s.namespace).map(s => s.namespace)));
   return {
     selections,
     extras,
     noTests,
     cloud: [...cloud].sort(),
     desktopCheck: selections.some((s) => s.project.startsWith(DESKTOP_TESTS_FOLDER)) || extras.some((e) => e.command === commands.everyTest),
-    commands: [...dotnet, ...extras.map((e) => e.command)],
+    commands: [...dotnet, ...device, ...extras.map((e) => e.command)],
   };
 }
 
@@ -436,7 +505,7 @@ export function formatPlan(plan) {
   if (plan.commands.length) lines.push('Commands:', ...plan.commands);
   else lines.push('No tests to run');
   if (plan.cloud.length) {
-    lines.push(`Only the cloud checks: ${plan.cloud.join(', ')}`, "Check Run All tests for the pushed commit on GitHub's Actions page, or start it with node .agents/run-all-tests.mjs.");
+    lines.push(`Only the cloud checks: ${plan.cloud.join(', ')}`, "Check Run Desktop tests and Run Android tests for the pushed commit on GitHub's Actions page. Start either workflow separately when needed.");
   }
   return `${lines.join('\n')}\n`;
 }
@@ -444,6 +513,9 @@ export function formatPlan(plan) {
 // ---------- running it ----------
 
 function parseArguments(argv) {
+  const extracted = extractPlatform(argv);
+  const selected = argv.includes('--platform') ? extracted.platform.name : undefined;
+  argv = extracted.args;
   let base = null;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] !== '--base') throw new PlanError(`unknown argument "${argv[i]}"; ${usage}`);
@@ -452,20 +524,25 @@ function parseArguments(argv) {
     if (value === undefined || value.startsWith('-')) throw new PlanError(`--base needs a commit; ${usage}`);
     base = value;
   }
-  return { base };
+  if (selected && base !== null) throw new PlanError('--platform cannot be combined with --base.');
+  return { base, platform: selected };
 }
 
 /** Runs the script: `argv` are the command-line arguments, `ports` read the changes, the projects and the test files. */
 export async function run(argv, ports) {
   try {
-    const { base } = parseArguments(argv);
-    const changes = await ports.changes(base);
-    const projects = await ports.projects();
-    const testFiles = await ports.testFiles();
-    return { code: 0, stdout: formatPlan(planTests({ changes, projects, testFiles })), stderr: '' };
+    const { base, platform } = parseArguments(argv);
+    return { code: 0, stdout: formatPlan(await createPlan({ base, platform }, ports)), stderr: '' };
   } catch (error) {
     return { code: 1, stdout: '', stderr: `${oneLine(error?.message ?? error)}\n` };
   }
+
+}
+
+export async function createPlan({ base = null, platform }, ports) {
+  validateScriptTests(await ports.scriptTests());
+  const changes = platform === undefined ? await ports.changes(base) : [];
+  return planTests({ changes, projects: await ports.projects(), testFiles: await ports.testFiles(), platform });
 }
 
 // ---------- the real ports: git and the file system ----------
@@ -527,14 +604,14 @@ function listFiles(root, folder, found = []) {
 
 function readProject(root, path) {
   const text = readFileSync(join(root, path), 'utf8');
-  if (!/<Project\b/.test(text) || !/(?:<\/Project>|\/>)\s*$/.test(text)) throw new Error(`${path} is not a project file`);
+  const validProject = /<Project\b/.test(text) && /(?:<\/Project>|\/>)\s*$/.test(text);
   const resolveFromProject = (include) => posix.normalize(posix.join(posix.dirname(path), include.replaceAll('\\', '/')));
   const references = [...text.matchAll(/<ProjectReference\b[^>]*?\bInclude\s*=\s*(["'])(.*?)\1/g)].map((m) => resolveFromProject(m[2]));
   const folder = `${posix.dirname(path)}/`;
   const linkedFiles = [...text.matchAll(/<Compile\b[^>]*?\bInclude\s*=\s*(["'])(.*?)\1/g)]
     .map((m) => resolveFromProject(m[2]))
     .filter((file) => !file.startsWith(folder));
-  return { path, references, linkedFiles };
+  return { path, references, linkedFiles, validProject };
 }
 
 function readTestFile(root, path) {
@@ -545,13 +622,15 @@ function readTestFile(root, path) {
 }
 
 /** Ports that read the repository containing `cwd`. */
-function createPorts(cwd) {
+export function createPorts(cwd) {
   let root;
   let files;
   const repositoryRoot = () => (root ??= git(cwd, ['rev-parse', '--show-toplevel']).trim());
   const listed = () => (files ??= [...listFiles(repositoryRoot(), 'src'), ...listFiles(repositoryRoot(), 'tests')]);
   return {
     changes: (base) => readChanges(repositoryRoot(), base),
+    scriptTests: () => listFiles(repositoryRoot(), '.agents')
+      .map(path => /^\.agents\/([^/]+)\.test\.mjs$/.exec(path)?.[1]).filter(Boolean),
     projects: () => listed().filter((p) => p.endsWith('.csproj')).map((p) => readProject(repositoryRoot(), p)),
     testFiles: () => listed().filter((p) => p.startsWith('tests/') && p.endsWith('.cs')).map((p) => readTestFile(repositoryRoot(), p)),
   };

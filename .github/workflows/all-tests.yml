@@ -1,6 +1,5 @@
-# Builds and runs every test kind without publishing.
-# Design: docs/architecture/releasing.md, "Every push to main runs every test".
-name: Run All tests
+# The desktop release gate. Design: docs/architecture/android-releases.md.
+name: Run Desktop tests
 
 on:
   push:
@@ -18,39 +17,19 @@ defaults:
 jobs:
   full-tests:
     runs-on: windows-2025
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
-      - name: Install the Android workload, which every build needs
-        run: dotnet workload install android
-      - name: Install the JDK and Android SDK the Android app builds with
-        run: dotnet build src/Android/App/Memoria.ToDo.Android.App.csproj -t:InstallAndroidDependencies -p:AcceptAndroidSDKLicenses=True
-      - name: Build the Node.js client, which its tests and the Local API's integration tests load
-        working-directory: src/Api/NodeClient
+      - uses: ./.github/actions/setup-dotnet
+      - name: Run the desktop release selection
         run: |
-          npm ci
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          npm run build
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run every test of the Node.js client
-        run: |
-          node --test --test-timeout=120000 "tests/Api/NodeClient/*.test.mjs"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Build the Android app, which the solution leaves out
-        run: dotnet build src/Android/App/Memoria.ToDo.Android.App.csproj
-      - name: Build and run every test
-        run: |
-          node .agents/desktop-check.mjs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test "-p:MemoriaAllTestKinds=true" --report-xunit-junit --results-directory all-test-results --results-directory-layout per-module
+          node .agents/platform-tests.mjs --platform desktop --pc-only
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Save failed test reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: full-test-reports-${{ github.run_attempt }}
-          path: all-test-results/**/*.junit.xml
+          path: test-results/**/*.junit.xml
           retention-days: 7
           if-no-files-found: warn

@@ -15,6 +15,37 @@ import { commitA, commitB } from './version-tag.fake-git.mjs';
 // Its interface, as these tests define it, is described at the top of github-runs.mjs.
 const url = `https://github.com/${repositoryName}`;
 
+describe('reading release uploads (unit)', () => {
+  test('reads a draft through its numeric identifier rather than the published tag endpoint', async () => {
+    const draft = { id: 42, tag_name: 'android-v1.0.0', draft: true, assets: [{ name: 'app.apk' }] };
+    const github = createGitHubRuns(async (file, args) => {
+      assert.equal(file, 'gh');
+      if (args[0] === 'release') return '{"databaseId":42}';
+      if (args.includes('repos/example/tasks/releases/42')) return JSON.stringify(draft);
+      throw new Error('The published tag endpoint cannot find a draft.');
+    }, { repository: 'example/tasks' });
+    assert.deepEqual(await github.release('android-v1.0.0'), draft);
+  });
+
+  for (const databaseId of [null, '42', 0]) {
+    test(`rejects an invalid release identifier ${JSON.stringify(databaseId)}`, async () => {
+      const github = createGitHubRuns(async (file, args) =>
+        args[0] === 'release' ? JSON.stringify({ databaseId }) : '{"draft":true}',
+      { repository: 'example/tasks' });
+      await assert.rejects(github.release('android-v1.0.0'), /invalid release identifier/);
+    });
+  }
+
+  test('propagates a failed draft lookup instead of using a published release', async () => {
+    const failure = new Error('Draft lookup denied');
+    const github = createGitHubRuns(async (file, args) => {
+      if (args[0] === 'release') throw failure;
+      return '{"draft":false}';
+    }, { repository: 'example/tasks' });
+    await assert.rejects(github.release('android-v1.0.0'), error => error === failure);
+  });
+});
+
 function connected(options = {}) {
   const fake = createFakeGitHub(options);
   return { fake, github: createGitHubRuns(fake.execute, { clock: fake.clock }) };

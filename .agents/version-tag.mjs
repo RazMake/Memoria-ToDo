@@ -10,12 +10,13 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { checkedVersion, extractPlatform, platformOf, versionCodeOf, versionPartsOf } from './release-platforms.mjs';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'usage: node .agents/version-tag.mjs [major|minor|patch] --commit <id> [--expect <tag>] [--dry-run] | [major|minor|patch] --dry-run | --clear [<tag>] [--dry-run | --here <id> --origin <id>] | --check <tag> | --notes <tag>';
+const usage = 'usage: node .agents/version-tag.mjs [--platform desktop|android] [major|minor|patch] --commit <id> [--expect <tag>] [--dry-run] | [major|minor|patch] --dry-run | --clear [<tag>] [--dry-run | --here <id> --origin <id>] | --check <tag> | --notes <tag>';
 export const parts = Object.freeze(['major', 'minor', 'patch']);
 export const defaultPart = 'minor';
-const versionTag = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+const versionTag = platformOf().tagPattern;
 const commitId = /^([0-9a-f]{40}|[0-9a-f]{64})$/;
 const command = (...words) => ['node', '.agents/version-tag.mjs', ...words].join(' ');
 
@@ -23,11 +24,12 @@ const command = (...words) => ['node', '.agents/version-tag.mjs', ...words].join
 class Refusal extends Error {}
 const refuse = (message) => { throw new Refusal(message); };
 
-const versionOf = (tag) => versionTag.exec(tag)?.slice(1).map(BigInt);
-function clearTagOf(input) {
-  let tag = input.startsWith('v') ? input : `v${input}`;
+const versionOf = versionPartsOf;
+const platformOptions = platform => platform.name === 'desktop' ? [] : ['--platform', platform.name];
+function clearTagOf(input, platform) {
+  let tag = input.startsWith(platform.tagPrefix) ? input : `${platform.tagPrefix}${input}`;
   if (tag.split('.').length === 2) tag += '.0';
-  if (versionTag.exec(tag)?.[0] !== tag) refuse(`"${input}" is not a version tag; use [v]<major>.<minor>[.<patch>], such as 1.0 or v1.0.0`);
+  if (platform.tagPattern.exec(tag)?.[0] !== tag) refuse(`"${input}" is not a version tag; use [${platform.tagPrefix}]<major>.<minor>[.<patch>], such as 1.0 or ${platform.tagPrefix}1.0.0`);
   return tag;
 }
 
@@ -40,6 +42,11 @@ const flagOptions = ['--clear', '--dry-run'];
 const valueOptions = { '--expect': versionTag, '--commit': commitId, '--here': commitId, '--origin': commitId };
 
 function parseArguments(args) {
+  const extracted = extractPlatform(args);
+  return { ...parsePlatformArguments(extracted.args, extracted.platform), platform: extracted.platform };
+}
+
+function parsePlatformArguments(args, platform) {
   if (args.includes('--notes')) {
     if (args.length !== 2 || args[0] !== '--notes') refuse(`--notes takes exactly one tag; ${usage}`);
     return { command: 'notes', tag: args[1] };
@@ -58,7 +65,7 @@ function parseArguments(args) {
     } else if (arg in valueOptions) {
       const value = args[++i];
       if (values.has(arg)) refuse(`${arg} is given twice; ${usage}`);
-      if (value === undefined || !valueOptions[arg].test(value)) refuse(`${arg} needs ${arg === '--expect' ? 'a version tag' : 'a full lowercase commit id of 40 or 64 characters'}; ${usage}`);
+      if (value === undefined || !(arg === '--expect' ? platform.tagPattern : valueOptions[arg]).test(value)) refuse(`${arg} needs ${arg === '--expect' ? 'a version tag' : 'a full lowercase commit id of 40 or 64 characters'}; ${usage}`);
       values.set(arg, value);
     } else if (flagOptions.includes(arg)) {
       if (flags.has(arg)) refuse(`${arg} is given twice; ${usage}`);
@@ -75,7 +82,7 @@ function parseArguments(args) {
   if (flags.has('--clear')) {
     if (expect !== undefined || commit !== undefined) refuse(`--expect and --commit are for making a tag; ${usage}`);
     if (words.length > 1 || parts.includes(words[0])) refuse(`--clear takes at most one tag; ${usage}`);
-    const tag = words[0] === undefined ? undefined : clearTagOf(words[0]);
+    const tag = words[0] === undefined ? undefined : clearTagOf(words[0], platform);
     if ((here !== undefined || origin !== undefined) && words.length === 0) refuse(`--here and --origin need the tag to clear; ${usage}`);
     return { command: 'clear', tag, dryRun, here, origin };
   }
@@ -95,9 +102,8 @@ export function approvalOf(preview) {
   return { args, tag: parsed.expect, commit: parsed.commit };
 }
 
-function check(tag) {
-  const version = versionOf(tag);
-  if (!version) refuse(`"${tag}" is not a version tag; use the form v<major>.<minor>.<patch>, such as v1.2.3`);
+function check(tag, platform) {
+  const version = checkedVersion(tag, platform);
   return `${version.join('.')}\n`;
 }
 
@@ -106,7 +112,7 @@ function check(tag) {
  * Returns the text of its one `## <version>` section, trimmed of blank lines at both ends, and whether `## Unreleased` still has entries.
  * Refuses, naming the version and the fix, when there is no such section, it is empty, or it appears twice.
  */
-function notesOf(changelog, version) {
+function notesOf(changelog, version, file = 'CHANGELOG.md') {
   const sections = [];
   const unreleased = [];
   let current;
@@ -120,21 +126,22 @@ function notesOf(changelog, version) {
   const where = 'then commit and push';
   if (!sections.length) {
     refuse(hasUnreleased
-      ? `CHANGELOG.md has no "## ${version}" section; rename "## Unreleased" to "## ${version}", ${where}`
-      : `CHANGELOG.md has no "## ${version}" section; add it with what changed for users, or one line saying nothing users notice changed, ${where}`);
+      ? `${file} has no "## ${version}" section; rename "## Unreleased" to "## ${version}", ${where}`
+      : `${file} has no "## ${version}" section; add it with what changed for users, or one line saying nothing users notice changed, ${where}`);
   }
   const notes = sections[0].join('\n').replace(/^(?:[ \t]*\n)+/, '').trimEnd();
-  if (sections.length > 1 || !notes) refuse(`CHANGELOG.md's "## ${version}" section is empty or appears twice; write its entries in one "## ${version}" section, ${where}`);
+  if (sections.length > 1 || !notes) refuse(`${file}'s "## ${version}" section is empty or appears twice; write its entries in one "## ${version}" section, ${where}`);
   return { notes, hasUnreleased };
 }
 
-const versionTagsOf = (...maps) => [...new Set(maps.flatMap((map) => [...map.keys()]))].filter((tag) => versionTag.test(tag));
-const latestOf = (tags) => tags.reduce((best, tag) => (!best || compare(versionOf(tag), versionOf(best)) > 0 ? tag : best), undefined);
+const versionTagsOf = (platform, ...maps) => [...new Set(maps.flatMap((map) => [...map.keys()]))].filter((tag) => platform.tagPattern.test(tag));
+const latestOf = (tags, platform) => tags.reduce((best, tag) => (!best || compare(versionOf(tag, platform), versionOf(best, platform)) > 0 ? tag : best), undefined);
 
-function next(latest, part) {
-  if (!latest) return 'v1.0.0';
-  const [major, minor, patch] = versionOf(latest);
-  return { major: `v${major + 1n}.0.0`, minor: `v${major}.${minor + 1n}.0`, patch: `v${major}.${minor}.${patch + 1n}` }[part];
+function next(latest, part, platform) {
+  if (!latest) return `${platform.tagPrefix}1.0.0`;
+  const [major, minor, patch] = versionOf(latest, platform);
+  const prefix = platform.tagPrefix;
+  return { major: `${prefix}${major + 1n}.0.0`, minor: `${prefix}${major}.${minor + 1n}.0`, patch: `${prefix}${major}.${minor}.${patch + 1n}` }[part];
 }
 
 /** Fetches origin's default branch alone and returns its name. */
@@ -144,12 +151,12 @@ async function fetchDefaultBranch(git) {
   return branch;
 }
 
-function checkTagsOnOrigin(local, remote) {
-  const mismatched = versionTagsOf(local).filter((tag) => remote.get(tag)?.commit !== local.get(tag).commit);
+function checkTagsOnOrigin(local, remote, platform) {
+  const mismatched = versionTagsOf(platform, local).filter((tag) => remote.get(tag)?.commit !== local.get(tag).commit);
   if (mismatched.length) refuse(`version tags missing on origin or pointing to another commit there: ${mismatched.join(', ')}; fix or clear them`);
 }
 
-async function checkReadyToTag(git, branch, local, remote) {
+async function checkReadyToTag(git, branch, local, remote, platform) {
   const current = await git.currentBranch();
   if (current === undefined) refuse(`HEAD is not on a branch; check out ${branch}`);
   if (current !== branch) refuse(`you are on ${current}; check out ${branch}, origin's default branch`);
@@ -159,35 +166,35 @@ async function checkReadyToTag(git, branch, local, remote) {
   if (ahead && behind) refuse(`${branch} has diverged from origin/${branch}: ${ahead} ahead and ${behind} behind`);
   if (behind) refuse(`${branch} is ${behind} behind origin/${branch}; update it first`);
   if (ahead) refuse(`${branch} is ${ahead} ahead of origin/${branch}; push or discard those commits first`);
-  checkTagsOnOrigin(local, remote);
+  checkTagsOnOrigin(local, remote, platform);
 }
 
 // Without --commit (a preview), the clone must be ready and the commit is origin's newest; with it, the commit only has to be on origin's branch.
-async function commitToTag(git, branch, given, local, remote) {
+async function commitToTag(git, branch, given, local, remote, platform) {
   if (given === undefined) {
-    await checkReadyToTag(git, branch, local, remote);
+    await checkReadyToTag(git, branch, local, remote, platform);
     return git.originCommit(branch);
   }
   if (!(await git.isOnOriginBranch(given, branch))) refuse(`${given} is not on origin's ${branch}, the only branch a version is made from`);
-  checkTagsOnOrigin(local, remote);
+  checkTagsOnOrigin(local, remote, platform);
   return given;
 }
 
-async function make(git, { part, dryRun, expect, commit: given }) {
+async function make(git, { part, dryRun, expect, commit: given, platform }) {
   const branch = await fetchDefaultBranch(git);
   const [local, remote] = [await git.localTags(), await git.remoteTags()];
-  const commit = await commitToTag(git, branch, given, local, remote);
-  const tag = next(latestOf(versionTagsOf(local, remote)), part);
+  const commit = await commitToTag(git, branch, given, local, remote, platform);
+  const tag = next(latestOf(versionTagsOf(platform, local, remote), platform), part, platform);
   if (expect !== undefined && tag !== expect) {
     refuse(`${part} would now make ${tag}, not the approved ${expect}; nothing was changed, preview again`);
   }
-  const version = tag.slice(1);
-  const { hasUnreleased } = notesOf(await git.changelogAt(commit), version);
-  if (hasUnreleased) refuse(`CHANGELOG.md still has entries under "## Unreleased" besides "## ${version}"; move them under "## ${version}", then commit and push`);
+  const version = checkedVersion(tag, platform).join('.');
+  const { hasUnreleased } = notesOf(await git.changelogAt(commit, platform.changelog), version, platform.changelog);
+  if (hasUnreleased) refuse(`${platform.changelog} still has entries under "## Unreleased" besides "## ${version}"; move them under "## ${version}", then commit and push`);
 
   if (dryRun) {
     const { shortId, subject } = await git.commitInfo(commit);
-    return `Would make ${tag} on ${shortId} ${subject} and push it to origin.\n${command(part, '--expect', tag, '--commit', commit)}\n`;
+    return `Would make ${tag} on ${shortId} ${subject} and push it to origin.\n${command(...platformOptions(platform), part, '--expect', tag, '--commit', commit)}\n`;
   }
   const id = await git.createTag(tag, commit, `Version ${tag}`);
   try {
@@ -237,10 +244,10 @@ async function deleteHere(git, tag, id) {
   }
 }
 
-async function clear(git, { tag: named, dryRun, here, origin }) {
+async function clear(git, { tag: named, dryRun, here, origin, platform }) {
   await fetchDefaultBranch(git);
   const [local, remote] = [await git.localTags(), await git.remoteTags()];
-  const tag = named ?? latestOf(versionTagsOf(local, remote));
+  const tag = named ?? latestOf(versionTagsOf(platform, local, remote), platform);
   if (!tag) refuse('there is no version tag to clear');
   if (!local.has(tag) && !remote.has(tag)) refuse(`${tag} is not here or on origin`);
   const found = { here: local.get(tag)?.commit, origin: remote.get(tag)?.commit };
@@ -251,7 +258,7 @@ async function clear(git, { tag: named, dryRun, here, origin }) {
   if (dryRun) {
     const places = [['here', found.here], ['on origin', found.origin]].filter(([, id]) => id !== undefined);
     const options = [['--here', found.here], ['--origin', found.origin]].filter(([, id]) => id !== undefined).flat();
-    return `Would delete ${await describePlaces(git, tag, places)}.\n${command('--clear', tag, ...options)}\n`;
+    return `Would delete ${await describePlaces(git, tag, places)}.\n${command(...platformOptions(platform), '--clear', tag, ...options)}\n`;
   }
   let done = '';
   // Origin first: when it refuses, the tag here stays.
@@ -270,10 +277,13 @@ async function clear(git, { tag: named, dryRun, here, origin }) {
 export async function run(args, git, files) {
   try {
     const parsed = parseArguments(args);
-    let stdout;
-    if (parsed.command === 'check') stdout = check(parsed.tag);
-    else if (parsed.command === 'notes') stdout = `${notesOf(await files.readChangelog(), check(parsed.tag).trim()).notes}\n`;
-    else stdout = await (parsed.command === 'clear' ? clear : make)(git, parsed);
+    const handlers = {
+      check: () => check(parsed.tag, parsed.platform),
+      notes: async () => `${notesOf(await files.readChangelog(parsed.platform.changelog), check(parsed.tag, parsed.platform).trim(), parsed.platform.changelog).notes}\n`,
+      make: () => make(git, parsed),
+      clear: () => clear(git, parsed),
+    };
+    const stdout = await handlers[parsed.command]();
     return { code: 0, stdout, stderr: '' };
   } catch (error) {
     const message = String(error.message).trim().replace(/\s*\n\s*/g, ' ');
@@ -334,9 +344,9 @@ export function createGit(cwd, execute) {
       return tags;
     },
     // ls-tree tells a missing file from a failed git: it prints nothing for the first and rejects for the second, whatever git's language.
-    async changelogAt(commit) {
-      if (!(await git('ls-tree', '--name-only', commit, '--', 'CHANGELOG.md')).trim()) return undefined;
-      return git('show', `${commit}:CHANGELOG.md`);
+    async changelogAt(commit, file = 'CHANGELOG.md') {
+      if (!(await git('ls-tree', '--name-only', commit, '--', file)).trim()) return undefined;
+      return git('show', `${commit}:${file}`);
     },
     async commitInfo(id) {
       try {
@@ -366,9 +376,9 @@ export function createGit(cwd, execute) {
 /** The real files run() reads, in the repository at `root`. A failed read rejects, except a missing file, which is undefined. */
 export function createFiles(root) {
   return {
-    async readChangelog() {
+    async readChangelog(file = 'CHANGELOG.md') {
       try {
-        return await readFile(join(root, 'CHANGELOG.md'), 'utf8');
+        return await readFile(join(root, file), 'utf8');
       } catch (error) {
         if (error.code === 'ENOENT') return undefined;
         throw error;

@@ -12,6 +12,7 @@
   <ItemGroup>
     <!-- The same icon file the app's file uses, for the tray adapter to load. -->
     <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
+    <EmbeddedResource Include="..\..\..\.agents\release-platforms.json" LogicalName="release-platforms.json" />
   </ItemGroup>
 
   <ItemGroup>

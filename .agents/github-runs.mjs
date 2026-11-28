@@ -164,6 +164,16 @@ export function createGitHubRuns(execute, { repository, clock = { now: Date.now,
       if (!Array.isArray(body?.workflow_runs)) throw invalid('workflow runs');
       return body.workflow_runs.map(runOf);
     },
+    async release(tag) {
+      const release = JSON.parse(await execute('gh', ['release', 'view', tag, '--repo', target(), '--json', 'databaseId']));
+      if (!Number.isSafeInteger(release?.databaseId) || release.databaseId <= 0) throw invalid('release identifier');
+      return get(`releases/${release.databaseId}`);
+    },
+    async releases() {
+      const pages = JSON.parse(await api(['--paginate', '--slurp', `repos/${target()}/releases?per_page=100`]));
+      if (!Array.isArray(pages) || pages.some(page => !Array.isArray(page))) throw invalid('release pages');
+      return pages.flat();
+    },
   };
   return github;
 }

@@ -1,0 +1,29 @@
+{
+  "versionPattern": "(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)",
+  "platforms": {
+    "desktop": {
+      "tagPrefix": "v",
+      "changelog": "CHANGELOG.md",
+      "workflow": "all-tests.yml",
+      "jobs": ["full-tests"],
+      "maximumReleaseFeeds": 10,
+      "testScripts": ["version-tag", "full-run-check", "github-runs", "affected-tests", "platform-tests", "desktop-release-files", "release", "run-all-tests", "desktop-check", "generate"],
+      "roots": [
+        "src/Desktop/App/Memoria.ToDo.Desktop.App.csproj",
+        "src/Api/Client/Memoria.ToDo.Api.Client.csproj"
+      ]
+    },
+    "android": {
+      "tagPrefix": "android-v",
+      "changelog": "CHANGELOG.Android.md",
+      "workflow": "android-tests.yml",
+      "jobs": ["android-pc-tests", "android-device-tests"],
+      "testScripts": ["version-tag", "full-run-check", "github-runs", "affected-tests", "platform-tests", "android-apk", "android-device-tests", "with-cleanup", "generate"],
+      "runtimeIdentifier": "android-arm64",
+      "abi": "arm64-v8a",
+      "roots": ["src/Android/App/Memoria.ToDo.Android.App.csproj"],
+      "maximumParts": [2099, 999, 999],
+      "versionCodeWeights": [1000000, 1000, 1]
+    }
+  }
+}

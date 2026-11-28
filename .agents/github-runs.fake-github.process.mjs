@@ -43,6 +43,7 @@ export function repositoryWithTooling(t) {
   for (const name of readdirSync(agents)) {
     if (name.endsWith('.mjs') && !/\.test\.mjs$|\.fake-github|\.process\.mjs$/.test(name)) copyFileSync(join(agents, name), join(work, '.agents', name));
   }
+  copyFileSync(join(agents, 'release-platforms.json'), join(work, '.agents', 'release-platforms.json'));
   // The release command runs the Node tests of its own .agents folder first; this one passes at once.
   writeFileSync(join(work, '.agents', 'tooling.test.mjs'), "import { test } from 'node:test';\ntest('the tooling works', () => {});\n");
   writeFileSync(join(work, 'CHANGELOG.md'), changelogWith('1.0.0'));

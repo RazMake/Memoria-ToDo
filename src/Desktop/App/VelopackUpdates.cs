@@ -23,7 +23,7 @@ internal sealed class VelopackUpdates : IAppInstall
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryUrl);
         _releasesPage = new Uri(repositoryUrl.TrimEnd('/') + "/releases");
-        _source = new FeedRecorder(new GithubSource(repositoryUrl, accessToken: null, prerelease: false));
+        _source = new FeedRecorder(new DesktopGithubSource(repositoryUrl, Serilog.Log.ForContext<DesktopGithubSource>()));
         _manager = new UpdateManager(_source);
     }
 

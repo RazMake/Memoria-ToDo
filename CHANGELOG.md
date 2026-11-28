@@ -6,6 +6,8 @@ What changed in each version of Memoria-ToDo, for the people who use it.
 
 ## Unreleased
 
+- Desktop update checks now find desktop releases even when newer Android prereleases fill the release list. Older desktop copies may need a manual installer upgrade.
+
 ## 1.5.0
 
 - Clicking a formatted task description no longer leaves the keyboard focus inside its browser. Keyboard shortcuts keep reaching the app, and Tab moves to the next control.

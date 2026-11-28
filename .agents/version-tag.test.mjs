@@ -9,6 +9,7 @@
 //   (not in step; a diverged branch names both), each offending tag (tags missing on or different on origin).
 //   A preview or clear plan names where a tag is with the words "here" and/or "origin".
 import assert from 'node:assert/strict';
+import { platformOf, versionCodeOf } from './release-platforms.mjs';
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -46,6 +47,83 @@ function assertRefusal(result, message) {
 
 const onBoth = (commit) => ({ local: { ...commit }, remote: { ...commit } });
 const secondCommit = { c2: { shortId: 'def5678', subject: 'Fix the build' } };
+
+describe('independent Android releases (unit)', () => {
+  test('makes the next Android version without consuming or checking desktop tags', async () => {
+    const git = createFakeGit({
+      local: { 'android-v1.2.3': commitA, 'v9.0.0': commitB },
+      remote: { 'android-v1.2.3': commitA, 'v9.0.0': commitA },
+      changelog: undefined, androidChangelog: changelogWith('1.2.4'),
+    });
+    const result = await run(['patch', '--platform', 'android', '--commit', commitA], git);
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(git.snapshot().remote['android-v1.2.4'], commitA);
+    assert.equal(git.snapshot().remote['v9.0.0'], commitA);
+    assert.ok(git.isAnnotated('android-v1.2.4'));
+  });
+
+  test('previews an Android command that makes exactly its approved tag', async () => {
+    const git = createFakeGit({ originHead: commitA, androidChangelog: changelogWith('1.0.0') });
+    const preview = await run(['--platform', 'android', '--dry-run'], git);
+    assert.equal(preview.code, 0, preview.stderr);
+    const args = preview.stdout.trimEnd().split('\n').at(-1).split(' ').slice(2);
+    const result = await run(args, git);
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(git.snapshot().remote['android-v1.0.0'], commitA);
+  });
+
+  test('reads only the selected Android release notes without git', async () => {
+    const git = createFakeGit();
+    const files = createFakeFiles({ changelog: changelogWith('9.0.0'), androidChangelog: changelogWith('1.2.3') });
+    const result = await run(['--notes', 'android-v1.2.3', '--platform', 'android'], git, files);
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /You can now/);
+    assert.deepEqual(git.calls, []);
+  });
+
+  for (const [scenario, notes] of [
+    ['missing', undefined], ['empty', changelogWith('1.2.4').replace('- You can now do something new.', '')],
+    ['duplicate', changelogWith('1.2.4', '1.2.4')],
+    ['still unreleased', '# Changelog\n## Unreleased\n- A change\n## 1.2.4\n- Another change\n'],
+  ]) {
+    test(`refuses ${scenario} Android notes without making a tag`, async () => {
+      const git = createFakeGit({ ...onBoth({ 'android-v1.2.3': commitA }), androidChangelog: notes });
+      const result = await run(['patch', '--platform', 'android', '--commit', commitA], git);
+      assertRefusal(result, /CHANGELOG\.Android\.md/);
+      assert.deepEqual(git.snapshot().remote, { 'android-v1.2.3': commitA });
+    });
+  }
+
+  test('clears only the latest Android tag', async () => {
+    const git = createFakeGit(onBoth({ 'android-v1.2.3': commitA, 'v9.0.0': commitB }));
+    const result = await run(['--platform', 'android', '--clear'], git);
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(git.snapshot(), onBoth({ 'v9.0.0': commitB }));
+  });
+
+  test('encodes Android tags deterministically including the largest permitted version', () => {
+    for (const [tag, code] of [['android-v1.2.3', '1002003'], ['android-v2099.999.999', '2099999999']]) {
+      assert.equal(versionCodeOf(tag, platformOf('android')), code);
+    }
+  });
+
+  for (const tag of ['android-v2100.0.0', 'android-v1.1000.0', 'android-v1.0.1000']) {
+    test(`rejects ${tag} before any git operation`, async () => {
+      const git = createFakeGit();
+      const result = await run(['--platform', 'android', '--check', tag], git);
+      assertRefusal(result);
+      assert.ok(result.stderr.includes(tag), result.stderr);
+      assert.deepEqual(git.calls, []);
+    });
+  }
+
+  test('refuses an Android bump outside the version-code bounds before tagging', async () => {
+    const git = createFakeGit({ ...onBoth({ 'android-v1.999.0': commitA }), androidChangelog: changelogWith('1.1000.0') });
+    const result = await run(['minor', '--platform', 'android', '--commit', commitA], git);
+    assertRefusal(result, /android-v1\.1000\.0/);
+    assert.deepEqual(git.snapshot(), onBoth({ 'android-v1.999.0': commitA }));
+  });
+});
 
 describe('version tag rule through --check (unit)', () => {
   for (const [tag, version] of [['v1.2.3', '1.2.3'], ['v0.0.0', '0.0.0'], ['v0.10.0', '0.10.0'], ['v10.20.30', '10.20.30']]) {
@@ -1212,6 +1290,10 @@ function repositories(t, { changelog = validChangelog } = {}) {
   git(work, 'config', 'commit.gpgsign', 'false');
   git(work, 'remote', 'add', 'origin', origin);
   copyFileSync(script, join(work, '.agents', 'version-tag.mjs'));
+  for (const name of ['release-platforms.mjs', 'release-platforms.json']) {
+    const source = join(dirname(script), name);
+    if (existsSync(source)) copyFileSync(source, join(work, '.agents', name));
+  }
   writeFileSync(join(work, 'CHANGELOG.md'), changelog);
   git(work, 'add', '.');
   git(work, 'commit', '-m', 'Add the script');
@@ -1237,6 +1319,20 @@ function repositories(t, { changelog = validChangelog } = {}) {
 }
 
 describe('version-tag.mjs on real git (integration)', () => {
+  test('publishes an Android tag to an isolated origin without changing its desktop version', (t) => {
+    const { work, origin, make } = repositories(t);
+    writeFileSync(join(work, 'CHANGELOG.Android.md'), changelogWith('1.0.0'));
+    git(work, 'add', 'CHANGELOG.Android.md');
+    git(work, 'commit', '-m', 'Prepare Android notes');
+    git(work, 'push', 'origin', 'main');
+    git(work, 'tag', 'v9.0.0');
+    git(work, 'push', 'origin', 'v9.0.0');
+    const result = make(work, '--platform', 'android');
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(git(origin, 'rev-parse', 'android-v1.0.0^{commit}'), git(work, 'rev-parse', 'HEAD'));
+    assert.deepEqual(git(origin, 'tag', '--list').split('\n'), ['android-v1.0.0', 'v9.0.0']);
+  });
+
   test('--check prints the version and exits 0 for a version tag, from a folder that is no repository', (t) => {
     const { root, runScript } = repositories(t);
     const result = runScript(root, '--check', 'v1.2.3');

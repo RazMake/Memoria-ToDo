@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Starts Run All tests (all-tests.yml) on the current branch and follows it, as docs/architecture/releasing.md describes.
+// Starts the desktop test workflow on the current branch; its historical filename stays unchanged.
 //
 // run(args, { write, waitForGitHub, git, github }) -> Promise<{ code, stderr }>
 //   args: only `--help` is accepted.
@@ -9,10 +9,11 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createCommands, createGitHubRuns, createTerminalOutput, messageOf, messageWithRun } from './github-runs.mjs';
 import { createGit } from './version-tag.mjs';
+import { platformOf } from './release-platforms.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const usage = 'usage: node .agents\\run-all-tests.mjs';
-const workflowFile = 'all-tests.yml';
+const workflowFile = platformOf().workflow;
 
 // Your branch, and its newest commit, read right after the check that it matches origin's.
 async function branchToTest(git) {
@@ -28,7 +29,7 @@ async function branchToTest(git) {
 export async function run(args, { write, waitForGitHub, git, github }) {
   try {
     if (args.length === 1 && args[0] === '--help') {
-      write(`${usage}\nStarts Run All tests on your current branch, which must match origin, and follows the run. Exits 0 only when every test passed.\n`);
+      write(`${usage}\nStarts Run Desktop tests on your current branch, which must match origin, and follows the run. Exits 0 only when every selected test passed.\n`);
       return { code: 0, stderr: '' };
     }
     if (args.length) throw new Error(usage);
@@ -37,7 +38,7 @@ export async function run(args, { write, waitForGitHub, git, github }) {
 
     waitForGitHub('Waiting for GitHub to check your sign-in and origin repository. If sign-in is needed, run gh auth login in another terminal.\n');
     await github.connect();
-    waitForGitHub(`Waiting for GitHub to start Run All tests on ${branch}.\n`);
+    waitForGitHub(`Waiting for GitHub to start Run Desktop tests on ${branch}.\n`);
     const started = await github.dispatch(workflowFile, branch);
     write(`${started.url}\n`);
     if (started.headSha !== commit) {

@@ -78,19 +78,19 @@ jobs:
           $last = @($preview)[-1]
           if ($last -notmatch '--expect (\S+)') { throw "The preview names no tag: $last" }
           "tag=$($Matches[1])" >> $env:GITHUB_OUTPUT
-      - name: Look for a passed Run All tests run of this commit
+      - name: Look for a passed desktop test run of this commit
         id: reuse
         run: |
           $url = node .agents/full-run-check.mjs --repo $env:GITHUB_REPOSITORY --commit $env:GITHUB_SHA
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($url) {
             "passed=true" >> $env:GITHUB_OUTPUT
-            "::notice::Reusing the passed Run All tests run $url"
-            "Reusing the passed [Run All tests run]($url) of this commit." >> $env:GITHUB_STEP_SUMMARY
+            "::notice::Reusing the passed desktop test run $url"
+            "Reusing the passed [desktop test run]($url) of this commit." >> $env:GITHUB_STEP_SUMMARY
           } else {
             "passed=false" >> $env:GITHUB_OUTPUT
-            "::notice::No passed Run All tests run of this commit, so Tests runs every test."
-            "No passed Run All tests run of this commit, so Tests runs every test." >> $env:GITHUB_STEP_SUMMARY
+            "::notice::No passed desktop test run of this commit, so Tests runs the desktop selection."
+            "No passed desktop test run of this commit, so Tests runs the desktop selection." >> $env:GITHUB_STEP_SUMMARY
           }
 
   tests:
@@ -156,11 +156,7 @@ jobs:
         run: |
           node .agents/version-tag.mjs --notes $env:PLANNED_TAG > release-notes.md
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
-      - name: Install the Android workload, which every build needs
-        run: dotnet workload install android
+      - uses: ./.github/actions/setup-dotnet
       - name: Read the app's name from its Product property, and fail if it's empty
         run: |
           $name = (dotnet msbuild $env:APP_PROJECT -getProperty:Product).Trim()
@@ -172,7 +168,7 @@ jobs:
       - name: Restore the pinned vpk
         run: dotnet tool restore
       - name: Download the last release, which the new one's delta packages build on
-        run: dotnet vpk download github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --token $env:GITHUB_TOKEN
+        run: node .agents/desktop-release-files.mjs
       - name: Pack the installer and update files, with no portable zip
         run: >
           dotnet vpk pack --packId $env:INSTALLER_ID --packVersion $env:VERSION --packDir publish

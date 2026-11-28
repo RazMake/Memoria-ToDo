@@ -1,18 +1,24 @@
 using Memoria.ToDo.Testing;
 using Xunit;
+using System.Collections.Concurrent;
 
 namespace Memoria.ToDo.Architecture;
 
 [Integration]
-public sealed class The_module_map_and_the_projects
+public abstract class ModuleMapChecks
 {
-    private static readonly string[] Parts = ["Shared", "Desktop", "Api", "Android"];
+    private protected abstract string Platform { get; }
+    private static readonly ConcurrentDictionary<string, (IReadOnlyList<SourceProject> Projects, ModuleMap Map)> Scopes = new();
+    private (IReadOnlyList<SourceProject> Projects, ModuleMap Map) Scope => Scopes.GetOrAdd(Platform, platform =>
+    {
+        var projects = Repository.ReadSourceProjects(Repository.ReleaseRoots(platform));
+        return (projects, ModuleMap.Read(Repository.ReadModulesMarkdown(), projects.Select(project => project.Part).ToHashSet()));
+    });
+    private protected IReadOnlyList<SourceProject> _projects => Scope.Projects;
+    private protected ModuleMap _map => Scope.Map;
 
-    private static readonly ModuleMap _map = ModuleMap.Read(Repository.ReadModulesMarkdown());
-    private static readonly IReadOnlyList<SourceProject> _projects = Repository.ReadSourceProjects();
-
-    private static string PlatformOf(string part) => $"Memoria.ToDo.{part}.Platform";
-    private static string AppOf(string part) => $"Memoria.ToDo.{part}.App";
+    private protected static string PlatformOf(string part) => $"Memoria.ToDo.{part}.Platform";
+    private protected static string AppOf(string part) => $"Memoria.ToDo.{part}.App";
 
     private static bool IsApp(SourceProject p) => p.Name == AppOf(p.Part);
     private static bool IsPlatform(SourceProject p) => p.Name == PlatformOf(p.Part);
@@ -48,9 +54,9 @@ public sealed class The_module_map_and_the_projects
     }
 
     [Fact]
-    public void Map_lists_the_four_parts_with_modules_that_each_name_only_listed_modules()
+    public void Map_lists_the_releases_parts_with_modules_that_each_name_only_listed_modules()
     {
-        Assert.Equal(Parts, _map.Modules.Select(m => m.Part).Distinct());
+        Assert.Equal(_projects.Select(p => p.Part).Distinct().Order(), _map.Modules.Select(m => m.Part).Distinct().Order());
         Assert.All(_map.Modules, m => Assert.All(m.MayUse, use => _map.Resolve(m.Part, use)));
     }
 
@@ -143,7 +149,7 @@ public sealed class The_module_map_and_the_projects
         Assert.Empty(violations);
     }
 
-    private static readonly string[] LogFilePackages =
+    private protected static readonly string[] LogFilePackages =
     [
         "Serilog.Sinks.File", "Serilog.Sinks.Async", "Serilog.Formatting.Compact", "Serilog.Formatting.Compact.Reader",
     ];
@@ -160,78 +166,4 @@ public sealed class The_module_map_and_the_projects
         Assert.Empty(violations);
     }
 
-    [Fact]
-    public void The_desktop_app_references_every_package_that_writes_and_reads_the_log_files()
-    {
-        var app = _projects.Single(p => p.Name == AppOf("Desktop"));
-
-        Assert.All(LogFilePackages, package => Assert.Contains(package, app.PackageReferences));
-    }
-
-    [Fact]
-    public void Map_lists_Logs_as_a_desktop_module_that_uses_no_module_and_Shell_may_use_it()
-    {
-        var logs = Assert.Single(_map.Modules, m => m.Part == "Desktop" && m.Name == "Logs");
-        var shell = Assert.Single(_map.Modules, m => m.Part == "Desktop" && m.Name == "Shell");
-
-        Assert.Empty(logs.MayUse);
-        Assert.Contains("Logs", shell.MayUse);
-    }
-
-    [Fact]
-    public void Only_Shell_and_the_MCP_server_may_use_Logs()
-    {
-        var users = _map.Modules.Where(m => m.MayUse.Contains("Logs")).Select(m => $"{m.Part} {m.Name}");
-
-        Assert.Equal(["Desktop MCP server", "Desktop Shell"], users.Order());
-    }
-
-    [Fact]
-    public void Only_Shell_and_Configure_may_use_the_MCP_server()
-    {
-        var users = _map.Modules.Where(m => m.MayUse.Contains("MCP server")).Select(m => $"{m.Part} {m.Name}");
-
-        Assert.Equal(["Desktop Configure", "Desktop Shell"], users.Order());
-    }
-
-    [Fact]
-    public void The_MCP_server_may_use_no_window_module_so_no_loop_forms()
-    {
-        var server = Assert.Single(_map.Modules, m => m.Part == "Desktop" && m.Name == "MCP server");
-
-        Assert.Equal(["Contacts", "Logs", "Sync", "Tasks", "Updates"], server.MayUse.Order());
-    }
-
-    [Fact]
-    public void The_MCP_server_project_sits_in_its_own_folder_of_the_desktop_part()
-    {
-        var server = Assert.Single(_projects, p => p.Name == "Memoria.ToDo.Desktop.MCPServer");
-
-        Assert.Equal("Desktop", server.Part);
-        Assert.Equal("MCPServer", server.FolderName);
-    }
-
-    [Fact]
-    public void Only_the_MCP_server_project_references_the_ModelContextProtocol_Core_package()
-    {
-        var users = _projects
-            .Where(p => p.PackageReferences.Contains("ModelContextProtocol.Core", StringComparer.OrdinalIgnoreCase))
-            .Select(p => p.Name);
-
-        Assert.Equal(["Memoria.ToDo.Desktop.MCPServer"], users);
-    }
-
-    [Fact]
-    public void The_Logs_project_sits_in_its_own_folder_and_references_only_the_two_platforms_and_Serilog()
-    {
-        var logs = Assert.Single(_projects, p => p.Name == "Memoria.ToDo.Desktop.Logs");
-
-        Assert.Equal("Desktop", logs.Part);
-        Assert.Equal("Logs", logs.FolderName);
-        Assert.All(
-            logs.ProjectReferences,
-            reference => Assert.Contains(reference, new[] { PlatformOf("Desktop"), PlatformOf("Shared") }));
-        Assert.Contains(PlatformOf("Desktop"), logs.ProjectReferences);
-        Assert.Equal(["Serilog"], logs.PackageReferences);
-    }
 }

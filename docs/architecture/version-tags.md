@@ -10,7 +10,7 @@ The script checks a tag and its commit before anything reaches GitHub, so a rele
 
 ### The script holds the version tag rule, and the release run asks it
 
-The script is the only code that knows which tags are version tags, such as `v1.2.3`; [the workflows' section](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) states the rule in words. The script ignores every other tag, such as `v1.2` or `proof-1`. The user decided:
+The script validates version tags, such as `v1.2.3`, and ignores other tags, such as `v1.2` or `proof-1`. The platform split extracts tag definitions and platform release metadata into one shared source, `.agents/release-platforms.json`, read by the scripts and embedded in the desktop adapter's assembly. Neither workflows nor C# keep another tag pattern or require Node.js in the installed app. This extraction is a decision to confirm; its alternative is build-time generation from this script. The user decided:
 
 - **`--check <tag>` prints the tag's version, such as `1.2.3`, or fails.** It runs no git, so it needs nothing but the tag.
 - **The release run's Publish job checks out the tag first, then runs `node .agents/version-tag.mjs --check <tag>`**, and takes the version from what it prints. The workflow keeps no copy of the rule.
@@ -31,11 +31,11 @@ You name the part to raise, `major`, `minor`, or `patch`; with none, it's `minor
 
 ### Each app has its own tags and notes
 
-The [Android release split](android-releases.md) extends this script; it is not implemented yet. Desktop keeps `v<major>.<minor>.<patch>`. Android uses `android-v<major>.<minor>.<patch>`, with its own highest version and the same bump rules. Neither app's preview, consistency checks, or tag creation depends on the other's tags. Android's numeric parts must also fit the [version-code bounds](technology-stack.md#the-android-tag-determines-the-apks-version-code).
+The [Android release split](android-releases.md) extends this script. Desktop keeps `v<major>.<minor>.<patch>`. Android uses `android-v<major>.<minor>.<patch>`, with its own highest version and the same bump rules. Neither app's preview, consistency checks, or tag creation depends on the other's tags. Android's numeric parts must also fit the [version-code bounds](technology-stack.md#the-android-tag-determines-the-apks-version-code).
 
 Desktop notes stay in `CHANGELOG.md`; Android notes live in a separate `CHANGELOG.Android.md`, added with Android publication. The script reads only the selected app's notes on the tested commit. Both files follow the [same changelog rules](../contributing/changelog.md), without another parser.
 
-The script gains an explicit platform selector for previews and creation. Existing calls default to desktop. Checking a tag, reading its notes, and clearing it must support both tag families without changing the other platform.
+Use `--platform android` for Android previews, creation, checks, notes, and clearing. Existing calls default to desktop. The initial version follows the common [bump table](#making-a-tag-raises-one-part-of-the-latest-version), so the first Android tag is `android-v1.0.0` whatever the part; a GitHub prerelease flag does not change those rules.
 
 ### Checks run before a tag is made, and a failed check changes nothing
 
