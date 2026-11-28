@@ -52,16 +52,20 @@ jobs:
           "ANDROID_SDK_ROOT=$sdk" >> $env:GITHUB_ENV
           "JAVA_HOME=$jdk" >> $env:GITHUB_ENV
           "DEVICE=emulator-$env:EMULATOR_PORT" >> $env:GITHUB_ENV
-          "ANDROID_AVD_HOME=$env:RUNNER_TEMP/devicerunners-avd" >> $env:GITHUB_ENV
-          "ANDROID_USER_HOME=$env:RUNNER_TEMP/devicerunners-android-user" >> $env:GITHUB_ENV
+          $androidUserHome = Join-Path $env:RUNNER_TEMP 'devicerunners-android-user'
+          "ANDROID_USER_HOME=$androidUserHome" >> $env:GITHUB_ENV
+          "ANDROID_AVD_HOME=$androidUserHome/avd" >> $env:GITHUB_ENV
       - name: Install the emulator and create a private virtual device
         run: |
           & "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'emulator' $env:SYSTEM_IMAGE
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           'no' | & "$env:ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd `
-            --name memoria-devicerunners --package $env:SYSTEM_IMAGE `
-            --path "$env:ANDROID_AVD_HOME/memoria-devicerunners.avd"
+            --name memoria-devicerunners --package $env:SYSTEM_IMAGE
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "$env:ANDROID_AVD_HOME/memoria-devicerunners.ini")) {
+            & "$env:ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list avd
+            throw 'The virtual-device descriptor was not created in the emulator home.'
+          }
       - name: Check KVM, boot the headless emulator, and wait for Android
         shell: bash
         run: |
