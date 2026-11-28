@@ -473,7 +473,7 @@ void RequestSync(string expectedFolder);
 
 The request uses the existing scheduler and owned worker, not another sync loop. It is bound to the expected clone, so a delayed request cannot sync a replacement folder. A running pass is never taken as proof that it included this edit. Failures, pending-file reporting, and retries follow the existing sync policy. Manual, local-save, startup, periodic, and retry triggers are unchanged.
 
-Focused unit tests cover an idle request without extra delay, an active pass followed by a fresh pass, request coalescing, obsolete-folder cancellation, not-ready errors, and unchanged manual and periodic behavior. These contracts and tests are deferred to design backlog rows 26 and 27.
+Focused unit tests cover an idle request without extra delay, an active pass followed by a fresh pass, request coalescing, obsolete-folder cancellation, not-ready errors, and unchanged manual and periodic behavior. These contracts and tests are deferred to design backlog rows 27 and 28.
 
 ### Implementation and focused checks
 

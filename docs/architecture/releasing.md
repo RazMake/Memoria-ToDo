@@ -2,11 +2,11 @@
 
 Status: Decided
 
-Push to `main` to run every test automatically. To release, open the repository's **Actions** page and start **Test then Tag and Release** on `main`. It tests the commit or reuses its passed full run, then tags and publishes it. In VS Code, **Tasks: Run Task > open GitHub Actions** opens that page. The [terminal commands](#the-release-command-previews-asks-once-then-follows-the-run) remain optional.
+Today's workflows run every test on a push to `main`. To release desktop, open **Actions** and start **Test then Tag and Release** on `main`. It tests the commit or reuses its passed full run, then tags and publishes. The decided [platform split](android-releases.md) replaces the full gate with independent desktop and Android test workflows; it is not implemented yet. In VS Code, **Tasks: Run Task > open GitHub Actions** opens that page.
 
 ## Behavior
 
-This page owns Run All tests, Test then Tag and Release, their VS Code shortcut, and the optional commands that start them. The [technology stack](technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases) owns what all workflows share and the release steps, and [version tags](version-tags.md) own the tag. The commands are repository tooling, not an app module.
+This page describes today's workflows and owns their shared release rules, VS Code shortcut, and optional commands. [Android releases](android-releases.md) owns the target split, including replacement of Run All tests. Until implementation, the workflows and commands below still behave as described. The [technology stack](technology-stack.md) owns tools and signing; [version tags](version-tags.md) owns platform versions and notes. The commands are repository tooling, not an app module.
 
 ### Three workflows: unit tests on each push, every test on main, releases by hand
 

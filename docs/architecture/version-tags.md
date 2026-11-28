@@ -29,6 +29,14 @@ You name the part to raise, `major`, `minor`, or `patch`; with none, it's `minor
 - **Each part is a whole number of any size, kept exact.** The script never rounds one: after `v1.2.9007199254740993`, `patch` makes `v1.2.9007199254740994`, and `--check` prints every digit.
 - **The tag goes on a commit of origin's default branch, `main`**: the newest one in a preview on your PC, and the tested one in a release run, even when the branch moved on during the tests. The user decided the tested commit on November 23, 2026.
 
+### Each app has its own tags and notes
+
+The [Android release split](android-releases.md) extends this script; it is not implemented yet. Desktop keeps `v<major>.<minor>.<patch>`. Android uses `android-v<major>.<minor>.<patch>`, with its own highest version and the same bump rules. Neither app's preview, consistency checks, or tag creation depends on the other's tags. Android's numeric parts must also fit the [version-code bounds](technology-stack.md#the-android-tag-determines-the-apks-version-code).
+
+Desktop notes stay in `CHANGELOG.md`; Android notes live in a separate `CHANGELOG.Android.md`, added with Android publication. The script reads only the selected app's notes on the tested commit. Both files follow the [same changelog rules](../contributing/changelog.md), without another parser.
+
+The script gains an explicit platform selector for previews and creation. Existing calls default to desktop. Checking a tag, reading its notes, and clearing it must support both tag families without changing the other platform.
+
 ### Checks run before a tag is made, and a failed check changes nothing
 
 The script fetches origin's default branch, then runs these checks. When one fails, it names the problem and makes no tag. The first three are about your clone, so a release run, which names its commit with [`--commit`](#on-github-the-script-tags-the-commit-its-given), checks that commit instead:
@@ -59,7 +67,7 @@ Proposed, each a decision to confirm:
 
 ### A version is tagged only when the changelog has its notes
 
-Every release carries notes for the people who use the app, taken from the version's section of `CHANGELOG.md`, which the [changelog guide](../contributing/changelog.md) shapes. The user decided that the changelog is the notes' one home.
+Every release carries notes for the people who use that app, taken from its version's section of the [platform's changelog](#each-app-has-its-own-tags-and-notes), which the [changelog guide](../contributing/changelog.md) shapes. The checks below describe today's desktop command; the Android extension applies them to its own file. The changelog is each app's notes' one home.
 
 Proposed, each a decision to confirm:
 

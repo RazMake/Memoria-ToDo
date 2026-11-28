@@ -1,12 +1,12 @@
 # How to write the changelog
 
-[`CHANGELOG.md`](../../CHANGELOG.md), at the repository's root, tells the people who use the app what changed in each version. It's the one home of the release notes: each release carries its version's section, and the desktop app shows it in [What is new](../architecture/desktop/updates.md#what-is-new-shows-each-newer-releases-notes).
+Each app's changelog tells its users what changed in each version. [Version tags](../architecture/version-tags.md#each-app-has-its-own-tags-and-notes) owns which file each release reads; Android's separate file is added when publication is implemented. Today [`CHANGELOG.md`](../../CHANGELOG.md) supplies desktop notes, shown in [What is new](../architecture/desktop/updates.md#what-is-new-shows-each-newer-releases-notes). Both files follow the rules on this page.
 
 The user decided what goes in and who it's written for. Proposed, each a decision to confirm: the file's shape, and the other rules this page gives.
 
 ## Add an entry with each change a user would notice
 
-The person or agent who delivers a change adds its entry under `## Unreleased`, in the same change. The table lists what gets an entry:
+The person or agent who delivers a change adds its entry under `## Unreleased`, in the same change. Write in the affected app's changelog. A change users of both apps notice gets an entry for each audience; do not copy internal descriptions between them. The table lists what gets an entry:
 
 | Change | Entry |
 | --- | --- |

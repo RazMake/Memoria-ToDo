@@ -1074,4 +1074,4 @@ The remaining work follows this order:
 
 ## Open questions
 
-None for hand-edit synchronization. Implementation and tests are deferred to design backlog row 27.
+None for hand-edit synchronization. Implementation and tests are deferred to design backlog row 28.

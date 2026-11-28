@@ -620,4 +620,4 @@ Earlier proposed settings remain marked above.
 
 ## Open questions
 
-None for example initialization. The implementation and its tests are deferred to design backlog row 26.
+None for example initialization. The implementation and its tests are deferred to design backlog row 27.
