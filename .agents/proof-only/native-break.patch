@@ -1,0 +1,40 @@
+diff --git a/src/Android/Configure/Resources/values/configure_strings.xml b/src/Android/Configure/Resources/values/configure_strings.xml
+--- a/src/Android/Configure/Resources/values/configure_strings.xml
++++ b/src/Android/Configure/Resources/values/configure_strings.xml
+@@ -1,4 +1,4 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-  <string name="configure_title">Configure</string>
++  <string name="configure_title">Settings</string>
+ </resources>
+diff --git a/src/Android/TaskEditor/Resources/values/taskeditor_strings.xml b/src/Android/TaskEditor/Resources/values/taskeditor_strings.xml
+--- a/src/Android/TaskEditor/Resources/values/taskeditor_strings.xml
++++ b/src/Android/TaskEditor/Resources/values/taskeditor_strings.xml
+@@ -1,4 +1,4 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-  <string name="taskeditor_add_title">Add new task</string>
++  <string name="taskeditor_add_title">Create task</string>
+ </resources>
+diff --git a/src/Android/TaskList/TaskViewActions.cs b/src/Android/TaskList/TaskViewActions.cs
+--- a/src/Android/TaskList/TaskViewActions.cs
++++ b/src/Android/TaskList/TaskViewActions.cs
+@@ -11,3 +11,7 @@
+     /// <summary>Handles a tap on the floating button.</summary>
+-    public void AddTapped() => _add.Show();
++    public void AddTapped()
++    {
++        _add.Show();
++        _add.Show();
++    }
+ 
+diff --git a/tests/Android/Tests/Memoria.ToDo.Android.Tests.csproj b/tests/Android/Tests/Memoria.ToDo.Android.Tests.csproj
+--- a/tests/Android/Tests/Memoria.ToDo.Android.Tests.csproj
++++ b/tests/Android/Tests/Memoria.ToDo.Android.Tests.csproj
+@@ -8,5 +8,5 @@
+     <ApplicationTitle>$(Product) Android tests</ApplicationTitle>
+-    <ApplicationId>com.razmake.memoriatodo.tests</ApplicationId>
++    <ApplicationId>com.razmake.memoriatodo.tests.brokenhost</ApplicationId>
+     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+     <ApplicationVersion>1</ApplicationVersion>
+     <GenerateTestingPlatformEntryPoint>false</GenerateTestingPlatformEntryPoint>

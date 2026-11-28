@@ -1,0 +1,83 @@
+using System.Windows.Input;
+using Memoria.ToDo.Desktop.Platform;
+
+namespace Memoria.ToDo.Desktop.Configure;
+
+/// <summary>
+/// What a shortcut box does with its key events. It reports a pick on the first key that isn't a modifier, Esc with a
+/// modifier held included. Plain Esc picks nothing and keeps the current shortcut. It handles every modifier key's
+/// release, Alt's included, so Windows doesn't move the keyboard to the window's hidden system menu. It also reports
+/// two or more modifier keys pressed and released with no other key, which is what a shortcut taken by Windows or
+/// another app looks like. Each method returns whether the box keeps the key to itself.
+/// </summary>
+internal sealed class ShortcutKeyInput
+{
+    private readonly Action<ModifierKeys, Key> _picked;
+    private readonly Action<ModifierKeys> _swallowed;
+    private readonly Action? _escaped;
+    private readonly HeldModifierKeys _held = new();
+
+    /// <param name="picked">Called with the held modifiers and the key that completed a pick.</param>
+    /// <param name="swallowed">Called with the modifiers of a chord released with no other key.</param>
+    /// <param name="escaped">Called when Esc is pressed with no modifier key held, which keeps the current shortcut.</param>
+    public ShortcutKeyInput(Action<ModifierKeys, Key> picked, Action<ModifierKeys> swallowed, Action? escaped = null)
+    {
+        ArgumentNullException.ThrowIfNull(picked);
+        ArgumentNullException.ThrowIfNull(swallowed);
+        _picked = picked;
+        _swallowed = swallowed;
+        _escaped = escaped;
+    }
+
+    /// <summary>A key went down. Plain Tab isn't handled, so the box doesn't trap the keyboard.</summary>
+    public bool KeyDown(Key key, bool isRepeat)
+    {
+        if (key == Key.None)
+        {
+            return false;
+        }
+
+        if (ModifierKey.Of(key) != ModifierKeys.None)
+        {
+            _held.Pressed(key);
+            return true;
+        }
+
+        _held.OtherKeyReached();
+        if (key == Key.Tab && !_held.AnyHeld)
+        {
+            return false;
+        }
+
+        if (isRepeat)
+        {
+            return true;
+        }
+
+        if (key == Key.Escape && !_held.AnyHeld)
+        {
+            _escaped?.Invoke();
+        }
+        else
+        {
+            _picked(_held.Modifiers, key);
+        }
+
+        return true;
+    }
+
+    /// <summary>A key went up.</summary>
+    public bool KeyUp(Key key)
+    {
+        var swallowed = _held.Released(key);
+        if (swallowed != ModifierKeys.None)
+        {
+            _swallowed(swallowed);
+        }
+
+        return ModifierKey.Of(key) != ModifierKeys.None;
+    }
+
+    /// <summary>The box lost the keyboard focus, so held keys are forgotten.</summary>
+    public void FocusLost() => _held.Clear();
+}

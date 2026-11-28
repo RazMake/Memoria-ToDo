@@ -1,0 +1,6 @@
+Memoria.ToDo.Android.Platform.IScreenOpener
+Memoria.ToDo.Android.Platform.IScreenOpener.Open(string! activityName) -> void
+Memoria.ToDo.Android.Platform.ScreenServices<T>
+Memoria.ToDo.Android.Platform.ScreenServices<T>.Get() -> T!
+Memoria.ToDo.Android.Platform.ScreenServices<T>.ScreenServices() -> void
+Memoria.ToDo.Android.Platform.ScreenServices<T>.Set(T! services) -> void

@@ -1,0 +1,229 @@
+using System.Runtime.ExceptionServices;
+using Memoria.ToDo.Desktop.Configure;
+using Memoria.ToDo.Desktop.ContactList;
+using Memoria.ToDo.Desktop.KeepAwake;
+using Memoria.ToDo.Desktop.LocalAPI;
+using Memoria.ToDo.Desktop.MCPServer;
+using Memoria.ToDo.Desktop.Platform;
+using Memoria.ToDo.Desktop.Updates;
+using Memoria.ToDo.Shared.Sync;
+using Serilog;
+
+namespace Memoria.ToDo.Desktop.Shell;
+
+/// <summary>
+/// The tray app's lifetime: the one-instance claim, the tray icon with its menu, the shortcuts, Updates, Keep awake,
+/// the MCP server, and the shared sync service. Only the instance that wins the claim starts and stops sync and the server.
+/// </summary>
+internal sealed class ShellLifetime(
+    ITrayIcon trayIcon,
+    Action showAdd,
+    Action showViewTasks,
+    Action showContacts,
+    IContactsWindow contacts,
+    IConfigureWindow configure,
+    IOneInstance oneInstance,
+    ActiveShortcut addShortcut,
+    ActiveShortcut manageShortcut,
+    ActiveShortcut configureShortcut,
+    ContactsShortcutAction contactsShortcut,
+    StartupNavigation startup,
+    IUpdateLifetime updates,
+    ILocalApiLifetime localApi,
+    McpServerStart mcpStart,
+    IMcpServerLifetime mcpServer,
+    IKeepAwakeLifetime keepAwake,
+    Func<Action, IAppExit> createExit,
+    ISyncService sync,
+    Action showLogs,
+    ILogger logger) : IAppLifetime
+{
+    private readonly SyncTray syncTray = new SyncTray(sync, trayIcon, startup.ByUser(showLogs), logger);
+    private readonly object stopGate = new();
+    private readonly object apiGate = new();
+    private bool apiStarted;
+    private bool apiClosed;
+    private Task? stopping;
+    private bool claimed;
+    private EventHandler? followAvailability;
+
+    /// <inheritdoc />
+    public void Start(Action endApp)
+    {
+        var addByUser = startup.ByUser(showAdd);
+        var viewTasksByUser = startup.ByUser(showViewTasks);
+        var contactsByUser = startup.ByUser(showContacts);
+        var configureByUser = startup.ByUser(configure.Show);
+        var logsByUser = startup.ByUser(showLogs);
+        if (!oneInstance.Claim(Logged("A later start handed over to this app", viewTasksByUser)))
+        {
+            endApp();
+            return;
+        }
+
+        // The Contacts item shows only while contacts are available, so the menu is built again when that changes.
+        IReadOnlyList<TrayMenuItem> Menu()
+        {
+            List<TrayMenuItem> items = [Item("Add new task", addByUser), Item("Task View", viewTasksByUser)];
+            if (contacts.IsAvailable)
+            {
+                items.Add(Item("Contacts", contactsByUser));
+            }
+
+            items.Add(Item("Configure", configureByUser));
+            items.Add(Item("Logs", logsByUser));
+            items.Add(Item("Exit", endApp));
+            return items;
+        }
+
+        claimed = true;
+        trayIcon.Show(AppName.Value, Menu(), Logged("The tray icon was clicked", viewTasksByUser));
+        syncTray.Attach();
+        bool shortcutsReady = configure.ConnectShortcuts(addShortcut, manageShortcut, configureShortcut, contactsShortcut);
+
+        updates.Start(createExit(endApp));
+        keepAwake.Start();
+        startup.Begin(!shortcutsReady);
+        mcpStart.Begin();
+        followAvailability = (_, _) =>
+        {
+            logger.Information("Contacts became {Availability}", contacts.IsAvailable ? "available" : "unavailable");
+            trayIcon.UpdateMenu(Menu());
+            contactsShortcut.AvailabilityChanged();
+        };
+        contacts.AvailableChanged += followAvailability;
+        sync.Setup.Changed += StartLocalApi;
+        sync.Start();
+    }
+
+    // Runs on Sync's first setup publication, whether its initialization succeeded or failed; later ones change nothing.
+    private void StartLocalApi(object? sender, EventArgs e)
+    {
+        sync.Setup.Changed -= StartLocalApi;
+        lock (apiGate)
+        {
+            if (apiClosed)
+            {
+                logger.Debug("The Local API was not started: the app is stopping");
+                return;
+            }
+
+            apiStarted = true;
+            logger.Information("Starting the Local API after Sync's first local load");
+            localApi.Start();
+        }
+    }
+
+    // Closes the start for good and reports whether the API runs, so a start racing the stop can't follow it.
+    private bool CloseLocalApi()
+    {
+        sync.Setup.Changed -= StartLocalApi;
+        lock (apiGate)
+        {
+            apiClosed = true;
+            return apiStarted;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        lock (stopGate)
+        {
+            stopping ??= StopOwnedAsync();
+        }
+
+        return stopping.WaitAsync(cancellationToken);
+    }
+
+    // Runs its synchronous part on the caller's UI thread, then joins the asynchronous cleanup.
+    private async Task StopOwnedAsync()
+    {
+        List<Exception> failures = [];
+        Attempt("Stop startup navigation", startup.Stop, failures);
+        Attempt("Cancel the MCP server start", mcpStart.Cancel, failures);
+        Attempt("Detach the sync tray", syncTray.Detach, failures);
+        Attempt("Dispose Configure", configure.Dispose, failures);
+        Attempt("Stop Keep awake", keepAwake.Stop, failures);
+        Attempt("Stop following contacts availability", StopFollowingAvailability, failures);
+        Attempt("Unregister the Add shortcut", addShortcut.Unregister, failures);
+        Attempt("Unregister the Task View shortcut", manageShortcut.Unregister, failures);
+        Attempt("Unregister the Configure shortcut", configureShortcut.Unregister, failures);
+        Attempt("Unregister the Contacts shortcut", contactsShortcut.Unregister, failures);
+        Attempt("Remove the tray icon", trayIcon.Remove, failures);
+
+        if (claimed)
+        {
+            // First, so no call reaches a disposed Sync and the pipe is free before the claim is released.
+            if (CloseLocalApi())
+            {
+                logger.Information("Stopping the Local API");
+                await Attempt("Stop the Local API", localApi.StopAsync, failures);
+            }
+
+            // Before Sync, so no assistant's call changes the clone while Sync stops.
+            await Attempt("Stop the MCP server", mcpServer.StopAsync, failures);
+            await Attempt("Stop Sync", () => sync.StopAsync(CancellationToken.None), failures);
+            await Attempt("Dispose Sync", () => sync.DisposeAsync().AsTask(), failures);
+        }
+
+        // After Sync, since this starts Velopack's updater when an update ended the app, which waits only 60 seconds for it.
+        await Attempt("Stop Updates", updates.StopAsync, failures);
+
+        Attempt("Release the one-instance claim", oneInstance.Release, failures);
+
+        if (failures.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        }
+
+        if (failures.Count > 1)
+        {
+            throw new AggregateException(failures);
+        }
+    }
+
+    private TrayMenuItem Item(string text, Action choose) => new(text, Logged($"Tray menu item {text} chosen", choose));
+
+    private Action Logged(string use, Action action) => LoggedUse.Of(logger, use, action);
+
+    private void StopFollowingAvailability()
+    {
+        if (followAvailability is not null)
+        {
+            contacts.AvailableChanged -= followAvailability;
+        }
+    }
+
+    private void Attempt(string name, Action step, List<Exception> failures)
+    {
+        logger.Debug("Shutdown step: {Step}", name);
+        try
+        {
+            step();
+        }
+        catch (Exception failure)
+        {
+            RecordFailure(name, failure, failures);
+        }
+    }
+
+    private async Task Attempt(string name, Func<Task> step, List<Exception> failures)
+    {
+        logger.Debug("Shutdown step: {Step}", name);
+        try
+        {
+            await step();
+        }
+        catch (Exception failure)
+        {
+            RecordFailure(name, failure, failures);
+        }
+    }
+
+    private void RecordFailure(string step, Exception failure, List<Exception> failures)
+    {
+        failures.Add(failure);
+        logger.Error(failure, "Shutdown step failed: {Step}", step);
+    }
+}

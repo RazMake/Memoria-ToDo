@@ -1,0 +1,114 @@
+# Checks each branch push. Design: docs/architecture/technology-stack.md, "Three GitHub Actions workflows check
+# pushes, run every test, and publish releases" and "The workflow times the unit run, and a slow run opens one issue".
+name: Build and unit tests
+
+on:
+  push:
+    branches: ["**"]
+
+# Every job gets read-only access to the repository unless it asks for more.
+permissions:
+  contents: read
+
+env:
+  # The unit run's time limit, in seconds. This is its only home; change it here.
+  UNIT_RUN_LIMIT_SECONDS: "30"
+  # The slow-run issue is found by its label, not its title.
+  SLOW_RUN_ISSUE_TITLE: Unit tests are slower than the time limit
+  SLOW_RUN_ISSUE_LABEL: slow-unit-tests
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  # Every branch push builds the code and runs the unit tests. A push to the default branch also saves the
+  # run's files for the timing job.
+  unit-tests:
+    if: github.event_name == 'push' && github.ref_type == 'branch'
+    runs-on: windows-2025
+    env:
+      TIMED: ${{ github.ref_name == github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-dotnet
+        with:
+          workload: android
+      - name: Install the JDK and Android SDK the Android app builds with
+        run: dotnet build src/Android/App/Memoria.ToDo.Android.App.csproj -t:InstallAndroidDependencies -p:AcceptAndroidSDKLicenses=True
+      - name: Build the Node.js client, which its tests load
+        working-directory: src/Api/NodeClient
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run the Node.js client's unit tests
+        run: |
+          node --test --test-timeout=120000 --test-name-pattern="\(unit\)" "tests/Api/NodeClient/*.test.mjs"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build the Android app, which the solution leaves out
+        run: dotnet build src/Android/App/Memoria.ToDo.Android.App.csproj
+      - name: Build and run the unit tests
+        run: |
+          # The timed run appends the JUnit report and results folder after Directory.Build.props's unit filter.
+          $extra = @()
+          if ($env:TIMED -eq 'true') {
+            $extra = '--report-xunit-junit', '--results-directory', 'unit-results', '--results-directory-layout', 'per-module'
+          }
+          dotnet test @extra | Tee-Object -FilePath unit-output.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save the run's files for the timing job
+        if: env.TIMED == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-run
+          path: |
+            unit-results
+            unit-output.txt
+          if-no-files-found: error
+
+  # Only a passing unit run on the default branch is timed. The concurrency group makes timed runs wait for
+  # each other, and GitHub keeps only the newest waiting one, so two runs can't each open an issue.
+  time-unit-run:
+    needs: unit-tests
+    if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch
+    runs-on: windows-2025
+    concurrency:
+      group: time-unit-run
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-dotnet
+      - uses: actions/download-artifact@v8
+        with:
+          name: unit-run
+      - name: Build the timing program
+        run: dotnet build tests/Testing/UnitRunTiming -c Release
+      - name: Decide, then open, update, or close the issue
+        run: |
+          $number = gh issue list --label $env:SLOW_RUN_ISSUE_LABEL --state open --limit 1 --json number --jq '.[].number'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $isOpen = if ($number) { 'true' } else { 'false' }
+          $decision = dotnet run --no-build -c Release --project tests/Testing/UnitRunTiming -- `
+            --reports unit-results --test-output unit-output.txt --limit-seconds $env:UNIT_RUN_LIMIT_SECONDS `
+            --issue-open $isOpen --text-file issue-text.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          switch ("$decision".Trim()) {
+            'open' {
+              gh label create $env:SLOW_RUN_ISSUE_LABEL --force
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              gh issue create --title $env:SLOW_RUN_ISSUE_TITLE --label $env:SLOW_RUN_ISSUE_LABEL --body-file issue-text.md
+            }
+            'note' { gh issue comment $number --body-file issue-text.md }
+            'close' { gh issue close $number --comment (Get-Content -Raw issue-text.md) }
+            'none' { }
+            default { throw "The timing program printed an unknown decision: '$decision'" }
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

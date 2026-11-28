@@ -2,19 +2,28 @@
 
 Status: Decided
 
-The Task editor is the Android app's Add screen: full screen, with the keyboard up and the cursor in the Title, so typing starts at once. View Tasks edits a task with the same screen.
+The Task editor is the Android app's Add screen: full screen, with the keyboard up and the cursor in the Title, so typing starts at once. Task View edits a task with the same screen.
 
 ## Behavior
 
 ### Add opens full screen, with the keyboard up
 
-Add fills the screen, shows the keyboard, and puts the cursor in the Title. It has the same three fields as the [desktop Add window](../desktop/task-editor.md#add-opens-at-once-with-the-cursor-in-the-title): Title, Description, and Tags. Title and Description use the standard Android text field that [How the apps fit together](../overview.md#each-app-edits-in-its-own-text-box-with-shared-commands) picks.
+Add fills the screen, shows the keyboard, and puts the cursor in the Title. It has the same three fields as the [desktop Add window](../desktop/task-editor.md#add-opens-at-once-with-the-cursor-in-the-title): Title, Description, and Tag. Title and Description use the standard Android text field that [How the apps fit together](../overview.md#each-app-edits-in-its-own-text-box-with-shared-commands) picks.
 
 Proposed, each a decision to confirm:
 
-- Add accepts typing within 1 second of a cold start, when the app isn't running, and within 300 milliseconds of a warm start, when it is. The [proof on a phone](README.md#a-proof-on-a-phone-comes-before-any-other-android-work) measures both.
+- Add accepts typing within 1 second of a cold start, when the app isn't running, and within 300 milliseconds of a warm start, when it is. The [proof on a phone](README.md#a-proof-on-a-phone-comes-before-any-other-android-work) measured both, as below.
 - The keyboard's Next key in the Title moves to the Description, as Enter does on the desktop.
 - A Save button in the top app bar saves the task and closes Add. A task with an empty Title can't be saved, as on the desktop.
+
+The proof measured Add on a Pixel 10 Pro, from when Android started to open it. A warm start adds about 25 ms before the app's own clock starts, so its slide-in figure is an estimate:
+
+| Start | Runs | Keyboard starts to appear | Keyboard finishes sliding in |
+| --- | ---: | ---: | ---: |
+| Cold | 10 | 259 ms median, 371 ms at most | 574 ms median, 802 ms at most, in the 9 runs that recorded it |
+| Warm | 2 | 144 and 157 ms | about 460 ms |
+
+The cold start meets its target either way. The warm start meets its target only if typing counts from when the keyboard starts to appear. The slide-in, which Android runs, takes about 300 ms by itself. Proposed, a decision to confirm: Add accepts typing once the keyboard starts to appear with the cursor in the Title, and the slide-in doesn't count.
 
 ### A toolbar above the keyboard runs the common commands
 
@@ -39,26 +48,40 @@ Pictures are shrunk with Android's own image tools, as [Tasks](../tasks.md#image
 
 ### Tags sit as chips under the Title
 
-The five most-used tags show as chips under the Title, and tapping one adds it. They're counted as on the [desktop](../desktop/task-editor.md#tags-come-from-the-tags-already-in-use).
+The five most-used tags show as chips under the Title, and tapping one chooses it. They're counted as [Tasks](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case) decides.
 
 Proposed, each a decision to confirm:
 
-- A chosen tag shows as a checked chip, and tapping it again removes it.
+- A chosen tag shows as a checked chip, and tapping it again clears it.
 - A "+" chip opens a field that suggests the tags in use, for a tag that isn't among the five.
+
+The user's earlier decision followed one tag per task, with one chip at most checked. A task now has [several tags in order](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it), and the first one groups it. Proposed, a decision to confirm: several chips can be checked, and the task's tags take the order the chips were checked in, so the first chip checked groups the task. Choosing a tag in the "+" field adds it at the end. A task opened in Edit keeps its tags' order, and clearing a chip removes only that tag. Tags typed in the "+" field follow [Tasks' tag rule](../tasks.md#tags-are-lowercase-with-hyphens-and-search-ignores-case), through `TagName.Normalize`, and once a task has 15 tags, unchecked chips and the "+" chip are turned off, as Tasks' [limit](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it) and the desktop's add pill do.
+
+Deferred: the desktop shows a task's tags as [colored pills that a drag reorders](../desktop/task-editor.md#a-tasks-tags-are-pills-in-order-and-a-drag-reorders-them), the first one larger. [Tasks](../tasks.md#each-tags-color-is-kept-in-one-synced-file) keeps each tag's color in the clone, so it reaches the phone, and [Rendering](../rendering.md#thirty-tag-colors-stay-distinct-in-both-themes) names the 30 colors and picks a tag's default. When the Android app is built, this section decides whether the chips take each tag's color, show eight tags as the desktop's menu does, let the user pick a color, show the first tag larger, and reorder tags by a drag.
 
 ### Back keeps a draft on this phone
 
-Proposed: drafts work as on the [desktop](../desktop/task-editor.md#closing-without-saving-keeps-a-draft-on-this-device). Back, or leaving the app, keeps Add's text as a draft, the next Add opens with it, and a Discard button in the top app bar clears it. The draft is saved in the app's private storage, outside the clone, and never syncs. This is a decision to confirm.
+Proposed: drafts work as on the [desktop](../desktop/task-editor.md#closing-without-saving-keeps-a-draft-on-this-device). Back, or leaving the app, keeps Add's text as a draft, the next Add opens with it, and a Clear button in the top app bar clears it. The draft is saved in the app's private storage, outside the clone, and never syncs. This is a decision to confirm.
 
-### Edit opens the same screen for a task in View Tasks
+### Edit opens the same screen for a task in Task View
 
-An expanded task's Edit button in [View Tasks](task-list.md#swipes-resolve-and-delete-and-a-long-press-moves-a-task) opens this screen with the task. Saving works as in Add.
+An expanded task's Edit button in [Task View](task-list.md#swipes-resolve-and-delete-and-a-long-press-moves-a-task) opens this screen with the task. Saving works as in Add.
 
-Proposed: Back discards the change, and View Tasks shows an Undo bar, as Esc does on the [desktop](../desktop/task-list.md#edit-turns-the-open-task-into-the-editor-in-place). This is a decision to confirm.
+Proposed: Back discards the change, and Task View shows an Undo bar, as Esc does on the [desktop](../desktop/task-list.md#edit-description-turns-the-right-side-into-the-editor). This is a decision to confirm.
 
 ### The editor styles Markdown in place, with no preview
 
 As on the [desktop](../desktop/task-editor.md#the-editor-styles-markdown-in-place-with-no-preview), the fields show Markdown source styled in place, from [Rendering's styled spans](../rendering.md#titles-and-the-editor-get-styled-spans-not-html). Add has no preview and no web view, so it never waits for one. A saved new task goes to the top of the order.
+
+### Typing an at sign mentions a contact
+
+The user decided that the phone gets the full "@" list and the mention chips, as the [desktop](../desktop/task-editor.md#typing-an-at-sign-mentions-a-contact) has them: the same search, the same rows, the same templates, chips that show each contact's [live text](../contacts.md#a-mentions-text-is-rebuilt-from-the-contact-each-time-it-shows), and a chip that a deletion removes whole and the cursor can't enter. Only what a touch screen changes differs. Proposed, each a decision to confirm:
+
+- **The list opens as a dropdown under the field being typed in**, and a tap chooses a contact. It closes as the desktop's does, and on Back.
+- **A button at the list's top shows the current template, and a tap on it moves to the next one**, since a phone keyboard has no Tab key.
+- **Tapping a contact moves its template to the top of the list**, as on the [desktop](../desktop/task-editor.md#the-list-starts-on-the-template-used-last), so the phone also starts on the template used last.
+- **A chip is drawn in place of the mention's Markdown**, on Rendering's mention background, with an Android [ReplacementSpan](https://developer.android.com/reference/android/text/style/ReplacementSpan). The field moves the cursor out of a chip to its nearer side, and widens a deletion that touches a chip to the whole mention, so the keyboard's delete key removes it whole.
+- **The toolbar gets no "@" button**, since every phone keyboard has the key.
 
 ## Public interface
 
@@ -66,7 +89,29 @@ Shell and the Task list use these parts:
 
 - **Show Add**: opens Add, with the draft if there is one. Shell calls it from the app shortcut and the widget, and the Task list from its floating button.
 - **Edit a task**: opens this screen with one task, and reports whether the user saved or left. The Task list calls it from Edit.
-- **The tag chips**: the five most-used tags as chips, reporting the chosen tag. The Task list uses them to filter.
+- **The tag chips**: the tags its caller gives, as chips in that order, reporting the chosen tags in the order they were checked. Add gives the five most-used tags; the Task list gives its [tags in the tags' order](task-list.md#tags-and-search-narrow-the-list), to filter, and there one chip at most is checked.
+
+The composition root gives the Task editor [Contacts](../contacts.md#public-interface), for the "@" list and the chips, as the desktop's does.
+
+Proposed for [delivery step 1](README.md#delivery-backlog), Show Add with an empty screen; later steps add the rest:
+
+```csharp
+namespace Memoria.ToDo.Android.TaskEditor;
+
+/// The Add screen.
+public interface IAddScreen
+{
+    /// Opens Add in front of the app's other screens.
+    void Show();
+}
+
+public static class AddScreen
+{
+    /// Prepares Add. Its Show asks screens to open Add's activity.
+    /// Throws ArgumentNullException when an argument is null.
+    public static IAddScreen Create(Memoria.ToDo.Android.Platform.IScreenOpener screens, Serilog.ILogger logger);
+}
+```
 
 ## Failure modes
 
@@ -78,3 +123,5 @@ Shell and the Task list use these parts:
 The options below were considered and rejected.
 
 - **An expanding bottom sheet**, and **full screen with "/" only, and no toolbar**: offered, and not chosen.
+- **Mentions only shown on the phone, with no "@" list until a later design**: the user chose the full list and the chips on the phone too.
+- **Following one tag per task only when the Android app is built**, with the Deferred tag questions: fewer edits now, but this page would describe several checked chips that Tasks rejects. Superseded once Tasks took [several tags in order](../tasks.md#a-tasks-tags-are-an-ordered-list-and-the-first-one-groups-it).

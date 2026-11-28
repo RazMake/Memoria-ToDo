@@ -1,0 +1,379 @@
+using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Input;
+using System.Windows.Media;
+using Memoria.ToDo.Desktop.Fakes;
+using Memoria.ToDo.Desktop.FormattedView;
+using Memoria.ToDo.Desktop.FormattedView.Tests;
+using Memoria.ToDo.Shared.Tasks;
+using Xunit;
+
+namespace Memoria.ToDo.Desktop.TaskEditor.Tests.AddWindow;
+
+using AddWindow = Memoria.ToDo.Desktop.TaskEditor.AddWindow;
+
+/// <summary>
+/// The Add window as a UX test uses it: built through <see cref="AddWindow.Create"/> over the shared fakes and a real
+/// Tasks module, and driven as a user would. Shared test setup, not a fake of a port. Dispose it to close the window.
+/// </summary>
+internal sealed class AddScreen : IDisposable
+{
+    private readonly OpenWindows windows = new();
+    private readonly IAddWindow add;
+    private HashSet<string>? baseline;
+
+    public AddScreen(bool withRepository = true)
+    {
+        Services = new EditorServices();
+        if (withRepository)
+        {
+            Services.UseRepository();
+        }
+
+        add = Services.CreateAddWindow();
+    }
+
+    public EditorServices Services { get; }
+
+    public IAddWindow Add => add;
+
+    public Window Window => Assert.Single(windows.Visible().OfType<IAddWindow>().Cast<Window>());
+
+    public bool IsShowing => windows.Visible().Count > 0;
+
+    /// <summary>The editor inside the window.</summary>
+    public TaskEditorControl Editor => OpenWindows.Descendants(Window).OfType<TaskEditorControl>().Single();
+
+    /// <summary>
+    /// The tasks saved through the window, newest first: a save adds its task at the top of the list. Tasks that existed when the
+    /// window was first shown, such as ones a test seeds to put tags in use, are not counted.
+    /// </summary>
+    public IReadOnlyList<TaskItem> Saved => [.. Services.Tasks.All.Where(task => baseline is not null && !baseline.Contains(task.Id))];
+
+    /// <summary>Opens the window, as the tray's Add item does. The first call notes the tasks that already exist.</summary>
+    public void Show()
+    {
+        baseline ??= [.. Services.Tasks.All.Select(task => task.Id)];
+        add.Show();
+    }
+
+    /// <summary>Fills the three fields, as typing does.</summary>
+    public void Fill(string title, string description = "", params string[] tags) =>
+        Editor.Value = Editor.Value with { Title = title, Description = description, Tags = tags };
+
+    /// <summary>The field's name that holds the keyboard focus.</summary>
+    public string? FocusedField => EditorFields.FocusedFieldName();
+
+    /// <summary>Gives the keyboard focus to the field.</summary>
+    public void Focus(string field)
+    {
+        var element = EditorFields.Field(Window, field);
+        element.Focus();
+        Keyboard.Focus(element);
+    }
+
+    /// <summary>Presses a chord on the focused element: Ctrl+Enter is <c>Press(Key.LeftCtrl, Key.Enter)</c>.</summary>
+    public void Press(params Key[] keys) => EditorFields.PressOnFocused(keys);
+
+    /// <summary>Presses Ctrl, or Ctrl+Shift, with the key.</summary>
+    public void PressCtrl(bool withShift, Key key) =>
+        Press(withShift ? [Key.LeftCtrl, Key.LeftShift, key] : [Key.LeftCtrl, key]);
+
+
+    /// <summary>The fake clock's time in this PC's time zone, which is what stamps show.</summary>
+    public DateTimeOffset LocalNow => TimeZoneInfo.ConvertTime(Services.Time.GetUtcNow(), TimeZoneInfo.Local);
+
+    /// <summary>The draft Tasks keeps on this device, or null when it keeps none.</summary>
+    public TaskDraft? KeptDraft => Services.Tasks.LoadDraft();
+
+    /// <summary>Gives the window the theme the platform gives the app's windows, so the theme's resources resolve; a bare test window has none.</summary>
+    public void UseTheme(bool dark) => OpenWindows.UseTheme(Window, dark);
+
+    /// <summary>Presses Esc in the window.</summary>
+    public void PressEscape() => OpenWindows.PressEscape(Window);
+
+    /// <summary>Clicks the window's close button.</summary>
+    public void CloseWindow() => Window.Close();
+
+    /// <summary>Clicks the Clear button.</summary>
+    public void Clear() => OpenWindows.Click(Window, "Clear");
+
+    /// <summary>The Clear button.</summary>
+    public System.Windows.Controls.Button ClearButton => ButtonLabelled("Clear");
+
+    /// <summary>The Save button.</summary>
+    public System.Windows.Controls.Button SaveButton => ButtonLabelled("Save");
+
+    /// <summary>Clicks the Save button.</summary>
+    public void ClickSave() => OpenWindows.Click(SaveButton);
+
+    private System.Windows.Controls.Button ButtonLabelled(string text) =>
+        OpenWindows.Descendants(Window).OfType<System.Windows.Controls.Button>().Single(b => b.Content as string == text);
+
+    public void Save() => Press(Key.LeftCtrl, Key.Enter);
+
+    /// <summary>Types the text into the Tag box, opening Custom first as the user does, which gives the box the keyboard focus.</summary>
+    public void TypeTag(string text)
+    {
+        OpenCustom();
+        Focus(EditorFields.Tags);
+        EditorFields.Type(Window, EditorFields.Tags, text);
+    }
+
+    /// <summary>Clicks the add pill and then Custom, unless Custom is already open, so Custom adds its tag at the end.</summary>
+    public void OpenCustom()
+    {
+        if (TagControls.CustomIsOpen(Window))
+        {
+            return;
+        }
+
+        OpenWindows.Click(TagControls.AddPill(Window));
+        OpenWindows.Click(TagControls.CustomItem(Window));
+    }
+
+    /// <summary>The tags of the menu's items, in order; empty while it is closed.</summary>
+    public IReadOnlyList<string> MenuTags => TagControls.MenuTags(Window);
+
+    /// <summary>Clicks the color in Custom's grid, which adds the typed tag in that color.</summary>
+    public void ClickTagColor(string name) => OpenWindows.Click(TagControls.ColorButton(Window, name));
+
+    /// <summary>What the Tags line holds, typed and not yet added.</summary>
+    public string TypedTag => EditorFields.TextOf(Window, EditorFields.Tags);
+
+    /// <summary>The tag the pill shows, or null when it shows "No tag".</summary>
+    public string? ShownTag => TagControls.PillTag(Window);
+
+    /// <summary>The tags the pills show, in order.</summary>
+    public IReadOnlyList<string> ShownTags => TagControls.PillTags(Window);
+
+    /// <summary>Puts the text in the field, selects <paramref name="length"/> characters from <paramref name="start"/>, and gives the field the keyboard focus.</summary>
+    public void Edit(string field, string text, int start, int length = 0)
+    {
+        EditorFields.Type(Window, field, text);
+        Window.UpdateLayout(); // The caret moves over the chips of the laid-out lines.
+        Focus(field);
+        EditorFields.Select(Window, field, start, length);
+    }
+
+    /// <summary>What the field's text holds now.</summary>
+    public string TextOf(string field) => EditorFields.TextOf(Window, field);
+
+    /// <summary>Where the field's selection starts and how long it is; length 0 is the cursor.</summary>
+    public (int Start, int Length) SelectionOf(string field) => EditorFields.SelectionOf(Window, field);
+
+    /// <summary>Undoes the field's last change once, as Ctrl+Z does.</summary>
+    public void Undo(string field) => Assert.True(EditorFields.Undo(Window, field), $"The {field} has nothing to undo.");
+
+    /// <summary>Copies the field's selection to the clipboard, as Ctrl+C does.</summary>
+    public void Copy(string field) => EditorFields.Copy(Window, field);
+
+    /// <summary>The colors the open color list offers, in order; empty while it is closed.</summary>
+    public IReadOnlyList<string> ShownColors => EditorFields.ShownColors(Window);
+
+    /// <summary>Clicks the color in the open color list.</summary>
+    public void ClickColor(string color) => OpenWindows.Click(EditorFields.ColorButton(Window, color));
+
+    /// <summary>Types the text at the cursor of the focused field, one character at a time, as the user does.</summary>
+    public void Type(string text) => EditorFields.TypeOnFocused(text);
+
+    /// <summary>The snippets the open snippet list offers, in order; empty while it is closed.</summary>
+    public IReadOnlyList<string> ShownSnippets => EditorFields.ShownSnippets(Window);
+
+    /// <summary>Clicks the snippet in the open snippet list.</summary>
+    public void ClickSnippet(string snippet) => OpenWindows.Click(EditorFields.ItemButton(Window, EditorFields.SnippetList, snippet));
+
+    /// <summary>The titles the open task list offers, in order; empty while it is closed.</summary>
+    public IReadOnlyList<string> ShownTaskReferences => EditorFields.ShownTaskReferences(Window);
+
+    /// <summary>Clicks the task, by its title as the list shows it, in the open task list.</summary>
+    public void ClickTaskReference(string title) => OpenWindows.Click(EditorFields.ItemButton(Window, EditorFields.TaskReferenceList, title));
+
+    public void SaveAndClear() => Press(Key.LeftCtrl, Key.LeftShift, Key.Enter);
+
+    /// <summary>The contacts the open mention list offers, in order; empty while it is closed.</summary>
+    public IReadOnlyList<string> ShownMentions => EditorFields.ShownMentions(Window);
+
+    /// <summary>Clicks the contact, by its plain text "Full Name (alias)", in the open mention list. A row is a button named by that text.</summary>
+    public void ClickMention(string text) => OpenWindows.Click(MentionRow(text));
+
+    /// <summary>The button of the row with the plain text "Full Name (alias)".</summary>
+    public System.Windows.Controls.Button MentionRow(string text)
+    {
+        var list = EditorFields.Field(Window, EditorFields.MentionList);
+        list.UpdateLayout();
+        return VisualTree.Visuals(list).OfType<System.Windows.Controls.Button>()
+            .Single(button => AutomationProperties.GetName(button) == text);
+    }
+
+    /// <summary>The header at the top of the open mention list: the mention chip of the highlighted contact in the current template.</summary>
+    public MentionChip MentionHeader
+    {
+        get
+        {
+            // A new template's chip joins the visual tree at the next layout pass.
+            var list = EditorFields.Field(Window, EditorFields.MentionList);
+            list.UpdateLayout();
+            return VisualTree.Visuals(list).OfType<MentionChip>().Single();
+        }
+    }
+
+    /// <summary>The header's text as it shows, without Markdown characters.</summary>
+    public string MentionHeaderText => ChipRuns.ShownBy(MentionHeader);
+
+    /// <summary>Clicks the header, which moves to the next template as Tab does: its button when it sits in one, else the chip itself.</summary>
+    public void ClickMentionHeader()
+    {
+        var header = MentionHeader;
+        DependencyObject? button = header;
+        while (button is not null and not System.Windows.Controls.Primitives.ButtonBase)
+        {
+            button = VisualTreeHelper.GetParent(button);
+        }
+
+        if (button is System.Windows.Controls.Button found)
+        {
+            OpenWindows.Click(found);
+        }
+        else
+        {
+            VisualTree.MouseClick(header, MouseButton.Left);
+            header.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>The chips the field shows for its mentions, in order.</summary>
+    public IReadOnlyList<MentionChip> ChipsIn(string field)
+    {
+        var editor = (ICSharpCode.AvalonEdit.TextEditor)EditorFields.Field(Window, field);
+        Window.UpdateLayout();
+        editor.TextArea.TextView.EnsureVisualLines();
+        return [.. VisualTree.Visuals(editor.TextArea.TextView).OfType<MentionChip>()];
+    }
+
+    /// <summary>The help line under the header: a text block with the id "MentionHint", in the help style.</summary>
+    public System.Windows.Controls.TextBlock MentionHint =>
+        (System.Windows.Controls.TextBlock)EditorFields.Field(EditorFields.Field(Window, EditorFields.MentionList), EditorFields.MentionHint);
+
+    /// <summary>The open mention list's rectangle on the screen, in device pixels.</summary>
+    public Rect MentionListOnScreen
+    {
+        get
+        {
+            var list = EditorFields.Field(Window, EditorFields.MentionList);
+            list.UpdateLayout();
+            return new Rect(list.PointToScreen(new Point(0, 0)), list.PointToScreen(new Point(list.ActualWidth, list.ActualHeight)));
+        }
+    }
+
+    /// <summary>Whether the open mention list shows in a window of its own, as a menu does, not inside the Add window.</summary>
+    public bool MentionListIsInAPopup =>
+        PresentationSource.FromVisual(EditorFields.Field(Window, EditorFields.MentionList)) is { } source
+        && !ReferenceEquals(source, PresentationSource.FromVisual(Window));
+
+    /// <summary>The left edge and the bottom of the line at the offset in the field, on the screen, in device pixels.</summary>
+    public (double Left, double LineBottom) PlaceOnScreen(string field, int offset)
+    {
+        var editor = (ICSharpCode.AvalonEdit.TextEditor)EditorFields.Field(Window, field);
+        var view = editor.TextArea.TextView;
+        var location = editor.Document.GetLocation(offset);
+        var position = new ICSharpCode.AvalonEdit.TextViewPosition(location.Line, location.Column);
+        var bottom = view.GetVisualPosition(position, ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineBottom) - view.ScrollOffset;
+        var onScreen = view.PointToScreen(new Point(bottom.X, bottom.Y));
+        return (onScreen.X, onScreen.Y);
+    }
+
+    /// <summary>The height of the Description's text line, in device pixels.</summary>
+    public double LineHeightOnScreen(string field)
+    {
+        var editor = (ICSharpCode.AvalonEdit.TextEditor)EditorFields.Field(Window, field);
+        var view = editor.TextArea.TextView;
+        var top = view.GetVisualPosition(new ICSharpCode.AvalonEdit.TextViewPosition(1, 1), ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineTop);
+        var bottom = view.GetVisualPosition(new ICSharpCode.AvalonEdit.TextViewPosition(1, 1), ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineBottom);
+        return view.PointToScreen(new Point(0, bottom.Y)).Y - view.PointToScreen(new Point(0, top.Y)).Y;
+    }
+
+    /// <summary>The row's text blocks: the row's button holds the full name in bold and the alias in italics.</summary>
+    public IReadOnlyList<System.Windows.Documents.Run> RowRuns(string text) =>
+        [.. VisualTree.Visuals(MentionRow(text)).OfType<System.Windows.Controls.TextBlock>().SelectMany(block => block.Inlines).OfType<System.Windows.Documents.Run>()];
+
+    /// <summary>The texts the user can see in the window beside its controls.</summary>
+    public IReadOnlyList<string> Texts => EditorFields.VisibleTexts(Window);
+
+    /// <summary>Whether a displayed text contains the words, ignoring case.</summary>
+    public bool ShowsText(string words) =>
+        Texts.Any(text => text.Contains(words, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Whether the Title field is marked as empty: it carries a status text for assistive tools and the eye.</summary>
+    public bool TitleIsMarked =>
+        !string.IsNullOrEmpty(AutomationProperties.GetItemStatus(EditorFields.Field(Window, EditorFields.Title)));
+
+    /// <summary>The brush the Title's border is painted with now.</summary>
+    public System.Windows.Media.Brush? TitleBorderBrush => EditorFields.Field(Window, EditorFields.Title) is System.Windows.Controls.Control title
+        ? title.BorderBrush
+        : throw new InvalidOperationException("The Title is not a control.");
+
+    /// <summary>The Description field's height on screen now, after layout.</summary>
+    public double DescriptionHeight
+    {
+        get
+        {
+            var description = EditorFields.Field(Window, EditorFields.Description);
+            Window.UpdateLayout();
+            return description.ActualHeight;
+        }
+    }
+
+    /// <summary>The update status bar along the window's bottom edge, or null when the window has none.</summary>
+    public Updates.UpdateStatusBar? UpdateBar => OpenWindows.Descendants(Window).OfType<Updates.UpdateStatusBar>().SingleOrDefault();
+
+    /// <summary>Whether the update status bar shows.</summary>
+    public bool ShowsUpdateBar => UpdateBar is { IsVisible: true };
+
+    /// <summary>The state changes while the window is open, as when a check ends. Then the window lays out.</summary>
+    public void PublishUpdate(Updates.UpdateStage stage, string? newVersion)
+    {
+        Services.Updates.Publish(new Updates.UpdateState(stage, "2.1.0", newVersion, null));
+        Settle();
+    }
+
+    /// <summary>The window's height once its layout has settled, which includes its resize to its content.</summary>
+    public double WindowHeight
+    {
+        get
+        {
+            Settle();
+            return Window.ActualHeight;
+        }
+    }
+
+    /// <summary>The update text button in the status bar, such as "Update available: 2.2.0".</summary>
+    public System.Windows.Controls.Button UpdateTextButton =>
+        OpenWindows.Descendants(UpdateBar!).OfType<System.Windows.Controls.Button>().Single();
+
+    /// <summary>The texts the update status bar shows.</summary>
+    public IReadOnlyList<string> UpdateBarTexts =>
+        [.. OpenWindows.Descendants(UpdateBar!).OfType<System.Windows.Controls.TextBlock>().Select(OpenWindows.TextOf).Where(t => t.Length > 0)];
+
+    /// <summary>Where the status bar and the Save button are in the window, and how tall the window's content area is.</summary>
+    public (Rect Bar, Rect Save, double ContentHeight) BarPlace
+    {
+        get
+        {
+            Settle();
+            var content = (FrameworkElement)Window.Content;
+            return (RectIn(UpdateBar!), RectIn(SaveButton), content.ActualHeight);
+        }
+    }
+
+    private Rect RectIn(FrameworkElement element) =>
+        new(element.TranslatePoint(new Point(0, 0), (FrameworkElement)Window.Content), new Size(element.ActualWidth, element.ActualHeight));
+
+    private void Settle()
+    {
+        Window.UpdateLayout();
+        Window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+    }
+
+    public void Dispose() => windows.Dispose();
+}

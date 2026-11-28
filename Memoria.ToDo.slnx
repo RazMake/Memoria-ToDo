@@ -1,0 +1,49 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Shared/Editing/Memoria.ToDo.Shared.Editing.csproj" />
+    <Project Path="src/Shared/Platform/Memoria.ToDo.Shared.Platform.csproj" />
+    <Project Path="src/Shared/Tasks/Memoria.ToDo.Shared.Tasks.csproj" />
+    <Project Path="src/Shared/Contacts/Memoria.ToDo.Shared.Contacts.csproj" />
+    <Project Path="src/Shared/Sync/Memoria.ToDo.Shared.Sync.csproj" />
+    <Project Path="src/Desktop/Platform/Memoria.ToDo.Desktop.Platform.csproj" />
+    <Project Path="src/Desktop/Shell/Memoria.ToDo.Desktop.Shell.csproj" />
+    <Project Path="src/Desktop/TaskEditor/Memoria.ToDo.Desktop.TaskEditor.csproj" />
+    <Project Path="src/Desktop/TaskList/Memoria.ToDo.Desktop.TaskList.csproj" />
+    <Project Path="src/Desktop/ContactList/Memoria.ToDo.Desktop.ContactList.csproj" />
+    <Project Path="src/Desktop/FormattedView/Memoria.ToDo.Desktop.FormattedView.csproj" />
+    <Project Path="src/Desktop/Configure/Memoria.ToDo.Desktop.Configure.csproj" />
+    <Project Path="src/Desktop/Updates/Memoria.ToDo.Desktop.Updates.csproj" />
+    <Project Path="src/Desktop/LocalAPI/Memoria.ToDo.Desktop.LocalAPI.csproj" />
+    <Project Path="src/Desktop/Logs/Memoria.ToDo.Desktop.Logs.csproj" />
+    <Project Path="src/Desktop/MCPServer/Memoria.ToDo.Desktop.MCPServer.csproj" />
+    <Project Path="src/Desktop/KeepAwake/Memoria.ToDo.Desktop.KeepAwake.csproj" />
+    <Project Path="src/Desktop/App/Memoria.ToDo.Desktop.App.csproj" />
+    <Project Path="src/Shared/Rendering/Memoria.ToDo.Shared.Rendering.csproj" />
+    <Project Path="src/Api/Contract/Memoria.ToDo.Api.Contract.csproj" />
+    <Project Path="src/Api/Client/Memoria.ToDo.Api.Client.csproj" />
+    <Project Path="src/Android/Platform/Memoria.ToDo.Android.Platform.csproj" />
+    <Project Path="src/Android/TaskEditor/Memoria.ToDo.Android.TaskEditor.csproj" />
+    <Project Path="src/Android/Configure/Memoria.ToDo.Android.Configure.csproj" />
+    <Project Path="src/Android/TaskList/Memoria.ToDo.Android.TaskList.csproj" />
+    <Project Path="src/Android/Shell/Memoria.ToDo.Android.Shell.csproj" />
+    <!-- Built only by its path until the SDK fixes dotnet test. Design: docs/architecture/technology-stack.md,
+         "The solution doesn't build the Android app until a fixed .NET SDK ships". -->
+    <Project Path="src/Android/App/Memoria.ToDo.Android.App.csproj">
+      <Build Project="false" />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Testing/Kinds/Memoria.ToDo.Testing.Kinds.csproj" />
+    <Project Path="tests/Testing/Analyzers/Memoria.ToDo.Testing.Analyzers.csproj" />
+    <Project Path="tests/Testing/UnitRunTiming/Memoria.ToDo.Testing.UnitRunTiming.csproj" />
+    <Project Path="tests/Testing/Tests/Memoria.ToDo.Testing.Tests.csproj" />
+    <Project Path="tests/Shared/Fakes/Memoria.ToDo.Shared.Fakes.csproj" />
+    <Project Path="tests/Shared/Tests/Memoria.ToDo.Shared.Tests.csproj" />
+    <Project Path="tests/Desktop/Fakes/Memoria.ToDo.Desktop.Fakes.csproj" />
+    <Project Path="tests/Desktop/PlatformTestHost/Memoria.ToDo.Desktop.PlatformTestHost.csproj" />
+    <Project Path="tests/Desktop/Tests/Memoria.ToDo.Desktop.Tests.csproj" />
+    <Project Path="tests/Api/Tests/Memoria.ToDo.Api.Tests.csproj" />
+    <Project Path="tests/Android/Fakes/Memoria.ToDo.Android.Fakes.csproj" />
+    <Project Path="tests/Android/Tests/Memoria.ToDo.Android.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,43 @@
+#nullable enable
+Memoria.ToDo.Desktop.MCPServer.IMcpServer
+Memoria.ToDo.Desktop.MCPServer.IMcpServerLifetime
+Memoria.ToDo.Desktop.MCPServer.IMcpServerLifetime.Start() -> void
+Memoria.ToDo.Desktop.MCPServer.IMcpServerLifetime.StopAsync() -> System.Threading.Tasks.Task!
+Memoria.ToDo.Desktop.MCPServer.IMcpServerStatus
+Memoria.ToDo.Desktop.MCPServer.IMcpServerStatus.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.MCPServer.IMcpServerStatus.Connections.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Desktop.MCPServer.McpConnection!>!
+Memoria.ToDo.Desktop.MCPServer.IMcpServerStatus.SetOn(bool on) -> void
+Memoria.ToDo.Desktop.MCPServer.IMcpServerStatus.State.get -> Memoria.ToDo.Desktop.MCPServer.McpServerState!
+Memoria.ToDo.Desktop.MCPServer.McpConnection
+Memoria.ToDo.Desktop.MCPServer.McpConnection.Assistant.get -> string!
+Memoria.ToDo.Desktop.MCPServer.McpConnection.Assistant.init -> void
+Memoria.ToDo.Desktop.MCPServer.McpConnection.Deconstruct(out string! Assistant, out string! Text) -> void
+Memoria.ToDo.Desktop.MCPServer.McpConnection.Equals(Memoria.ToDo.Desktop.MCPServer.McpConnection? other) -> bool
+Memoria.ToDo.Desktop.MCPServer.McpConnection.McpConnection(string! Assistant, string! Text) -> void
+Memoria.ToDo.Desktop.MCPServer.McpConnection.Text.get -> string!
+Memoria.ToDo.Desktop.MCPServer.McpConnection.Text.init -> void
+Memoria.ToDo.Desktop.MCPServer.McpServer
+const Memoria.ToDo.Desktop.MCPServer.McpServer.BridgeArgument = "--mcp" -> string!
+Memoria.ToDo.Desktop.MCPServer.McpServerState
+Memoria.ToDo.Desktop.MCPServer.McpServerState.Deconstruct(out bool IsOn, out bool Listening, out string? Failure) -> void
+Memoria.ToDo.Desktop.MCPServer.McpServerState.Equals(Memoria.ToDo.Desktop.MCPServer.McpServerState? other) -> bool
+Memoria.ToDo.Desktop.MCPServer.McpServerState.Failure.get -> string?
+Memoria.ToDo.Desktop.MCPServer.McpServerState.Failure.init -> void
+Memoria.ToDo.Desktop.MCPServer.McpServerState.IsOn.get -> bool
+Memoria.ToDo.Desktop.MCPServer.McpServerState.IsOn.init -> void
+Memoria.ToDo.Desktop.MCPServer.McpServerState.Listening.get -> bool
+Memoria.ToDo.Desktop.MCPServer.McpServerState.Listening.init -> void
+Memoria.ToDo.Desktop.MCPServer.McpServerState.McpServerState(bool IsOn, bool Listening, string? Failure) -> void
+override Memoria.ToDo.Desktop.MCPServer.McpConnection.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.MCPServer.McpConnection.GetHashCode() -> int
+override Memoria.ToDo.Desktop.MCPServer.McpConnection.ToString() -> string!
+override Memoria.ToDo.Desktop.MCPServer.McpServerState.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.MCPServer.McpServerState.GetHashCode() -> int
+override Memoria.ToDo.Desktop.MCPServer.McpServerState.ToString() -> string!
+static Memoria.ToDo.Desktop.MCPServer.McpConnection.operator !=(Memoria.ToDo.Desktop.MCPServer.McpConnection? left, Memoria.ToDo.Desktop.MCPServer.McpConnection? right) -> bool
+static Memoria.ToDo.Desktop.MCPServer.McpConnection.operator ==(Memoria.ToDo.Desktop.MCPServer.McpConnection? left, Memoria.ToDo.Desktop.MCPServer.McpConnection? right) -> bool
+static Memoria.ToDo.Desktop.MCPServer.McpServer.Create(Memoria.ToDo.Shared.Tasks.ITasks! tasks, Memoria.ToDo.Shared.Tasks.IDirectTaskChanges! direct, Memoria.ToDo.Shared.Tasks.ITagColors! tagColors, Memoria.ToDo.Shared.Tasks.ITagOrder! tagOrder, Memoria.ToDo.Shared.Tasks.ISharedTaskSettings! settings, Memoria.ToDo.Shared.Contacts.IContacts! contacts, Memoria.ToDo.Shared.Sync.ISyncService! sync, Memoria.ToDo.Desktop.Updates.IUpdateStatus! updates, Memoria.ToDo.Desktop.Platform.IStartWithWindows! startWithWindows, Memoria.ToDo.Desktop.Logs.ILogSource! logs, Memoria.ToDo.Shared.Platform.IFileSystem! files, string! deviceFolder, string! pipeName, string! bridgePath, System.TimeProvider! time, Serilog.ILogger! logger) -> Memoria.ToDo.Desktop.MCPServer.IMcpServer!
+static Memoria.ToDo.Desktop.MCPServer.McpServerState.operator !=(Memoria.ToDo.Desktop.MCPServer.McpServerState? left, Memoria.ToDo.Desktop.MCPServer.McpServerState? right) -> bool
+static Memoria.ToDo.Desktop.MCPServer.McpServerState.operator ==(Memoria.ToDo.Desktop.MCPServer.McpServerState? left, Memoria.ToDo.Desktop.MCPServer.McpServerState? right) -> bool
+Memoria.ToDo.Desktop.MCPServer.McpConnection.<Clone>$() -> Memoria.ToDo.Desktop.MCPServer.McpConnection!
+Memoria.ToDo.Desktop.MCPServer.McpServerState.<Clone>$() -> Memoria.ToDo.Desktop.MCPServer.McpServerState!

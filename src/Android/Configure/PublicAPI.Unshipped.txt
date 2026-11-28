@@ -1,0 +1,4 @@
+Memoria.ToDo.Android.Configure.ConfigureScreen
+Memoria.ToDo.Android.Configure.IConfigureScreen
+Memoria.ToDo.Android.Configure.IConfigureScreen.Show() -> void
+static Memoria.ToDo.Android.Configure.ConfigureScreen.Create(Memoria.ToDo.Android.Platform.IScreenOpener! screens, Serilog.ILogger! logger) -> Memoria.ToDo.Android.Configure.IConfigureScreen!

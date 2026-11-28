@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\Fakes\Memoria.ToDo.Shared.Fakes.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\Shell\Memoria.ToDo.Desktop.Shell.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\TaskEditor\Memoria.ToDo.Desktop.TaskEditor.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\FormattedView\Memoria.ToDo.Desktop.FormattedView.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\TaskList\Memoria.ToDo.Desktop.TaskList.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\Configure\Memoria.ToDo.Desktop.Configure.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\ContactList\Memoria.ToDo.Desktop.ContactList.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\Logs\Memoria.ToDo.Desktop.Logs.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\LocalAPI\Memoria.ToDo.Desktop.LocalAPI.csproj" />
+    <ProjectReference Include="..\..\..\src\Desktop\MCPServer\Memoria.ToDo.Desktop.MCPServer.csproj" />
+        <ProjectReference Include="..\..\..\src\Desktop\KeepAwake\Memoria.ToDo.Desktop.KeepAwake.csproj" />  </ItemGroup>
+
+</Project>

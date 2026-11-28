@@ -1,0 +1,8 @@
+#nullable enable
+Memoria.ToDo.Api.Client.MemoriaClient
+Memoria.ToDo.Api.Client.MemoriaClient.Contacts.get -> Memoria.ToDo.Api.V1.Contacts.ContactsClient!
+Memoria.ToDo.Api.Client.MemoriaClient.Dispose() -> void
+Memoria.ToDo.Api.Client.MemoriaClient.Settings.get -> Memoria.ToDo.Api.V1.Settings.SettingsClient!
+Memoria.ToDo.Api.Client.MemoriaClient.Sync.get -> Memoria.ToDo.Api.V1.Sync.SyncClient!
+Memoria.ToDo.Api.Client.MemoriaClient.Tasks.get -> Memoria.ToDo.Api.V1.Tasks.TasksClient!
+static Memoria.ToDo.Api.Client.MemoriaClient.Connect() -> Memoria.ToDo.Api.Client.MemoriaClient!

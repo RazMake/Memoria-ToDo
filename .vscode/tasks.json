@@ -1,0 +1,54 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build desktop app",
+      "type": "process",
+      "command": "${env:LOCALAPPDATA}\\Memoria-ToDo\\dotnet\\dotnet.exe",
+      "args": [
+        "build",
+        "${workspaceFolder}/src/Desktop/App/Memoria.ToDo.Desktop.App.csproj",
+        "-c",
+        "Debug"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "open GitHub Actions",
+      "type": "process",
+      "command": "gh",
+      "args": ["browse", "--actions"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "clear a version tag",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}\\.agents\\version-tag.mjs",
+        "--clear",
+        "${input:versionTag}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "versionTag",
+      "type": "promptString",
+      "description": "Tag to delete locally and on origin (e.g. 1.0 or v1.0.0; keeps the GitHub release)"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "groups": [{
+    "patch": "native-break.patch",
+    "arguments": ["--filter", "(FullyQualifiedName~Memoria.ToDo.Android.Configure.Tests.ConfigureUxTests|FullyQualifiedName~Memoria.ToDo.Android.TaskEditor.Tests.Add.AddUxTests|FullyQualifiedName~Memoria.ToDo.Android.TaskList.Tests.TaskView.TaskViewUxTests|FullyQualifiedName~Memoria.ToDo.Android.Platform.Tests.AndroidProcessTests)"],
+    "tests": [
+      {
+        "name": "Memoria.ToDo.Android.Configure.Tests.ConfigureUxTests.shows_the_configure_toolbar_in_the_native_screen",
+        "errorPattern": "Strings differ[\\s\\S]*Settings"
+      },
+      {
+        "name": "Memoria.ToDo.Android.TaskEditor.Tests.Add.AddUxTests.shows_the_add_toolbar_in_the_native_screen",
+        "errorPattern": "Strings differ[\\s\\S]*Create task"
+      },
+      {
+        "name": "Memoria.ToDo.Android.TaskList.Tests.TaskView.TaskViewUxTests.routes_the_native_add_button_and_settings_item_to_their_services",
+        "errorPattern": "Assert\\.Equal\\(\\) Failure[\\s\\S]*Expected:\\s*1[\\s\\S]*Actual:\\s*2"
+      },
+      {
+        "name": "Memoria.ToDo.Android.Platform.Tests.AndroidProcessTests.runs_xunit_inside_the_Android_process",
+        "errorPattern": "Strings differ[\\s\\S]*memoriatodo\\.tests\\.brokenhost"
+      }
+    ]
+  }]
+}

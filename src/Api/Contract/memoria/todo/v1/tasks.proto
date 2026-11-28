@@ -1,0 +1,112 @@
+// Design: docs/architecture/local-api-contract.md.
+syntax = "proto3";
+
+package memoria.todo.v1;
+
+option csharp_namespace = "Memoria.ToDo.Api.V1";
+
+import "google/protobuf/timestamp.proto";
+import "memoria/todo/v1/common.proto";
+
+service Tasks {
+  rpc ListTasks(ListTasksRequest) returns (TaskList);
+  rpc GetTask(GetTaskRequest) returns (TaskItem);
+  rpc CreateTask(CreateTaskRequest) returns (TaskItem);
+  rpc UpdateTask(UpdateTaskRequest) returns (TaskItem);
+  rpc MoveTask(MoveTaskRequest) returns (TaskItem);
+  rpc ResolveTask(ResolveTaskRequest) returns (TaskItem);
+  rpc ReopenTask(ReopenTaskRequest) returns (TaskItem);
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
+  rpc AddImage(AddImageRequest) returns (TaskItem);
+  rpc ListTags(ListTagsRequest) returns (TagList);
+  rpc WatchTasks(WatchTasksRequest) returns (stream ChangeNotice);
+}
+
+message TaskItem {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  optional string tag = 4;  // The first of tags; absent when the task has none.
+  google.protobuf.Timestamp created = 5;
+  google.protobuf.Timestamp updated = 6;
+  google.protobuf.Timestamp resolved = 7;
+  string link = 8;
+  repeated string tags = 9; // Every tag, in the task's order.
+}
+
+// The tags of a request that sets them as a list. A message, since proto3 can't tell an empty list from one left out.
+message TagNames {
+  repeated string names = 1; // Empty: no tags.
+}
+
+message TaskList {
+  repeated TaskItem tasks = 1;
+}
+
+message ListTasksRequest {
+  string query = 1;
+  optional string tag = 2;
+  bool include_resolved = 3;
+  repeated string tags = 4; // Keeps the tasks that have every one of these. Setting both tag and tags is INVALID_ARGUMENT.
+}
+
+message GetTaskRequest {
+  string id = 1;
+}
+
+message CreateTaskRequest {
+  string title = 1;
+  string description = 2;
+  optional string tag = 3;  // One tag; empty means none.
+  repeated string tags = 4; // The tags, in order. Setting both tag and tags is INVALID_ARGUMENT.
+}
+
+// A field left out keeps its value. tag replaces the whole list with that one tag, and an empty tag removes every tag;
+// tags replaces the whole list, and an empty list removes every tag. Setting both is INVALID_ARGUMENT.
+message UpdateTaskRequest {
+  string id = 1;
+  google.protobuf.Timestamp base_updated = 2;
+  optional string title = 3;
+  optional string description = 4;
+  optional string tag = 5;
+  TagNames tags = 6;
+}
+
+message MoveTaskRequest {
+  string id = 1;
+  optional string previous_id = 2;
+  optional string next_id = 3;
+}
+
+message ResolveTaskRequest {
+  string id = 1;
+}
+
+message ReopenTaskRequest {
+  string id = 1;
+}
+
+message DeleteTaskRequest {
+  string id = 1;
+}
+
+message DeleteTaskResponse {}
+
+message AddImageRequest {
+  string id = 1;
+  bytes image = 2;
+  string alt_text = 3;
+}
+
+message ListTagsRequest {}
+
+message TagList {
+  repeated TagCount tags = 1;
+}
+
+message TagCount {
+  string tag = 1;
+  int32 count = 2;
+}
+
+message WatchTasksRequest {}

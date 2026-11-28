@@ -1,0 +1,132 @@
+using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Interop;
+
+namespace Memoria.ToDo.Desktop.Fakes;
+
+/// <summary>
+/// Finds the windows a UX test's screen opened on the test's UI thread, through WPF's presentation sources, and
+/// closes them when the test ends. Use it in a <c>using</c> declaration. Not a fake of a port: shared test setup.
+/// </summary>
+public sealed class OpenWindows : IDisposable
+{
+    /// <summary>The windows on this thread that are showing.</summary>
+    public IReadOnlyList<Window> Visible() => [.. All().Where(w => w.IsVisible)];
+
+    /// <summary>
+    /// Gives the window the Fluent theme the platform gives the app's windows, so the theme's resources and control
+    /// styles apply; a bare test window has none.
+    /// </summary>
+    public static void UseTheme(Window window, bool dark)
+    {
+#pragma warning disable WPF0001 // Window.ThemeMode is experimental; allowed only on this line.
+        window.ThemeMode = dark ? ThemeMode.Dark : ThemeMode.Light;
+#pragma warning restore WPF0001
+        window.UpdateLayout();
+    }
+
+    /// <summary>The logical descendants of the window, such as its text and buttons.</summary>
+    public static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>())
+        {
+            yield return child;
+            foreach (var grandChild in Descendants(child))
+            {
+                yield return grandChild;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The text a text block displays, read from its inlines (runs, bold, links; a line break is a newline), so it does not
+    /// depend on layout: the block's Text and text ranges are not complete until WPF has measured it. The one place tests read it.
+    /// </summary>
+    public static string TextOf(TextBlock block) => TextOf(block.Inlines);
+
+    /// <summary>The text a link displays.</summary>
+    public static string TextOf(Hyperlink link) => TextOf(link.Inlines);
+
+    private static string TextOf(InlineCollection inlines) => string.Concat(inlines.Select(inline => inline switch
+    {
+        Run run => run.Text,
+        Span span => TextOf(span.Inlines),
+        LineBreak => "\n",
+        _ => string.Empty,
+    }));
+
+    /// <summary>The texts the window displays in text blocks and in the string content of labels and buttons.</summary>
+    public static IReadOnlyList<string> TextsIn(Window window) =>
+    [
+        .. Descendants(window).Select(d => d switch
+        {
+            TextBlock block => TextOf(block),
+            ContentControl { Content: string text } => text,
+            _ => null,
+        }).OfType<string>().Where(text => text.Length > 0),
+    ];
+
+    /// <summary>Clicks the button in the window whose text is <paramref name="text"/>, as the automation tools do.</summary>
+    public static void Click(Window window, string text)
+    {
+        Click(Descendants(window).OfType<Button>().Single(b => b.Content as string == text));
+    }
+
+    /// <summary>Clicks the button, as the automation tools do. Returns after the click has been handled, since the tools queue it.</summary>
+    public static void Click(Button button)
+    {
+        ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
+        button.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>Clicks the toggle button, as the mouse does: it toggles, then raises Click. (The automation Toggle pattern only toggles.) Returns after the click has been handled.</summary>
+    public static void Click(System.Windows.Controls.Primitives.ToggleButton button)
+    {
+        ((IToggleProvider)new ToggleButtonAutomationPeer(button).GetPattern(PatternInterface.Toggle)).Toggle();
+        button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, button));
+        button.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>Presses and releases Esc on the window, as the keyboard does: the tunneling event, then the bubbling one.</summary>
+    public static void PressEscape(Window window)
+    {
+        SimulatedKey.Raise(window, Key.Escape, Keyboard.PreviewKeyDownEvent, Keyboard.KeyDownEvent);
+    }
+
+    /// <summary>
+    /// Makes the keyboard the last input device, as it is after the user presses Tab; WPF draws a focus outline only then. A test
+    /// can't press a real key, and input sent through the input manager doesn't set the device, so this sets it as WPF does.
+    /// </summary>
+    public static void UseTheKeyboard() =>
+        typeof(InputManager).GetProperty(nameof(InputManager.MostRecentInputDevice))!.SetValue(InputManager.Current, Keyboard.PrimaryDevice);
+
+    /// <summary>Whether WPF draws a focus outline, an adorner over the element, as it does for a focused element after the keyboard moves the focus. Lay the window out first.</summary>
+    public static bool DrawsFocusOutline(UIElement element)
+    {
+        var adorners = AdornerLayer.GetAdornerLayer(element)?.GetAdorners(element);
+        return adorners is not null && adorners.Any(a => a.GetType().Name.Contains("FocusVisual", StringComparison.Ordinal));
+    }
+
+    /// <summary>Closes every window on this thread, even one that hides instead of closing.</summary>
+    public void Dispose()
+    {
+        foreach (var source in Sources())
+        {
+            if (source.RootVisual is Window window)
+            {
+                try { window.Close(); } catch (InvalidOperationException) { }
+            }
+
+            source.Dispose();
+        }
+    }
+
+    private static IEnumerable<Window> All() => Sources().Select(s => s.RootVisual).OfType<Window>();
+
+    private static List<HwndSource> Sources() =>
+        [.. PresentationSource.CurrentSources.OfType<HwndSource>().Where(s => !s.IsDisposed && s.CheckAccess())];
+}

@@ -1,0 +1,194 @@
+# Early signed APKs only. Stable publication remains in Android delivery step 7.
+# Design: docs/architecture/android-releases.md.
+name: Test then Tag and Release Android
+
+run-name: Android release ${{ inputs.part || 'default part' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      part:
+        description: Version part to raise, major, minor, or patch. Empty uses the default.
+        type: string
+        required: false
+        default: ''
+      tag:
+        description: Previewed Android tag. Empty means no check.
+        type: string
+        required: false
+        default: ''
+      commit:
+        description: Full previewed commit ID. Empty uses this run's commit.
+        type: string
+        required: false
+        default: ''
+
+concurrency:
+  group: android-release
+  queue: max
+
+permissions: {}
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: windows-2025
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+      passed: ${{ steps.reuse.outputs.passed }}
+    env:
+      PART: ${{ inputs.part }}
+      TAG: ${{ inputs.tag }}
+      COMMIT: ${{ inputs.commit }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Require the default branch
+        run: |
+          if ($env:GITHUB_REF -ne "refs/heads/$env:DEFAULT_BRANCH") { throw "Start Android releases on $env:DEFAULT_BRANCH." }
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Require the previewed commit
+        run: |
+          if ($env:COMMIT -and $env:COMMIT -ne $env:GITHUB_SHA) { throw 'The branch moved after the preview. Nothing was published.' }
+      - name: Plan the Android tag and validate its notes and version code
+        id: next
+        run: |
+          $arguments = @('--platform', 'android')
+          if ($env:PART) { $arguments += $env:PART }
+          $arguments += '--commit', $env:GITHUB_SHA
+          if ($env:TAG) { $arguments += '--expect', $env:TAG }
+          $arguments += '--dry-run'
+          $preview = node .agents/version-tag.mjs @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $preview
+          $last = @($preview)[-1]
+          if ($last -notmatch '--expect (\S+)') { throw 'The preview names no Android tag.' }
+          "tag=$($Matches[1])" >> $env:GITHUB_OUTPUT
+      - name: Look for a passed Android run of this exact commit
+        id: reuse
+        run: |
+          $url = node .agents/full-run-check.mjs --platform android --repo $env:GITHUB_REPOSITORY --commit $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($url) {
+            "passed=true" >> $env:GITHUB_OUTPUT
+            "Reusing the passed [Android test run]($url) of this commit." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "passed=false" >> $env:GITHUB_OUTPUT
+            "No passed Android run of this commit; Tests will run both Android jobs." >> $env:GITHUB_STEP_SUMMARY
+          }
+
+  tests:
+    name: Tests
+    needs: plan
+    if: needs.plan.outputs.passed != 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/android-tests.yml
+
+  tag:
+    name: Tag
+    needs: [plan, tests]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.tests.result == 'success' || needs.tests.result == 'skipped') }}
+    runs-on: windows-2025
+    permissions:
+      contents: write
+    env:
+      PART: ${{ inputs.part }}
+      PLANNED_TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Set the tagger identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Make and push the tested Android tag
+        run: |
+          $arguments = @('--platform', 'android')
+          if ($env:PART) { $arguments += $env:PART }
+          $arguments += '--commit', $env:GITHUB_SHA, '--expect', $env:PLANNED_TAG
+          node .agents/version-tag.mjs @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  publish:
+    name: Publish
+    needs: [plan, tests, tag]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && needs.tag.result == 'success' }}
+    runs-on: windows-2025
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PLANNED_TAG: ${{ needs.plan.outputs.tag }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS }}
+      APP_PROJECT: src/Android/App/Memoria.ToDo.Android.App.csproj
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ needs.plan.outputs.tag }}
+          fetch-depth: 0
+      - name: Validate the signing configuration and materialize the temporary key
+        run: |
+          foreach ($name in @('ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS')) {
+            if (-not [Environment]::GetEnvironmentVariable($name)) { throw "Missing signing configuration: $name." }
+          }
+          $file = Join-Path $env:RUNNER_TEMP 'memoria-android-signing.p12'
+          "KEYSTORE_FILE=$file" >> $env:GITHUB_ENV
+          [IO.File]::WriteAllBytes($file, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+          if ((Get-Item $file).Length -eq 0) { throw 'The signing keystore is empty.' }
+      - uses: ./.github/actions/setup-dotnet
+        with:
+          workload: android
+      - name: Read the tag's build properties and the private SDK locations
+        run: |
+          $properties = node .agents/android-apk.mjs --build-properties $env:PLANNED_TAG
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $build = $properties | ConvertFrom-Json
+          "VERSION=$($build.version)" >> $env:GITHUB_ENV
+          "VERSION_CODE=$($build.versionCode)" >> $env:GITHUB_ENV
+          "ANDROID_RUNTIME=$($build.runtimeIdentifier)" >> $env:GITHUB_ENV
+          $properties = dotnet msbuild $env:APP_PROJECT -getProperty:AndroidSdkDirectory,JavaSdkDirectory,Product
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $app = ($properties | ConvertFrom-Json).Properties
+          "ANDROID_HOME=$($app.AndroidSdkDirectory)" >> $env:GITHUB_ENV
+          "JAVA_HOME=$($app.JavaSdkDirectory)" >> $env:GITHUB_ENV
+          "APP_NAME=$($app.Product)" >> $env:GITHUB_ENV
+      - name: Install the pinned Android SDK and JDK
+        run: dotnet build $env:APP_PROJECT -t:InstallAndroidDependencies -p:AcceptAndroidSDKLicenses=True
+      - name: Build and sign the ARM64 APK
+        run: >
+          dotnet publish $env:APP_PROJECT -c Release -r $env:ANDROID_RUNTIME -o publish-android
+          "-p:RuntimeIdentifiers=$env:ANDROID_RUNTIME"
+          -p:MemoriaAndroidTestTarget=android "-p:Version=$env:VERSION"
+          "-p:ApplicationDisplayVersion=$env:VERSION" "-p:ApplicationVersion=$env:VERSION_CODE"
+          -p:AndroidPackageFormats=apk -p:AndroidKeyStore=true
+          "-p:AndroidSigningKeyStore=$env:KEYSTORE_FILE" "-p:AndroidSigningKeyAlias=$env:ANDROID_KEY_ALIAS"
+          -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyPass=env:ANDROID_KEY_PASSWORD
+      - name: Validate the signed APK, attach it to a draft, then publish the prerelease
+        run: |
+          $apks = @(Get-ChildItem publish-android -Filter '*-Signed.apk')
+          if ($apks.Count -ne 1) { throw "Expected one signed APK, found $($apks.Count)." }
+          $file = Join-Path 'publish-android' "$env:APP_NAME-Android-$env:VERSION.apk"
+          Move-Item -LiteralPath $apks[0].FullName -Destination $file
+          node .agents/android-apk.mjs --tag $env:PLANNED_TAG --apk $file --keystore $env:KEYSTORE_FILE `
+            --sdk $env:ANDROID_HOME --jdk $env:JAVA_HOME
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Remove the temporary signing key even after failure
+        if: always()
+        run: |
+          $file = Join-Path $env:RUNNER_TEMP 'memoria-android-signing.p12'
+          if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force }

@@ -1,0 +1,581 @@
+using System.Text;
+using System.Text.Json;
+using Memoria.ToDo.Testing;
+using Xunit;
+
+namespace Memoria.ToDo.Shared.Tasks.Tests;
+
+/// <summary>Tasks' managed repository paths and the pure three-version merges of task and settings files.</summary>
+[Unit]
+public sealed class RepositoryFileRulesTests
+{
+    private const string T0 = "2026-01-01T00:00:00.000Z";
+    private const string T1 = "2026-02-01T00:00:00.000Z";
+    private const string T2 = "2026-03-01T00:00:00.000Z";
+    private const string T3 = "2026-04-01T00:00:00.000Z";
+    private readonly TasksFixture f = new();
+    private readonly string id = TasksFixture.Id(1);
+
+    private IRepositoryFileRules Rules => f.Store.Synchronization.Files;
+
+    // Task files are built through the fixture's literal seeding, then read back as bytes.
+    private byte[] Task(string title = "T", string description = "", string rank = "a0", string[]? tags = null,
+        string? resolved = null, string updated = T0, int version = 1, string created = T0)
+    {
+        f.Seed(id, title, rank, description, tags, resolved, version, created: created, updated: updated);
+        return f.Files.ReadFile(f.TaskFile(id));
+    }
+
+    private JsonElement Merged(byte[]? basis, byte[]? local, byte[]? remote)
+    {
+        var merged = Rules.MergeTask(id, basis, local, remote);
+        Assert.NotNull(merged);
+        return JsonDocument.Parse(merged).RootElement;
+    }
+
+    // Paths
+
+    [Theory]
+    [InlineData("tasks/01900000-0000-7000-8000-000000000001.json", RepositoryFileKind.Task)]
+    [InlineData("images/01900000-0000-7000-8000-000000000001/pic.png", RepositoryFileKind.Image)]
+    [InlineData("settings.json", RepositoryFileKind.Settings)]
+    [InlineData("README.md", RepositoryFileKind.Unmanaged)]
+    [InlineData("notes/settings.json", RepositoryFileKind.Unmanaged)]
+    public void Classifies_a_repository_path(string path, RepositoryFileKind kind) => Assert.Equal(kind, Rules.Classify(path));
+
+    [Fact]
+    public void Finds_the_task_id_in_a_task_or_image_path_and_nothing_in_other_paths()
+    {
+        Assert.Equal(id, Rules.TaskIdInPath($"tasks/{id}.json"));
+        Assert.Equal(id, Rules.TaskIdInPath($"images/{id}/pic.png"));
+        Assert.Null(Rules.TaskIdInPath("tasks/not-an-id.json"));
+        Assert.Null(Rules.TaskIdInPath("settings.json"));
+    }
+
+    [Theory]
+    [InlineData("/tasks/x.json")]
+    [InlineData("C:/tasks/x.json")]
+    [InlineData("tasks/../settings.json")]
+    [InlineData("./settings.json")]
+    [InlineData("tasks/./x.json")]
+    public void Refuses_a_rooted_path_or_one_with_dot_segments(string path)
+    {
+        Assert.Throws<ArgumentException>(() => Rules.Classify(path));
+        Assert.Throws<ArgumentException>(() => Rules.TaskIdInPath(path));
+    }
+
+    // Task merge
+
+    [Fact]
+    public void Takes_the_change_of_the_one_device_that_changed_a_field()
+    {
+        var basis = Task("Old", "text", "a0");
+
+        var merged = Merged(basis, Task("New", "text", "a0", updated: T1), Task("Old", "text", "a0"));
+
+        Assert.Equal("New", merged.GetProperty("title").GetString());
+        Assert.Equal("text", merged.GetProperty("description").GetString());
+    }
+
+    [Theory]
+    [InlineData("title")]
+    [InlineData("description")]
+    [InlineData("rank")]
+    public void Keeps_the_later_edit_when_both_devices_changed_a_field(string field)
+    {
+        var basis = Task("B", "B", "a5");
+        byte[] Variant(string value, string updated) => field switch
+        {
+            "title" => Task(value, "B", "a5", updated: updated),
+            "description" => Task("B", value, "a5", updated: updated),
+            _ => Task("B", "B", value, updated: updated),
+        };
+
+        Assert.Equal("local", Merged(basis, Variant("local", T2), Variant("remote", T1)).GetProperty(field).GetString());
+        Assert.Equal("remote", Merged(basis, Variant("local", T1), Variant("remote", T2)).GetProperty(field).GetString());
+    }
+
+    [Fact]
+    public void Takes_the_remote_value_when_both_devices_edited_at_the_same_time()
+    {
+        var basis = Task("B");
+
+        var merged = Merged(basis, Task("local", updated: T1), Task("remote", updated: T1));
+
+        Assert.Equal("remote", merged.GetProperty("title").GetString());
+    }
+
+    // The tag merges as a Title does: a change on one device wins, and when both changed it, the later edit wins.
+
+    private static List<string?> TagsOf(JsonElement merged) =>
+        [.. merged.GetProperty("tags").EnumerateArray().Select(t => t.GetString())];
+
+    [Fact]
+    public void Takes_the_tag_the_one_device_that_changed_it_set()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T1), Task(tags: ["a"]))));
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["a"]), Task(tags: ["x"], updated: T1))));
+    }
+
+    [Fact]
+    public void Takes_the_tag_the_one_device_that_changed_it_set_even_when_the_other_device_edited_later()
+    {
+        var basis = Task("B", tags: ["a"]);
+
+        var merged = Merged(basis, Task("B", tags: ["x"], updated: T1), Task("Edited", tags: ["a"], updated: T3));
+
+        Assert.Equal(["x"], TagsOf(merged));
+        Assert.Equal("Edited", merged.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public void Takes_a_cleared_tag_the_one_device_that_cleared_it_set()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Empty(TagsOf(Merged(basis, Task(tags: [], updated: T1), Task(tags: ["a"]))));
+        Assert.Empty(TagsOf(Merged(basis, Task(tags: ["a"]), Task(tags: [], updated: T1))));
+    }
+
+    [Fact]
+    public void Takes_a_tag_the_one_device_set_when_the_task_had_none()
+    {
+        var basis = Task();
+
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T1), Task())));
+    }
+
+    [Fact]
+    public void Keeps_the_tag_of_the_later_edit_when_both_devices_changed_it_and_does_not_unite_them()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T2), Task(tags: ["y"], updated: T1))));
+        Assert.Equal(["y"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T1), Task(tags: ["y"], updated: T2))));
+    }
+
+    [Fact]
+    public void Keeps_a_clearing_that_is_the_later_edit_when_the_other_device_set_a_tag()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Empty(TagsOf(Merged(basis, Task(tags: [], updated: T2), Task(tags: ["y"], updated: T1))));
+        Assert.Equal(["y"], TagsOf(Merged(basis, Task(tags: [], updated: T1), Task(tags: ["y"], updated: T2))));
+    }
+
+    [Fact]
+    public void Takes_the_remote_tag_when_both_devices_changed_it_at_the_same_time()
+    {
+        var basis = Task(tags: ["a"]);
+
+        Assert.Equal(["y"], TagsOf(Merged(basis, Task(tags: ["x"], updated: T1), Task(tags: ["y"], updated: T1))));
+    }
+
+    [Fact]
+    public void Counts_a_change_of_letter_case_alone_as_no_change()
+    {
+        var basis = Task(tags: ["Work"]);
+
+        var merged = Merged(basis, Task(tags: ["work"], updated: T3), Task(tags: ["home"], updated: T1));
+
+        Assert.Equal(["home"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Counts_a_tag_list_in_another_order_as_a_change()
+    {
+        var basis = Task(tags: ["a", "b"]);
+
+        var merged = Merged(basis, Task(tags: ["b", "a"], updated: T2), Task(tags: ["c"], updated: T1));
+
+        Assert.Equal(["b", "a"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Takes_the_list_a_device_set_when_the_basis_holds_several_tags()
+    {
+        var basis = Task(tags: ["a", "b"]);
+
+        Assert.Equal(["a"], TagsOf(Merged(basis, Task(tags: ["a"], updated: T1), Task(tags: ["a", "b"]))));
+        Assert.Equal(["x"], TagsOf(Merged(basis, Task(tags: ["a", "b"]), Task(tags: ["x"], updated: T1))));
+    }
+
+    [Fact]
+    public void Keeps_the_tags_that_neither_device_changed()
+    {
+        var basis = Task("B", tags: ["a", "b"]);
+
+        var merged = Merged(basis, Task("L", tags: ["a", "b"], updated: T1), Task("B", tags: ["a", "b"]));
+
+        Assert.Equal(["a", "b"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Writes_the_normalized_tags_of_the_version_it_took()
+    {
+        var basis = Task(tags: ["a"]);
+
+        var merged = Merged(basis, Task(tags: ["Work", "My  Home", "work"], updated: T1), Task(tags: ["a"]));
+
+        Assert.Equal(["work", "my-home"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Counts_a_change_of_spacing_alone_as_no_change()
+    {
+        var basis = Task(tags: ["my  work", "b"]);
+
+        var merged = Merged(basis, Task(tags: ["My-Work", "b"], updated: T3), Task(tags: ["home"], updated: T1));
+
+        Assert.Equal(["home"], TagsOf(merged));
+    }
+
+    [Fact]
+    public void Keeps_the_later_reorder_over_a_tag_added_on_the_other_device()
+    {
+        var basis = Task(tags: ["a", "b"]);
+
+        Assert.Equal(["b", "a"], TagsOf(Merged(basis, Task(tags: ["b", "a"], updated: T2), Task(tags: ["a", "b", "c"], updated: T1))));
+        Assert.Equal(["a", "b", "c"], TagsOf(Merged(basis, Task(tags: ["b", "a"], updated: T1), Task(tags: ["a", "b", "c"], updated: T2))));
+    }
+
+    [Fact]
+    public void Keeps_every_tag_of_a_task_with_more_than_fifteen_through_a_merge()
+    {
+        var many = Enumerable.Range(1, 20).Select(n => $"tag{n}").ToArray();
+        var basis = Task("B", tags: many);
+
+        var merged = Merged(basis, Task("L", tags: many, updated: T1), Task("B", tags: many));
+        var changedElsewhere = Merged(basis, Task("B", tags: many), Task("B", tags: [.. many, "tag21"], updated: T1));
+
+        Assert.Equal(many, TagsOf(merged));
+        Assert.Equal([.. many, "tag21"], TagsOf(changedElsewhere));
+    }
+
+    [Fact]
+    public void Sets_updated_to_the_later_of_the_two_times()
+    {
+        var merged = Merged(Task(), Task("L", updated: T3), Task("R", updated: T1));
+
+        Assert.Equal(T3, merged.GetProperty("updated").GetString());
+    }
+
+    [Fact]
+    public void Keeps_a_task_resolved_when_the_other_device_edited_it()
+    {
+        var basis = Task("B");
+
+        var merged = Merged(basis, Task("B", resolved: T1, updated: T1), Task("Edited", updated: T2));
+
+        Assert.Equal(T1, merged.GetProperty("resolved").GetString());
+        Assert.Equal("Edited", merged.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public void Keeps_the_later_resolved_time_when_both_devices_changed_it()
+    {
+        var basis = Task("B");
+
+        var merged = Merged(basis, Task("B", resolved: T1, updated: T1), Task("B", resolved: T2, updated: T2));
+
+        Assert.Equal(T2, merged.GetProperty("resolved").GetString());
+    }
+
+    [Fact]
+    public void Brings_back_an_edited_task_that_the_other_device_deleted()
+    {
+        var basis = Task("B");
+        var edited = Task("Edited", updated: T1);
+
+        Assert.Equal("Edited", Merged(basis, null, edited).GetProperty("title").GetString());
+        Assert.Equal("Edited", Merged(basis, edited, null).GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public void Keeps_a_task_deleted_when_the_other_device_did_not_change_it_or_also_deleted_it()
+    {
+        var basis = Task("B");
+
+        Assert.Null(Rules.MergeTask(id, basis, null, basis));
+        Assert.Null(Rules.MergeTask(id, basis, basis, null));
+        Assert.Null(Rules.MergeTask(id, basis, null, null));
+    }
+
+    [Fact]
+    public void Creates_a_task_both_devices_added_without_a_basis_and_one_added_on_one_side()
+    {
+        var added = Task("New");
+
+        Assert.Equal("New", Merged(null, added, null).GetProperty("title").GetString());
+        Assert.Equal("New", Merged(null, null, added).GetProperty("title").GetString());
+        Assert.Null(Rules.MergeTask(id, null, null, null));
+    }
+
+    [Theory]
+    [InlineData("title")]
+    [InlineData("description")]
+    [InlineData("rank")]
+    public void Keeps_the_later_edit_when_both_devices_added_the_task_without_a_basis(string field)
+    {
+        byte[] Variant(string value, string updated) => field switch
+        {
+            "title" => Task(value, "d", "a5", updated: updated),
+            "description" => Task("t", value, "a5", updated: updated),
+            _ => Task("t", "d", value, updated: updated),
+        };
+
+        Assert.Equal("local", Merged(null, Variant("local", T2), Variant("remote", T1)).GetProperty(field).GetString());
+        Assert.Equal("remote", Merged(null, Variant("local", T1), Variant("remote", T2)).GetProperty(field).GetString());
+    }
+
+    [Fact]
+    public void Takes_the_remote_value_when_both_devices_added_the_task_at_the_same_time()
+    {
+        Assert.Equal("remote", Merged(null, Task("local", updated: T1), Task("remote", updated: T1)).GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public void Takes_the_later_resolved_time_when_both_devices_added_the_task_without_a_basis()
+    {
+        Assert.Equal(T2, Merged(null, Task(resolved: T2, updated: T2), Task(resolved: T1, updated: T1)).GetProperty("resolved").GetString());
+        Assert.Equal(T2, Merged(null, Task(resolved: T1, updated: T1), Task(resolved: T2, updated: T2)).GetProperty("resolved").GetString());
+    }
+
+    [Fact]
+    public void Takes_the_earlier_created_time_of_the_two_versions()
+    {
+        var basis = Task();
+
+        Assert.Equal(T1, Merged(basis, Task("L", created: T1, updated: T1), Task("R", created: T2, updated: T2)).GetProperty("created").GetString());
+        Assert.Equal(T1, Merged(basis, Task("L", created: T2, updated: T1), Task("R", created: T1, updated: T2)).GetProperty("created").GetString());
+    }
+
+    [Fact]
+    public void Keeps_the_tag_of_the_later_edit_when_both_devices_added_the_task_without_a_basis()
+    {
+        Assert.Equal(["y"], TagsOf(Merged(null, Task(tags: ["x"], updated: T1), Task(tags: ["y"], updated: T2))));
+        Assert.Equal(["x"], TagsOf(Merged(null, Task(tags: ["x"], updated: T2), Task(tags: ["y"], updated: T1))));
+    }
+
+    [Fact]
+    public void Merges_to_the_same_bytes_every_time_in_utc_to_the_millisecond()
+    {
+        var basis = Task("B", tags: ["a"]);
+        var local = Task("L", tags: ["x"], updated: T1);
+        var remote = Task("R", tags: [], updated: T2);
+
+        var first = Rules.MergeTask(id, basis, local, remote);
+        var second = Rules.MergeTask(id, basis, local, remote);
+
+        Assert.Equal(first, second);
+        Assert.Equal(T2, JsonDocument.Parse(first!).RootElement.GetProperty("updated").GetString());
+    }
+
+    [Fact]
+    public void Leaves_the_merged_files_unchanged()
+    {
+        var basis = Task("B", tags: ["a"]);
+        var local = Task("L", tags: ["x"], updated: T1);
+        var remote = Task("R", tags: [], updated: T2);
+        var copies = new[] { basis.ToArray(), local.ToArray(), remote.ToArray() };
+
+        Rules.MergeTask(id, basis, local, remote);
+
+        Assert.Equal(copies[0], basis);
+        Assert.Equal(copies[1], local);
+        Assert.Equal(copies[2], remote);
+    }
+
+    [Theory]
+    [InlineData("basis")]
+    [InlineData("local")]
+    [InlineData("remote")]
+    public void Refuses_to_merge_an_unreadable_or_newer_task_file(string which)
+    {
+        var good = Task();
+        byte[] Bad() => Encoding.UTF8.GetBytes("{ not json");
+
+        Assert.Throws<InvalidDataException>(() => Rules.MergeTask(id, which == "basis" ? Bad() : good, which == "local" ? Bad() : good, which == "remote" ? Bad() : good));
+        Assert.Throws<InvalidDataException>(() => Rules.MergeTask(id, good, Task(version: 99), good));
+    }
+
+    [Theory]
+    [InlineData("basis")]
+    [InlineData("local")]
+    [InlineData("remote")]
+    [InlineData("only local")]
+    [InlineData("only remote")]
+    [InlineData("basis of a deletion")]
+    [InlineData("all three")]
+    public void Refuses_to_merge_a_task_file_whose_task_id_differs_from_the_expected_one(string which)
+    {
+        var good = Task();
+        var other = TasksFixture.Id(2);
+        f.Seed(other, "Other");
+        var wrong = f.Files.ReadFile(f.TaskFile(other));
+        var copy = wrong.ToArray();
+
+        Func<byte[]?> merge = which switch
+        {
+            "basis" => () => Rules.MergeTask(id, wrong, good, good),
+            "local" => () => Rules.MergeTask(id, good, wrong, good),
+            "remote" => () => Rules.MergeTask(id, good, good, wrong),
+            "only local" => () => Rules.MergeTask(id, null, wrong, null),
+            "only remote" => () => Rules.MergeTask(id, null, null, wrong),
+            "all three" => () => Rules.MergeTask(id, wrong, wrong, wrong),
+            _ => () => Rules.MergeTask(id, wrong, null, good),
+        };
+
+        Assert.Throws<InvalidDataException>(merge);
+        Assert.Equal(copy, wrong);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("not-a-guid")]
+    [InlineData("tasks/../x")]
+    [InlineData("00000000-0000-0000-0000-00000000000A")]
+    public void Rejects_an_expected_task_id_that_is_not_canonical(string? expected)
+    {
+        var good = Task();
+
+        Assert.ThrowsAny<ArgumentException>(() => Rules.MergeTask(expected!, null, null, null));
+        Assert.ThrowsAny<ArgumentException>(() => Rules.MergeTask(expected!, good, good, good));
+    }
+
+    // Settings merge
+
+    private static byte[] Settings(int days = 7, string? add = null, string? manage = null,
+        string daysTime = T0, string addTime = T0, string manageTime = T0, int version = 1,
+        IEnumerable<ShortcutEntry>? shortcuts = null) =>
+        Encoding.UTF8.GetBytes(TasksFixture.SettingsJson(days, add, manage, version, daysTime, addTime, manageTime, shortcuts));
+
+    private JsonElement MergedSettings(byte[]? basis, byte[]? local, byte[]? remote)
+    {
+        var merged = Rules.MergeSettings(basis, local, remote);
+        Assert.NotNull(merged);
+        return JsonDocument.Parse(merged).RootElement;
+    }
+
+    [Fact]
+    public void Merges_each_setting_by_its_own_time()
+    {
+        var local = Settings(days: 30, add: "L", manage: "L", daysTime: T2, addTime: T1, manageTime: T3);
+        var remote = Settings(days: 60, add: "R", manage: "R", daysTime: T1, addTime: T2, manageTime: T1);
+
+        var merged = MergedSettings(Settings(), local, remote);
+
+        Assert.Equal(30, merged.GetProperty("deletionDelayDays").GetProperty("value").GetInt32());
+        Assert.Equal("R", merged.GetProperty("addNewTaskShortcut").GetProperty("value").GetString());
+        Assert.Equal("L", merged.GetProperty("manageTasksShortcut").GetProperty("value").GetString());
+        Assert.Equal(T2, merged.GetProperty("deletionDelayDays").GetProperty("updated").GetString());
+    }
+
+    [Fact]
+    public void Takes_the_remote_setting_when_both_times_are_equal()
+    {
+        var merged = MergedSettings(null, Settings(days: 30, daysTime: T1), Settings(days: 60, daysTime: T1));
+
+        Assert.Equal(60, merged.GetProperty("deletionDelayDays").GetProperty("value").GetInt32());
+    }
+
+    [Fact]
+    public void Lets_a_present_file_win_over_an_absent_one_and_merges_three_absent_files_to_none()
+    {
+        var present = Settings(days: 30, add: "A", daysTime: T1);
+
+        Assert.Equal(30, MergedSettings(null, present, null).GetProperty("deletionDelayDays").GetProperty("value").GetInt32());
+        Assert.Equal("A", MergedSettings(Settings(), null, present).GetProperty("addNewTaskShortcut").GetProperty("value").GetString());
+        Assert.Null(Rules.MergeSettings(null, null, null));
+    }
+
+    [Fact]
+    public void Keeps_a_changed_setting_over_untouched_defaults()
+    {
+        var defaults = Settings(daysTime: "1970-01-01T00:00:00.000Z");
+        var changed = Settings(days: 30, daysTime: T1);
+
+        Assert.Equal(30, MergedSettings(defaults, defaults, changed).GetProperty("deletionDelayDays").GetProperty("value").GetInt32());
+    }
+
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Merges_an_optional_shortcut_by_its_own_time(ShortcutSetting s)
+    {
+        var local = Settings(manage: "L", manageTime: T3, shortcuts: s.Entries("L", T1));
+        var remote = Settings(manage: "R", manageTime: T1, shortcuts: s.Entries("R", T2));
+
+        var merged = MergedSettings(Settings(), local, remote);
+
+        Assert.Equal("R", merged.GetProperty(s.Name).GetProperty("value").GetString());
+        Assert.Equal(T2, merged.GetProperty(s.Name).GetProperty("updated").GetString());
+        Assert.Equal("L", merged.GetProperty("manageTasksShortcut").GetProperty("value").GetString());
+    }
+
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Takes_the_remote_optional_shortcut_when_both_times_are_equal(ShortcutSetting s)
+    {
+        var merged = MergedSettings(null, Settings(shortcuts: s.Entries("L", T1)), Settings(shortcuts: s.Entries("R", T1)));
+
+        Assert.Equal("R", merged.GetProperty(s.Name).GetProperty("value").GetString());
+    }
+
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.Each), MemberType = typeof(ShortcutSetting))]
+    public void Counts_a_missing_optional_shortcut_as_an_untouched_default(ShortcutSetting s)
+    {
+        var with = Settings(shortcuts: s.Entries("C", T1));
+        var without = Settings(shortcuts: s.EntriesWithout());
+
+        Assert.Equal("C", MergedSettings(null, with, without).GetProperty(s.Name).GetProperty("value").GetString());
+        Assert.Equal("C", MergedSettings(null, without, with).GetProperty(s.Name).GetProperty("value").GetString());
+        Assert.Equal("C", MergedSettings(without, without, with).GetProperty(s.Name).GetProperty("value").GetString());
+    }
+
+    [Fact]
+    public void Writes_the_merged_close_window_and_save_shortcuts_after_the_manage_shortcut_even_when_every_file_lacks_them()
+    {
+        var without = Settings(shortcuts: []);
+
+        var merged = MergedSettings(without, without, without);
+
+        Assert.Equal(["version", "deletionDelayDays", "addNewTaskShortcut", "manageTasksShortcut", "closeWindowShortcut", "saveShortcut", "configureShortcut", "contactsShortcut"],
+            merged.EnumerateObject().Select(p => p.Name).ToArray());
+        foreach (var s in ShortcutSetting.All)
+        {
+            Assert.Equal(JsonValueKind.Null, merged.GetProperty(s.Name).GetProperty("value").ValueKind);
+            Assert.Equal("1970-01-01T00:00:00.000Z", merged.GetProperty(s.Name).GetProperty("updated").GetString());
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ShortcutSetting.EachInvalidValue), MemberType = typeof(ShortcutSetting))]
+    public void Refuses_to_merge_a_settings_file_whose_optional_shortcut_is_invalid(ShortcutSetting s, string invalid)
+    {
+        var bad = Encoding.UTF8.GetBytes(s.FileWith(invalid));
+        var good = Settings();
+
+        Assert.Throws<InvalidDataException>(() => Rules.MergeSettings(good, bad, good));
+        Assert.Throws<InvalidDataException>(() => Rules.MergeSettings(good, good, bad));
+    }
+
+    [Theory]
+    [InlineData("{ not json")]
+    [InlineData("""{ "version": 1 }""")]
+    [InlineData("""{ "version": 2, "deletionDelayDays": { "value": 7, "updated": "2026-01-01T00:00:00.000Z" } }""")]
+    public void Refuses_to_merge_an_unreadable_or_newer_settings_file_and_leaves_the_inputs_unchanged(string bad)
+    {
+        var good = Settings();
+        var badBytes = Encoding.UTF8.GetBytes(bad);
+        var copy = badBytes.ToArray();
+
+        Assert.Throws<InvalidDataException>(() => Rules.MergeSettings(good, badBytes, good));
+        Assert.Throws<InvalidDataException>(() => Rules.MergeSettings(good, good, badBytes));
+        Assert.Throws<InvalidDataException>(() => Rules.MergeSettings(badBytes, good, good));
+        Assert.Equal(copy, badBytes);
+    }
+}

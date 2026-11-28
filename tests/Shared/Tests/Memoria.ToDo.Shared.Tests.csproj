@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Shared\Contacts\Memoria.ToDo.Shared.Contacts.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Editing\Memoria.ToDo.Shared.Editing.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Platform\Memoria.ToDo.Shared.Platform.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
+    <ProjectReference Include="..\Fakes\Memoria.ToDo.Shared.Fakes.csproj" />
+    <PackageReference Include="Microsoft.DevTunnels.Ssh.Tcp" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Memoria.ToDo.Shared.Fakes" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\src\Desktop\App\WindowsFileSystem.cs" Link="Sync\Integration\WindowsFileSystem.cs" />
+    <Compile Include="..\..\..\src\Desktop\App\WindowsDirectoryIdentity.cs" Link="Sync\Integration\WindowsDirectoryIdentity.cs" />
+  </ItemGroup>
+
+</Project>

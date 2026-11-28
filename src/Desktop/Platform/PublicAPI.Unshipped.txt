@@ -1,0 +1,148 @@
+Memoria.ToDo.Desktop.Platform.IStartWithWindows
+Memoria.ToDo.Desktop.Platform.IStartWithWindows.IsOn() -> bool
+Memoria.ToDo.Desktop.Platform.IStartWithWindows.Set(bool on) -> void
+Memoria.ToDo.Desktop.Platform.AppRunner
+Memoria.ToDo.Desktop.Platform.QuestionDialog
+static Memoria.ToDo.Desktop.Platform.QuestionDialog.Ask<T>(System.Windows.Window! owner, string! title, string! text, System.Collections.Generic.IReadOnlyList<(string! Label, T Answer)>! answers, T defaultAnswer, T cancelAnswer, Serilog.ILogger! logger) -> T
+Memoria.ToDo.Desktop.Platform.ModalDialog
+static Memoria.ToDo.Desktop.Platform.ModalDialog.Show(System.Windows.Window! dialog, Serilog.ILogger! logger) -> void
+Memoria.ToDo.Desktop.Platform.AppName
+static Memoria.ToDo.Desktop.Platform.AppName.Value.get -> string!
+Memoria.ToDo.Desktop.Platform.IAppLifetime
+Memoria.ToDo.Desktop.Platform.IAppLifetime.Start(System.Action! endApp) -> void
+Memoria.ToDo.Desktop.Platform.IAppLifetime.StopAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Memoria.ToDo.Desktop.Platform.SingleWindow
+Memoria.ToDo.Desktop.Platform.SingleWindow.SingleWindow(System.Func<System.Windows.Window!>! createWindow, Serilog.ILogger! logger) -> void
+Memoria.ToDo.Desktop.Platform.SingleWindow.Show() -> void
+Memoria.ToDo.Desktop.Platform.WindowPlacement
+static Memoria.ToDo.Desktop.Platform.WindowPlacement.ShowOnPointerScreen(System.Windows.Window! window, Serilog.ILogger! logger) -> void
+static Memoria.ToDo.Desktop.Platform.AppRunner.Run(System.Func<Memoria.ToDo.Desktop.Platform.IAppLifetime!>! createLifetime, System.TimeSpan shutdownGrace, Serilog.ILogger! logger) -> int
+Memoria.ToDo.Desktop.Platform.SingleWindow.IsOpen.get -> bool
+Memoria.ToDo.Desktop.Platform.ITheme
+Memoria.ToDo.Desktop.Platform.ITheme.IsDark.get -> bool
+Memoria.ToDo.Desktop.Platform.ITheme.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.WindowsTheme
+Memoria.ToDo.Desktop.Platform.WindowsTheme.WindowsTheme(Memoria.ToDo.Desktop.Platform.IThemeSetting! setting) -> void
+Memoria.ToDo.Desktop.Platform.WindowsTheme.IsDark.get -> bool
+Memoria.ToDo.Desktop.Platform.WindowsTheme.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.IThemeSetting
+Memoria.ToDo.Desktop.Platform.IThemeSetting.ReadIsDark() -> bool
+Memoria.ToDo.Desktop.Platform.IThemeSetting.MayHaveChanged -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.WindowsThemeSetting
+Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.WindowsThemeSetting() -> void
+Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.ReadIsDark() -> bool
+Memoria.ToDo.Desktop.Platform.WindowsThemeSetting.MayHaveChanged -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.AnyHeld.get -> bool
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Clear() -> void
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.HeldModifierKeys() -> void
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Modifiers.get -> System.Windows.Input.ModifierKeys
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.OtherKeyReached() -> void
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Pressed(System.Windows.Input.Key modifierKey) -> void
+Memoria.ToDo.Desktop.Platform.HeldModifierKeys.Released(System.Windows.Input.Key key) -> System.Windows.Input.ModifierKeys
+Memoria.ToDo.Desktop.Platform.ModifierKey
+static Memoria.ToDo.Desktop.Platform.ModifierKey.Describe(System.Windows.Input.ModifierKeys modifiers) -> string!
+static Memoria.ToDo.Desktop.Platform.ModifierKey.Of(System.Windows.Input.Key key) -> System.Windows.Input.ModifierKeys
+Memoria.ToDo.Desktop.Platform.CloseWindowKeys
+Memoria.ToDo.Desktop.Platform.CloseWindowKeys.Attach(System.Windows.Window! window) -> void
+Memoria.ToDo.Desktop.Platform.CloseWindowKeys.CloseWindowKeys() -> void
+Memoria.ToDo.Desktop.Platform.CloseWindowKeys.Set(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> void
+Memoria.ToDo.Desktop.Platform.AppVersion
+static Memoria.ToDo.Desktop.Platform.AppVersion.Value.get -> string!
+Memoria.ToDo.Desktop.Platform.SaveKeys
+Memoria.ToDo.Desktop.Platform.SaveKeys.Matches(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> bool
+Memoria.ToDo.Desktop.Platform.SaveKeys.SaveKeys() -> void
+Memoria.ToDo.Desktop.Platform.SaveKeys.Set(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> void
+Memoria.ToDo.Desktop.Platform.SaveKeys.Text.get -> string!
+Memoria.ToDo.Desktop.Platform.ShortcutText
+static Memoria.ToDo.Desktop.Platform.ShortcutText.Of(System.Windows.Input.ModifierKeys modifiers, System.Windows.Input.Key key) -> string!
+Memoria.ToDo.Desktop.Platform.CloseCommandHook
+static Memoria.ToDo.Desktop.Platform.CloseCommandHook.Attach(System.Windows.Window! window, System.Action! userClose) -> void
+Memoria.ToDo.Desktop.Platform.EscCloses
+static Memoria.ToDo.Desktop.Platform.EscCloses.Attach(System.Windows.Window! window) -> void
+Memoria.ToDo.Desktop.Platform.EventKey
+static Memoria.ToDo.Desktop.Platform.EventKey.Of(System.Windows.Input.KeyEventArgs! e) -> System.Windows.Input.Key
+Memoria.ToDo.Desktop.Platform.ThemeFollower
+Memoria.ToDo.Desktop.Platform.ThemeFollower.Dispose() -> void
+Memoria.ToDo.Desktop.Platform.ThemeFollower.ThemeFollower(System.Windows.FrameworkElement! element, Memoria.ToDo.Desktop.Platform.ITheme! theme, System.Action! themeChanged) -> void
+Memoria.ToDo.Desktop.Platform.SplitPanes
+Memoria.ToDo.Desktop.Platform.SplitPanes.SplitPanes(System.Windows.UIElement! left, double leftShare, double leftMinWidth, System.Windows.UIElement! right, double rightShare, double rightMinWidth) -> void
+Memoria.ToDo.Desktop.Platform.SearchBand
+Memoria.ToDo.Desktop.Platform.SearchBand.SearchBand() -> void
+Memoria.ToDo.Desktop.Platform.SearchBand.Box.get -> System.Windows.Controls.TextBox!
+Memoria.ToDo.Desktop.Platform.HoverCard
+Memoria.ToDo.Desktop.Platform.HoverCard.HoverCard(System.Windows.FrameworkElement! owner, System.Func<System.Windows.Point, System.Threading.Tasks.Task<Memoria.ToDo.Desktop.Platform.HoverPart?>!>! partAt, Memoria.ToDo.Desktop.Platform.IPointerPosition! pointer, Serilog.ILogger! logger) -> void
+Memoria.ToDo.Desktop.Platform.HoverPart
+Memoria.ToDo.Desktop.Platform.HoverPart.Box.get -> System.Windows.Rect
+Memoria.ToDo.Desktop.Platform.HoverPart.Box.init -> void
+Memoria.ToDo.Desktop.Platform.HoverPart.Card.get -> System.Windows.FrameworkElement!
+Memoria.ToDo.Desktop.Platform.HoverPart.Card.init -> void
+Memoria.ToDo.Desktop.Platform.HoverPart.Deconstruct(out System.Windows.Rect Box, out System.Windows.FrameworkElement! Card) -> void
+Memoria.ToDo.Desktop.Platform.HoverPart.Equals(Memoria.ToDo.Desktop.Platform.HoverPart? other) -> bool
+Memoria.ToDo.Desktop.Platform.HoverPart.HoverPart(System.Windows.Rect Box, System.Windows.FrameworkElement! Card) -> void
+override Memoria.ToDo.Desktop.Platform.HoverPart.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.Platform.HoverPart.GetHashCode() -> int
+override Memoria.ToDo.Desktop.Platform.HoverPart.ToString() -> string!
+static Memoria.ToDo.Desktop.Platform.HoverPart.operator !=(Memoria.ToDo.Desktop.Platform.HoverPart? left, Memoria.ToDo.Desktop.Platform.HoverPart? right) -> bool
+static Memoria.ToDo.Desktop.Platform.HoverPart.operator ==(Memoria.ToDo.Desktop.Platform.HoverPart? left, Memoria.ToDo.Desktop.Platform.HoverPart? right) -> bool
+Memoria.ToDo.Desktop.Platform.HoverPart.<Clone>$() -> Memoria.ToDo.Desktop.Platform.HoverPart!
+Memoria.ToDo.Desktop.Platform.SearchBand.Text.get -> string!
+Memoria.ToDo.Desktop.Platform.SearchBand.Text.set -> void
+Memoria.ToDo.Desktop.Platform.SearchBand.TextChanged -> System.EventHandler?
+Memoria.ToDo.Desktop.Platform.SearchBand.EdgeRowRequested -> System.EventHandler<bool>?
+Memoria.ToDo.Desktop.Platform.SearchBand.FocusText() -> void
+Memoria.ToDo.Desktop.Platform.PressDrag
+Memoria.ToDo.Desktop.Platform.PressDrag.PressDrag() -> void
+Memoria.ToDo.Desktop.Platform.PressDrag.Press(System.Windows.Point at) -> void
+Memoria.ToDo.Desktop.Platform.PressDrag.Move(System.Windows.Point now, bool leftButtonDown) -> bool
+Memoria.ToDo.Desktop.Platform.PressDrag.Leave() -> void
+Memoria.ToDo.Desktop.Platform.PressDrag.Release() -> bool
+Memoria.ToDo.Desktop.Platform.DropLine
+Memoria.ToDo.Desktop.Platform.DropLine.DropLine(System.Windows.UIElement! adorned) -> void
+Memoria.ToDo.Desktop.Platform.DropLine.Show(double x, double y, double width) -> void
+Memoria.ToDo.Desktop.Platform.DropLine.Hide() -> void
+Memoria.ToDo.Desktop.Platform.AutoScroll
+static Memoria.ToDo.Desktop.Platform.AutoScroll.Attach(System.Windows.Controls.ScrollViewer! viewer, System.TimeProvider! time, System.Action<System.Windows.Point>! scrolled) -> void
+Memoria.ToDo.Desktop.Platform.IPointerPosition
+Memoria.ToDo.Desktop.Platform.IPointerPosition.PositionIn(System.Windows.UIElement! element) -> System.Windows.Point
+Memoria.ToDo.Desktop.Platform.IDragPointer
+Memoria.ToDo.Desktop.Platform.IDragPointer.IsLeftButtonDown.get -> bool
+Memoria.ToDo.Desktop.Platform.IDragPointer.StartDrag(System.Windows.DependencyObject! source, System.Windows.IDataObject! data) -> void
+Memoria.ToDo.Desktop.Platform.MousePointer
+Memoria.ToDo.Desktop.Platform.MousePointer.MousePointer() -> void
+Memoria.ToDo.Desktop.Platform.MousePointer.IsLeftButtonDown.get -> bool
+Memoria.ToDo.Desktop.Platform.MousePointer.PositionIn(System.Windows.UIElement! element) -> System.Windows.Point
+Memoria.ToDo.Desktop.Platform.MousePointer.StartDrag(System.Windows.DependencyObject! source, System.Windows.IDataObject! data) -> void
+Memoria.ToDo.Desktop.Platform.MessageLine
+Memoria.ToDo.Desktop.Platform.MessageLine.MessageLine() -> void
+Memoria.ToDo.Desktop.Platform.MessageLine.Show(string? text) -> void
+Memoria.ToDo.Desktop.Platform.StoreFailures
+static Memoria.ToDo.Desktop.Platform.StoreFailures.NoticeFailed(Memoria.ToDo.Shared.Platform.NoticeFailedException! failure) -> string!
+Memoria.ToDo.Desktop.Platform.IMessageBox
+Memoria.ToDo.Desktop.Platform.IMessageBox.Show(string! text) -> void
+Memoria.ToDo.Desktop.Platform.WindowsMessageBox
+Memoria.ToDo.Desktop.Platform.WindowsMessageBox.Show(string! text) -> void
+Memoria.ToDo.Desktop.Platform.WindowsMessageBox.WindowsMessageBox() -> void
+static Memoria.ToDo.Desktop.Platform.StoreFailures.MessageOf(System.Exception! failure) -> string?
+static Memoria.ToDo.Desktop.Platform.StoreFailures.Run(System.Action! call, System.Func<System.Exception!, string?>! messageOf, System.Action<string!>! report, Serilog.ILogger! logger) -> bool
+Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.LeaveAnswer.Cancel = 2 -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.LeaveAnswer.Discard = 1 -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.LeaveAnswer.Save = 0 -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.ILeavePrompt
+Memoria.ToDo.Desktop.Platform.ILeavePrompt.Ask() -> Memoria.ToDo.Desktop.Platform.LeaveAnswer
+Memoria.ToDo.Desktop.Platform.ILeavingEdit
+Memoria.ToDo.Desktop.Platform.ILeavingEdit.Discard() -> void
+Memoria.ToDo.Desktop.Platform.ILeavingEdit.HasChanges.get -> bool
+Memoria.ToDo.Desktop.Platform.ILeavingEdit.ReturnToEditor() -> void
+Memoria.ToDo.Desktop.Platform.ILeavingEdit.Save() -> bool
+Memoria.ToDo.Desktop.Platform.LeaveDecision
+Memoria.ToDo.Desktop.Platform.LeaveDecision.LeaveDecision(Memoria.ToDo.Desktop.Platform.ILeavePrompt! prompt) -> void
+Memoria.ToDo.Desktop.Platform.LeaveDecision.MayLeave(Memoria.ToDo.Desktop.Platform.ILeavingEdit? edit) -> bool
+Memoria.ToDo.Desktop.Platform.OnOffSettingFile
+Memoria.ToDo.Desktop.Platform.OnOffSettingFile.OnOffSettingFile(Memoria.ToDo.Shared.Platform.IFileSystem! files, string! path, bool whenMissing, string! name, Serilog.ILogger! logger) -> void
+Memoria.ToDo.Desktop.Platform.OnOffSettingFile.Read() -> (bool On, string? Failure)
+Memoria.ToDo.Desktop.Platform.OnOffSettingFile.Write(bool on) -> void
+Memoria.ToDo.Desktop.Platform.SavedWindowPlacement
+Memoria.ToDo.Desktop.Platform.SavedWindowPlacement.SavedWindowPlacement(Memoria.ToDo.Shared.Platform.IFileSystem! files, string! path, string! name, Serilog.ILogger! logger) -> void
+Memoria.ToDo.Desktop.Platform.SingleWindow.SingleWindow(System.Func<System.Windows.Window!>! createWindow, Memoria.ToDo.Desktop.Platform.SavedWindowPlacement! placement, Serilog.ILogger! logger) -> void

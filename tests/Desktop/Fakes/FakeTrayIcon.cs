@@ -1,0 +1,118 @@
+using Memoria.ToDo.Desktop.Shell;
+
+namespace Memoria.ToDo.Desktop.Fakes;
+
+/// <summary>
+/// The shared fake of <see cref="ITrayIcon"/>. It remembers what was shown, lets a test click as a user would,
+/// and can be told to fail when shown, as Windows does when it can't add the icon.
+/// </summary>
+public sealed class FakeTrayIcon : ITrayIcon
+{
+    private IReadOnlyList<TrayMenuItem> menu = [];
+    private Action leftClick = () => { };
+
+    /// <summary>Whether the icon is in the tray now.</summary>
+    public bool IsShown { get; private set; }
+
+    /// <summary>The tooltip of the icon last shown.</summary>
+    public string? ToolTip { get; private set; }
+
+    /// <summary>The texts of the menu last shown, in order.</summary>
+    public IReadOnlyList<string> MenuTexts => [.. menu.Select(item => item.Text)];
+
+    /// <summary>How many times the icon was added.</summary>
+    public int ShowCount { get; private set; }
+
+    /// <summary>How many times <see cref="UpdateMenu"/> was called, whether or not the icon was shown.</summary>
+    public int MenuUpdateCount { get; private set; }
+
+    /// <summary>When set, <see cref="Show"/> throws it and the icon isn't added.</summary>
+    public Exception? ShowFailure { get; set; }
+
+    public TraySyncBadge Badge { get; private set; }
+    public List<string> Notifications { get; } = [];
+    private Action? notificationClick;
+
+    public void UpdateStatus(string toolTip, TraySyncBadge badge)
+    {
+        if (!IsShown)
+        {
+            return;
+        }
+        ToolTip = toolTip;
+        Badge = badge;
+    }
+
+    public void NotifySyncError(string message, Action clicked)
+    {
+        if (!IsShown)
+        {
+            return;
+        }
+        Notifications.Add(message);
+        notificationClick = clicked;
+    }
+
+    public void ClickNotification() => (notificationClick ??
+        throw new InvalidOperationException("No sync notification was shown."))();
+
+    /// <inheritdoc />
+    public void Show(string toolTip, IReadOnlyList<TrayMenuItem> menu, Action leftClick)
+    {
+        if (ShowFailure is not null)
+        {
+            throw ShowFailure;
+        }
+
+        ToolTip = toolTip;
+        this.menu = menu;
+        this.leftClick = leftClick;
+        IsShown = true;
+        ShowCount++;
+    }
+
+    /// <inheritdoc />
+    public void UpdateMenu(IReadOnlyList<TrayMenuItem> menu)
+    {
+        MenuUpdateCount++;
+        if (IsShown)
+        {
+            this.menu = menu;
+        }
+    }
+
+    /// <inheritdoc />
+    public void Remove() => IsShown = false;
+
+    /// <summary>Chooses the menu item with this text.</summary>
+    /// <exception cref="InvalidOperationException">The icon isn't shown, or has no such item.</exception>
+    public void ChooseMenuItem(string text)
+    {
+        EnsureShown();
+        var item = menu.FirstOrDefault(i => i.Text == text)
+            ?? throw new InvalidOperationException($"The tray menu has no item '{text}'.");
+        item.Invoke();
+    }
+
+    /// <summary>Clicks the icon with the left mouse button.</summary>
+    /// <exception cref="InvalidOperationException">The icon isn't shown.</exception>
+    public void LeftClick()
+    {
+        EnsureShown();
+        leftClick();
+    }
+
+    /// <summary>Captures the currently registered click, as a native event already queued before removal would.</summary>
+    public Action QueueLeftClick() => leftClick;
+
+    /// <summary>Captures an existing menu action so a test can deliver it after the menu is removed.</summary>
+    public Action QueueMenuItem(string text) => menu.Single(item => item.Text == text).Invoke;
+
+    private void EnsureShown()
+    {
+        if (!IsShown)
+        {
+            throw new InvalidOperationException("The tray icon isn't shown.");
+        }
+    }
+}

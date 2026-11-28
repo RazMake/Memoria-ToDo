@@ -1,6 +1,6 @@
 # How the Android app is built
 
-The Android app is a .NET for Android app for adding a task in seconds on the phone and seeing the same task list as on the desktop. This page lists its four modules, the proof on a phone that comes before any other Android work, the Android versions and libraries it uses, and what it needs from later designs.
+The Android app is a .NET for Android app for adding a task in seconds on the phone and seeing the same task list as on the desktop. This page lists its four modules, the proof on a phone that came before any other Android work, the Android versions and libraries it uses, what it needs from later designs, and the steps that build it.
 
 ## Four modules make up the Android app
 
@@ -9,11 +9,13 @@ Each module is a project of its own, separate from the desktop module of the sam
 | Module | What its design file decides |
 | --- | --- |
 | [Shell](shell.md) | Where each way into the app leads: the app icon, the app shortcut, and the home-screen widget. Also background sync, updates, and the theme. |
-| [Task editor](task-editor.md) | The full-screen Add screen: its fields, toolbar, tag chips, and draft. View Tasks edits a task with the same screen. |
-| [Task list](task-list.md) | View Tasks: the list in rank order, expanding in place, swipes, reordering, the tag filter, search, resolved tasks, and the floating Add button |
+| [Task editor](task-editor.md) | The full-screen Add screen: its fields, toolbar, tag chips, and draft. Task View edits a task with the same screen. |
+| [Task list](task-list.md) | Task View: the list in rank order, expanding in place, swipes, reordering, the tag filter, search, resolved tasks, and the floating Add button |
 | [Configure](configure.md) | The settings screen: the phone's key, the shared deletion delay, the swipe direction, and sync setup and status |
 
-The shared modules serve the phone as they serve the desktop: [Editing](../editing.md) holds the formatting and snippet commands, [Rendering](../rendering.md) turns Markdown into HTML and styled text, [Tasks](../tasks.md) holds the task files, and [Sync through git](../sync.md) keeps devices the same. Where an Android screen works like its desktop counterpart, its design file links the [desktop design](../desktop/README.md) instead of repeating it.
+The [platform and composition root](platform.md) hold what the screens share and build the app when it starts.
+
+The shared modules serve the phone as they serve the desktop: [Editing](../editing.md) holds the formatting and snippet commands, [Rendering](../rendering.md) turns Markdown into HTML and styled text, [Tasks](../tasks.md) holds the task files, [Contacts](../contacts.md) holds the contacts that tasks mention, and [Sync through git](../sync.md) keeps devices the same. The phone has no Contacts screen for now. Where an Android screen works like its desktop counterpart, its design file links the [desktop design](../desktop/README.md) instead of repeating it.
 
 ## A proof on a phone comes before any other Android work
 
@@ -23,7 +25,17 @@ The first Android build step is a throwaway proof on a phone, and it blocks all 
 2. Signs in with an RSA 3072-bit key held in the [Android Keystore](https://developer.android.com/privacy-and-security/keystore), which never lets the key out.
 3. Measures how soon the Add screen accepts typing, against the [Task editor's targets](task-editor.md#add-opens-full-screen-with-the-keyboard-up).
 
-Proposed: the proof also checks what the [risks](../overview.md#risks-the-later-rows-must-resolve) ask of it, such as both forms of SSH address and the size of the Android package (APK). This is a decision to confirm.
+The proof also checks what the [risks](../overview.md#risks-the-later-rows-must-resolve) ask of it, such as both forms of SSH address and the size of the Android package (APK).
+
+The proof passed on November 6, 2026, on a Google Pixel 10 Pro with Android 17 (API level 37), and before that on an emulator with Android 16 (API level 36) on x86_64. Both runs used .NET 11 RC 3 and LibGit2Sharp 0.32.0. They showed:
+
+- **LibGit2Sharp loads our libgit2 by name.** The app never sets `GlobalSettings.NativeLibraryPath`, and .NET found `libgit2-5853918.so` in 9 ms on the phone.
+- **The app runs on CoreCLR.** The APK holds `libcoreclr.so` and no Mono runtime, and the running app mapped `libcoreclr.so`.
+- **SSH.NET signs with a Keystore key the app can't read.** On the phone, the key lives in its trusted execution environment (TEE), as [Configure](configure.md#the-key-is-made-inside-the-android-keystore-and-never-leaves-it) decides. Creating it took 280 ms, and each signature 10 to 66 ms. The key offers only `rsa-sha2-512` and `rsa-sha2-256`, and each sign-in signed once.
+- **Both address forms work against GitHub**, as on Windows. Two clones pushed and fetched in both directions, and the transport refused a host key that isn't on its list. On the phone, each step took 1.3 to 2.1 seconds, 0.7 to 1.2 seconds of it to connect.
+- **The Add screen meets its cold-start target, and its warm-start target depends on what counts as accepting typing.** The [Task editor](task-editor.md#add-opens-full-screen-with-the-keyboard-up) records the timings. Only the phone's count, since the emulator draws its screens in software.
+- **The release APK is 22.1 MB with arm64-v8a only.** It's 23.3 MB with x86_64 only, and 39.1 MB with both. libgit2 takes 0.7 MB of each ABI's share. The largest parts are the .NET assemblies (10.8 MB), the AndroidX and Material code (4.4 MB), and the .NET runtime (4.3 MB).
+- **Android copies the native libraries out of the APK when it installs the app**, because the build marks the APK that way. On the phone they take another 21.9 MB, so the installed app takes about 44 MB.
 
 If the proof fails, these fallbacks are tried in order:
 
@@ -51,15 +63,40 @@ The screens use AndroidX and Material Components through Microsoft's .NET bindin
 
 ## Later designs answer what these files leave open
 
-The Android design relies on the technology stack, a later row of the [design backlog](../README.md#design-backlog). The table lists each need, the modules that need it, and the design that answers it:
+The Android design relies on the [technology stack](../technology-stack.md), a later row of the [design backlog](../README.md#design-backlog), now decided. The table lists each need, the modules that need it, and the section that answers it:
 
 | Needed | Used by | Answered by |
 | --- | --- | --- |
-| The release step that publishes the APK to GitHub Releases, reusing the desktop's | Shell | Technology stack |
-| The build of libgit2 with the NDK for each ABI, and where it lives | Sync, on Android | Technology stack, as the [risks](../overview.md#risks-the-later-rows-must-resolve) say |
-| Where the key that signs each APK is kept. Android's update model needs every update signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)). | Shell | Technology stack |
+| The app's independent pipeline that publishes its APK to GitHub Releases | Shell | [Android releases](../android-releases.md) |
+| The build of libgit2 with the NDK for each ABI, and where it lives | Sync, on Android | [Technology stack](../technology-stack.md#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), which resolves the [risk](../overview.md#risks-the-later-rows-must-resolve) |
+| Where the key that signs each APK is kept. Android's update model needs every update signed with the same key ([app signing](https://developer.android.com/studio/publish/app-signing)). | Shell | [Technology stack](../technology-stack.md#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline) |
+| How a task's [mention of a contact](../contacts.md#a-mention-is-a-link-that-names-its-contact-and-its-template) shows, and the phone's "@" list. The user decided the phone gets the full "@" list and the chips, as the desktop does. | Task list, Task editor | [Task editor](task-editor.md#typing-an-at-sign-mentions-a-contact) and [Task list](task-list.md#mentions-show-each-contacts-current-details) |
 
 Everything else the Android screens need from Tasks and Sync is in the [desktop app's table](../desktop/README.md#later-designs-answer-what-these-files-leave-open), already answered.
+
+## Delivery backlog
+
+The Android app is built in steps, one row each, in the table's order. Each row links to the design sections it builds, and each ships something you can open on a phone. Status is **Next**, **Not scheduled**, or **Implemented**, which means every behavior the row lists is built and tested. The [open questions](#open-questions) name the steps they block. Every part moved to the .NET 11 release's SDK before step 1, as the [technology stack](../technology-stack.md#three-files-pin-every-version) says.
+
+The table lists each step, what it builds, and its status:
+
+| # | Step | Builds | Status |
+| --- | --- | --- | --- |
+| 1 | Projects and three empty screens | The Android part's projects, with the pinned [workload set](../technology-stack.md#three-files-pin-every-version) and [what each project builds for](platform.md#each-project-builds-for-the-pc-and-android-except-the-composition-root); the [composition root](platform.md#the-composition-root-builds-the-app-before-android-opens-a-screen), with its logger and the [theme](shell.md#the-app-follows-the-system-theme); the platform's [screen services](platform.md#public-interface); Shell's [opening the app](shell.md#public-interface) into Task View, without the redirect to Configure; and the Show parts of the [Task editor](task-editor.md#public-interface), the [Task list](task-list.md#public-interface), and [Configure](configure.md#public-interface), each with an empty screen that keeps clear of the [system bars](platform.md#each-screen-keeps-clear-of-the-system-bars); Auto Backup off, as [Configure](configure.md#each-setting-has-one-owner) proposes. Unit tests run on the PC only. | Next |
+| 2 | Tests on an emulator | The approved [DeviceRunners host](../technology-stack.md#devicerunners-runs-the-android-test-app); the test project's [Android build](../technology-stack.md#each-android-module-builds-for-both-the-pc-and-android), with UX tests of step 1's screens; [Test selection's](../test-selection.md) commands and emulator line for it; and Android's own [Linux test job](../technology-stack.md#a-linux-job-runs-the-android-tests-on-an-emulator-before-each-release) | Not scheduled |
+| 3 | Adding tasks | The [Task editor's](task-editor.md#behavior) Add screen, except mentions and Edit, on [Tasks](../tasks.md), [Editing](../editing.md), and [Rendering](../rendering.md#titles-and-the-editor-get-styled-spans-not-html), in the clone's [fixed folder](configure.md#each-setting-has-one-owner); the Android file system, whose shared contract tests run in the test app; and Shell's [app shortcut](shell.md#four-ways-lead-into-the-app), checked against Add's [start targets](task-editor.md#add-opens-full-screen-with-the-keyboard-up) | Not scheduled |
+| 4 | Viewing tasks | The [Task list's](task-list.md#behavior) Task View, except pulling down, sync status, banners, and mentions; [Edit](task-editor.md#edit-opens-the-same-screen-for-a-task-in-task-view); and Configure's [deletion delay and swipe direction](configure.md#each-setting-has-one-owner) | Not scheduled |
+| 5 | Sync | Sync on the phone: the [libgit2 script and files](../technology-stack.md#a-script-in-this-repository-builds-libgit2-for-android-and-its-binaries-are-committed), the [Keystore key](configure.md#the-key-is-made-inside-the-android-keystore-and-never-leaves-it), Configure's [setup and status](configure.md#configure-shows-how-sync-is-doing), Shell's redirect to Configure until the phone is configured, and the [syncs while the app is open](shell.md#sync-runs-while-the-app-is-open-and-every-few-hours-in-the-background); the Task list's [pulling down](task-list.md#pulling-the-list-down-starts-a-sync) and [status line](task-list.md#task-view-shows-sync-status-and-banners) | Not scheduled |
+| 6 | Background sync | Shell's [background work](shell.md#sync-runs-while-the-app-is-open-and-every-few-hours-in-the-background) through WorkManager | Not scheduled |
+| 7 | Releases and updates | The [independent Android pipeline](../android-releases.md), its signed APK with the [version code](../technology-stack.md#the-android-tag-determines-the-apks-version-code) and [signing key](../technology-stack.md#the-apk-signing-key-lives-in-a-github-actions-secret-backed-up-offline); platform-filtered update discovery for both apps and desktop migration guidance; Shell's [update check](shell.md#updates-come-from-this-repositorys-github-releases), with the Task list's [banner](task-list.md#task-view-shows-sync-status-and-banners) | Not scheduled |
+| 8 | Mentions | The Task editor's ["@" list and chips](task-editor.md#typing-an-at-sign-mentions-a-contact), and the Task list's [mentions](task-list.md#mentions-show-each-contacts-current-details) | Not scheduled |
+| 9 | Widget | Shell's [home-screen widget](shell.md#the-widget-shows-the-top-tasks-and-an-add-button), with the Task list's top open tasks | Not scheduled |
+
+Proposed, a decision to confirm:
+
+- **Adding and viewing come before sync**, as on the desktop. Until step 5, the phone keeps its tasks in its own clone folder, and nothing leaves it.
+
+The [technology stack](../technology-stack.md#each-android-module-builds-for-both-the-pc-and-android) says why step 1 runs nothing on an emulator, and [when the Linux job and the APK start](../technology-stack.md#three-github-actions-workflows-check-pushes-run-every-test-and-publish-releases).
 
 ## Ruled out
 
@@ -69,3 +106,7 @@ The options below were considered and rejected, grouped by decision.
   - **libgit2 with libssh2**: a second C SSH stack we would maintain.
 - Screens:
   - **Android's built-in widgets only**: offered, and not chosen. Android has no chips, floating button, or Undo bar of its own, so the app would draw them itself.
+
+## Open questions
+
+None. The [DeviceRunners host](../technology-stack.md#devicerunners-runs-the-android-test-app) and [independent release pipeline](../android-releases.md) are decided; their implementation remains in steps 2 and 7.

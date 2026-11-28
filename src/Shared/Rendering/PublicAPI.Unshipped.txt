@@ -1,0 +1,140 @@
+Memoria.ToDo.Shared.Rendering.BrowserCheck
+Memoria.ToDo.Shared.Rendering.DescriptionPage
+Memoria.ToDo.Shared.Rendering.MarkdownField
+Memoria.ToDo.Shared.Rendering.MarkdownField.Description = 1 -> Memoria.ToDo.Shared.Rendering.MarkdownField
+Memoria.ToDo.Shared.Rendering.MarkdownField.Title = 0 -> Memoria.ToDo.Shared.Rendering.MarkdownField
+Memoria.ToDo.Shared.Rendering.Palette
+Memoria.ToDo.Shared.Rendering.PaletteColor
+Memoria.ToDo.Shared.Rendering.PaletteColor.<Clone>$() -> Memoria.ToDo.Shared.Rendering.PaletteColor!
+Memoria.ToDo.Shared.Rendering.PaletteColor.Dark.get -> string!
+Memoria.ToDo.Shared.Rendering.PaletteColor.Dark.init -> void
+Memoria.ToDo.Shared.Rendering.PaletteColor.Deconstruct(out string! Name, out string! Light, out string! Dark) -> void
+Memoria.ToDo.Shared.Rendering.PaletteColor.Equals(Memoria.ToDo.Shared.Rendering.PaletteColor? other) -> bool
+Memoria.ToDo.Shared.Rendering.PaletteColor.Light.get -> string!
+Memoria.ToDo.Shared.Rendering.PaletteColor.Light.init -> void
+Memoria.ToDo.Shared.Rendering.PaletteColor.Name.get -> string!
+Memoria.ToDo.Shared.Rendering.PaletteColor.Name.init -> void
+Memoria.ToDo.Shared.Rendering.PaletteColor.PaletteColor(string! Name, string! Light, string! Dark) -> void
+Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.SpanStyle.Bold = 1 -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.SpanStyle.Code = 8 -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.SpanStyle.Italic = 2 -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.SpanStyle.Marker = 16 -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.SpanStyle.None = 0 -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.SpanStyle.Strikethrough = 4 -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.StyledSpan
+Memoria.ToDo.Shared.Rendering.StyledSpan.<Clone>$() -> Memoria.ToDo.Shared.Rendering.StyledSpan!
+Memoria.ToDo.Shared.Rendering.StyledSpan.Color.get -> string?
+Memoria.ToDo.Shared.Rendering.StyledSpan.Color.init -> void
+Memoria.ToDo.Shared.Rendering.StyledSpan.Deconstruct(out int Start, out int Length, out Memoria.ToDo.Shared.Rendering.SpanStyle Styles, out string? LinkAddress, out string? Color, out int HeadingLevel) -> void
+Memoria.ToDo.Shared.Rendering.StyledSpan.Equals(Memoria.ToDo.Shared.Rendering.StyledSpan? other) -> bool
+Memoria.ToDo.Shared.Rendering.StyledSpan.HeadingLevel.get -> int
+Memoria.ToDo.Shared.Rendering.StyledSpan.HeadingLevel.init -> void
+Memoria.ToDo.Shared.Rendering.StyledSpan.Length.get -> int
+Memoria.ToDo.Shared.Rendering.StyledSpan.Length.init -> void
+Memoria.ToDo.Shared.Rendering.StyledSpan.LinkAddress.get -> string?
+Memoria.ToDo.Shared.Rendering.StyledSpan.LinkAddress.init -> void
+Memoria.ToDo.Shared.Rendering.StyledSpan.Start.get -> int
+Memoria.ToDo.Shared.Rendering.StyledSpan.Start.init -> void
+Memoria.ToDo.Shared.Rendering.StyledSpan.StyledSpan(int Start, int Length, Memoria.ToDo.Shared.Rendering.SpanStyle Styles, string? LinkAddress, string? Color, int HeadingLevel) -> void
+Memoria.ToDo.Shared.Rendering.StyledSpan.Styles.get -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.StyledSpan.Styles.init -> void
+Memoria.ToDo.Shared.Rendering.StyledSpans
+Memoria.ToDo.Shared.Rendering.TagColor
+Memoria.ToDo.Shared.Rendering.TagColor.<Clone>$() -> Memoria.ToDo.Shared.Rendering.TagColor!
+Memoria.ToDo.Shared.Rendering.TagColor.Dark.get -> Memoria.ToDo.Shared.Rendering.TagFill!
+Memoria.ToDo.Shared.Rendering.TagColor.Dark.init -> void
+Memoria.ToDo.Shared.Rendering.TagColor.Deconstruct(out string! Name, out Memoria.ToDo.Shared.Rendering.TagFill! Light, out Memoria.ToDo.Shared.Rendering.TagFill! Dark) -> void
+Memoria.ToDo.Shared.Rendering.TagColor.Equals(Memoria.ToDo.Shared.Rendering.TagColor? other) -> bool
+Memoria.ToDo.Shared.Rendering.TagColor.Light.get -> Memoria.ToDo.Shared.Rendering.TagFill!
+Memoria.ToDo.Shared.Rendering.TagColor.Light.init -> void
+Memoria.ToDo.Shared.Rendering.TagColor.Name.get -> string!
+Memoria.ToDo.Shared.Rendering.TagColor.Name.init -> void
+Memoria.ToDo.Shared.Rendering.TagColor.TagColor(string! Name, Memoria.ToDo.Shared.Rendering.TagFill! Light, Memoria.ToDo.Shared.Rendering.TagFill! Dark) -> void
+Memoria.ToDo.Shared.Rendering.TagColors
+Memoria.ToDo.Shared.Rendering.TagFill
+Memoria.ToDo.Shared.Rendering.TagFill.<Clone>$() -> Memoria.ToDo.Shared.Rendering.TagFill!
+Memoria.ToDo.Shared.Rendering.TagFill.Background.get -> string!
+Memoria.ToDo.Shared.Rendering.TagFill.Background.init -> void
+Memoria.ToDo.Shared.Rendering.TagFill.Deconstruct(out string! Background, out string! Text) -> void
+Memoria.ToDo.Shared.Rendering.TagFill.Equals(Memoria.ToDo.Shared.Rendering.TagFill? other) -> bool
+Memoria.ToDo.Shared.Rendering.TagFill.TagFill(string! Background, string! Text) -> void
+Memoria.ToDo.Shared.Rendering.TagFill.Text.get -> string!
+Memoria.ToDo.Shared.Rendering.TagFill.Text.init -> void
+override Memoria.ToDo.Shared.Rendering.TagColor.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Rendering.TagColor.GetHashCode() -> int
+override Memoria.ToDo.Shared.Rendering.TagColor.ToString() -> string!
+override Memoria.ToDo.Shared.Rendering.TagFill.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Rendering.TagFill.GetHashCode() -> int
+override Memoria.ToDo.Shared.Rendering.TagFill.ToString() -> string!
+override Memoria.ToDo.Shared.Rendering.PaletteColor.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Rendering.PaletteColor.GetHashCode() -> int
+override Memoria.ToDo.Shared.Rendering.PaletteColor.ToString() -> string!
+override Memoria.ToDo.Shared.Rendering.StyledSpan.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Rendering.StyledSpan.GetHashCode() -> int
+override Memoria.ToDo.Shared.Rendering.StyledSpan.ToString() -> string!
+static Memoria.ToDo.Shared.Rendering.BrowserCheck.MayOpen(string! address) -> bool
+static Memoria.ToDo.Shared.Rendering.DescriptionPage.WithResizableImages(string! markdown, bool dark, System.Uri! cloneAddress) -> string!
+static Memoria.ToDo.Shared.Rendering.DescriptionPage.Of(string! markdown, bool dark, System.Uri! cloneAddress) -> string!
+static Memoria.ToDo.Shared.Rendering.Palette.Colors.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.PaletteColor!>!
+static Memoria.ToDo.Shared.Rendering.PaletteColor.operator !=(Memoria.ToDo.Shared.Rendering.PaletteColor? left, Memoria.ToDo.Shared.Rendering.PaletteColor? right) -> bool
+static Memoria.ToDo.Shared.Rendering.PaletteColor.operator ==(Memoria.ToDo.Shared.Rendering.PaletteColor? left, Memoria.ToDo.Shared.Rendering.PaletteColor? right) -> bool
+static Memoria.ToDo.Shared.Rendering.StyledSpan.operator !=(Memoria.ToDo.Shared.Rendering.StyledSpan? left, Memoria.ToDo.Shared.Rendering.StyledSpan? right) -> bool
+static Memoria.ToDo.Shared.Rendering.StyledSpan.operator ==(Memoria.ToDo.Shared.Rendering.StyledSpan? left, Memoria.ToDo.Shared.Rendering.StyledSpan? right) -> bool
+static Memoria.ToDo.Shared.Rendering.TagColor.operator !=(Memoria.ToDo.Shared.Rendering.TagColor? left, Memoria.ToDo.Shared.Rendering.TagColor? right) -> bool
+static Memoria.ToDo.Shared.Rendering.TagColor.operator ==(Memoria.ToDo.Shared.Rendering.TagColor? left, Memoria.ToDo.Shared.Rendering.TagColor? right) -> bool
+static Memoria.ToDo.Shared.Rendering.TagColors.All.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.TagColor!>!
+static Memoria.ToDo.Shared.Rendering.TagColors.DefaultFor(string! tag) -> Memoria.ToDo.Shared.Rendering.TagColor!
+static Memoria.ToDo.Shared.Rendering.TagColors.Find(string! name) -> Memoria.ToDo.Shared.Rendering.TagColor?
+static Memoria.ToDo.Shared.Rendering.TagFill.operator !=(Memoria.ToDo.Shared.Rendering.TagFill? left, Memoria.ToDo.Shared.Rendering.TagFill? right) -> bool
+static Memoria.ToDo.Shared.Rendering.TagFill.operator ==(Memoria.ToDo.Shared.Rendering.TagFill? left, Memoria.ToDo.Shared.Rendering.TagFill? right) -> bool
+static Memoria.ToDo.Shared.Rendering.StyledSpans.Of(string! markdown, Memoria.ToDo.Shared.Rendering.MarkdownField field) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.StyledSpan!>!
+Memoria.ToDo.Shared.Rendering.TextLook
+Memoria.ToDo.Shared.Rendering.TextLook.Code.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.CodeBackground.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.CodeBackgroundOpacity.get -> double
+Memoria.ToDo.Shared.Rendering.TextLook.ColorOf(Memoria.ToDo.Shared.Rendering.StyledSpan! span) -> string?
+Memoria.ToDo.Shared.Rendering.TextLook.Heading1.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.Heading2.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.Heading3.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.Heading4.get -> string!
+Memoria.ToDo.Shared.Rendering.ImageWidths
+static Memoria.ToDo.Shared.Rendering.ImageWidths.With(string! markdown, int image, int width) -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.HeadingColor(int level) -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.Italic.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLook.Link.get -> string!
+Memoria.ToDo.Shared.Rendering.TextLooks
+static Memoria.ToDo.Shared.Rendering.TextLooks.CodeFont.get -> string!
+static Memoria.ToDo.Shared.Rendering.TextLooks.MentionPaddingSides.get -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.MentionPaddingTop.get -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.MentionPaddingBottom.get -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.MentionCornerRadius.get -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.Dark.get -> Memoria.ToDo.Shared.Rendering.TextLook!
+static Memoria.ToDo.Shared.Rendering.TextLooks.HeadingScale(int level) -> double
+static Memoria.ToDo.Shared.Rendering.TextLooks.Light.get -> Memoria.ToDo.Shared.Rendering.TextLook!
+static Memoria.ToDo.Shared.Rendering.TextLooks.Of(bool dark) -> Memoria.ToDo.Shared.Rendering.TextLook!
+Memoria.ToDo.Shared.Rendering.SpanStyle.Mention = 32 -> Memoria.ToDo.Shared.Rendering.SpanStyle
+Memoria.ToDo.Shared.Rendering.TextLook.MentionBackground.get -> string!
+Memoria.ToDo.Shared.Rendering.Mention
+Memoria.ToDo.Shared.Rendering.Mention.<Clone>$() -> Memoria.ToDo.Shared.Rendering.Mention!
+Memoria.ToDo.Shared.Rendering.Mention.Address.get -> string!
+Memoria.ToDo.Shared.Rendering.Mention.Address.init -> void
+Memoria.ToDo.Shared.Rendering.Mention.Deconstruct(out int Start, out int Length, out string! Address, out string! Template, out string! StoredText) -> void
+Memoria.ToDo.Shared.Rendering.Mention.Equals(Memoria.ToDo.Shared.Rendering.Mention? other) -> bool
+Memoria.ToDo.Shared.Rendering.Mention.Length.get -> int
+Memoria.ToDo.Shared.Rendering.Mention.Length.init -> void
+Memoria.ToDo.Shared.Rendering.Mention.Mention(int Start, int Length, string! Address, string! Template, string! StoredText) -> void
+Memoria.ToDo.Shared.Rendering.Mention.Start.get -> int
+Memoria.ToDo.Shared.Rendering.Mention.Start.init -> void
+Memoria.ToDo.Shared.Rendering.Mention.StoredText.get -> string!
+Memoria.ToDo.Shared.Rendering.Mention.StoredText.init -> void
+Memoria.ToDo.Shared.Rendering.Mention.Template.get -> string!
+Memoria.ToDo.Shared.Rendering.Mention.Template.init -> void
+Memoria.ToDo.Shared.Rendering.Mentions
+override Memoria.ToDo.Shared.Rendering.Mention.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Rendering.Mention.GetHashCode() -> int
+override Memoria.ToDo.Shared.Rendering.Mention.ToString() -> string!
+static Memoria.ToDo.Shared.Rendering.Mention.operator !=(Memoria.ToDo.Shared.Rendering.Mention? left, Memoria.ToDo.Shared.Rendering.Mention? right) -> bool
+static Memoria.ToDo.Shared.Rendering.Mention.operator ==(Memoria.ToDo.Shared.Rendering.Mention? left, Memoria.ToDo.Shared.Rendering.Mention? right) -> bool
+static Memoria.ToDo.Shared.Rendering.Mentions.In(string! markdown, bool title) -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Rendering.Mention!>!
+static Memoria.ToDo.Shared.Rendering.Mentions.WithTexts(string! markdown, bool title, System.Func<Memoria.ToDo.Shared.Rendering.Mention!, string?>! textOf) -> string!

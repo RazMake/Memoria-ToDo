@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup Condition="'$(MemoriaIsAndroidDeviceTarget)' == 'true'">
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ApplicationTitle>$(Product) Android tests</ApplicationTitle>
+    <ApplicationId>com.razmake.memoriatodo.tests</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <GenerateTestingPlatformEntryPoint>false</GenerateTestingPlatformEntryPoint>
+    <RuntimeIdentifier>android-x64</RuntimeIdentifier>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+    <AndroidManifest>..\PlatformTestHost\AndroidManifest.xml</AndroidManifest>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MemoriaIsAndroidDeviceTarget)' == 'true'">
+    <PackageReference Include="DeviceRunners.Testing.Targets" />
+    <PackageReference Include="DeviceRunners.VisualRunners.Maui" />
+    <PackageReference Include="DeviceRunners.VisualRunners.Xunit3" />
+    <PackageReference Include="DeviceRunners.UITesting.Maui" />
+    <PackageReference Include="Microsoft.Maui.Controls" />
+    <PackageReference Include="xunit.v3.extensibility.core" />
+    <PackageReference Include="xunit.v3.assert" />
+    <PackageReference Include="xunit.v3.runner.utility" />
+    <Compile Include="..\PlatformTestHost\**\*.Android.cs" />
+    <AndroidResource Include="..\PlatformTestHost\Resources\**\*" Link="Resources\%(RecursiveDir)%(Filename)%(Extension)" />
+    <TrimmerRootAssembly Include="$(AssemblyName)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Android\Platform\Memoria.ToDo.Android.Platform.csproj" />
+    <ProjectReference Include="..\..\..\src\Android\TaskEditor\Memoria.ToDo.Android.TaskEditor.csproj" />
+    <ProjectReference Include="..\..\..\src\Android\Configure\Memoria.ToDo.Android.Configure.csproj" />
+    <ProjectReference Include="..\..\..\src\Android\TaskList\Memoria.ToDo.Android.TaskList.csproj" />
+    <ProjectReference Include="..\..\..\src\Android\Shell\Memoria.ToDo.Android.Shell.csproj" />
+    <ProjectReference Include="..\Fakes\Memoria.ToDo.Android.Fakes.csproj" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Memoria.ToDo.Shared.Fakes" />
+  </ItemGroup>
+
+  <Target Name="GenerateDeviceLauncher" BeforeTargets="CoreCompile" Condition="'$(MemoriaIsAndroidDeviceTarget)' == 'true'">
+    <PropertyGroup>
+      <MemoriaDeviceLauncherFile>$(IntermediateOutputPath)DeviceLauncher.g.cs</MemoriaDeviceLauncherFile>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(MemoriaDeviceLauncherFile)"
+                      Lines="namespace Memoria.ToDo.Android.DeviceHost%3B internal static class DeviceLauncher { public const string ActivityName = &quot;$(ApplicationId).MainActivity&quot;%3B }"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(MemoriaDeviceLauncherFile)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

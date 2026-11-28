@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <ApplicationId>com.razmake.memoriatodo</ApplicationId>
+    <ApplicationTitle>$(Product)</ApplicationTitle>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform\Memoria.ToDo.Android.Platform.csproj" />
+    <ProjectReference Include="..\TaskEditor\Memoria.ToDo.Android.TaskEditor.csproj" />
+    <ProjectReference Include="..\Configure\Memoria.ToDo.Android.Configure.csproj" />
+    <ProjectReference Include="..\TaskList\Memoria.ToDo.Android.TaskList.csproj" />
+    <ProjectReference Include="..\Shell\Memoria.ToDo.Android.Shell.csproj" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Xamarin.Google.Android.Material" />
+  </ItemGroup>
+
+</Project>

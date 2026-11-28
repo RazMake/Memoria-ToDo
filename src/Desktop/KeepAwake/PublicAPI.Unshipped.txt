@@ -1,0 +1,32 @@
+#nullable enable
+Memoria.ToDo.Desktop.KeepAwake.IDisplayRequest
+Memoria.ToDo.Desktop.KeepAwake.IDisplayRequest.Set(bool on) -> void
+Memoria.ToDo.Desktop.KeepAwake.IKeepAwake
+Memoria.ToDo.Desktop.KeepAwake.IKeepAwakeLifetime
+Memoria.ToDo.Desktop.KeepAwake.IKeepAwakeLifetime.Start() -> void
+Memoria.ToDo.Desktop.KeepAwake.IKeepAwakeLifetime.Stop() -> void
+Memoria.ToDo.Desktop.KeepAwake.IKeepAwakeStatus
+Memoria.ToDo.Desktop.KeepAwake.IKeepAwakeStatus.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.KeepAwake.IKeepAwakeStatus.SetOn(bool on) -> void
+Memoria.ToDo.Desktop.KeepAwake.IKeepAwakeStatus.State.get -> Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState!
+Memoria.ToDo.Desktop.KeepAwake.ISessionLock
+Memoria.ToDo.Desktop.KeepAwake.ISessionLock.Changed -> System.EventHandler?
+Memoria.ToDo.Desktop.KeepAwake.ISessionLock.IsLocked.get -> bool
+Memoria.ToDo.Desktop.KeepAwake.KeepAwake
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.<Clone>$() -> Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState!
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.Deconstruct(out bool IsOn, out bool Paused, out string? Failure) -> void
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.Equals(Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState? other) -> bool
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.Failure.get -> string?
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.Failure.init -> void
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.IsOn.get -> bool
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.IsOn.init -> void
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.KeepAwakeState(bool IsOn, bool Paused, string? Failure) -> void
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.Paused.get -> bool
+Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.Paused.init -> void
+override Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.Equals(object? obj) -> bool
+override Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.GetHashCode() -> int
+override Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.ToString() -> string!
+static Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.operator !=(Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState? left, Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState? right) -> bool
+static Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState.operator ==(Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState? left, Memoria.ToDo.Desktop.KeepAwake.KeepAwakeState? right) -> bool
+static Memoria.ToDo.Desktop.KeepAwake.KeepAwake.Create(Memoria.ToDo.Desktop.KeepAwake.IDisplayRequest! display, Memoria.ToDo.Desktop.KeepAwake.ISessionLock! session, Memoria.ToDo.Shared.Platform.IFileSystem! files, string! deviceFolder, Serilog.ILogger! logger) -> Memoria.ToDo.Desktop.KeepAwake.IKeepAwake!

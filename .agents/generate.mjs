@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Writes each AI tool's subagent files from .agents/subagents/subagents.json. Each file holds only the role's
-// metadata and a pointer to its <role>.md instructions, which stay the single source.
+// metadata and a pointer to its <role>.md instructions, which stay the single source. It also writes a pointer to each
+// skill in .agents/skills/ for Claude Code, in .claude/skills/<name>/SKILL.md.
 // Usage: node .agents/generate.mjs [--check]
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const script = fileURLToPath(import.meta.url);
 const repoRoot = join(dirname(script), '..');
@@ -64,7 +65,8 @@ const tools = {
       description: role.description,
       model: config.model,
       'reasoning-effort': config.effort,
-      tools: role.readOnly ? ['read', 'search', 'execute'] : undefined,
+      // Without a list, VS Code's Local harness gives the agent the main session's tools, so writable roles name `edit`.
+      tools: role.readOnly ? ['read', 'search', 'execute'] : ['read', 'edit', 'search', 'execute', 'web'],
       // Copilot CLI subagents don't receive AGENTS.md without this.
       'include-custom-instructions': true,
     }, instructions),
@@ -76,59 +78,140 @@ function fail(message) {
   process.exit(1);
 }
 
-const args = process.argv.slice(2);
-if (args.some((arg) => arg !== '--check')) fail(`unknown argument; usage: node ${show(script)} [--check]`);
+const skillsDir = join(repoRoot, '.agents', 'skills');
+const pointersDir = join(repoRoot, '.claude', 'skills');
 
-const manifest = JSON.parse(readFileSync(join(sourceDir, 'subagents.json'), 'utf8'));
-const roleKeys = new Set(['description', 'readOnly', ...Object.keys(tools)]);
-const outputs = new Map();
+// A value YAML reads as itself, as a string: no leading indicator, no ":" or "#" next to a space or tab, and not null, a boolean, or a number
+// in YAML's core schema (https://yaml.org/spec/1.2.2/#1032-tag-resolution).
+const yamlIndicatorStart = /^([\"'#\[\]{},&*!|>%@`]|[-?:](\s|$))/;
+const yamlNonString = /^(~|null|true|false|[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?|0o[0-7]+|0x[0-9a-f]+|[-+]?\.inf|\.nan)$/i;
+const isPlainText = (value) => !yamlIndicatorStart.test(value) && !yamlNonString.test(value) && !/[ \t][:#]|[:#][ \t]/.test(value) && !value.endsWith(':');
 
-for (const [name, role] of Object.entries(manifest)) {
-  if (!/^[a-z][a-z0-9-]*$/.test(name)) fail(`role "${name}" must be lowercase kebab-case`);
-  for (const key of Object.keys(role)) if (!roleKeys.has(key)) fail(`${name}: unknown key "${key}"`);
-  if (!isText(role.description)) fail(`${name}: "description" must be a non-empty string`);
-  if (typeof role.readOnly !== 'boolean') fail(`${name}: "readOnly" must be true or false`);
+/**
+ * The text of .claude/skills/<folderName>/SKILL.md for the skill source `sourceText`: its marker and frontmatter, and one
+ * line pointing to the source. Throws an Error naming the folder when the source breaks the rules in docs/architecture/agent-skills.md.
+ */
+export function skillPointer(folderName, sourceText) {
+  const reject = (problem) => { throw new Error(`skill "${folderName}": ${problem}`); };
+  const lines = sourceText.replaceAll('\r\n', '\n').split('\n');
+  const end = lines[0] === '---' ? lines.indexOf('---', 1) : -1;
+  if (end < 0) reject('SKILL.md must start with frontmatter between two --- lines');
+  const frontmatter = lines.slice(1, end);
 
-  const instructionsPath = join(sourceDir, `${name}.md`);
-  if (!existsSync(instructionsPath)) fail(`${name}: missing instructions file ${show(instructionsPath)}`);
-  // Point to the single instructions file instead of copying it into every tool's file.
-  const instructions = `Your instructions are in \`${show(instructionsPath)}\`. Read that whole file before doing anything else, then follow it exactly.\n`;
+  // Every line that starts a key is a plain key, then ":", then a space or the line's end, and no key appears twice.
+  const keyIndex = new Map();
+  frontmatter.forEach((line, i) => {
+    if (line.trim() === '' || line.startsWith('#') || /^\s/.test(line)) return;
+    const key = /^([A-Za-z0-9_-]+):( |$)/.exec(line)?.[1];
+    if (key === undefined) reject(`the frontmatter line "${line}" must be a plain key, then ":", then a space or the line's end`);
+    if (keyIndex.has(key)) reject(`${key} is given twice`);
+    keyIndex.set(key, i);
+  });
 
-  for (const [toolName, tool] of Object.entries(tools)) {
-    const config = role[toolName];
-    if (config?.model === undefined) fail(`${name}: "${toolName}.model" is required`);
-    for (const [key, value] of Object.entries(config)) {
-      if (!(key in tool.settings)) fail(`${name}: ${toolName} doesn't support "${key}"`);
-      if (!tool.settings[key](value)) fail(`${name}: invalid ${toolName}.${key}`);
+  const field = (key) => {
+    const index = keyIndex.get(key) ?? -1;
+    if (index < 0) return undefined;
+    const value = frontmatter[index].slice(key.length + 1).trim();
+    // The next line that isn't blank or a comment continues the value when it's indented.
+    const following = frontmatter.slice(index + 1).find((line) => line.trim() !== '' && !line.trim().startsWith('#'));
+    if (/^[>|]/.test(value) || /^\s/.test(following ?? '')) reject(`${key} must be on one line`);
+    if (value && !isPlainText(value)) reject(`${key} must be plain text, not quoted, a comment, null, true, false, a number, or YAML syntax`);
+    return value;
+  };
+  const name = field('name');
+  const description = field('description');
+  if (!name) reject('name is missing');
+  if (!description) reject('description is missing or blank');
+  if (name !== folderName) reject(`name "${name}" must be the folder name`);
+  if (name.length > 64 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) {
+    reject('name must be 1-64 lowercase letters, digits, and single hyphens, with none at the start or end');
+  }
+
+  const source = `${show(skillsDir)}/${folderName}/SKILL.md`;
+  return [
+    '---',
+    `# ${markerFor(source)}`,
+    ...frontmatter,
+    '---',
+    '',
+    `Read \`${source}\` before doing anything else, then follow it exactly.`,
+    '',
+  ].join('\n');
+}
+
+function skillOutputs() {
+  const outputs = new Map();
+  if (!existsSync(skillsDir)) return outputs;
+  for (const entry of readdirSync(skillsDir, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+    const sourcePath = join(skillsDir, entry.name, 'SKILL.md');
+    if (!existsSync(sourcePath)) fail(`skill "${entry.name}": missing ${show(sourcePath)}`);
+    try {
+      outputs.set(join(pointersDir, entry.name, 'SKILL.md'), skillPointer(entry.name, readFileSync(sourcePath, 'utf8')));
+    } catch (error) {
+      fail(error.message);
     }
-    outputs.set(join(repoRoot, tool.dir, name + tool.extension), tool.render({ name, ...role }, config, instructions));
   }
+  return outputs;
 }
 
-const read = (path) => (existsSync(path) ? readFileSync(path, 'utf8').replaceAll('\r\n', '\n') : undefined);
-const changed = [...outputs.keys()].filter((path) => read(path) !== outputs.get(path));
-const stale = Object.values(tools)
-  .flatMap(({ dir }) => {
-    const path = join(repoRoot, dir);
-    return existsSync(path) ? readdirSync(path).map((file) => join(path, file)) : [];
-  })
-  .filter((path) => !outputs.has(path) && statSync(path).isFile() && read(path).includes(generatedBy));
+function main() {
+  const args = process.argv.slice(2);
+  if (args.some((arg) => arg !== '--check')) fail(`unknown argument; usage: node ${show(script)} [--check]`);
 
-if (args.includes('--check')) {
-  if (changed.length || stale.length) {
-    for (const path of changed) console.error(`out of date: ${show(path)}`);
-    for (const path of stale) console.error(`stale: ${show(path)}`);
-    fail(`run: node ${show(script)}`);
+  const manifest = JSON.parse(readFileSync(join(sourceDir, 'subagents.json'), 'utf8'));
+  const roleKeys = new Set(['description', 'readOnly', ...Object.keys(tools)]);
+  const outputs = new Map();
+
+  for (const [name, role] of Object.entries(manifest)) {
+    if (!/^[a-z][a-z0-9-]*$/.test(name)) fail(`role "${name}" must be lowercase kebab-case`);
+    for (const key of Object.keys(role)) if (!roleKeys.has(key)) fail(`${name}: unknown key "${key}"`);
+    if (!isText(role.description)) fail(`${name}: "description" must be a non-empty string`);
+    if (typeof role.readOnly !== 'boolean') fail(`${name}: "readOnly" must be true or false`);
+
+    const instructionsPath = join(sourceDir, `${name}.md`);
+    if (!existsSync(instructionsPath)) fail(`${name}: missing instructions file ${show(instructionsPath)}`);
+    // Point to the single instructions file instead of copying it into every tool's file.
+    const instructions = `Your instructions are in \`${show(instructionsPath)}\`. Read that whole file before doing anything else, then follow it exactly.\n`;
+
+    for (const [toolName, tool] of Object.entries(tools)) {
+      const config = role[toolName];
+      if (config?.model === undefined) fail(`${name}: "${toolName}.model" is required`);
+      for (const [key, value] of Object.entries(config)) {
+        if (!(key in tool.settings)) fail(`${name}: ${toolName} doesn't support "${key}"`);
+        if (!tool.settings[key](value)) fail(`${name}: invalid ${toolName}.${key}`);
+      }
+      outputs.set(join(repoRoot, tool.dir, name + tool.extension), tool.render({ name, ...role }, config, instructions));
+    }
   }
-} else {
-  for (const path of changed) {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, outputs.get(path));
-    console.log(`wrote ${show(path)}`);
+  for (const [path, text] of skillOutputs()) outputs.set(path, text);
+
+  const read = (path) => (existsSync(path) ? readFileSync(path, 'utf8').replaceAll('\r\n', '\n') : undefined);
+  const changed = [...outputs.keys()].filter((path) => read(path) !== outputs.get(path));
+  const generatedFolders = [...Object.values(tools).map(({ dir }) => join(repoRoot, dir)), pointersDir];
+  const stale = generatedFolders
+    .flatMap((path) => (existsSync(path) ? readdirSync(path).map((file) => join(path, file)) : []))
+    .map((path) => (path.startsWith(pointersDir) ? join(path, 'SKILL.md') : path))
+    .filter((path) => !outputs.has(path) && existsSync(path) && statSync(path).isFile() && read(path).includes(generatedBy));
+
+  if (args.includes('--check')) {
+    if (changed.length || stale.length) {
+      for (const path of changed) console.error(`out of date: ${show(path)}`);
+      for (const path of stale) console.error(`stale: ${show(path)}`);
+      fail(`run: node ${show(script)}`);
+    }
+  } else {
+    for (const path of changed) {
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, outputs.get(path));
+      console.log(`wrote ${show(path)}`);
+    }
+    for (const path of stale) {
+      rmSync(path);
+      if (dirname(dirname(path)) === pointersDir && readdirSync(dirname(path)).length === 0) rmSync(dirname(path), { recursive: true });
+      console.log(`removed ${show(path)}`);
+    }
   }
-  for (const path of stale) {
-    rmSync(path);
-    console.log(`removed ${show(path)}`);
-  }
+  if (!changed.length && !stale.length) console.log('Generated files are up to date.');
 }
-if (!changed.length && !stale.length) console.log('Generated files are up to date.');
+
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main();

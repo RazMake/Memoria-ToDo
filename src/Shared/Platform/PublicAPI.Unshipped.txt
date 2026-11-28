@@ -1,0 +1,93 @@
+Memoria.ToDo.Shared.Platform.ContactAddress
+Memoria.ToDo.Shared.Platform.FailureList
+Memoria.ToDo.Shared.Platform.FailureList.Add(System.Exception! failure) -> void
+Memoria.ToDo.Shared.Platform.FailureList.Attempt(System.Action! step) -> void
+Memoria.ToDo.Shared.Platform.FailureList.FailureList() -> void
+Memoria.ToDo.Shared.Platform.FailureList.ThrowIfAny() -> void
+Memoria.ToDo.Shared.Platform.FailureList.ThrowIfAnyAfterSave<T>(T? saved) -> void
+Memoria.ToDo.Shared.Platform.NoticeFailedException
+Memoria.ToDo.Shared.Platform.NoticeFailedException.InnerExceptions.get -> System.Collections.Generic.IReadOnlyList<System.Exception!>!
+override Memoria.ToDo.Shared.Platform.NoticeFailedException.ToString() -> string!
+Memoria.ToDo.Shared.Platform.NoticeFailedException.NoticeFailedException(System.Collections.Generic.IReadOnlyList<System.Exception!>! failures) -> void
+Memoria.ToDo.Shared.Platform.NoticeFailedException<T>
+Memoria.ToDo.Shared.Platform.NoticeFailedException<T>.NoticeFailedException(T? saved, System.Collections.Generic.IReadOnlyList<System.Exception!>! failures) -> void
+Memoria.ToDo.Shared.Platform.NoticeFailedException<T>.Saved.get -> T?
+Memoria.ToDo.Shared.Platform.FileLoad<T>
+Memoria.ToDo.Shared.Platform.FileLoad<T>.<Clone>$() -> Memoria.ToDo.Shared.Platform.FileLoad<T>!
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Deconstruct(out T Value, out bool Present, out System.IO.InvalidDataException? Failure) -> void
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Equals(Memoria.ToDo.Shared.Platform.FileLoad<T>? other) -> bool
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Failure.get -> System.IO.InvalidDataException?
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Failure.init -> void
+Memoria.ToDo.Shared.Platform.FileLoad<T>.FileLoad(T Value, bool Present, System.IO.InvalidDataException? Failure) -> void
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Present.get -> bool
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Present.init -> void
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Require() -> T
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Value.get -> T
+Memoria.ToDo.Shared.Platform.FileLoad<T>.Value.init -> void
+Memoria.ToDo.Shared.Platform.IFileSystem
+Memoria.ToDo.Shared.Platform.IFileSystem.DeleteFile(string! path) -> void
+Memoria.ToDo.Shared.Platform.IFileSystem.DeleteFolder(string! path) -> void
+Memoria.ToDo.Shared.Platform.IFileSystem.FileExists(string! path) -> bool
+Memoria.ToDo.Shared.Platform.IFileSystem.IsSameOrDescendantDirectory(string! directory, string! ancestor) -> bool
+Memoria.ToDo.Shared.Platform.IFileSystem.ListFiles(string! folder) -> System.Collections.Generic.IReadOnlyList<string!>!
+Memoria.ToDo.Shared.Platform.IFileSystem.MoveFile(string! sourcePath, string! targetPath) -> void
+Memoria.ToDo.Shared.Platform.IFileSystem.ReadFile(string! path) -> byte[]!
+Memoria.ToDo.Shared.Platform.IFileSystem.WriteFile(string! path, System.ReadOnlySpan<byte> content) -> void
+Memoria.ToDo.Shared.Platform.IRepositoryAccess
+Memoria.ToDo.Shared.Platform.IRepositoryAccess.Add(Memoria.ToDo.Shared.Platform.IRepositoryPart! part) -> void
+Memoria.ToDo.Shared.Platform.IRepositoryAccess.Folder.get -> string?
+Memoria.ToDo.Shared.Platform.IRepositoryAccess.Locked(System.Action<string?>! call) -> void
+Memoria.ToDo.Shared.Platform.IRepositoryAccess.Locked<T>(System.Func<string?, T>! call) -> T
+Memoria.ToDo.Shared.Platform.IRepositoryAccess.LockedChange(System.Action<string?>! call) -> void
+Memoria.ToDo.Shared.Platform.IRepositoryAccess.LockedChange<T>(System.Func<string?, T>! call) -> T
+Memoria.ToDo.Shared.Platform.IRepositoryAccess.ReportLocalSave() -> void
+Memoria.ToDo.Shared.Platform.IRepositoryPart
+Memoria.ToDo.Shared.Platform.IRepositoryPart.Load(string? folder) -> System.Action!
+Memoria.ToDo.Shared.Platform.IRepositoryPart.Loaded() -> void
+Memoria.ToDo.Shared.Platform.IRepositoryPart.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!>!
+Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile
+Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile.Reason.get -> string!
+Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile.RelativePath.get -> string!
+Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile.RequiresUpdate.get -> bool
+Memoria.ToDo.Shared.Platform.ISyncedRepository
+Memoria.ToDo.Shared.Platform.ISyncedRepository.Folder.get -> string?
+Memoria.ToDo.Shared.Platform.ISyncedRepository.LocalSaved -> System.EventHandler?
+Memoria.ToDo.Shared.Platform.ISyncedRepository.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!>!
+Memoria.ToDo.Shared.Platform.ISyncedRepository.Update(string! expectedFolder, System.Action! update) -> void
+Memoria.ToDo.Shared.Platform.JsonFile
+Memoria.ToDo.Shared.Platform.MarkdownLabel
+Memoria.ToDo.Shared.Platform.NoRepositoryFolderException
+Memoria.ToDo.Shared.Platform.NoRepositoryFolderException.NoRepositoryFolderException() -> void
+Memoria.ToDo.Shared.Platform.RepositoryPath
+Memoria.ToDo.Shared.Platform.SkippedFile
+Memoria.ToDo.Shared.Platform.SyncedRepository
+Memoria.ToDo.Shared.Platform.SyncedRepository.Add(Memoria.ToDo.Shared.Platform.IRepositoryPart! part) -> void
+Memoria.ToDo.Shared.Platform.SyncedRepository.Folder.get -> string?
+Memoria.ToDo.Shared.Platform.SyncedRepository.LocalSaved -> System.EventHandler?
+Memoria.ToDo.Shared.Platform.SyncedRepository.Locked(System.Action<string?>! call) -> void
+Memoria.ToDo.Shared.Platform.SyncedRepository.Locked<T>(System.Func<string?, T>! call) -> T
+Memoria.ToDo.Shared.Platform.SyncedRepository.LockedChange(System.Action<string?>! call) -> void
+Memoria.ToDo.Shared.Platform.SyncedRepository.LockedChange<T>(System.Func<string?, T>! call) -> T
+Memoria.ToDo.Shared.Platform.SyncedRepository.ReportLocalSave() -> void
+Memoria.ToDo.Shared.Platform.SyncedRepository.Select(string? folder) -> void
+Memoria.ToDo.Shared.Platform.SyncedRepository.SkippedFiles.get -> System.Collections.Generic.IReadOnlyList<Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!>!
+Memoria.ToDo.Shared.Platform.SyncedRepository.SyncedRepository(Serilog.ILogger! logger) -> void
+Memoria.ToDo.Shared.Platform.SyncedRepository.Update(string! expectedFolder, System.Action! update) -> void
+Memoria.ToDo.Shared.Platform.SkippedFileException
+Memoria.ToDo.Shared.Platform.SkippedFileException.File.get -> Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!
+Memoria.ToDo.Shared.Platform.SkippedFileException.SkippedFileException(Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile! file) -> void
+override Memoria.ToDo.Shared.Platform.FileLoad<T>.Equals(object? obj) -> bool
+override Memoria.ToDo.Shared.Platform.FileLoad<T>.GetHashCode() -> int
+override Memoria.ToDo.Shared.Platform.FileLoad<T>.ToString() -> string!
+static Memoria.ToDo.Shared.Platform.ContactAddress.IdOf(string! address) -> string?
+static Memoria.ToDo.Shared.Platform.ContactAddress.Of(string! id) -> string!
+static Memoria.ToDo.Shared.Platform.FileLoad<T>.operator !=(Memoria.ToDo.Shared.Platform.FileLoad<T>? left, Memoria.ToDo.Shared.Platform.FileLoad<T>? right) -> bool
+static Memoria.ToDo.Shared.Platform.FileLoad<T>.operator ==(Memoria.ToDo.Shared.Platform.FileLoad<T>? left, Memoria.ToDo.Shared.Platform.FileLoad<T>? right) -> bool
+static Memoria.ToDo.Shared.Platform.FileLoad<T>.Read(Memoria.ToDo.Shared.Platform.IFileSystem! files, string! path, System.Func<byte[]!, T>! parse, T absent) -> Memoria.ToDo.Shared.Platform.FileLoad<T>!
+static Memoria.ToDo.Shared.Platform.JsonFile.Parse(byte[]! bytes) -> System.Text.Json.JsonDocument!
+static Memoria.ToDo.Shared.Platform.JsonFile.RequireVersion(System.Text.Json.JsonElement file, int newest) -> int
+static Memoria.ToDo.Shared.Platform.JsonFile.Write(System.Action<System.Text.Json.Utf8JsonWriter!>! write) -> byte[]!
+static Memoria.ToDo.Shared.Platform.MarkdownLabel.Escape(string! label) -> string!
+static Memoria.ToDo.Shared.Platform.RepositoryPath.Split(string! relativePath) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Memoria.ToDo.Shared.Platform.SkippedFile.Of(string! relativePath, System.Exception! failure) -> Memoria.ToDo.Shared.Platform.ISkippedRepositoryFile!
+static Memoria.ToDo.Shared.Platform.SkippedFile.Skips(System.Exception! failure) -> bool

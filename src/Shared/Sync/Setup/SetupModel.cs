@@ -1,0 +1,86 @@
+using Memoria.ToDo.Shared.Platform;
+
+namespace Memoria.ToDo.Shared.Sync;
+
+/// <summary>
+/// Builds the cached setup view from the clone, the device files, and the key, on the owned worker. It remembers the
+/// public key once seen, so refreshing never opens the key again.
+/// </summary>
+internal sealed class SetupModel(ISyncedRepository repository, IGitOperations git, IDeviceKeyStore keys, DeviceMetadata metadata, HostTrust trust, OwnedWorker worker)
+{
+    private byte[]? publicKey;
+    // The name of the last read: empty when it failed, null before any read.
+    private volatile string? lastNameRead;
+
+    // The first view is built in memory; Start loads the rest on the worker.
+    public Published<SetupSnapshot> Snapshot { get; } =
+        new(new SetupSnapshot(repository.Folder, null, metadata.DefaultName, null, null, null, false));
+
+    /// <summary>Remembers the public key of an open handle. Call on the worker.</summary>
+    public void Observe(IDeviceSigningKey key) => publicKey ??= key.PublicKeyBlob.ToArray();
+
+    /// <summary>Forgets the remembered public key and returns its fingerprint, or null when none was remembered.</summary>
+    public string? ForgetKey()
+    {
+        var fingerprint = publicKey is null ? null : DeviceMetadata.Fingerprint(publicKey);
+        publicKey = null;
+        return fingerprint;
+    }
+
+    /// <summary>Rebuilds the view and publishes it.</summary>
+    public async Task RefreshAsync()
+    {
+        var snapshot = await worker.Run(Build).ConfigureAwait(false);
+        Snapshot.Update(_ => snapshot);
+    }
+
+    /// <summary>
+    /// Announces the setup after a failed refresh: the last name read, which is empty when the saved name was unreadable
+    /// rather than the default, with the public key line that carries it, and the key the host currently offers, as held
+    /// in memory, so a trust that couldn't be loaded still shows the key it refused.
+    /// </summary>
+    public void PublishFailed()
+    {
+        var offered = trust.Offered;
+        Snapshot.Update(s =>
+        {
+            var withKey = s with
+            {
+                HostKey = offered,
+                PublicKey = publicKey is null ? null : s.PublicKey,
+                IsConfigured = publicKey is not null && s.IsConfigured,
+            };
+            return lastNameRead is not { } read ? withKey : withKey with
+            {
+                DeviceName = read,
+                PublicKey = publicKey is not null && read.Length > 0 ? DeviceMetadata.PublicKeyLine(publicKey, read) : withKey.PublicKey,
+            };
+        });
+    }
+
+    private SetupSnapshot Build()
+    {
+        var folder = repository.Folder;
+        lastNameRead = "";
+        var name = metadata.LoadName();
+        lastNameRead = name;
+
+        var origin = folder is null ? null : git.ReadOrigin(folder);
+        if (publicKey is null && keys.HasKey)
+        {
+            using var key = keys.Open();
+            Observe(key);
+        }
+
+        var receipt = folder is null ? null : git.ReadReceipt(folder);
+        var configured = receipt is not null && publicKey is not null && receipt.KeyFingerprint == DeviceMetadata.Fingerprint(publicKey);
+        return new SetupSnapshot(
+            folder,
+            origin,
+            name,
+            publicKey is null ? null : DeviceMetadata.PublicKeyLine(publicKey, name),
+            origin is null ? null : AddressParser.AddKeyPage(origin),
+            trust.Offered,
+            configured);
+    }
+}

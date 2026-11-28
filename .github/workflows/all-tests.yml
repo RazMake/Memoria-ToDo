@@ -1,0 +1,35 @@
+# The desktop release gate. Design: docs/architecture/android-releases.md.
+name: Run Desktop tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  full-tests:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-dotnet
+      - name: Run the desktop release selection
+        run: |
+          node .agents/platform-tests.mjs --platform desktop --pc-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save failed test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-test-reports-${{ github.run_attempt }}
+          path: test-results/**/*.junit.xml
+          retention-days: 7
+          if-no-files-found: warn

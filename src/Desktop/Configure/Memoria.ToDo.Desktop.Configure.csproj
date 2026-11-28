@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Memoria.ToDo.Desktop.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform\Memoria.ToDo.Desktop.Platform.csproj" />
+    <ProjectReference Include="..\MCPServer\Memoria.ToDo.Desktop.MCPServer.csproj" />
+    <ProjectReference Include="..\KeepAwake\Memoria.ToDo.Desktop.KeepAwake.csproj" />
+    <ProjectReference Include="..\Updates\Memoria.ToDo.Desktop.Updates.csproj" />
+    <ProjectReference Include="..\..\Shared\Rendering\Memoria.ToDo.Shared.Rendering.csproj" />
+    <ProjectReference Include="..\..\Shared\Tasks\Memoria.ToDo.Shared.Tasks.csproj" />
+    <ProjectReference Include="..\..\Shared\Sync\Memoria.ToDo.Shared.Sync.csproj" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+</Project>

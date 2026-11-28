@@ -1,0 +1,4 @@
+Memoria.ToDo.Android.TaskList.ITaskViewScreen
+Memoria.ToDo.Android.TaskList.ITaskViewScreen.Show() -> void
+Memoria.ToDo.Android.TaskList.TaskViewScreen
+static Memoria.ToDo.Android.TaskList.TaskViewScreen.Create(Memoria.ToDo.Android.TaskEditor.IAddScreen! add, System.Action! openSettings, Memoria.ToDo.Android.Platform.IScreenOpener! screens, Serilog.ILogger! logger) -> Memoria.ToDo.Android.TaskList.ITaskViewScreen!

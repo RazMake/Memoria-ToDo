@@ -1,0 +1,101 @@
+<Project>
+
+  <PropertyGroup>
+    <MemoriaPcTargetFramework>net11.0</MemoriaPcTargetFramework>
+    <MemoriaAppTargetFramework>$(MemoriaPcTargetFramework)-windows10.0.17763.0</MemoriaAppTargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- The app's name as users see it; the only home of the name. AppName in the platform reads it back. -->
+    <Product>Memoria-ToDo</Product>
+    <!-- Known-vulnerability reports depend on the day, not on our code; they warn but don't fail a restore. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <!-- Android modules and their platform build for the PC and Android; a default TargetFramework would stop the
+       cross-targeting build. The Android App builds only for Android. Design: technology-stack.md,
+       "Each Android module builds for both the PC and Android". -->
+  <PropertyGroup>
+    <MemoriaRelativeDirectory>$([System.IO.Path]::GetRelativePath('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)').Replace('\', '/'))/</MemoriaRelativeDirectory>
+    <MemoriaIsAndroidDeviceTarget Condition="'$(MemoriaAndroidTestTarget)' == 'android' And $(MemoriaRelativeDirectory.StartsWith('tests/Android/'))">true</MemoriaIsAndroidDeviceTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(MemoriaRelativeDirectory.StartsWith('src/Android/')) Or '$(MemoriaIsAndroidDeviceTarget)' == 'true'">
+    <MemoriaIsAndroidProject>true</MemoriaIsAndroidProject>
+    <TargetFramework Condition="'$(MemoriaAndroidTestTarget)' == 'android'">$(MemoriaPcTargetFramework)-android</TargetFramework>
+    <TargetFramework Condition="'$(MemoriaAndroidTestTarget)' == 'pc' And !$(MSBuildProjectName.EndsWith('.App'))">$(MemoriaPcTargetFramework)</TargetFramework>
+    <TargetFramework Condition="$(MSBuildProjectName.EndsWith('.App'))">$(MemoriaPcTargetFramework)-android</TargetFramework>
+    <TargetFrameworks Condition="!$(MSBuildProjectName.EndsWith('.App')) And '$(MemoriaAndroidTestTarget)' == ''">$(MemoriaPcTargetFramework);$(MemoriaPcTargetFramework)-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' != '' And $(TargetFramework.EndsWith('-android'))">26</SupportedOSPlatformVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MemoriaIsAndroidProject)' != 'true'">
+    <TargetFramework Condition="'$(TargetFramework)' == ''">$(MemoriaPcTargetFramework)</TargetFramework>
+  </PropertyGroup>
+
+  <!-- Android-only code is in *.Android.cs files, which only the Android build compiles. -->
+  <PropertyGroup Condition="'$(TargetFramework)' != '' And !$(TargetFramework.EndsWith('-android'))">
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/*.Android.cs</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Without this, Android adds a public Resource class, which the PublicAPI files don't list. -->
+    <AndroidResourceDesignerClassModifier>internal</AndroidResourceDesignerClassModifier>
+    <!-- Builds use the per-user JDK and Android SDK that InstallAndroidDependencies fills, not the runner's own.
+         Design: technology-stack.md, "The pinned workload set decides the JDK and Android SDK". -->
+    <AndroidSdkDirectory Condition="'$(AndroidSdkDirectory)' == ''">$(LOCALAPPDATA)\Memoria-ToDo\android-sdk</AndroidSdkDirectory>
+    <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == ''">$(LOCALAPPDATA)\Memoria-ToDo\jdk</JavaSdkDirectory>
+  </PropertyGroup>
+
+  <!-- A test project is one whose name ends in ".Tests". -->
+  <PropertyGroup>
+    <MemoriaIsTestProject Condition="$(MSBuildProjectName.EndsWith('.Tests'))">true</MemoriaIsTestProject>
+    <MemoriaHasTestCode Condition="'$(MemoriaIsTestProject)' == 'true' Or $(MSBuildProjectName.EndsWith('.Fakes'))">true</MemoriaHasTestCode>
+    <MemoriaTestKindsFile>$(MSBuildThisFileDirectory)tests\Testing\Kinds\TestKinds.cs</MemoriaTestKindsFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MemoriaIsTestProject)' == 'true' And '$(MemoriaIsAndroidDeviceTarget)' != 'true'">
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- The kinds' strings live only in TestKinds.cs. -->
+    <MemoriaTestKindsText>$([System.IO.File]::ReadAllText($(MemoriaTestKindsFile)))</MemoriaTestKindsText>
+    <MemoriaTraitName>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'TraitName = "([^"]+)"').Groups[1].Value)</MemoriaTraitName>
+    <MemoriaUnitKind>$([System.Text.RegularExpressions.Regex]::Match($(MemoriaTestKindsText), 'UnitKind = "([^"]+)"').Groups[1].Value)</MemoriaUnitKind>
+    <!-- Default: unit tests only. Every run, of any kind, gets the hang dump and the crash dump. -p:MemoriaAllTestKinds=true drops only the unit filter.
+         Design: technology-stack.md, "A hang dump stops a test application…" and "A crash dump saves a test application…". -->
+    <MemoriaDumpArguments>--hangdump --hangdump-timeout 2m --crashdump</MemoriaDumpArguments>
+    <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' == 'true'">$(MemoriaDumpArguments)</MemoriaTestArguments>
+    <MemoriaTestArguments Condition="'$(MemoriaAllTestKinds)' != 'true'">$(MemoriaDumpArguments) --filter-trait "$(MemoriaTraitName)=$(MemoriaUnitKind)"</MemoriaTestArguments>
+    <TestingPlatformCommandLineArguments>$(MemoriaTestArguments)</TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MemoriaHasTestCode)' == 'true'">
+    <!-- An analyzer that the older compiler skips (CS9057) must fail the build, not pass it unchecked. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MemoriaIsTestProject)' == 'true' And '$(MemoriaIsAndroidDeviceTarget)' != 'true'">
+    <PackageReference Include="xunit.v3.mtp-v2" />
+    <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CrashDump" />
+    <!-- A skipped test fails every run; the one copy of the setting. -->
+    <Content Include="$(MSBuildThisFileDirectory)tests\xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MemoriaHasTestCode)' == 'true'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)tests\Testing\Kinds\Memoria.ToDo.Testing.Kinds.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)tests\Testing\Analyzers\Memoria.ToDo.Testing.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- A hand-set TestingPlatformCommandLineArguments would silently drop the unit filter, the hang dump, and the crash dump. -->
+  <Target Name="MemoriaCheckTestArguments" BeforeTargets="Build" Condition="'$(MemoriaIsTestProject)' == 'true' And '$(MemoriaIsAndroidDeviceTarget)' != 'true'">
+    <Error Condition="'$(TestingPlatformCommandLineArguments)' != '$(MemoriaTestArguments)'" Text="Don't set TestingPlatformCommandLineArguments: it would drop the unit filter, the hang dump, and the crash dump. To run UX or integration tests, pass -p:MemoriaAllTestKinds=true. See docs/architecture/technology-stack.md." />
+  </Target>
+
+  <!-- Every project under src/ lists its public interface in two files. -->
+  <ItemGroup Condition="$(MSBuildProjectDirectory.StartsWith('$(MSBuildThisFileDirectory)src'))">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
+</Project>

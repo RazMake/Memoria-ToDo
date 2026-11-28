@@ -11,7 +11,7 @@ Work in three steps: learn what the change must do, check it against the rules, 
 ### Learn what the change must do
 
 - **Establish the scope and specification first**: the brief, the owner design file, applicable instructions, and documented decisions. Identify conflicting or missing requirements; don't invent intent or treat the implementation as its own specification.
-- **Use the diff as an entry point, not the boundary.** Trace affected callers, implementations, and tests far enough to check the whole contract, starting from `node .agents/repo-map.mjs`.
+- **Use the diff as an entry point, and stay within the [review's scope](../../docs/contributing/process.md#independent-review).** Trace affected callers, implementations, and tests only far enough to check the changed contract, starting from `node .agents/repo-map.mjs`. In a re-review, check only the fixes and the findings they address.
 - **Compare each promised behavior** with its implementation and independent test evidence. Look for omitted cases, unintended behavior changes, and requirements that no assertion checks.
 
 ### Check it against the rules
@@ -26,6 +26,7 @@ Work in three steps: learn what the change must do, check it against the rules, 
 
 - **Audit tests as executable claims.** Could a broken contract still pass, or a behavior-preserving refactor make them fail? Inspect assertions, fixtures, mocks, expected-value sources, and asynchronous and error paths. Check the evidence that new tests can fail; missing evidence is unverified, not proof that a test is useless.
 - **Trace invalid input**, configuration, dependency failures, and impossible states. Find the earliest boundary that can reliably reject each one, before side effects. Flag missing fail-fast checks, swallowed failures, and success-shaped fallbacks. Don't demand redundant checks for invariants already guaranteed upstream.
+- **Trace a problem through the log.** For each changed behavior, ask whether a failure or a wrong result could be explained from the entries it writes alone, as [Logging](../../docs/architecture/logging.md#every-operation-failure-and-decision-is-logged-where-it-happens) requires. Flag missing operation, failure, and Debug choice entries, failures logged twice or not at all, Debug entries made per item, and entries that could carry a secret.
 - **Try to refute each suspected finding** with surrounding code, documented guarantees, and existing tests. Support surviving findings with a concrete counterexample, reproduction, or trace from input to observable failure. Passing checks alone don't prove the specification is met.
 
 ## When interfaces change
@@ -40,12 +41,12 @@ Apply this pass when a change adds, removes, or alters a public interface or its
 
 ## Boundaries
 
-- **Stay read-only**: don't edit files, apply fixes, install dependencies, or change Git state. Run only commands known not to change files or external state. Don't mutate code to test the tests.
+- **Stay read-only**: don't edit files, apply fixes, install dependencies, or change Git state. Run only commands known not to change files or external state. Don't build, run tests, or mutate code to test the tests; judge from the test evidence in the brief.
 - **Do the work yourself**; don't delegate to other agents.
 
 ## Report
 
-- **Actionable findings first**, ordered by severity. Label each one **code defect** or **design gap**, as the [process](../../docs/contributing/process.md#changing-the-code) defines them. For each, give severity, confidence, a precise `path:line`, the violated rule, expected versus actual behavior, a counterexample and its consequence, and the smallest correction. Separate regressions the change introduced from issues that already existed.
+- **Actionable findings first**, ordered by severity. Label each one **code defect** or **design gap**, as the [process](../../docs/contributing/process.md#changing-the-code) defines them. For each, give severity, confidence, a precise `path:line`, the violated rule, expected versus actual behavior, a counterexample and its consequence, and the smallest correction. Separate regressions the change introduced from issues that already existed; list pre-existing issues only by `path:line` and one line each, without reviewing them.
 - **Make findings traceable.** Give each finding an ID for the main session to track under [Independent review](../../docs/contributing/process.md#independent-review). Include the review's model and session evidence in the report.
 - **Questions and risks apart.** List unresolved specification questions and unverified risks separately from demonstrated findings. Don't manufacture findings, inflate severity, or report style-only preferences.
 - **Close with the exact scope** reviewed, the checks run and their results, and the checks not run with reasons. If nothing survives scrutiny, say "No actionable findings" and state the remaining verification gaps.

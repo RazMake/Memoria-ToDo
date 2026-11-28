@@ -1,0 +1,12 @@
+bin/
+obj/
+TestResults/
+Releases/
+publish/
+publish-android/
+test-results/
+# The Node.js client's installed packages and its build output; dist/ holds the copy of the contract's .proto files,
+# and src/generated/ the TypeScript types generated from them.
+node_modules/
+src/Api/NodeClient/dist/
+src/Api/NodeClient/src/generated/

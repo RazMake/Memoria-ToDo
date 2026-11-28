@@ -1,0 +1,26 @@
+name: Set up the repository's .NET SDK
+description: Select the SDK from global.json and enable workloads only for Android builds.
+inputs:
+  workload:
+    description: Empty for PC-only builds, android for the app, or maui-android for device tests.
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v6
+      with:
+        global-json-file: global.json
+    - name: Select the required workload support
+      shell: pwsh
+      env:
+        WORKLOAD: ${{ inputs.workload }}
+      run: |
+        if ($env:WORKLOAD -notin @('', 'android', 'maui-android')) { throw 'Unsupported workload selection.' }
+        if ($env:WORKLOAD) {
+          dotnet workload install $env:WORKLOAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "MSBuildEnableWorkloadResolver=true" >> $env:GITHUB_ENV
+        } else {
+          "MSBuildEnableWorkloadResolver=false" >> $env:GITHUB_ENV
+        }
