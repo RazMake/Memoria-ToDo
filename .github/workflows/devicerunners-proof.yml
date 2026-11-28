@@ -66,6 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          trap 'status=$?; if [ "$status" -ne 0 ] && [ -f "$RUNNER_TEMP/emulator.log" ]; then tail -n 150 "$RUNNER_TEMP/emulator.log"; fi' EXIT
           test -e /dev/kvm
           sudo chown "$(id -u):$(id -g)" /dev/kvm
           "$ANDROID_HOME/emulator/emulator" -accel-check
@@ -85,14 +86,15 @@ jobs:
             -AndroidSdkDirectory $env:ANDROID_HOME -JavaSdkDirectory $env:JAVA_HOME
       - name: Collect Logcat
         if: always()
+        shell: bash
         run: |
-          if (Test-Path "$env:ANDROID_HOME/platform-tools/adb") {
-            & "$env:ANDROID_HOME/platform-tools/adb" -s $env:DEVICE logcat -d `
-              > "$env:RUNNER_TEMP/device.log"
-            if ($LASTEXITCODE -ne 0) {
-              Write-Warning 'Logcat could not be collected; check the emulator log.'
-            }
-          }
+          set -euo pipefail
+          if [ -x "$ANDROID_HOME/platform-tools/adb" ]; then
+            if ! timeout 15s "$ANDROID_HOME/platform-tools/adb" -s "$DEVICE" logcat -d \
+              > "$RUNNER_TEMP/device.log" 2>&1; then
+              echo "::warning::Logcat could not be collected; check the emulator log."
+            fi
+          fi
       - name: Save the proof's results and emulator logs
         if: always()
         uses: actions/upload-artifact@v7
