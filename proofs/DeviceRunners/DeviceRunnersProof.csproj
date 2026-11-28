@@ -25,4 +25,15 @@
     <ProjectReference Include="$(MemoriaSourceRoot)\src\Android\Configure\Memoria.ToDo.Android.Configure.csproj" />
     <TrimmerRootAssembly Include="$(AssemblyName)" />
   </ItemGroup>
+  <Target Name="GenerateProofLauncher" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <ProofLauncherFile>$(IntermediateOutputPath)ProofLauncher.g.cs</ProofLauncherFile>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(ProofLauncherFile)"
+                      Lines="internal static class ProofLauncher { public const string ActivityName = &quot;$(ApplicationId).MainActivity&quot;%3B }"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(ProofLauncherFile)" />
+    </ItemGroup>
+  </Target>
 </Project>
